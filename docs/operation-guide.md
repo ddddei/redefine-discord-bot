@@ -33,7 +33,7 @@
 
 `/질문` 명령어가 FAQ에서 답변을 찾지 못하면 `LOG_CHANNEL_ID`가 설정된 경우 `#봇-질문로그`에 질문 내용과 시간이 기록됩니다.
 
-운영 중에는 `#봇-질문로그`를 주기적으로 확인하고, 반복해서 들어오는 질문을 `data/faq.json`에 FAQ로 추가합니다. FAQ에 반영한 뒤에는 같은 질문을 `/질문`으로 다시 테스트해 봇이 새 답변을 찾는지 확인합니다.
+운영 중에는 `#봇-질문로그`를 주기적으로 확인하고, 반복해서 들어오는 질문을 `data/faq.json`에 FAQ로 추가합니다. FAQ로 쓰기에는 넓은 프로그램 설명이나 배경 안내에 가까운 질문은 `data/knowledge.json`에 지식창고 항목으로 추가합니다. 반영한 뒤에는 같은 질문을 `/질문`으로 다시 테스트해 봇이 새 답변을 찾는지 확인합니다.
 
 미응답 질문 로그에는 사용자 이름이나 사용자 ID를 기록하지 않습니다. 운영자는 질문 내용만 보고 FAQ 개선에 활용합니다.
 
@@ -63,6 +63,20 @@ git push
 ```
 
 6. Railway에서 자동 재배포가 완료되고 봇이 Online 상태인지 확인합니다.
+
+## 지식창고 수정 루틴
+
+1. `data/knowledge.json`을 수정합니다.
+2. 각 항목에 `id`, `title`, `keywords`, `summary`, `content`가 있는지 확인합니다.
+3. 운영진 확인이 필요한 내용, 일정, 참여 확정 여부, 정신건강·위기 판단은 단정하지 않고 문의 채널이나 운영진 안내로 연결되도록 작성합니다.
+4. JSON 문법을 확인합니다.
+
+```bash
+node -e "JSON.parse(require('fs').readFileSync('data/knowledge.json', 'utf8')); console.log('knowledge ok')"
+```
+
+5. 디스코드에서 `/질문 내용:수정한 지식창고 질문 예시`를 실행해 답변을 테스트합니다.
+6. FAQ 답변이 먼저 검색되고, FAQ에 없을 때 지식창고 답변이 표시되는지 확인합니다.
 
 ## 공지 템플릿 수정 루틴
 
@@ -104,6 +118,7 @@ git diff
 node --check src/index.js
 node --check src/deploy-commands.js
 node -e "JSON.parse(require('fs').readFileSync('data/faq.json', 'utf8')); console.log('faq.json OK')"
+node -e "JSON.parse(require('fs').readFileSync('data/knowledge.json', 'utf8')); console.log('knowledge ok')"
 node -e "JSON.parse(require('fs').readFileSync('data/notices.json', 'utf8')); console.log('notices.json OK')"
 node -e "JSON.parse(require('fs').readFileSync('data/channels.json', 'utf8')); console.log('channels.json OK')"
 git add .

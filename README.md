@@ -8,7 +8,7 @@
   처음 온 참여자를 위한 디스코드 사용 안내를 보여줍니다.
 
 - `/질문 내용:궁금한 내용`
-  `data/faq.json`에서 관련 답변을 찾아 안내합니다. 답변을 찾지 못한 질문은 `LOG_CHANNEL_ID`가 설정된 경우 운영진 로그 채널에 질문 내용과 시간만 기록됩니다.
+  먼저 `data/faq.json`에서 관련 답변을 찾고, 없으면 `data/knowledge.json`에서 프로그램 지식창고를 한 번 더 검색해 안내합니다. 그래도 답변을 찾지 못한 질문은 `LOG_CHANNEL_ID`가 설정된 경우 운영진 로그 채널에 질문 내용과 시간만 기록됩니다.
 
 - `/리디 도움`
   사용할 수 있는 명령어를 안내합니다.
@@ -35,6 +35,9 @@
 
 - `data/faq.json`
   `/질문` 명령어가 검색하는 FAQ 데이터입니다. 각 항목은 `keywords`, `question`, `answer` 구조를 사용합니다.
+
+- `data/knowledge.json`
+  FAQ에 없는 질문을 보완하기 위한 프로그램 지식창고입니다. 각 항목은 `id`, `title`, `keywords`, `summary`, `content` 구조를 사용하며, 운영진 확인이 필요한 내용은 단정하지 않도록 작성합니다.
 
 - `data/notices.json`
   `/공지` 명령어에서 사용하는 공지 템플릿입니다. 일정 안내, 봇 사용 안내, 참여 리마인드, 문의 안내, 준비물, 결석 안내 문안을 관리합니다.
@@ -102,6 +105,7 @@ npm run start
 node --check src/index.js
 node --check src/deploy-commands.js
 node -e "JSON.parse(require('fs').readFileSync('data/faq.json', 'utf8')); console.log('faq.json OK')"
+node -e "JSON.parse(require('fs').readFileSync('data/knowledge.json', 'utf8')); console.log('knowledge ok')"
 node -e "JSON.parse(require('fs').readFileSync('data/notices.json', 'utf8')); console.log('notices.json OK')"
 node -e "JSON.parse(require('fs').readFileSync('data/channels.json', 'utf8')); console.log('channels.json OK')"
 npm run deploy

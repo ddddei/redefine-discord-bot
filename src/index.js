@@ -11,6 +11,7 @@ const {
 console.log('봇 실행 준비 중...');
 
 const faqPath = path.join(__dirname, '..', 'data', 'faq.json');
+const knowledgePath = path.join(__dirname, '..', 'data', 'knowledge.json');
 const noticePath = path.join(__dirname, '..', 'data', 'notices.json');
 const channelGuidePath = path.join(__dirname, '..', 'data', 'channels.json');
 const logChannelId = process.env.LOG_CHANNEL_ID;
@@ -93,11 +94,27 @@ function isFaqItem(value) {
     && Array.isArray(value.keywords);
 }
 
+function isKnowledgeItem(value) {
+  return value
+    && typeof value.id === 'string'
+    && typeof value.title === 'string'
+    && typeof value.summary === 'string'
+    && typeof value.content === 'string'
+    && Array.isArray(value.keywords);
+}
+
 const faqList = loadJsonFile(
   faqPath,
   fallbackFaqList,
   'FAQ 데이터',
   (value) => Array.isArray(value) && value.every(isFaqItem)
+);
+
+const knowledgeList = loadJsonFile(
+  knowledgePath,
+  [],
+  '지식창고 데이터',
+  (value) => Array.isArray(value) && value.every(isKnowledgeItem)
 );
 
 const noticeTemplates = loadJsonFile(
@@ -250,6 +267,42 @@ function findFaqAnswer(userQuestion) {
   return bestMatch;
 }
 
+function scoreKnowledgeItem(item, userQuestion) {
+  return scoreFaqItem(
+    {
+      question: item.title,
+      keywords: item.keywords,
+    },
+    userQuestion
+  );
+}
+
+function findKnowledgeAnswer(userQuestion) {
+  const normalizedQuestion = normalizeText(userQuestion);
+
+  if (!normalizedQuestion) {
+    return null;
+  }
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const item of knowledgeList) {
+    const score = scoreKnowledgeItem(item, normalizedQuestion);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = item;
+    }
+  }
+
+  if (bestScore < MIN_FAQ_SCORE) {
+    return null;
+  }
+
+  return bestMatch;
+}
+
 function createGuideEmbed(title, description) {
   return new EmbedBuilder()
     .setColor(0x8f7a5f)
@@ -258,6 +311,19 @@ function createGuideEmbed(title, description) {
     .setFooter({
       text: '리디파인 가이드 봇',
     });
+}
+
+function createKnowledgeEmbed(item) {
+  return createGuideEmbed(
+    item.title,
+    [
+      item.summary,
+      '',
+      item.content,
+    ].join('\n')
+  ).setFooter({
+    text: '세부 내용은 운영진 안내에 따라 달라질 수 있어요.',
+  });
 }
 
 function getNoticeTemplate(type) {
@@ -429,6 +495,13 @@ client.on('interactionCreate', async (interaction) => {
     const matchedFaq = findFaqAnswer(question);
 
     if (!matchedFaq) {
+      const matchedKnowledge = findKnowledgeAnswer(question);
+
+      if (matchedKnowledge) {
+        await interaction.reply({ embeds: [createKnowledgeEmbed(matchedKnowledge)] });
+        return;
+      }
+
       const embed = createGuideEmbed(
         '확인이 필요한 질문이에요',
         [
@@ -547,6 +620,7 @@ if (require.main === module) {
 
 module.exports = {
   findFaqAnswer,
+  findKnowledgeAnswer,
   normalizeText,
   scoreFaqItem,
 };
