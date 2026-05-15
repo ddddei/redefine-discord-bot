@@ -13,6 +13,7 @@ console.log('봇 실행 준비 중...');
 const faqPath = path.join(__dirname, '..', 'data', 'faq.json');
 const faqList = JSON.parse(fs.readFileSync(faqPath, 'utf-8'));
 const noticePath = path.join(__dirname, '..', 'data', 'notices.json');
+const channelGuidePath = path.join(__dirname, '..', 'data', 'channels.json');
 
 const fallbackContactNoticeTemplate = [
   '💬 [프로젝트 리디파인] 문의 안내',
@@ -36,6 +37,33 @@ function loadNoticeTemplates() {
 }
 
 const noticeTemplates = loadNoticeTemplates();
+
+const fallbackChannelGuide = {
+  title: '리디파인 채널 안내',
+  intro: [
+    '지금은 채널 안내 파일을 불러오지 못했어요.',
+    '처음 오셨다면 공지 채널과 참여 확인 채널부터 천천히 확인해 주세요.',
+  ],
+  categories: [
+    {
+      name: '기본 안내',
+      channels: [
+        {
+          name: '공지 채널',
+          description: '일정, 운영 안내, 변경사항을 확인하는 곳이에요.',
+        },
+        {
+          name: '참여 확인 채널',
+          description: '참여 전 필요한 확인을 진행하는 곳이에요.',
+        },
+        {
+          name: '자유 채팅방',
+          description: '가벼운 대화와 안부를 나누는 공간이에요.',
+        },
+      ],
+    },
+  ],
+};
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -121,6 +149,48 @@ function getNoticeTemplate(type) {
   return fallbackContactNoticeTemplate;
 }
 
+function loadChannelGuide() {
+  try {
+    const guide = JSON.parse(fs.readFileSync(channelGuidePath, 'utf-8'));
+
+    if (!Array.isArray(guide.categories)) {
+      throw new Error('categories 배열이 없습니다.');
+    }
+
+    return guide;
+  } catch (error) {
+    console.error('채널 안내를 읽지 못했습니다:', error.message);
+    return fallbackChannelGuide;
+  }
+}
+
+function formatChannelCategory(category) {
+  return (category.channels || [])
+    .map((channel) => `**#${channel.name}** - ${channel.description}`)
+    .join('\n');
+}
+
+function createChannelGuideEmbed() {
+  const guide = loadChannelGuide();
+  const intro = Array.isArray(guide.intro)
+    ? guide.intro.join('\n')
+    : String(guide.intro || fallbackChannelGuide.intro.join('\n'));
+
+  const embed = createGuideEmbed(guide.title || fallbackChannelGuide.title, intro);
+  const fields = (guide.categories || [])
+    .map((category) => ({
+      name: category.name,
+      value: formatChannelCategory(category),
+    }))
+    .filter((field) => field.name && field.value);
+
+  if (fields.length > 0) {
+    embed.addFields(fields);
+  }
+
+  return embed;
+}
+
 client.once('clientReady', () => {
   console.log(`${client.user.tag} 봇이 준비됐어요.`);
 });
@@ -176,28 +246,7 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.commandName === '채널안내') {
-    const embed = createGuideEmbed(
-      '리디파인 채널 안내',
-      [
-        '처음에는 필요한 채널부터 천천히 확인해도 괜찮아요.',
-        '아래 내용을 보고 어디에 무엇을 남기면 좋을지 편하게 살펴봐 주세요.',
-        '',
-        '📢 **공지 채널**',
-        '일정, 운영 안내, 변경사항을 확인하는 곳이에요.',
-        '',
-        '✅ **참여 확인 채널**',
-        '출석이나 참여 확인이 필요할 때 사용하는 곳이에요.',
-        '',
-        '💬 **자유 채팅방**',
-        '가벼운 대화와 안부를 나누며 편하게 머무는 공간이에요.',
-        '',
-        '❓ **문의 채널**',
-        '궁금한 점이나 확인이 필요한 내용을 남기는 곳이에요.',
-        '',
-        '🌿 **미션/활동 채널**',
-        '회차별 활동이나 미션 내용을 함께 공유하는 곳이에요.',
-      ].join('\n')
-    );
+    const embed = createChannelGuideEmbed();
 
     await interaction.reply({ embeds: [embed] });
     return;
