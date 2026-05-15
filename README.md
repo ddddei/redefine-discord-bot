@@ -25,6 +25,9 @@
 - `/공지 종류:일정안내`
   운영진이 복사해 사용할 수 있는 공지 템플릿을 보여줍니다. 실행한 사람에게만 보이도록 설정되어 있습니다.
 
+- `/공지 종류:봇사용안내`
+  참여자 입장 전에 안내 봇 사용법을 공지할 수 있는 운영진용 템플릿을 보여줍니다.
+
 - `/채널안내`
   리디파인 디스코드 주요 채널의 용도를 안내합니다.
 
@@ -34,7 +37,7 @@
   `/질문` 명령어가 검색하는 FAQ 데이터입니다. 각 항목은 `keywords`, `question`, `answer` 구조를 사용합니다.
 
 - `data/notices.json`
-  `/공지` 명령어에서 사용하는 공지 템플릿입니다. 일정 안내, 참여 리마인드, 문의 안내, 준비물, 결석 안내 문안을 관리합니다.
+  `/공지` 명령어에서 사용하는 공지 템플릿입니다. 일정 안내, 봇 사용 안내, 참여 리마인드, 문의 안내, 준비물, 결석 안내 문안을 관리합니다.
 
 - `data/channels.json`
   `/채널안내` 명령어에서 사용하는 채널 안내 데이터입니다. 제목, 소개 문구, 카테고리별 채널 설명을 관리합니다.
@@ -84,7 +87,7 @@ npm install
 Slash Command 등록:
 
 ```bash
-node src/deploy-commands.js
+npm run deploy
 ```
 
 봇 실행:
@@ -101,7 +104,10 @@ node --check src/deploy-commands.js
 node -e "JSON.parse(require('fs').readFileSync('data/faq.json', 'utf8')); console.log('faq.json OK')"
 node -e "JSON.parse(require('fs').readFileSync('data/notices.json', 'utf8')); console.log('notices.json OK')"
 node -e "JSON.parse(require('fs').readFileSync('data/channels.json', 'utf8')); console.log('channels.json OK')"
+npm run deploy
 npm run start
 ```
 
-디스코드에서는 `/질문`, `/공지`, `/채널안내`를 직접 실행해 응답을 확인해 주세요.
+Slash Command 선택지가 변경되었으므로 운영 서버에는 `npm run deploy`로 명령어를 다시 등록해야 합니다.
+
+디스코드에서는 `/질문`, `/공지 종류:봇사용안내`, `/채널안내`를 직접 실행해 응답을 확인해 주세요.
