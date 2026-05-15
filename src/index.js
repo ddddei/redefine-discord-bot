@@ -69,48 +69,131 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
+const MIN_FAQ_SCORE = 5;
+
 function normalizeText(text) {
   return String(text || '')
     .toLowerCase()
-    .replace(/\s/g, '')
-    .replace(/[?!.~,]/g, '');
+    .replace(/[^\w\sㄱ-ㅎㅏ-ㅣ가-힣]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function compactText(text) {
+  return normalizeText(text).replace(/\s/g, '');
+}
+
+function getSearchTokens(text) {
+  return [...new Set(
+    normalizeText(text)
+      .split(' ')
+      .filter((token) => token.length >= 2)
+  )];
+}
+
+function getCharacterPairs(text) {
+  const compactedText = compactText(text);
+
+  if (compactedText.length < 2) {
+    return compactedText ? [compactedText] : [];
+  }
+
+  const pairs = [];
+
+  for (let index = 0; index < compactedText.length - 1; index += 1) {
+    pairs.push(compactedText.slice(index, index + 2));
+  }
+
+  return pairs;
+}
+
+function getSimilarityScore(firstText, secondText) {
+  const firstPairs = getCharacterPairs(firstText);
+  const secondPairs = getCharacterPairs(secondText);
+
+  if (firstPairs.length === 0 || secondPairs.length === 0) {
+    return 0;
+  }
+
+  const secondPairSet = new Set(secondPairs);
+  const commonCount = firstPairs.filter((pair) => secondPairSet.has(pair)).length;
+
+  return commonCount / Math.max(firstPairs.length, secondPairs.length);
+}
+
+function scoreFaqItem(item, userQuestion) {
+  const questionCompact = compactText(userQuestion);
+  const questionTokens = getSearchTokens(userQuestion);
+  const faqText = [item.question, ...(item.keywords || [])].join(' ');
+  const faqCompact = compactText(faqText);
+  const itemQuestionCompact = compactText(item.question);
+
+  let score = 0;
+
+  if (questionCompact.length < 2) {
+    return score;
+  }
+
+  if (itemQuestionCompact === questionCompact) {
+    score += 20;
+  }
+
+  if (faqCompact.includes(questionCompact)) {
+    score += questionCompact.length >= 4 ? 6 : 3;
+  }
+
+  for (const token of questionTokens) {
+    if (faqCompact.includes(compactText(token))) {
+      score += token.length >= 3 ? 2 : 1;
+    }
+  }
+
+  for (const keyword of item.keywords || []) {
+    const keywordCompact = compactText(keyword);
+
+    if (keywordCompact.length < 2) {
+      continue;
+    }
+
+    if (questionCompact === keywordCompact) {
+      score += 10;
+      continue;
+    }
+
+    if (questionCompact.includes(keywordCompact)) {
+      score += keywordCompact.length >= 3 ? 6 : 3;
+      continue;
+    }
+
+    if (keywordCompact.includes(questionCompact) && questionCompact.length >= 3) {
+      score += 4;
+      continue;
+    }
+
+    const similarityScore = getSimilarityScore(questionCompact, keywordCompact);
+
+    if (similarityScore >= 0.75) {
+      score += 4;
+    } else if (similarityScore >= 0.55 && questionCompact.length <= 8) {
+      score += 2;
+    }
+  }
+
+  return score;
 }
 
 function findFaqAnswer(userQuestion) {
   const normalizedQuestion = normalizeText(userQuestion);
 
+  if (!normalizedQuestion) {
+    return null;
+  }
+
   let bestMatch = null;
   let bestScore = 0;
 
   for (const item of faqList) {
-    let score = 0;
-
-    const searchableText = normalizeText(
-      [
-        item.question,
-        item.answer,
-        ...(item.keywords || []),
-      ].join(' ')
-    );
-
-    for (const keyword of item.keywords || []) {
-      const normalizedKeyword = normalizeText(keyword);
-
-      if (normalizedQuestion.includes(normalizedKeyword)) {
-        score += 3;
-      }
-
-      if (searchableText.includes(normalizedQuestion)) {
-        score += 2;
-      }
-
-      if (
-        normalizedKeyword.length >= 2 &&
-        normalizedQuestion.includes(normalizedKeyword.slice(0, 2))
-      ) {
-        score += 1;
-      }
-    }
+    const score = scoreFaqItem(item, normalizedQuestion);
 
     if (score > bestScore) {
       bestScore = score;
@@ -118,7 +201,7 @@ function findFaqAnswer(userQuestion) {
     }
   }
 
-  if (bestScore <= 0) {
+  if (bestScore < MIN_FAQ_SCORE) {
     return null;
   }
 
@@ -266,9 +349,11 @@ client.on('interactionCreate', async (interaction) => {
           '운영진이 확인 후 순차적으로 안내드릴게요.',
           '',
           '예시:',
-          '`/질문 내용: 결석하면 어떻게 하나요?`',
-          '`/질문 내용: 준비물이 있나요?`',
-          '`/질문 내용: 처음이라 어색하면 어떡하죠?`',
+          '`/질문 내용: 처음 왔는데 뭐부터 해요?`',
+          '`/질문 내용: 참여동의 어디서 해요?`',
+          '`/질문 내용: 오늘 못 갈 것 같아요`',
+          '`/질문 내용: 포인트 어떻게 얻어요?`',
+          '`/질문 내용: 음성채널 꼭 들어가야 해요?`',
         ].join('\n')
       );
 
@@ -363,6 +448,14 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN).catch((error) => {
-  console.error('봇 로그인 실패:', error);
-});
+if (require.main === module) {
+  client.login(process.env.DISCORD_TOKEN).catch((error) => {
+    console.error('봇 로그인 실패:', error);
+  });
+}
+
+module.exports = {
+  findFaqAnswer,
+  normalizeText,
+  scoreFaqItem,
+};
