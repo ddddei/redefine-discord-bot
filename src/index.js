@@ -12,6 +12,30 @@ console.log('봇 실행 준비 중...');
 
 const faqPath = path.join(__dirname, '..', 'data', 'faq.json');
 const faqList = JSON.parse(fs.readFileSync(faqPath, 'utf-8'));
+const noticePath = path.join(__dirname, '..', 'data', 'notices.json');
+
+const fallbackContactNoticeTemplate = [
+  '💬 [프로젝트 리디파인] 문의 안내',
+  '',
+  '궁금한 점이나 확인이 필요한 내용이 있다면',
+  '디스코드 문의 채널에 남겨주세요.',
+  '',
+  '운영진이 확인 후 순차적으로 답변드리겠습니다.',
+  '',
+  '급한 내용이 아니라면 조금만 여유를 가지고 기다려주세요.',
+  '놓치지 않도록 확인하겠습니다.',
+].join('\n');
+
+function loadNoticeTemplates() {
+  try {
+    return JSON.parse(fs.readFileSync(noticePath, 'utf-8'));
+  } catch (error) {
+    console.error('공지 템플릿을 읽지 못했습니다:', error.message);
+    return {};
+  }
+}
+
+const noticeTemplates = loadNoticeTemplates();
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -84,80 +108,17 @@ function createGuideEmbed(title, description) {
 }
 
 function getNoticeTemplate(type) {
-  const templates = {
-    schedule: [
-      '📢 [프로젝트 리디파인] 일정 안내',
-      '',
-      '안녕하세요, 프로젝트 리디파인 운영진입니다.',
-      '',
-      '이번 회차 일정은 아래와 같이 진행됩니다.',
-      '',
-      '일시: 0000년 00월 00일 00:00',
-      '장소: 추후 안내 또는 기존 안내 장소',
-      '내용: 회차별 활동 안내',
-      '',
-      '참여가 어려운 경우에는 미리 운영진에게 알려주세요.',
-      '각자의 속도에 맞춰 함께 이어갈 수 있도록 안내드릴게요.',
-    ].join('\n'),
+  const template = noticeTemplates[type] || noticeTemplates.contact;
 
-    reminder: [
-      '🔔 [프로젝트 리디파인] 참여 리마인드',
-      '',
-      '안녕하세요, 프로젝트 리디파인 운영진입니다.',
-      '',
-      '오늘 예정된 프로그램 참여를 한 번 더 안내드립니다.',
-      '',
-      '일시: 오늘 00:00',
-      '장소: 000',
-      '',
-      '처음에는 어색하거나 부담될 수 있지만,',
-      '완벽하게 참여하지 않아도 괜찮습니다.',
-      '가능한 만큼 편하게 함께해 주세요.',
-    ].join('\n'),
+  if (Array.isArray(template)) {
+    return template.join('\n');
+  }
 
-    contact: [
-      '💬 [프로젝트 리디파인] 문의 안내',
-      '',
-      '궁금한 점이나 확인이 필요한 내용이 있다면',
-      '디스코드 문의 채널에 남겨주세요.',
-      '',
-      '운영진이 확인 후 순차적으로 답변드리겠습니다.',
-      '',
-      '급한 내용이 아니라면 조금만 여유를 가지고 기다려주세요.',
-      '놓치지 않도록 확인하겠습니다.',
-    ].join('\n'),
+  if (typeof template === 'string' && template.trim()) {
+    return template;
+  }
 
-    preparation: [
-      '🧺 [프로젝트 리디파인] 준비물 안내',
-      '',
-      '이번 회차 참여 전 준비물을 안내드립니다.',
-      '',
-      '준비물:',
-      '- 편하게 참여할 수 있는 마음',
-      '- 개인 필기구',
-      '- 회차별 별도 준비물은 공지 확인',
-      '',
-      '특별한 준비가 어렵더라도 너무 걱정하지 않으셔도 됩니다.',
-      '필요한 내용은 운영진이 현장에서 함께 안내드릴게요.',
-    ].join('\n'),
-
-    absence: [
-      '🌿 [프로젝트 리디파인] 결석 및 불참 안내',
-      '',
-      '참여가 어려운 날이 있다면 미리 운영진에게 알려주세요.',
-      '',
-      '리디파인은 완벽하게 매번 참여해야 하는 공간이라기보다,',
-      '가능한 범위 안에서 함께 이어가는 것을 중요하게 생각합니다.',
-      '',
-      '불참이 필요한 경우:',
-      '- 디스코드 문의 채널에 남기기',
-      '- 또는 운영진에게 개별 연락하기',
-      '',
-      '무리하지 않고, 가능한 방식으로 이어갈 수 있도록 안내드릴게요.',
-    ].join('\n'),
-  };
-
-  return templates[type] || templates.contact;
+  return fallbackContactNoticeTemplate;
 }
 
 client.once('clientReady', () => {
