@@ -175,6 +175,34 @@ client.on('interactionCreate', async (interaction) => {
     return;
   }
 
+  if (interaction.commandName === '채널안내') {
+    const embed = createGuideEmbed(
+      '리디파인 채널 안내',
+      [
+        '처음에는 필요한 채널부터 천천히 확인해도 괜찮아요.',
+        '아래 내용을 보고 어디에 무엇을 남기면 좋을지 편하게 살펴봐 주세요.',
+        '',
+        '📢 **공지 채널**',
+        '일정, 운영 안내, 변경사항을 확인하는 곳이에요.',
+        '',
+        '✅ **참여 확인 채널**',
+        '출석이나 참여 확인이 필요할 때 사용하는 곳이에요.',
+        '',
+        '💬 **자유 채팅방**',
+        '가벼운 대화와 안부를 나누며 편하게 머무는 공간이에요.',
+        '',
+        '❓ **문의 채널**',
+        '궁금한 점이나 확인이 필요한 내용을 남기는 곳이에요.',
+        '',
+        '🌿 **미션/활동 채널**',
+        '회차별 활동이나 미션 내용을 함께 공유하는 곳이에요.',
+      ].join('\n')
+    );
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
   if (interaction.commandName === '질문') {
     const question = interaction.options.getString('내용');
     const matchedFaq = findFaqAnswer(question);
@@ -221,6 +249,7 @@ client.on('interactionCreate', async (interaction) => {
         '아래 명령어로 필요한 내용을 확인할 수 있어요.',
         '',
         '`/안내` 처음 온 참여자용 안내',
+        '`/채널안내` 주요 채널 용도 안내',
         '`/질문 내용:궁금한 내용` 자주 묻는 질문 검색',
         '`/공지 종류:일정안내` 운영진용 공지 템플릿',
         '`/리디 일정` 프로그램 일정 안내',

@@ -47,6 +47,10 @@ const commands = [
     .setDescription('처음 온 참여자를 위한 리디파인 사용 안내를 보여줘요.'),
 
   new SlashCommandBuilder()
+    .setName('채널안내')
+    .setDescription('리디파인 디스코드 주요 채널의 용도를 안내해요.'),
+
+  new SlashCommandBuilder()
     .setName('공지')
     .setDescription('운영진이 복사해 쓸 수 있는 공지 템플릿을 보여줘요.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
