@@ -111,3 +111,7 @@ npm run start
 Slash Command 선택지가 변경되었으므로 운영 서버에는 `npm run deploy`로 명령어를 다시 등록해야 합니다.
 
 디스코드에서는 `/질문`, `/공지 종류:봇사용안내`, `/채널안내`를 직접 실행해 응답을 확인해 주세요.
+
+## 운영 가이드
+
+혼자 봇을 운영할 때 필요한 점검표와 수정 루틴은 [docs/operation-guide.md](docs/operation-guide.md)를 참고해 주세요.
