@@ -166,6 +166,8 @@ Slash Command 구조를 변경했을 때만 운영 서버에 `npm run deploy`로
 
 참여자 입장 전 공지문 패키지는 [docs/participant-notice-pack.md](docs/participant-notice-pack.md)를 참고해 주세요.
 
+운영진 문의 대응 템플릿은 [docs/operator-response-templates.md](docs/operator-response-templates.md)를 참고해 주세요.
+
 ## 운영 릴리즈 체크리스트
 
 참여자 입장 전에는 [docs/release-checklist.md](docs/release-checklist.md)를 확인해 최종 운영 점검을 진행해 주세요.
