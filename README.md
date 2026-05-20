@@ -162,6 +162,8 @@ Slash Command 구조를 변경했을 때만 운영 서버에 `npm run deploy`로
 
 ## 운영 가이드
 
+운영 문서 전체 목록은 [docs/README.md](docs/README.md)를 참고해 주세요.
+
 혼자 봇을 운영할 때 필요한 점검표와 수정 루틴은 [docs/operation-guide.md](docs/operation-guide.md)를 참고해 주세요.
 
 참여자 입장 전 공지문 패키지는 [docs/participant-notice-pack.md](docs/participant-notice-pack.md)를 참고해 주세요.
