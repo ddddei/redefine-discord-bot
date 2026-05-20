@@ -40,21 +40,28 @@
 ## FAQ 수정 루틴
 
 1. `data/faq.json`을 수정합니다.
-2. JSON 문법을 확인합니다.
+2. 데이터 구조와 JSON 문법을 확인합니다.
 
 ```bash
-node -e "JSON.parse(require('fs').readFileSync('data/faq.json', 'utf8')); console.log('faq.json OK')"
+npm run validate:data
 ```
 
-3. 디스코드에서 `/질문 내용:수정한 질문 예시`를 실행해 답변을 테스트합니다.
-4. 변경 내용을 확인합니다.
+3. 로컬에서 FAQ/지식창고 질문 매칭 결과를 확인합니다.
+
+```bash
+npm run test:questions
+```
+
+4. Fallback 질문은 이후 FAQ 또는 지식창고 보강 재료로 모아 둡니다.
+5. 디스코드에서 `/질문 내용:수정한 질문 예시`를 실행해 답변을 테스트합니다.
+6. 변경 내용을 확인합니다.
 
 ```bash
 git status
 git diff
 ```
 
-5. 문제가 없으면 커밋하고 푸시합니다.
+7. 문제가 없으면 커밋하고 푸시합니다.
 
 ```bash
 git add .
@@ -62,29 +69,35 @@ git commit -m "FAQ 업데이트"
 git push
 ```
 
-6. Railway에서 자동 재배포가 완료되고 봇이 Online 상태인지 확인합니다.
+8. Railway에서 자동 재배포가 완료되고 봇이 Online 상태인지 확인합니다.
 
 ## 지식창고 수정 루틴
 
 1. `data/knowledge.json`을 수정합니다.
 2. 각 항목에 `id`, `title`, `keywords`, `summary`, `content`가 있는지 확인합니다.
 3. 운영진 확인이 필요한 내용, 일정, 참여 확정 여부, 정신건강·위기 판단은 단정하지 않고 문의 채널이나 운영진 안내로 연결되도록 작성합니다.
-4. JSON 문법을 확인합니다.
+4. 데이터 구조와 JSON 문법을 확인합니다.
 
 ```bash
-node -e "JSON.parse(require('fs').readFileSync('data/knowledge.json', 'utf8')); console.log('knowledge ok')"
+npm run validate:data
 ```
 
-5. 디스코드에서 `/질문 내용:수정한 지식창고 질문 예시`를 실행해 답변을 테스트합니다.
-6. FAQ 답변이 먼저 검색되고, FAQ에 없을 때 지식창고 답변이 표시되는지 확인합니다.
+5. 로컬에서 FAQ/지식창고 질문 매칭 결과를 확인합니다.
+
+```bash
+npm run test:questions
+```
+
+6. 디스코드에서 `/질문 내용:수정한 지식창고 질문 예시`를 실행해 답변을 테스트합니다.
+7. FAQ 답변이 먼저 검색되고, FAQ에 없을 때 지식창고 답변이 표시되는지 확인합니다.
 
 ## 공지 템플릿 수정 루틴
 
 1. `data/notices.json`을 수정합니다.
-2. JSON 문법을 확인합니다.
+2. 데이터 구조와 JSON 문법을 확인합니다.
 
 ```bash
-node -e "JSON.parse(require('fs').readFileSync('data/notices.json', 'utf8')); console.log('notices.json OK')"
+npm run validate:data
 ```
 
 3. 디스코드에서 수정한 종류의 `/공지`를 실행합니다.
@@ -93,10 +106,10 @@ node -e "JSON.parse(require('fs').readFileSync('data/notices.json', 'utf8')); co
 ## 채널 안내 수정 루틴
 
 1. `data/channels.json`을 수정합니다.
-2. JSON 문법을 확인합니다.
+2. 데이터 구조와 JSON 문법을 확인합니다.
 
 ```bash
-node -e "JSON.parse(require('fs').readFileSync('data/channels.json', 'utf8')); console.log('channels.json OK')"
+npm run validate:data
 ```
 
 3. 디스코드에서 `/채널안내`를 실행합니다.
@@ -108,6 +121,7 @@ node -e "JSON.parse(require('fs').readFileSync('data/channels.json', 'utf8')); c
 - `.env.example`에는 실제 토큰이나 실제 채널 ID를 넣지 않고 예시값만 넣습니다.
 - Railway Variables에는 실제 `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `LOG_CHANNEL_ID` 값을 넣습니다.
 - 로컬에서 `npm run start`로 봇을 켠 상태에서 Railway 봇도 동시에 켜져 있으면 충돌할 수 있습니다.
+- FAQ, 지식창고, 공지 템플릿, 채널 안내 데이터만 수정했다면 `npm run deploy`는 필요하지 않습니다.
 - Slash Command 구조를 바꾸면 `npm run deploy`로 명령어를 다시 등록해야 합니다.
 
 ## 자주 쓰는 명령어 모음
@@ -117,10 +131,8 @@ git status
 git diff
 node --check src/index.js
 node --check src/deploy-commands.js
-node -e "JSON.parse(require('fs').readFileSync('data/faq.json', 'utf8')); console.log('faq.json OK')"
-node -e "JSON.parse(require('fs').readFileSync('data/knowledge.json', 'utf8')); console.log('knowledge ok')"
-node -e "JSON.parse(require('fs').readFileSync('data/notices.json', 'utf8')); console.log('notices.json OK')"
-node -e "JSON.parse(require('fs').readFileSync('data/channels.json', 'utf8')); console.log('channels.json OK')"
+npm run validate:data
+npm run test:questions
 git add .
 git commit -m "..."
 git push

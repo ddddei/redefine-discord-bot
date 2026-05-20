@@ -46,6 +46,9 @@
 - `data/channels.json`
   `/채널안내` 명령어에서 사용하는 채널 안내 데이터입니다. 제목, 소개 문구, 카테고리별 채널 설명을 관리합니다.
 
+- `data/test-questions.json`
+  운영자가 로컬에서 FAQ와 지식창고 매칭을 점검할 때 사용하는 질문 목록입니다.
+
 JSON 파일이 없거나 문법 오류가 있어도 봇이 바로 종료되지 않도록 fallback 안내를 사용합니다. 다만 실제 운영 전에는 JSON 문법 검사를 꼭 해 주세요.
 
 ## FAQ 수정 방법
@@ -105,15 +108,19 @@ npm run start
 ```bash
 node --check src/index.js
 node --check src/deploy-commands.js
-node -e "JSON.parse(require('fs').readFileSync('data/faq.json', 'utf8')); console.log('faq.json OK')"
-node -e "JSON.parse(require('fs').readFileSync('data/knowledge.json', 'utf8')); console.log('knowledge ok')"
-node -e "JSON.parse(require('fs').readFileSync('data/notices.json', 'utf8')); console.log('notices.json OK')"
-node -e "JSON.parse(require('fs').readFileSync('data/channels.json', 'utf8')); console.log('channels.json OK')"
-npm run deploy
-npm run start
+npm run validate:data
+npm run test:questions
 ```
 
-Slash Command 선택지가 변경되었으므로 운영 서버에는 `npm run deploy`로 명령어를 다시 등록해야 합니다.
+## 개발/운영용 명령어
+
+- `npm run validate:data`
+  FAQ, 지식창고, 공지 템플릿, 채널 안내, 테스트 질문 데이터의 JSON 문법과 필수 구조를 확인합니다.
+
+- `npm run test:questions`
+  `data/test-questions.json`의 질문이 FAQ / Knowledge / Fallback 중 어디에 매칭되는지 로컬 터미널에서 확인합니다.
+
+Slash Command 구조를 변경했을 때만 운영 서버에 `npm run deploy`로 명령어를 다시 등록합니다. 데이터만 수정했다면 보통 필요하지 않습니다.
 
 디스코드에서는 `/질문`, `/공지 종류:봇사용안내`, `/채널안내`를 직접 실행해 응답을 확인해 주세요.
 

@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "deploy": "node src/deploy-commands.js",
-  "start": "node src/index.js"
-},
+    "deploy": "node src/deploy-commands.js",
+    "start": "node src/index.js",
+    "validate:data": "node scripts/validate-data.js",
+    "test:questions": "node scripts/test-questions.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
