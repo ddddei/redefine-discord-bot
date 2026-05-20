@@ -51,6 +51,33 @@
 
 JSON 파일이 없거나 문법 오류가 있어도 봇이 바로 종료되지 않도록 fallback 안내를 사용합니다. 다만 실제 운영 전에는 JSON 문법 검사를 꼭 해 주세요.
 
+## 코드 구조
+
+- `src/index.js`
+  봇 실행 진입점입니다. Discord client를 만들고 이벤트를 연결한 뒤 로그인합니다.
+
+- `src/handlers.js`
+  `/안내`, `/질문`, `/리디`, `/공지`, `/채널안내` 명령어 응답을 처리합니다.
+
+- `src/search.js`
+  FAQ와 지식창고 질문 매칭 로직을 관리합니다. `findFaqAnswer`, `findKnowledgeAnswer`는 테스트 스크립트에서도 사용합니다.
+
+- `src/data.js`
+  `data/*.json` 파일 경로, fallback 데이터, JSON 로드를 관리합니다.
+
+- `src/embeds.js`
+  참여자에게 보여주는 Discord Embed 생성과 길이 제한 처리를 담당합니다.
+
+- `src/logging.js`
+  미응답 질문 로그 시간 포맷과 로그 전송을 담당합니다. 사용자 이름이나 사용자 ID는 기록하지 않습니다.
+
+데이터를 수정한 뒤에는 아래 명령어로 구조와 매칭 결과를 확인해 주세요.
+
+```bash
+npm run validate:data
+npm run test:questions
+```
+
 ## FAQ 수정 방법
 
 `data/faq.json`에 FAQ 항목을 추가하거나 수정하면 됩니다.
