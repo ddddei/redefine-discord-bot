@@ -112,6 +112,15 @@ npm run validate:data
 npm run test:questions
 ```
 
+## 자동 검증
+
+GitHub Actions가 push와 pull request마다 기본 검증을 실행합니다. 로컬에서는 커밋 전에 아래 명령어로 먼저 확인할 수 있습니다.
+
+```bash
+npm run validate:data
+npm run test:questions
+```
+
 ## 개발/운영용 명령어
 
 - `npm run validate:data`

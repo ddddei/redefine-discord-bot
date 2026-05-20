@@ -115,6 +115,19 @@ npm run validate:data
 3. 디스코드에서 `/채널안내`를 실행합니다.
 4. 채널 이름, 설명, 분류가 실제 디스코드 서버 구조와 맞는지 확인합니다.
 
+## 커밋 전 자동 검증 확인
+
+커밋 전에는 로컬에서 기본 검증을 먼저 실행합니다.
+
+```bash
+node --check src/index.js
+node --check src/deploy-commands.js
+npm run validate:data
+npm run test:questions
+```
+
+push 또는 pull request를 올린 뒤에는 GitHub의 Actions 탭이나 PR 하단 checks 영역에서 `CI` 결과가 성공인지 확인합니다. 실패한 경우 실패한 단계의 로그를 보고 수정한 뒤 다시 push합니다.
+
 ## 배포/운영 주의사항
 
 - `.env`는 절대 커밋하지 않습니다.
