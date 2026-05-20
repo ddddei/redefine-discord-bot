@@ -23,6 +23,8 @@ npm run test:questions
 ```
 
 카테고리별 결과와 마지막 요약을 보고, Fallback 질문 목록을 FAQ 또는 지식창고 보강 후보로 사용합니다.
+`data/knowledge.json`을 보강한 뒤에도 같은 명령어로 새 질문이 Knowledge에 자연스럽게 매칭되는지 확인합니다.
+프로그램 구조, 경험트랙, Lab, 안전 안내처럼 배경 설명이 필요한 질문은 FAQ보다 Knowledge로 잡히는 것이 더 적절할 수 있습니다.
 
 ## FAQ 또는 Knowledge 수정 후 확인 순서
 
@@ -34,10 +36,12 @@ npm run test:questions
 ## Fallback 질문이 많을 때
 
 Fallback이 많으면 운영자가 실제로 받을 가능성이 높은 질문부터 골라 보강합니다. 짧고 반복되는 질문은 `data/faq.json`에 추가하고, 프로그램 설명처럼 넓은 배경 안내가 필요한 질문은 `data/knowledge.json`에 추가합니다.
+테스트 질문 중 Fallback이 많이 나오면 `keywords`만 늘릴지, FAQ 또는 Knowledge 항목을 새로 추가할지 먼저 구분해 주세요.
 
 ## 엉뚱한 FAQ로 매칭될 때
 
 의도와 다른 FAQ로 연결되면 해당 FAQ의 `keywords`가 너무 넓은지 확인합니다. 여러 주제에 걸쳐 쓰이는 단어는 줄이고, 사용자가 실제로 입력할 만한 구체적인 표현을 추가합니다. FAQ가 우선 매칭되므로, 지식창고로 보내고 싶은 질문이 FAQ에 잡히면 FAQ keywords를 먼저 조정합니다.
+Knowledge로 매칭되어야 하는 질문이 FAQ로 엉뚱하게 잡히면, 해당 FAQ의 넓은 `keywords`를 줄이거나 더 구체적인 표현으로 바꾼 뒤 다시 `npm run test:questions`를 실행합니다.
 
 ## 디스코드 최종 확인 명령어
 
