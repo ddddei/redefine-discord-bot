@@ -20,6 +20,7 @@
 | [participant-notice-pack.md](participant-notice-pack.md) | 디스코드 공지 채널에 올릴 안내문 모음 | 참여자 입장 전, 공지 채널 세팅 시 | 첫 안내문, 봇 사용 안내, 커뮤니티 약속, 문의 방법, 채널별 안내문 |
 | [operator-response-templates.md](operator-response-templates.md) | 운영진 문의 대응 문구 모음 | 문의 채널, DM, 익명고민채널, 봇 질문로그 확인 후 | 답변 템플릿, 민감 상황 대응, 신고 대응, 내부 확인 체크리스트 |
 | [incident-response-guide.md](incident-response-guide.md) | 운영 문제 상황 대응 절차 | 봇 오류, 배포 오류, 권한 문제, 커뮤니티 안전 문제가 발생했을 때 | 빠른 확인 순서, 기술 문제 대응, 안전 문제 대응, 대응 후 기록 |
+| [api-rag-plan.md](api-rag-plan.md) | 향후 API/RAG 연동 설계안 | OpenAI/Gemini API 또는 RAG 도입을 검토할 때 | 권장 답변 흐름, 개인정보 원칙, 프롬프트 방향, 단계별 도입 계획 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
 
 ## 3. 상황별 추천 문서
@@ -73,6 +74,12 @@ FAQ는 짧은 즉답, Knowledge는 프로그램 구조와 운영 원칙 설명�
 - [incident-response-guide.md](incident-response-guide.md)
 
 봇 오류, 배포 실패, 권한 문제, 커뮤니티 안전 문제, 위기 표현이 포함된 메시지는 문제 상황 대응 가이드를 먼저 확인해 주세요.
+
+### API/RAG 연동을 검토할 때
+
+- [api-rag-plan.md](api-rag-plan.md)
+
+OpenAI/Gemini API 또는 RAG 구조는 기존 FAQ/Knowledge 흐름을 대체하지 않고 보조하는 방향으로 검토해 주세요.
 
 ## 4. 기본 운영 명령어 모음
 
