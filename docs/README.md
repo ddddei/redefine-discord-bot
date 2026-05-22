@@ -86,13 +86,14 @@ OpenAI/Gemini API 또는 RAG 구조는 기존 FAQ/Knowledge 흐름을 대체하�
 ```bash
 git status --short
 git diff --stat
+npm run check:release
 npm run validate:data
 npm run test:questions
 node --check src/index.js
 node --check src/deploy-commands.js
 ```
 
-데이터만 수정한 경우에는 보통 `npm run validate:data`와 `npm run test:questions`를 우선 확인합니다. 코드 파일을 수정한 경우에는 `node --check` 명령어도 함께 실행해 주세요.
+참여자 입장 전이나 배포 전 최종 점검에는 `npm run check:release`로 기본 검사를 한 번에 실행합니다. 데이터만 수정한 경우에는 보통 `npm run validate:data`와 `npm run test:questions`를 우선 확인합니다. 코드 파일을 수정한 경우에는 `node --check` 명령어도 함께 실행해 주세요.
 
 ## 5. 운영 문서 수정 시 주의사항
 

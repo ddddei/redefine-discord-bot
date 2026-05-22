@@ -15,6 +15,7 @@
 - [ ] `git status`로 현재 브랜치와 변경 상태를 확인했습니다.
 - [ ] 변경 파일 목록을 확인했습니다.
 - [ ] `.env`가 변경 목록에 없는지 확인했습니다.
+- [ ] `npm run check:release`로 릴리즈 기본 점검을 한 번에 실행했습니다.
 - [ ] `src/index.js` 문법 검사를 통과했습니다.
 - [ ] `src/deploy-commands.js` 문법 검사를 통과했습니다.
 - [ ] 데이터 구조 검사를 통과했습니다.
@@ -23,11 +24,10 @@
 ```bash
 git status
 git diff --stat
-node --check src/index.js
-node --check src/deploy-commands.js
-npm run validate:data
-npm run test:questions
+npm run check:release
 ```
+
+`npm run check:release`는 `src/index.js` 문법 검사, `src/deploy-commands.js` 문법 검사, 데이터 구조 검사, 질문 매칭 테스트를 순서대로 실행합니다. 중간에 하나라도 실패하면 즉시 종료됩니다.
 
 ## GitHub 확인
 

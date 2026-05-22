@@ -6,6 +6,7 @@
   "scripts": {
     "deploy": "node src/deploy-commands.js",
     "start": "node src/index.js",
+    "check:release": "node scripts/check-release.js",
     "validate:data": "node scripts/validate-data.js",
     "test:questions": "node scripts/test-questions.js"
   },
