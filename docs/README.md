@@ -21,6 +21,7 @@
 | [operator-response-templates.md](operator-response-templates.md) | 운영진 문의 대응 문구 모음 | 문의 채널, DM, 익명고민채널, 봇 질문로그 확인 후 | 답변 템플릿, 민감 상황 대응, 신고 대응, 내부 확인 체크리스트 |
 | [incident-response-guide.md](incident-response-guide.md) | 운영 문제 상황 대응 절차 | 봇 오류, 배포 오류, 권한 문제, 커뮤니티 안전 문제가 발생했을 때 | 빠른 확인 순서, 기술 문제 대응, 안전 문제 대응, 대응 후 기록 |
 | [onboarding-role-channel-plan.md](onboarding-role-channel-plan.md) | 72시간 온보딩 역할/채널 구조 설계안 | 선발 참여자 입장 전, 온보딩 밀도와 채널 공개 범위를 정할 때 | 내부 분류, 공개 역할명, 역할별 채널 공개 예시, 72시간 흐름 |
+| [onboarding-operation-runbook.md](onboarding-operation-runbook.md) | 72시간 온보딩 운영 런북 | 선발 참여자 60명을 초대하고 입장 후 72시간 운영 절차를 확인할 때 | 초대 전 체크리스트, 시간대별 운영, 역할별 확인 포인트, 전환 기준 |
 | [discord-permission-setup-guide.md](discord-permission-setup-guide.md) | Discord 역할/채널 권한 수동 세팅 가이드 | 실제 서버에서 온보딩 역할과 채널 권한을 수동으로 설정하기 전 | 권장 역할, 채널 공개 범위, 운영진 전용 채널 숨김, 봇 권한, 테스트 체크리스트 |
 | [api-rag-plan.md](api-rag-plan.md) | 향후 API/RAG 연동 설계안 | OpenAI/Gemini API 또는 RAG 도입을 검토할 때 | 권장 답변 흐름, 개인정보 원칙, 프롬프트 방향, 단계별 도입 계획 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
@@ -31,11 +32,12 @@
 
 - [release-checklist.md](release-checklist.md)
 - [onboarding-role-channel-plan.md](onboarding-role-channel-plan.md)
+- [onboarding-operation-runbook.md](onboarding-operation-runbook.md)
 - [discord-permission-setup-guide.md](discord-permission-setup-guide.md)
 - [participant-notice-pack.md](participant-notice-pack.md)
 - [operator-response-templates.md](operator-response-templates.md)
 
-선발 참여자 입장 전에는 온보딩 역할/채널 구조와 Discord 권한 수동 세팅 가이드를 먼저 확인한 뒤, 참여자에게 보일 공지와 운영진 내부 대응 문구를 준비하고, 릴리즈 체크리스트로 최종 상태를 확인해 주세요.
+선발 참여자 입장 전에는 온보딩 역할/채널 구조, 72시간 운영 런북, Discord 권한 수동 세팅 가이드를 먼저 확인한 뒤, 참여자에게 보일 공지와 운영진 내부 대응 문구를 준비하고, 릴리즈 체크리스트로 최종 상태를 확인해 주세요.
 
 ### 봇 기능이나 데이터 수정 후
 
