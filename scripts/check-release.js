@@ -9,6 +9,11 @@ const checks = [
     args: ['--check', 'src/index.js'],
   },
   {
+    label: 'src/ai.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/ai.js'],
+  },
+  {
     label: 'src/deploy-commands.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/deploy-commands.js'],

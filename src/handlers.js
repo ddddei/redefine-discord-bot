@@ -6,6 +6,7 @@ const {
   getNoticeTemplate,
 } = require('./embeds');
 const { sendUnansweredQuestionLog } = require('./logging');
+const { getAiFallbackAnswer } = require('./ai');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 
 function createNoticeEmbed(type) {
@@ -79,6 +80,22 @@ async function handleQuestionCommand(interaction) {
 
   if (matchedKnowledge) {
     await interaction.reply({ embeds: [createKnowledgeEmbed(matchedKnowledge)] });
+    return;
+  }
+
+  const aiFallbackAnswer = getAiFallbackAnswer(question);
+
+  if (aiFallbackAnswer) {
+    const embed = createGuideEmbed(
+      '운영진 확인이 필요한 질문이에요',
+      aiFallbackAnswer,
+      {
+        footer: OPERATOR_CHECK_FOOTER,
+      }
+    );
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await sendUnansweredQuestionLog(interaction, question);
     return;
   }
 

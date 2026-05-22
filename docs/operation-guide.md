@@ -37,6 +37,13 @@
 
 미응답 질문 로그에는 사용자 이름이나 사용자 ID를 기록하지 않습니다. 운영자는 질문 내용만 보고 FAQ 개선에 활용합니다.
 
+## AI fallback 운영 주의사항
+
+- 기본 운영에서는 AI fallback을 꺼둔 상태로 사용합니다.
+- 실제 API Key는 문서나 코드에 적지 않고, Railway Variables 또는 로컬 `.env`에서만 관리합니다.
+- 민감한 질문, 위기 표현, 개인정보 관련 질문은 AI가 아니라 운영진 확인을 우선합니다.
+- 실제 API 연동 전에는 [api-rag-plan.md](api-rag-plan.md)를 먼저 확인합니다.
+
 ## FAQ 수정 루틴
 
 1. `data/faq.json`을 수정합니다.

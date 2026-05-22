@@ -16,6 +16,15 @@
 4. FAQ와 Knowledge 모두에서 찾지 못하면 fallback 안내를 제공합니다.
 5. 답변하지 못한 질문은 설정이 있는 경우 `#봇-질문로그`에 질문 내용 중심으로 기록됩니다.
 
+### 현재 mock 준비 단계
+
+현재 코드는 실제 OpenAI/Gemini API 연동 단계가 아니라, 향후 연동을 위한 AI fallback mock 구조 준비 단계입니다.
+
+- 기본값은 `AI_ENABLED=false`이며, 이 상태에서는 기존 FAQ → Knowledge → Fallback 흐름이 바뀌지 않습니다.
+- `AI_ENABLED=true`와 `AI_PROVIDER=mock`을 함께 설정한 경우에만 테스트용 mock 응답을 확인할 수 있습니다.
+- `AI_PROVIDER=openai` 또는 `AI_PROVIDER=gemini` provider는 아직 구현하지 않았고 실제 API 호출도 하지 않습니다.
+- 민감한 질문, 위기 표현, 개인정보 관련 질문은 AI fallback을 거치지 않고 운영진 확인을 우선합니다.
+
 ### 장점
 
 - 답변 근거가 로컬 JSON 데이터에 있어 운영자가 직접 통제할 수 있습니다.
