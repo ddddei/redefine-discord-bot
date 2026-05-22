@@ -129,8 +129,9 @@ npm run test:questions
 ## Slash Command 구조 변경 시 확인
 
 - [ ] `src/deploy-commands.js`를 수정했을 때만 `npm run deploy`가 필요합니다.
-- [ ] `/공지` 선택지, `/리디` 하위 명령어, 새 명령어를 추가한 경우 `npm run deploy`가 필요합니다.
-- [ ] 데이터만 수정한 경우에는 `npm run deploy`가 필요하지 않습니다.
+- [ ] `/공지` 종류 선택지, `/리디` 하위 명령어, 새 명령어를 추가한 경우 `npm run deploy`가 필요합니다.
+- [ ] `data/notices.json`만 수정한 경우에는 보통 `npm run deploy`가 필요하지 않습니다.
+- [ ] `data/notices.json`과 함께 `src/deploy-commands.js`의 `/공지` 선택지를 수정한 경우에는 `npm run deploy`가 필요합니다.
 
 ## 운영 시작 후 매일 또는 회차 전 확인할 것
 

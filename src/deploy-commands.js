@@ -65,7 +65,13 @@ const commands = [
           { name: '참여리마인드', value: 'reminder' },
           { name: '문의안내', value: 'contact' },
           { name: '준비물', value: 'preparation' },
-          { name: '결석안내', value: 'absence' }
+          { name: '결석안내', value: 'absence' },
+          { name: '입장안내', value: 'onboardingWelcome' },
+          { name: '온보딩24시간', value: 'onboarding24' },
+          { name: '온보딩48시간', value: 'onboarding48' },
+          { name: '온보딩72시간', value: 'onboarding72' },
+          { name: '역할전환안내', value: 'onboardingTransition' },
+          { name: '온보딩연장안내', value: 'onboardingExtension' }
         )
     ),
 ].map((command) => command.toJSON());
