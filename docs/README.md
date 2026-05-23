@@ -15,6 +15,7 @@
 | 문서명 | 용도 | 언제 사용하는지 | 주요 확인 내용 |
 | --- | --- | --- | --- |
 | [operation-guide.md](operation-guide.md) | 평소 운영 루틴과 수정 절차 안내 | 운영 중, 데이터 수정 전후, 문의 대응 흐름 확인 시 | 운영 점검표, 데이터 수정 루틴, 검증 명령어, 운영 시 주의사항 |
+| [prelaunch-automation-audit.md](prelaunch-automation-audit.md) | 운영 전 자동 점검 리포트 | 참여자 입장 전 자동화에 맡길 작업과 수동 확인 작업을 구분할 때 | 구현 기능 요약, 운영 문서 현황, 남은 작업, 자동화 적합/위험 작업, 다음 개발 후보 |
 | [testing-guide.md](testing-guide.md) | 로컬 검증과 질문 매칭 테스트 안내 | 봇 기능, FAQ, Knowledge, 테스트 질문을 수정한 뒤 | `validate:data`, `test:questions`, 매칭 결과 해석, Fallback 확인 |
 | [release-checklist.md](release-checklist.md) | 참여자 입장 전 최종 점검 | 운영 시작 직전, 배포 전후, 공지 게시 전 | 환경 설정 확인, 데이터 검증, 명령어 점검, 운영 준비 상태 |
 | [participant-notice-pack.md](participant-notice-pack.md) | 디스코드 공지 채널에 올릴 안내문 모음 | 참여자 입장 전, 공지 채널 세팅 시 | 첫 안내문, 봇 사용 안내, 커뮤니티 약속, 문의 방법, 채널별 안내문 |
