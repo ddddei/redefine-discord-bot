@@ -492,6 +492,8 @@ FAQ, Knowledge, notices, channels, test questions 수정 후 봇 응답이 이�
 
 "죽고 싶다", "자해하고 싶다", "위험한 마음이 든다", "혼자 감당하기 어렵다" 같은 표현이 올라옵니다.
 
+`/질문`으로 들어온 위기 표현, 자해/자살 언급, 불편한 DM, 반복 연락, 개인정보 노출 등 민감 질문의 자동 알림 설계는 [sensitive-question-alert-plan.md](sensitive-question-alert-plan.md)를 함께 확인합니다. 실제 대응은 이 문서와 운영진 내부 기준을 함께 기준으로 삼습니다.
+
 ### 먼저 확인할 것
 
 - 지금 즉시 안전이 걱정되는 표현인지 확인합니다.

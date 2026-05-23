@@ -21,6 +21,7 @@
 | [participant-notice-pack.md](participant-notice-pack.md) | 디스코드 공지 채널에 올릴 안내문 모음 | 참여자 입장 전, 공지 채널 세팅 시 | 첫 안내문, 봇 사용 안내, 커뮤니티 약속, 문의 방법, 채널별 안내문 |
 | [operator-response-templates.md](operator-response-templates.md) | 운영진 문의 대응 문구 모음 | 문의 채널, DM, 익명고민채널, 봇 질문로그 확인 후 | 답변 템플릿, 운영 정책 미확정 질문 응대, 민감 상황 대응, 신고 대응, 내부 확인 체크리스트 |
 | [incident-response-guide.md](incident-response-guide.md) | 운영 문제 상황 대응 절차 | 봇 오류, 배포 오류, 권한 문제, 커뮤니티 안전 문제가 발생했을 때 | 빠른 확인 순서, 기술 문제 대응, 안전 문제 대응, 대응 후 기록 |
+| [sensitive-question-alert-plan.md](sensitive-question-alert-plan.md) | 민감 질문 운영진 연결 및 자동 알림 설계안 | `/질문`에 자해·자살·위기 표현, 불편한 DM, 개인정보 노출 등 민감 질문이 들어올 때 | 봇 역할 한계, 민감 표현 감지 흐름, 운영진 알림 최소 정보, 일반 대화 감지 주의사항 |
 | [onboarding-role-channel-plan.md](onboarding-role-channel-plan.md) | 72시간 온보딩 역할/채널 구조 설계안 | 선발 참여자 입장 전, 온보딩 밀도와 채널 공개 범위를 정할 때 | 내부 분류, 공개 역할명, 역할별 채널 공개 예시, 72시간 흐름 |
 | [onboarding-operation-runbook.md](onboarding-operation-runbook.md) | 72시간 온보딩 운영 런북 | 선발 참여자 60명을 초대하고 입장 후 72시간 운영 절차를 확인할 때 | 초대 전 체크리스트, 시간대별 운영, 역할별 확인 포인트, 전환 기준 |
 | [onboarding-message-pack.md](onboarding-message-pack.md) | 72시간 온보딩 운영 메시지 패키지 | 입장 직후부터 72시간 이후 전환까지 실제 공지, DM, 문의 답변을 준비할 때 | 시간대별 공지, 역할별 안내, 문의 대응, DM 템플릿, 게시 순서 |
@@ -72,10 +73,11 @@ FAQ는 짧은 즉답, Knowledge는 프로그램 구조와 운영 원칙 설명�
 ### 참여자 문의에 답변할 때
 
 - [operator-response-templates.md](operator-response-templates.md)
+- [sensitive-question-alert-plan.md](sensitive-question-alert-plan.md)
 - [knowledge-audit.md](knowledge-audit.md)
 - [operation-guide.md](operation-guide.md)
 
-운영진 답변은 참여자를 평가하거나 압박하지 않는 톤을 유지해 주세요. 교통비, 식사, 준비물, 선정 결과, 대기자, 늦은 합류처럼 운영 정책이 확정되지 않은 질문은 응대 템플릿과 운영 가이드 기준으로 먼저 확인합니다. FAQ/Knowledge에 반영할 만한 반복 질문은 knowledge audit 기준으로 정리합니다.
+운영진 답변은 참여자를 평가하거나 압박하지 않는 톤을 유지해 주세요. 민감 질문은 봇이 해결하지 않고 운영진 확인으로 연결합니다. 교통비, 식사, 준비물, 선정 결과, 대기자, 늦은 합류처럼 운영 정책이 확정되지 않은 질문은 응대 템플릿과 운영 가이드 기준으로 먼저 확인합니다. FAQ/Knowledge에 반영할 만한 반복 질문은 knowledge audit 기준으로 정리합니다.
 
 ### 운영 시작 직전 최종 점검
 
@@ -86,8 +88,9 @@ FAQ는 짧은 즉답, Knowledge는 프로그램 구조와 운영 원칙 설명�
 ### 운영 중 문제 상황이 생겼을 때
 
 - [incident-response-guide.md](incident-response-guide.md)
+- [sensitive-question-alert-plan.md](sensitive-question-alert-plan.md)
 
-봇 오류, 배포 실패, 권한 문제, 커뮤니티 안전 문제, 위기 표현이 포함된 메시지는 문제 상황 대응 가이드를 먼저 확인해 주세요.
+봇 오류, 배포 실패, 권한 문제, 커뮤니티 안전 문제, 위기 표현이 포함된 메시지는 문제 상황 대응 가이드를 먼저 확인해 주세요. `/질문` 민감 표현 감지나 운영진 자동 알림 설계를 검토할 때는 민감 질문 설계안을 함께 확인합니다.
 
 ### API/RAG 연동을 검토할 때
 
