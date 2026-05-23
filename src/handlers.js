@@ -5,9 +5,10 @@ const {
   createKnowledgeEmbed,
   getNoticeTemplate,
 } = require('./embeds');
-const { sendUnansweredQuestionLog } = require('./logging');
+const { sendSensitiveQuestionAlert, sendUnansweredQuestionLog } = require('./logging');
 const { getAiFallbackAnswer } = require('./ai');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
+const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
 function createNoticeEmbed(type) {
   const noticeText = getNoticeTemplate(type);
@@ -64,6 +65,22 @@ async function handleChannelGuideCommand(interaction) {
 
 async function handleQuestionCommand(interaction) {
   const question = interaction.options.getString('내용');
+  const sensitiveDetection = detectSensitiveQuestion(question);
+
+  if (sensitiveDetection) {
+    const embed = createGuideEmbed(
+      '운영진 확인이 필요한 질문이에요',
+      getSensitiveQuestionUserMessage(sensitiveDetection),
+      {
+        footer: OPERATOR_CHECK_FOOTER,
+      }
+    );
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await sendSensitiveQuestionAlert(interaction, question, sensitiveDetection);
+    return;
+  }
+
   const matchedFaq = findFaqAnswer(question);
 
   if (matchedFaq) {

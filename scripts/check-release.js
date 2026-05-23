@@ -14,6 +14,11 @@ const checks = [
     args: ['--check', 'src/ai.js'],
   },
   {
+    label: 'src/safety.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/safety.js'],
+  },
+  {
     label: 'src/deploy-commands.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/deploy-commands.js'],
