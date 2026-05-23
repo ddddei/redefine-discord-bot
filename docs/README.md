@@ -28,6 +28,7 @@
 | [api-rag-plan.md](api-rag-plan.md) | 향후 API/RAG 연동 설계안 | OpenAI/Gemini API 또는 RAG 도입을 검토할 때 | 권장 답변 흐름, 개인정보 원칙, 프롬프트 방향, 단계별 도입 계획 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
 | [faq-knowledge-refinement-plan.md](faq-knowledge-refinement-plan.md) | FAQ/Knowledge 응답 품질 점검 리포트 | 실제 데이터 수정 전 개선 후보와 검증 질문을 정리할 때 | 중복 주제, 넓은 keywords, fallback 후보, 온보딩/민감 질문 보강 후보 |
+| [test-questions-followup-report.md](test-questions-followup-report.md) | 질문 매칭 잔여 오매칭 점검 리포트 | `test:questions` 결과 기반으로 남은 오매칭, 애매한 매칭, 의도적 Fallback 후보를 확인할 때 | 개선 확인 항목, 애매한 매칭 후보, Fallback 유지 후보, 다음 데이터 수정 순서 |
 
 ## 3. 상황별 추천 문서
 
