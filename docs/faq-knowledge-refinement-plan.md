@@ -176,6 +176,10 @@ Knowledge는 넓은 설명을 담당하는 것이 좋습니다.
 
 Fallback 확인용 질문은 실제 답변 정책이 없는 질문을 의도적으로 포함해, 봇이 억지로 관련 없는 답을 하지 않는지 확인하는 용도로 유지합니다.
 
+### 테스트 질문 보강 v1 반영 메모
+
+이번 v1에서는 실제 FAQ/Knowledge 본문은 수정하지 않았습니다. 오매칭/누락 후보를 `data/test-questions.json`에 먼저 반영했으며, 다음 단계는 테스트 결과를 보고 FAQ keyword와 Knowledge 표현을 좁게 조정하는 것입니다.
+
 ## 9. 실제 data/*.json 수정 시 권장 순서
 
 1. `data/test-questions.json`에 오매칭/누락 후보 질문을 먼저 추가합니다.
