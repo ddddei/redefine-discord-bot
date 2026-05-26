@@ -7,7 +7,11 @@ const {
 } = require('./embeds');
 const { sendSensitiveQuestionAlert, sendUnansweredQuestionLog } = require('./logging');
 const { getAiFallbackAnswer } = require('./ai');
-const { getOnboardingGuideMessage, getOnboardingRoleType } = require('./onboardingRoles');
+const {
+  getChannelGuideRoleNote,
+  getOnboardingGuideMessage,
+  getOnboardingRoleType,
+} = require('./onboardingRoles');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
@@ -64,7 +68,10 @@ async function handleGuideCommand(interaction) {
 }
 
 async function handleChannelGuideCommand(interaction) {
-  await interaction.reply({ embeds: [createChannelGuideEmbed()] });
+  const roleType = getOnboardingRoleType(interaction.member);
+  const roleNote = getChannelGuideRoleNote(roleType);
+
+  await interaction.reply({ embeds: [createChannelGuideEmbed({ roleNote })] });
 }
 
 async function handleQuestionCommand(interaction) {

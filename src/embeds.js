@@ -77,13 +77,16 @@ function formatChannelCategory(category) {
     .join('\n');
 }
 
-function createChannelGuideEmbed() {
+function createChannelGuideEmbed(options = {}) {
   const guide = loadChannelGuide();
   const intro = Array.isArray(guide.intro)
     ? guide.intro.join('\n')
     : String(guide.intro || fallbackChannelGuide.intro.join('\n'));
+  const description = options.roleNote
+    ? [intro, '', options.roleNote].join('\n')
+    : intro;
 
-  const embed = createGuideEmbed(guide.title || fallbackChannelGuide.title, intro);
+  const embed = createGuideEmbed(guide.title || fallbackChannelGuide.title, description);
   const fields = (guide.categories || [])
     .map((category) => ({
       name: truncateText(category.name, 256),
