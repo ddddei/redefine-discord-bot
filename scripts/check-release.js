@@ -19,6 +19,11 @@ const checks = [
     args: ['--check', 'src/safety.js'],
   },
   {
+    label: 'src/onboardingRoles.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/onboardingRoles.js'],
+  },
+  {
     label: 'src/deploy-commands.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/deploy-commands.js'],

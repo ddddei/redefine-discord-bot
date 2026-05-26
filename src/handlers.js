@@ -7,6 +7,7 @@ const {
 } = require('./embeds');
 const { sendSensitiveQuestionAlert, sendUnansweredQuestionLog } = require('./logging');
 const { getAiFallbackAnswer } = require('./ai');
+const { getOnboardingGuideMessage, getOnboardingRoleType } = require('./onboardingRoles');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
@@ -30,6 +31,8 @@ function createNoticeEmbed(type) {
 }
 
 async function handleGuideCommand(interaction) {
+  const roleType = getOnboardingRoleType(interaction.member);
+  const roleGuideMessage = getOnboardingGuideMessage(roleType);
   const embed = createGuideEmbed(
     '처음 오셨다면 여기부터 확인해 주세요',
     [
@@ -38,6 +41,7 @@ async function handleGuideCommand(interaction) {
       '처음부터 모든 채널을 다 살펴보지 않아도 괜찮아요.',
       '온보딩 기간에는 역할에 따라 보이는 채널이 다를 수 있어요.',
       '보이는 채널이 적어도 문제가 아니며, 각자의 속도에 맞춰 필요한 공간이 열립니다.',
+      ...(roleGuideMessage ? ['', roleGuideMessage] : []),
       '',
       '먼저 `/채널안내`를 확인해 주세요.',
       '지금 보이는 채널 중에서 무엇부터 보면 좋을지 천천히 살펴볼 수 있어요.',
