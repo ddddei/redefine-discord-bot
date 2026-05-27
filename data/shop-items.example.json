@@ -1,0 +1,58 @@
+{
+  "isExample": true,
+  "description": "문서용 더미 상점 항목입니다. 청년동 포인트 관련 항목은 청년동 내부 사용처를 위한 운영진 처리 신청 예시입니다.",
+  "shopItems": [
+    {
+      "id": "item_youth_point_100_example",
+      "name": "청년동 포인트 전환권 100P",
+      "description": "청년동 내부에서 정한 사용처를 위한 포인트 지급을 운영진에게 신청하는 예시 항목입니다. 현금 환급 또는 외부 교환 대상이 아닙니다.",
+      "cost": 100,
+      "stock": 20,
+      "monthlyLimit": 2,
+      "status": "active",
+      "type": "youthCenterPoint",
+      "createdAt": "2030-01-01T09:00:00+09:00",
+      "updatedAt": "2030-01-01T09:00:00+09:00",
+      "note": "실제 비용과 한도는 운영 전 확정 필요"
+    },
+    {
+      "id": "item_youth_point_300_example",
+      "name": "청년동 포인트 전환권 300P",
+      "description": "청년동 내부 사용처에 한정된 수동 지급 신청 예시입니다. 운영자가 실제 지급 후 완료 처리합니다.",
+      "cost": 300,
+      "stock": 10,
+      "monthlyLimit": 1,
+      "status": "paused",
+      "type": "youthCenterPoint",
+      "createdAt": "2030-01-01T09:00:00+09:00",
+      "updatedAt": "2030-01-05T09:00:00+09:00",
+      "note": "운영 정책 확정 전 일시 중지 예시"
+    },
+    {
+      "id": "item_goods_example",
+      "name": "프로그램 굿즈",
+      "description": "재고를 확인한 뒤 제공하는 비현금성 프로그램 굿즈 예시입니다.",
+      "cost": 80,
+      "stock": 0,
+      "monthlyLimit": 1,
+      "status": "soldOut",
+      "type": "goods",
+      "createdAt": "2030-01-01T09:00:00+09:00",
+      "updatedAt": "2030-01-18T09:00:00+09:00",
+      "note": "재고 소진 상태 표현 예시"
+    },
+    {
+      "id": "item_print_card_example",
+      "name": "프린트 카드 충전 관련 리워드",
+      "description": "청년동 내부 이용과 관련해 운영진 확인 후 제공하는 리워드 예시입니다.",
+      "cost": 150,
+      "stock": 5,
+      "monthlyLimit": 1,
+      "status": "hidden",
+      "type": "reward",
+      "createdAt": "2030-01-01T09:00:00+09:00",
+      "updatedAt": "2030-01-01T09:00:00+09:00",
+      "note": "노출 전 운영 검토 중인 항목 예시"
+    }
+  ]
+}

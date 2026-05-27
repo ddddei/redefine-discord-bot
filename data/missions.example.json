@@ -1,0 +1,45 @@
+{
+  "isExample": true,
+  "description": "문서용 선택형 미션 더미 데이터입니다. 실제 운영 일정이나 확정 보상이 아닙니다.",
+  "missions": [
+    {
+      "id": "mission_checkin_example",
+      "title": "오늘의 체크인",
+      "description": "청년동 방문 또는 당일 참여를 가볍게 기록하는 선택형 활동 예시입니다.",
+      "rewardPoints": 5,
+      "activeDate": "2030-01-15",
+      "startAt": "2030-01-15T09:00:00+09:00",
+      "endAt": "2030-01-15T20:00:00+09:00",
+      "status": "active",
+      "requiresSubmission": false,
+      "maxPerUser": 1,
+      "note": "일일 중복 지급 방지 기준 확정 필요"
+    },
+    {
+      "id": "mission_reflection_example",
+      "title": "짧은 회고 남기기",
+      "description": "참여 소감을 한 줄로 남기는 선택형 활동 예시입니다. 공개 여부와 검토 기준은 사전 안내가 필요합니다.",
+      "rewardPoints": 10,
+      "activeDate": "2030-01-16",
+      "startAt": "2030-01-16T09:00:00+09:00",
+      "endAt": "2030-01-19T20:00:00+09:00",
+      "status": "draft",
+      "requiresSubmission": true,
+      "maxPerUser": 1,
+      "note": "인증 내용은 최소 정보만 받음"
+    },
+    {
+      "id": "mission_program_example",
+      "title": "프로그램 참여 인증",
+      "description": "정해진 프로그램 참여 사실을 최소 정보로 확인하는 선택형 미션 예시입니다.",
+      "rewardPoints": 20,
+      "activeDate": "2030-01-12",
+      "startAt": "2030-01-12T09:00:00+09:00",
+      "endAt": "2030-01-14T20:00:00+09:00",
+      "status": "closed",
+      "requiresSubmission": true,
+      "maxPerUser": 1,
+      "note": "개인정보나 사진을 과도하게 요구하지 않음"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "isExample": true,
+  "description": "문서용 인증 제출 더미 데이터입니다. 실제 참여자의 인증 내용이 아닙니다.",
+  "submissions": [
+    {
+      "id": "submission_example_pending",
+      "missionId": "mission_reflection_example",
+      "userId": "user_example_001",
+      "content": "예시 회고 제출 내용",
+      "status": "pending",
+      "reviewedBy": null,
+      "createdAt": "2030-01-16T13:00:00+09:00",
+      "reviewedAt": null,
+      "rewardTransactionId": null,
+      "note": "검토 대기 예시"
+    },
+    {
+      "id": "submission_example_approved",
+      "missionId": "mission_program_example",
+      "userId": "user_example_001",
+      "content": "예시 프로그램 참여 확인 내용",
+      "status": "approved",
+      "reviewedBy": "operator_example_a",
+      "createdAt": "2030-01-15T10:00:00+09:00",
+      "reviewedAt": "2030-01-15T12:00:00+09:00",
+      "rewardTransactionId": "tx_example_001",
+      "note": "승인 시 지급 거래 연결 예시"
+    },
+    {
+      "id": "submission_example_rejected",
+      "missionId": "mission_reflection_example",
+      "userId": "user_example_002",
+      "content": "확인 기준을 보완할 필요가 있는 예시 제출 내용",
+      "status": "rejected",
+      "reviewedBy": "operator_example_b",
+      "createdAt": "2030-01-17T10:00:00+09:00",
+      "reviewedAt": "2030-01-17T13:00:00+09:00",
+      "rewardTransactionId": null,
+      "note": "필요한 확인 내용을 안내하고 재제출 가능 여부를 별도 알리는 예시"
+    }
+  ]
+}

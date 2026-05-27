@@ -18,6 +18,7 @@
 | [prelaunch-automation-audit.md](prelaunch-automation-audit.md) | 운영 전 자동 점검 리포트 | 참여자 입장 전 자동화에 맡길 작업과 수동 확인 작업을 구분할 때 | 구현 기능 요약, 운영 문서 현황, 남은 작업, 자동화 적합/위험 작업, 다음 개발 후보 |
 | [operator-check-command-plan.md](operator-check-command-plan.md) | 운영진용 `/점검` 명령어 설계안 | Discord 안에서 운영 전 점검 항목과 운영진 전용 권한 기준을 검토할 때 | 봇 상태 확인 항목, 로그/민감 질문 알림 확인, 권한 원칙, 수동 확인 항목 |
 | [journey-point-system-plan.md](journey-point-system-plan.md) | 여정 포인트 시스템 기능개발문서 | 여정 포인트, 청년동 포인트 전환, 상점, 교환, 운영자 처리 흐름을 설계할 때 | 봇 역할 분리, 한글 명령어, 수동 전환 및 환불 흐름, 저장 방식, 정산 원칙 |
+| [point-data-structure-plan.md](point-data-structure-plan.md) | 여정 포인트 시스템 데이터 구조 설계 문서 | 여정 포인트 구현 전 모델과 example JSON 구조를 확정할 때 | 데이터 모델, 상태값, 트랜잭션, 저장 방식, 오류 복구 기준 |
 | [testing-guide.md](testing-guide.md) | 로컬 검증과 질문 매칭 테스트 안내 | 봇 기능, FAQ, Knowledge, 테스트 질문을 수정한 뒤 | `validate:data`, `test:questions`, 매칭 결과 해석, Fallback 확인 |
 | [release-checklist.md](release-checklist.md) | 참여자 입장 전 최종 점검 | 운영 시작 직전, 배포 전후, 공지 게시 전 | 환경 설정 확인, 데이터 검증, 명령어 점검, 운영 준비 상태 |
 | [participant-notice-pack.md](participant-notice-pack.md) | 디스코드 공지 채널에 올릴 안내문 모음 | 참여자 입장 전, 공지 채널 세팅 시 | 첫 안내문, 봇 사용 안내, 커뮤니티 약속, 문의 방법, 채널별 안내문 |

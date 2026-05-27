@@ -1,0 +1,66 @@
+{
+  "isExample": true,
+  "description": "문서용 더미 교환 신청입니다. 실제 사용자 또는 실제 지급 기록이 아닙니다.",
+  "redemptions": [
+    {
+      "id": "rd_example_pending",
+      "userId": "user_example_001",
+      "itemId": "item_youth_point_100_example",
+      "cost": 100,
+      "status": "pending",
+      "requestedAt": "2030-01-18T14:00:00+09:00",
+      "completedAt": null,
+      "cancelledAt": null,
+      "refundedAt": null,
+      "reviewedBy": null,
+      "transactionId": "tx_example_004",
+      "refundTransactionId": null,
+      "note": "차감 완료 후 운영자 실제 지급 확인 대기 예시"
+    },
+    {
+      "id": "rd_example_completed",
+      "userId": "user_example_002",
+      "itemId": "item_youth_point_100_example",
+      "cost": 100,
+      "status": "completed",
+      "requestedAt": "2030-01-16T13:00:00+09:00",
+      "completedAt": "2030-01-16T15:30:00+09:00",
+      "cancelledAt": null,
+      "refundedAt": null,
+      "reviewedBy": "operator_example_a",
+      "transactionId": "tx_example_006",
+      "refundTransactionId": null,
+      "note": "운영자가 청년동 내부 사용처용 포인트 지급을 확인한 예시"
+    },
+    {
+      "id": "rd_example_cancelled",
+      "userId": "user_example_004",
+      "itemId": "item_youth_point_100_example",
+      "cost": 100,
+      "status": "cancelled",
+      "requestedAt": "2030-01-21T10:00:00+09:00",
+      "completedAt": null,
+      "cancelledAt": "2030-01-21T11:00:00+09:00",
+      "refundedAt": null,
+      "reviewedBy": "operator_example_b",
+      "transactionId": "tx_example_011",
+      "refundTransactionId": null,
+      "note": "지급 취소가 결정되어 환불 처리가 필요한 예시"
+    },
+    {
+      "id": "rd_example_refunded",
+      "userId": "user_example_003",
+      "itemId": "item_youth_point_100_example",
+      "cost": 100,
+      "status": "refunded",
+      "requestedAt": "2030-01-19T12:00:00+09:00",
+      "completedAt": null,
+      "cancelledAt": "2030-01-20T17:00:00+09:00",
+      "refundedAt": "2030-01-20T17:10:00+09:00",
+      "reviewedBy": "operator_example_b",
+      "transactionId": "tx_example_008",
+      "refundTransactionId": "tx_example_009",
+      "note": "지급 불가 사유 기록 후 차감분 반환 완료 예시"
+    }
+  ]
+}

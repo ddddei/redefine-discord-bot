@@ -1,0 +1,191 @@
+{
+  "isExample": true,
+  "description": "문서용 더미 데이터입니다. 실제 참여자 정보나 실제 Discord 사용자 ID를 포함하지 않습니다.",
+  "users": [
+    {
+      "userId": "user_example_001",
+      "displayName": "참여자 예시 1",
+      "nickname": "예시별",
+      "totalPoints": 50,
+      "createdAt": "2030-01-10T09:00:00+09:00",
+      "updatedAt": "2030-01-18T14:00:00+09:00",
+      "status": "active",
+      "note": "구조 설명용 사용자"
+    },
+    {
+      "userId": "user_example_002",
+      "displayName": "참여자 예시 2",
+      "nickname": "예시길",
+      "totalPoints": 200,
+      "createdAt": "2030-01-10T09:05:00+09:00",
+      "updatedAt": "2030-01-16T15:30:00+09:00",
+      "status": "active",
+      "note": "지급 완료 교환 예시"
+    },
+    {
+      "userId": "user_example_003",
+      "displayName": "참여자 예시 3",
+      "nickname": "예시봄",
+      "totalPoints": 100,
+      "createdAt": "2030-01-11T10:00:00+09:00",
+      "updatedAt": "2030-01-20T17:10:00+09:00",
+      "status": "active",
+      "note": "취소 후 환불 완료 예시"
+    },
+    {
+      "userId": "user_example_004",
+      "displayName": "참여자 예시 4",
+      "nickname": "예시달",
+      "totalPoints": 20,
+      "createdAt": "2030-01-12T10:00:00+09:00",
+      "updatedAt": "2030-01-21T11:00:00+09:00",
+      "status": "active",
+      "note": "취소 후 환불 대기 예시"
+    }
+  ],
+  "pointTransactions": [
+    {
+      "id": "tx_example_001",
+      "userId": "user_example_001",
+      "type": "earn",
+      "amount": 20,
+      "balanceAfter": 20,
+      "reason": "예시 프로그램 참여 승인 지급",
+      "relatedType": "submission",
+      "relatedId": "submission_example_approved",
+      "createdBy": "operator_example_a",
+      "createdAt": "2030-01-15T12:00:00+09:00",
+      "note": "문서용 지급 기록"
+    },
+    {
+      "id": "tx_example_002",
+      "userId": "user_example_001",
+      "type": "earn",
+      "amount": 150,
+      "balanceAfter": 170,
+      "reason": "예시 운영 활동 지급",
+      "relatedType": "manual",
+      "relatedId": null,
+      "createdBy": "operator_example_a",
+      "createdAt": "2030-01-15T13:00:00+09:00",
+      "note": "구조 설명용 추가 지급"
+    },
+    {
+      "id": "tx_example_003",
+      "userId": "user_example_001",
+      "type": "adjust",
+      "amount": -20,
+      "balanceAfter": 150,
+      "reason": "예시 중복 지급 정정",
+      "relatedType": "manual",
+      "relatedId": null,
+      "createdBy": "operator_example_a",
+      "createdAt": "2030-01-16T10:00:00+09:00",
+      "note": "기존 로그를 삭제하지 않는 정정 예시"
+    },
+    {
+      "id": "tx_example_004",
+      "userId": "user_example_001",
+      "type": "redeem",
+      "amount": -100,
+      "balanceAfter": 50,
+      "reason": "청년동 포인트 전환권 신청 차감 예시",
+      "relatedType": "redemption",
+      "relatedId": "rd_example_pending",
+      "createdBy": "user_example_001",
+      "createdAt": "2030-01-18T14:00:00+09:00",
+      "note": "실제 지급 대기 상태"
+    },
+    {
+      "id": "tx_example_005",
+      "userId": "user_example_002",
+      "type": "earn",
+      "amount": 300,
+      "balanceAfter": 300,
+      "reason": "예시 활동 누적 지급",
+      "relatedType": "manual",
+      "relatedId": null,
+      "createdBy": "operator_example_a",
+      "createdAt": "2030-01-12T10:00:00+09:00",
+      "note": null
+    },
+    {
+      "id": "tx_example_006",
+      "userId": "user_example_002",
+      "type": "redeem",
+      "amount": -100,
+      "balanceAfter": 200,
+      "reason": "청년동 포인트 전환권 신청 차감 예시",
+      "relatedType": "redemption",
+      "relatedId": "rd_example_completed",
+      "createdBy": "user_example_002",
+      "createdAt": "2030-01-16T13:00:00+09:00",
+      "note": "운영자 지급 완료 예시와 연결"
+    },
+    {
+      "id": "tx_example_007",
+      "userId": "user_example_003",
+      "type": "earn",
+      "amount": 100,
+      "balanceAfter": 100,
+      "reason": "예시 미션 승인 지급",
+      "relatedType": "manual",
+      "relatedId": null,
+      "createdBy": "operator_example_b",
+      "createdAt": "2030-01-17T12:00:00+09:00",
+      "note": null
+    },
+    {
+      "id": "tx_example_008",
+      "userId": "user_example_003",
+      "type": "redeem",
+      "amount": -100,
+      "balanceAfter": 0,
+      "reason": "청년동 포인트 전환권 신청 차감 예시",
+      "relatedType": "redemption",
+      "relatedId": "rd_example_refunded",
+      "createdBy": "user_example_003",
+      "createdAt": "2030-01-19T12:00:00+09:00",
+      "note": null
+    },
+    {
+      "id": "tx_example_009",
+      "userId": "user_example_003",
+      "type": "refund",
+      "amount": 100,
+      "balanceAfter": 100,
+      "reason": "예시 지급 불가에 따른 교환 차감 반환",
+      "relatedType": "redemption",
+      "relatedId": "rd_example_refunded",
+      "createdBy": "operator_example_b",
+      "createdAt": "2030-01-20T17:10:00+09:00",
+      "note": "취소 신청의 환불 거래 예시"
+    },
+    {
+      "id": "tx_example_010",
+      "userId": "user_example_004",
+      "type": "earn",
+      "amount": 120,
+      "balanceAfter": 120,
+      "reason": "예시 활동 지급",
+      "relatedType": "manual",
+      "relatedId": null,
+      "createdBy": "operator_example_b",
+      "createdAt": "2030-01-18T09:00:00+09:00",
+      "note": null
+    },
+    {
+      "id": "tx_example_011",
+      "userId": "user_example_004",
+      "type": "redeem",
+      "amount": -100,
+      "balanceAfter": 20,
+      "reason": "청년동 포인트 전환권 신청 차감 예시",
+      "relatedType": "redemption",
+      "relatedId": "rd_example_cancelled",
+      "createdBy": "user_example_004",
+      "createdAt": "2030-01-21T10:00:00+09:00",
+      "note": "취소 확인 후 환불 거래가 아직 필요한 예시"
+    }
+  ]
+}
