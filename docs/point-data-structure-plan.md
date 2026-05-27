@@ -291,3 +291,11 @@ example에는 실제 Discord 사용자 ID, 운영자 이름, 채널 ID 또는 �
 | 7 | CSV 또는 Google Sheets 정산 연동 검토 | 운영진의 기간별 정산 확인 보조 | 높음: 접근권한/동시성 | 내보내기 또는 연동 모듈, 운영 문서 | 명령어가 변경될 때만 필요 |
 
 이 문서와 example 파일 작성 단계에서는 실제 명령어를 구현하거나 배포하지 않습니다.
+
+## 19. pointsStore v1 구현 메모
+
+- `pointsStore` v1은 Slash Command 구현이 아닌 내부 데이터 저장/조회 유틸 모듈입니다.
+- 실제 운영 데이터 파일은 생성하지 않으며, example JSON을 기준으로 smoke test를 수행합니다.
+- 운영 데이터 저장 방식은 아직 확정하지 않았습니다.
+- 실제 참여자 운영 전에는 PostgreSQL 또는 Google Sheets 등 영속 저장소를 다시 검토해야 합니다.
+- `users.totalPoints`와 `pointTransactions.amount` 합계의 정합성을 검증하는 함수를 사용해야 합니다.

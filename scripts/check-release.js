@@ -29,6 +29,21 @@ const checks = [
     args: ['--check', 'src/deploy-commands.js'],
   },
   {
+    label: 'src/pointsStore.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/pointsStore.js'],
+  },
+  {
+    label: 'scripts/test-points-store.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-points-store.js'],
+  },
+  {
+    label: 'pointsStore smoke test',
+    command: 'node',
+    args: ['scripts/test-points-store.js'],
+  },
+  {
     label: '데이터 구조 검사',
     command: npmCommand,
     args: ['run', 'validate:data'],
