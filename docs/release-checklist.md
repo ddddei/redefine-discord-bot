@@ -15,6 +15,8 @@
 - [ ] `git status`로 현재 브랜치와 변경 상태를 확인했습니다.
 - [ ] 변경 파일 목록을 확인했습니다.
 - [ ] `.env`가 변경 목록에 없는지 확인했습니다.
+- [ ] `data/*.local.json`이 변경 목록에 없는지 확인했습니다.
+- [ ] `package.json`, `package-lock.json`, `src/deploy-commands.js` 변경 여부를 확인했습니다.
 - [ ] `npm run check:release`로 릴리즈 기본 점검을 한 번에 실행했습니다.
 - [ ] `src/index.js` 문법 검사를 통과했습니다.
 - [ ] `src/deploy-commands.js` 문법 검사를 통과했습니다.
@@ -133,6 +135,23 @@ npm run test:questions
 - [ ] `data/notices.json`만 수정한 경우에는 보통 `npm run deploy`가 필요하지 않습니다.
 - [ ] `data/notices.json`과 함께 `src/deploy-commands.js`의 `/공지` 선택지를 수정한 경우에는 `npm run deploy`가 필요합니다.
 
+문서만 수정한 경우 `npm run deploy`는 실행하지 않습니다. 기능 코드가 재배포되어도 Discord Slash Command 목록은 자동으로 바뀌지 않으므로, 명령어 구조 변경 여부를 별도로 판단합니다.
+
+## 문서와 프롬프트 변경 시 확인
+
+- [ ] README와 docs 링크가 실제 파일명과 맞습니다.
+- [ ] 운영 문서에 실제 토큰, 실제 채널 ID, API Key, 참여자 개인정보가 없습니다.
+- [ ] `prompts/codex`에는 재사용 가능한 작업 지시서만 남겼습니다.
+- [ ] 작업 결과나 운영 기록은 필요한 경우 `docs`에 정리했습니다.
+- [ ] 문서만 수정했다면 기능 코드와 Slash Command를 변경하지 않았음을 확인했습니다.
+
+## 포인트 운영 데이터 확인
+
+- [ ] `data/*.local.json`은 운영 데이터 파일이므로 커밋하지 않습니다.
+- [ ] local JSON은 MVP용이며 Railway 장기 운영 저장소로 충분한지 별도 확인이 필요합니다.
+- [ ] 실제 운영 전 Railway Volume, Google Sheets, PostgreSQL 중 하나를 검토할 필요가 있는지 확인했습니다.
+- [ ] `/운영내보내기` 백업 파일은 외부 공유 전 개인정보 포함 여부를 확인합니다.
+
 ## 운영 시작 후 매일 또는 회차 전 확인할 것
 
 - [ ] `#봇-질문로그`를 확인합니다.
@@ -157,9 +176,13 @@ npm run test:questions
 
 - [ ] GitHub Actions CI 성공
 - [ ] Railway Online
+- [ ] Railway latest deploy success 확인
 - [ ] 최소 명령어 테스트 통과
 - [ ] `#봇-질문로그` 작동
 - [ ] `/공지` 운영자 권한 확인
+- [ ] Discord 실제 Slash Command 응답 확인
+- [ ] Slash Command 추가/변경 시 `npm run deploy` 실행과 등록 결과 확인
+- [ ] 문서만 수정한 경우 `npm run deploy` 미실행
 - [ ] 봇 사용 안내 공지 고정
 - [ ] 테스트 로그 정리
 - [ ] `git status` clean

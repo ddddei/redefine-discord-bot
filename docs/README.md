@@ -16,6 +16,9 @@
 | --- | --- | --- | --- |
 | [operation-guide.md](operation-guide.md) | 평소 운영 루틴과 수정 절차 안내 | 운영 중, 데이터 수정 전후, 문의 대응 흐름 확인 시 | 운영 점검표, 데이터 수정 루틴, 검증 명령어, 운영 정책 미확정 질문 처리 원칙, 운영 시 주의사항 |
 | [export-and-backup-guide.md](export-and-backup-guide.md) | 운영 데이터 내보내기와 백업 가이드 | 포인트 운영 데이터를 백업하거나 외부 공유 전 보관 주의사항을 확인할 때 | `/운영내보내기`, JSON/CSV 백업, 개인정보 보관 주의사항, local JSON 한계 |
+| [operator-command-guide.md](operator-command-guide.md) | 운영자 명령어 가이드 | 운영자가 포인트, 교환, 인증, 미션, 상점, 내보내기 명령어를 처리할 때 | 명령어별 사용 흐름, 주요 옵션, 확인 사항, 실수 방지 포인트 |
+| [participant-command-guide.md](participant-command-guide.md) | 참여자 명령어 가이드 | 참여자 안내문이나 운영진 응대 문구를 정리할 때 | 참여자 명령어 목적, 공개 범위, 안내 톤, 교환/인증 주의사항 |
+| [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md) | 실제 운영 전 QA 체크리스트 | 실제 참여자 입장 전 운영 환경과 명령어 흐름을 점검할 때 | 환경변수, Discord 권한, 참여자/운영자 명령어, 포인트/인증 흐름, 백업, 배포 확인 |
 | [prelaunch-automation-audit.md](prelaunch-automation-audit.md) | 운영 전 자동 점검 리포트 | 참여자 입장 전 자동화에 맡길 작업과 수동 확인 작업을 구분할 때 | 구현 기능 요약, 운영 문서 현황, 남은 작업, 자동화 적합/위험 작업, 다음 개발 후보 |
 | [operator-check-command-plan.md](operator-check-command-plan.md) | 운영진용 `/점검` 명령어 설계안 | Discord 안에서 운영 전 점검 항목과 운영진 전용 권한 기준을 검토할 때 | 봇 상태 확인 항목, 로그/민감 질문 알림 확인, 권한 원칙, 수동 확인 항목 |
 | [journey-point-system-plan.md](journey-point-system-plan.md) | 여정 포인트 시스템 기능개발문서 | 여정 포인트, 청년동 포인트 전환, 상점, 교환, 운영자 처리 흐름을 설계할 때 | 봇 역할 분리, 한글 명령어, 수동 전환 및 환불 흐름, 저장 방식, 정산 원칙 |
@@ -40,6 +43,7 @@
 ### 참여자 입장 전
 
 - [release-checklist.md](release-checklist.md)
+- [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md)
 - [onboarding-role-channel-plan.md](onboarding-role-channel-plan.md)
 - [onboarding-operation-runbook.md](onboarding-operation-runbook.md)
 - [onboarding-message-pack.md](onboarding-message-pack.md)
@@ -47,7 +51,16 @@
 - [participant-notice-pack.md](participant-notice-pack.md)
 - [operator-response-templates.md](operator-response-templates.md)
 
-선발 참여자 입장 전에는 온보딩 역할/채널 구조, 72시간 운영 런북, 온보딩 메시지 패키지, Discord 권한 수동 세팅 가이드를 먼저 확인한 뒤, 참여자에게 보일 공지와 운영진 내부 대응 문구를 준비하고, 릴리즈 체크리스트로 최종 상태를 확인해 주세요.
+선발 참여자 입장 전에는 온보딩 역할/채널 구조, 72시간 운영 런북, 온보딩 메시지 패키지, Discord 권한 수동 세팅 가이드를 먼저 확인한 뒤, 참여자에게 보일 공지와 운영진 내부 대응 문구를 준비하고, 실제 운영 전 QA 체크리스트와 릴리즈 체크리스트로 최종 상태를 확인해 주세요.
+
+### 포인트, 교환, 인증 운영
+
+- [operator-command-guide.md](operator-command-guide.md)
+- [participant-command-guide.md](participant-command-guide.md)
+- [operation-guide.md](operation-guide.md)
+- [export-and-backup-guide.md](export-and-backup-guide.md)
+
+운영자는 `/운영현황`으로 대기 건을 확인한 뒤 `/교환관리`, `/인증관리`, `/포인트로그`, `/운영내보내기`를 사용합니다. 참여자에게는 `/포인트`, `/상점`, `/교환`, `/체크인`, `/미션`, `/인증`을 경쟁이나 순위가 아닌 선택형 참여 흐름으로 안내해 주세요.
 
 ### 봇 기능이나 데이터 수정 후
 
@@ -86,8 +99,9 @@ FAQ는 짧은 즉답, Knowledge는 프로그램 구조와 운영 원칙 설명�
 ### 운영 시작 직전 최종 점검
 
 - [release-checklist.md](release-checklist.md)
+- [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md)
 
-참여자 입장 전에는 릴리즈 체크리스트를 기준으로 환경, 데이터, 명령어, 공지, 운영 대응 준비 상태를 확인해 주세요.
+참여자 입장 전에는 실제 운영 전 QA 체크리스트와 릴리즈 체크리스트를 기준으로 환경, 데이터, 명령어, 공지, 운영 대응 준비 상태를 확인해 주세요.
 
 ### 운영 중 문제 상황이 생겼을 때
 
