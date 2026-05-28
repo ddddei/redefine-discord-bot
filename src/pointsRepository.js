@@ -61,6 +61,22 @@ function loadWithFallback(primaryPath, fallbackPath) {
   return loadJsonFile(fallbackPath);
 }
 
+function loadOptionalWithFallback(primaryPath, fallbackPath, collectionName) {
+  if (fs.existsSync(primaryPath)) {
+    return loadJsonFile(primaryPath);
+  }
+
+  if (fs.existsSync(fallbackPath)) {
+    return loadJsonFile(fallbackPath);
+  }
+
+  return {
+    isExample: false,
+    description: `Empty ${collectionName} export data.`,
+    [collectionName]: [],
+  };
+}
+
 function createInitialActivityData(fallbackPath, collectionName) {
   const fallbackData = loadJsonFile(fallbackPath);
   return {
@@ -91,6 +107,11 @@ function sortNewestFirst(items, dateFields) {
     const rightDate = dateFields.map((field) => right[field]).find(Boolean);
     return new Date(rightDate || 0).getTime() - new Date(leftDate || 0).getTime();
   });
+}
+
+function limitItems(items, limit) {
+  const safeLimit = Math.min(200, Math.max(1, Number(limit || 50)));
+  return Array.isArray(items) ? items.slice(0, safeLimit) : [];
 }
 
 function requireTrimmedString(value, fieldName) {
@@ -124,6 +145,16 @@ function createPointsRepository(paths = {}) {
       pointsData: loadWithFallback(resolvedPaths.points, resolvedPaths.pointsFallback),
       shopItemsData: loadWithFallback(resolvedPaths.shopItems, resolvedPaths.shopItemsFallback),
       redemptionsData: loadWithFallback(resolvedPaths.redemptions, resolvedPaths.redemptionsFallback),
+    };
+  }
+
+  function loadExportState() {
+    return {
+      pointsData: loadOptionalWithFallback(resolvedPaths.points, resolvedPaths.pointsFallback, 'pointTransactions'),
+      shopItemsData: loadOptionalWithFallback(resolvedPaths.shopItems, resolvedPaths.shopItemsFallback, 'shopItems'),
+      redemptionsData: loadOptionalWithFallback(resolvedPaths.redemptions, resolvedPaths.redemptionsFallback, 'redemptions'),
+      missionsData: loadOptionalWithFallback(resolvedPaths.missions, resolvedPaths.missionsFallback, 'missions'),
+      submissionsData: loadOptionalWithFallback(resolvedPaths.submissions, resolvedPaths.submissionsFallback, 'submissions'),
     };
   }
 
@@ -863,6 +894,149 @@ function createPointsRepository(paths = {}) {
     };
   }
 
+  function buildExportSummary(state) {
+    const users = Array.isArray(state.pointsData.users) ? state.pointsData.users : [];
+    const pointTransactions = Array.isArray(state.pointsData.pointTransactions)
+      ? state.pointsData.pointTransactions
+      : [];
+    const redemptions = Array.isArray(state.redemptionsData.redemptions) ? state.redemptionsData.redemptions : [];
+    const submissions = Array.isArray(state.submissionsData.submissions) ? state.submissionsData.submissions : [];
+    const missions = Array.isArray(state.missionsData.missions) ? state.missionsData.missions : [];
+    const shopItems = Array.isArray(state.shopItemsData.shopItems) ? state.shopItemsData.shopItems : [];
+
+    return {
+      usersCount: users.length,
+      pointTransactionsCount: pointTransactions.length,
+      redemptionsCount: redemptions.length,
+      pendingRedemptionsCount: redemptions.filter((redemption) => redemption.status === 'pending').length,
+      submissionsCount: submissions.length,
+      pendingSubmissionsCount: submissions.filter((submission) => submission.status === 'pending').length,
+      missionsCount: missions.length,
+      activeMissionsCount: missions.filter((mission) => mission.status === 'active').length,
+      shopItemsCount: shopItems.length,
+      activeShopItemsCount: shopItems.filter((item) => item.status === 'active').length,
+      todayCheckinsCount: submissions.filter((submission) => {
+        return submission.type === 'checkin'
+          && submission.checkinDate === getKoreanDateString()
+          && submission.status === 'approved';
+      }).length,
+    };
+  }
+
+  function getPointsExportData(limit = 50) {
+    const state = loadExportState();
+    const pointTransactions = sortNewestFirst(
+      Array.isArray(state.pointsData.pointTransactions) ? state.pointsData.pointTransactions : [],
+      ['createdAt']
+    );
+
+    return {
+      kind: 'points',
+      summary: buildExportSummary(state),
+      users: Array.isArray(state.pointsData.users) ? cloneJson(state.pointsData.users) : [],
+      pointTransactions: cloneJson(limitItems(pointTransactions, limit)),
+    };
+  }
+
+  function getRedemptionsExportData(limit = 50) {
+    const state = loadExportState();
+    const redemptions = sortNewestFirst(
+      Array.isArray(state.redemptionsData.redemptions) ? state.redemptionsData.redemptions : [],
+      ['requestedAt', 'createdAt', 'completedAt', 'cancelledAt', 'refundedAt']
+    );
+
+    return {
+      kind: 'redemptions',
+      summary: buildExportSummary(state),
+      redemptions: cloneJson(limitItems(redemptions, limit)),
+    };
+  }
+
+  function getSubmissionsExportData(limit = 50) {
+    const state = loadExportState();
+    const submissions = sortNewestFirst(
+      Array.isArray(state.submissionsData.submissions) ? state.submissionsData.submissions : [],
+      ['createdAt', 'reviewedAt']
+    );
+
+    return {
+      kind: 'submissions',
+      summary: buildExportSummary(state),
+      submissions: cloneJson(limitItems(submissions, limit)),
+    };
+  }
+
+  function getMissionsExportData(limit = 50) {
+    const state = loadExportState();
+    const missions = sortNewestFirst(
+      Array.isArray(state.missionsData.missions) ? state.missionsData.missions : [],
+      ['updatedAt', 'createdAt', 'activeDate', 'startAt']
+    );
+
+    return {
+      kind: 'missions',
+      summary: buildExportSummary(state),
+      missions: cloneJson(limitItems(missions, limit)),
+    };
+  }
+
+  function getShopItemsExportData(limit = 50) {
+    const state = loadExportState();
+    const shopItems = sortNewestFirst(
+      Array.isArray(state.shopItemsData.shopItems) ? state.shopItemsData.shopItems : [],
+      ['updatedAt', 'createdAt']
+    );
+
+    return {
+      kind: 'shopItems',
+      summary: buildExportSummary(state),
+      shopItems: cloneJson(limitItems(shopItems, limit)),
+    };
+  }
+
+  function getSummaryExportData() {
+    const state = loadExportState();
+    return {
+      kind: 'summary',
+      summary: buildExportSummary(state),
+    };
+  }
+
+  function getAllOperationData(limit = 50) {
+    const state = loadExportState();
+
+    return {
+      kind: 'all',
+      summary: buildExportSummary(state),
+      points: {
+        users: Array.isArray(state.pointsData.users) ? cloneJson(state.pointsData.users) : [],
+        pointTransactions: getPointsExportData(limit).pointTransactions,
+      },
+      redemptions: {
+        redemptions: getRedemptionsExportData(limit).redemptions,
+      },
+      submissions: {
+        submissions: getSubmissionsExportData(limit).submissions,
+      },
+      missions: {
+        missions: getMissionsExportData(limit).missions,
+      },
+      shopItems: {
+        shopItems: getShopItemsExportData(limit).shopItems,
+      },
+    };
+  }
+
+  function getExportData(kind = 'summary', limit = 50) {
+    if (kind === 'all') return getAllOperationData(limit);
+    if (kind === 'points') return getPointsExportData(limit);
+    if (kind === 'redemptions') return getRedemptionsExportData(limit);
+    if (kind === 'submissions') return getSubmissionsExportData(limit);
+    if (kind === 'missions') return getMissionsExportData(limit);
+    if (kind === 'shopItems') return getShopItemsExportData(limit);
+    return getSummaryExportData();
+  }
+
   return {
     adjustUserPoints,
     approveSubmissionById,
@@ -873,8 +1047,16 @@ function createPointsRepository(paths = {}) {
     findMission,
     findShopItem,
     findSubmission,
+    getAllOperationData,
+    getExportData,
     getMissionsData,
+    getMissionsExportData,
     getOperationSummary,
+    getPointsExportData,
+    getRedemptionsExportData,
+    getShopItemsExportData,
+    getSubmissionsExportData,
+    getSummaryExportData,
     getSubmissionsData,
     hasCheckedInToday,
     listMissionsForAdmin,

@@ -1,4 +1,4 @@
-const { PermissionFlagsBits } = require('discord.js');
+const { AttachmentBuilder, PermissionFlagsBits } = require('discord.js');
 const {
   OPERATOR_CHECK_FOOTER,
   createChannelGuideEmbed,
@@ -34,6 +34,7 @@ const {
   CHECKIN_REWARD_POINTS,
   createPointsRepository,
 } = require('./pointsRepository');
+const { buildOperationExportPayload, truncateForDiscord } = require('./exportUtils');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
@@ -875,6 +876,84 @@ async function handleOperationStatusCommand(interaction) {
   }
 }
 
+function createOperationExportEmbed(payload) {
+  return createGuideEmbed(
+    '운영 데이터 내보내기',
+    [
+      `종류: ${payload.kindLabel}`,
+      `형식: ${payload.formatLabel}`,
+      `포함 개수: ${payload.rowCount}`,
+      `생성 시간: ${payload.generatedAt}`,
+      '',
+      payload.format === 'summary'
+        ? payload.content
+        : `파일명: \`${payload.filename}\``,
+      '',
+      '파일을 안전한 위치에 보관해 주세요.',
+      '외부 공유 시 개인정보 포함 여부를 반드시 확인해 주세요.',
+      '이 내보내기는 운영자 백업용이며 공개 채널에 공유하지 않는 것을 권장합니다.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+async function handleOperationExportCommand(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '운영진 전용 명령어예요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const kind = interaction.options.getString('종류');
+    const format = interaction.options.getString('형식') || 'summary';
+    const limit = interaction.options.getInteger('개수') || 50;
+    const payload = buildOperationExportPayload(pointsRepository, {
+      kind,
+      format,
+      limit,
+    });
+
+    if (payload.isAttachment) {
+      const attachment = new AttachmentBuilder(payload.buffer, {
+        name: payload.filename,
+      });
+
+      await interaction.reply({
+        embeds: [createOperationExportEmbed(payload)],
+        files: [attachment],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      embeds: [createOperationExportEmbed(payload)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('운영 데이터 내보내기 실패:', error.message);
+    const fallback = truncateForDiscord(
+      [
+        '운영 데이터 내보내기를 완료하지 못했어요.',
+        error.message,
+        '',
+        '파일 첨부 또는 데이터 조회 과정에서 문제가 발생했습니다. 공개 채널에는 운영 데이터를 올리지 말아 주세요.',
+      ].join('\n'),
+      1900
+    );
+
+    await interaction.reply({
+      content: fallback,
+      ephemeral: true,
+    });
+  }
+}
+
 function getMissionUpdatesFromOptions(options) {
   const updates = {};
   const title = options.getString('제목');
@@ -1249,6 +1328,11 @@ async function handleInteractionCreate(interaction) {
     return;
   }
 
+  if (interaction.commandName === '운영내보내기') {
+    await handleOperationExportCommand(interaction);
+    return;
+  }
+
   if (interaction.commandName === '미션관리') {
     await handleMissionManageCommand(interaction);
     return;
@@ -1282,6 +1366,7 @@ module.exports = {
   handleMissionCommand,
   handleNoticeCommand,
   handleOperationStatusCommand,
+  handleOperationExportCommand,
   handlePointLogCommand,
   handlePointManageCommand,
   handlePointCommand,

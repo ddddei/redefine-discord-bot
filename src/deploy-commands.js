@@ -241,6 +241,45 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('운영내보내기')
+    .setDescription('운영자가 포인트 운영 데이터를 내보내거나 백업합니다.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .addStringOption((option) =>
+      option
+        .setName('종류')
+        .setDescription('내보낼 운영 데이터 종류를 선택해 주세요.')
+        .setRequired(true)
+        .addChoices(
+          { name: '전체', value: 'all' },
+          { name: '포인트', value: 'points' },
+          { name: '교환', value: 'redemptions' },
+          { name: '인증', value: 'submissions' },
+          { name: '미션', value: 'missions' },
+          { name: '상점', value: 'shopItems' },
+          { name: '요약', value: 'summary' }
+        )
+    )
+    .addStringOption((option) =>
+      option
+        .setName('형식')
+        .setDescription('내보내기 형식을 선택해 주세요.')
+        .setRequired(false)
+        .addChoices(
+          { name: '요약', value: 'summary' },
+          { name: 'JSON', value: 'json' },
+          { name: 'CSV', value: 'csv' }
+        )
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName('개수')
+        .setDescription('포함할 항목 수를 선택해 주세요. 기본값은 50개입니다.')
+        .setRequired(false)
+        .setMinValue(1)
+        .setMaxValue(200)
+    ),
+
+  new SlashCommandBuilder()
     .setName('미션관리')
     .setDescription('운영자가 미션을 추가하거나 상태를 변경합니다.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)

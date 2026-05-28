@@ -15,6 +15,7 @@
 | 문서명 | 용도 | 언제 사용하는지 | 주요 확인 내용 |
 | --- | --- | --- | --- |
 | [operation-guide.md](operation-guide.md) | 평소 운영 루틴과 수정 절차 안내 | 운영 중, 데이터 수정 전후, 문의 대응 흐름 확인 시 | 운영 점검표, 데이터 수정 루틴, 검증 명령어, 운영 정책 미확정 질문 처리 원칙, 운영 시 주의사항 |
+| [export-and-backup-guide.md](export-and-backup-guide.md) | 운영 데이터 내보내기와 백업 가이드 | 포인트 운영 데이터를 백업하거나 외부 공유 전 보관 주의사항을 확인할 때 | `/운영내보내기`, JSON/CSV 백업, 개인정보 보관 주의사항, local JSON 한계 |
 | [prelaunch-automation-audit.md](prelaunch-automation-audit.md) | 운영 전 자동 점검 리포트 | 참여자 입장 전 자동화에 맡길 작업과 수동 확인 작업을 구분할 때 | 구현 기능 요약, 운영 문서 현황, 남은 작업, 자동화 적합/위험 작업, 다음 개발 후보 |
 | [operator-check-command-plan.md](operator-check-command-plan.md) | 운영진용 `/점검` 명령어 설계안 | Discord 안에서 운영 전 점검 항목과 운영진 전용 권한 기준을 검토할 때 | 봇 상태 확인 항목, 로그/민감 질문 알림 확인, 권한 원칙, 수동 확인 항목 |
 | [journey-point-system-plan.md](journey-point-system-plan.md) | 여정 포인트 시스템 기능개발문서 | 여정 포인트, 청년동 포인트 전환, 상점, 교환, 운영자 처리 흐름을 설계할 때 | 봇 역할 분리, 한글 명령어, 수동 전환 및 환불 흐름, 저장 방식, 정산 원칙 |

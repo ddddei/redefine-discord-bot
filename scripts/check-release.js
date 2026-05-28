@@ -49,6 +49,11 @@ const checks = [
     args: ['--check', 'src/pointsRepository.js'],
   },
   {
+    label: 'src/exportUtils.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/exportUtils.js'],
+  },
+  {
     label: 'scripts/test-points-store.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-points-store.js'],
@@ -69,6 +74,11 @@ const checks = [
     args: ['--check', 'scripts/test-admin-management-flow.js'],
   },
   {
+    label: 'scripts/test-operation-export-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-operation-export-flow.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -87,6 +97,11 @@ const checks = [
     label: 'admin management flow smoke test',
     command: 'node',
     args: ['scripts/test-admin-management-flow.js'],
+  },
+  {
+    label: 'operation export flow smoke test',
+    command: 'node',
+    args: ['scripts/test-operation-export-flow.js'],
   },
   {
     label: '데이터 구조 검사',
