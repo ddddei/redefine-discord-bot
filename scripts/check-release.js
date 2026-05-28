@@ -79,6 +79,11 @@ const checks = [
     args: ['--check', 'scripts/test-operation-export-flow.js'],
   },
   {
+    label: 'scripts/test-participant-ux-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-participant-ux-flow.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -102,6 +107,11 @@ const checks = [
     label: 'operation export flow smoke test',
     command: 'node',
     args: ['scripts/test-operation-export-flow.js'],
+  },
+  {
+    label: 'participant UX flow smoke test',
+    command: 'node',
+    args: ['scripts/test-participant-ux-flow.js'],
   },
   {
     label: '데이터 구조 검사',

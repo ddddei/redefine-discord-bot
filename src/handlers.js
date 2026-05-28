@@ -1,4 +1,14 @@
-const { AttachmentBuilder, PermissionFlagsBits } = require('discord.js');
+const {
+  ActionRowBuilder,
+  AttachmentBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ModalBuilder,
+  PermissionFlagsBits,
+  StringSelectMenuBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} = require('discord.js');
 const {
   OPERATOR_CHECK_FOOTER,
   createChannelGuideEmbed,
@@ -26,7 +36,6 @@ const {
 const {
   getUser,
   getUserPoints,
-  listActiveShopItems,
   listPointTransactions,
   validateUserBalance,
 } = require('./pointsStore');
@@ -98,6 +107,74 @@ function createEmptyListEmbed(title, guideText) {
 
 function formatNullableCount(value, unit) {
   return typeof value === 'number' ? `${value}${unit}` : '운영진 확인';
+}
+
+function formatShopLimit(item) {
+  const stockText = typeof item.stock === 'number'
+    ? `재고 ${item.stock}개`
+    : '재고 운영진 확인';
+  const monthlyLimitText = typeof item.monthlyLimit === 'number'
+    ? `월 한도 ${item.monthlyLimit}회`
+    : '월 한도 운영진 확인';
+
+  return `${stockText} / ${monthlyLimitText}`;
+}
+
+function createShopSelectRow(items) {
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('participant_shop_select')
+      .setPlaceholder('교환할 항목을 선택해 주세요')
+      .addOptions(items.slice(0, 25).map((item) => ({
+        label: truncateText(`${item.displayCode} ${item.name}`, 100, item.displayCode || item.id),
+        description: truncateText(`${formatPoints(item.cost)} · ${formatShopLimit(item)}`, 100, '상점 항목'),
+        value: item.displayCode || item.id,
+      })))
+  );
+}
+
+function createRedemptionConfirmRow(displayCode) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`participant_redeem_confirm:${displayCode}`)
+      .setLabel('교환 신청')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`participant_redeem_cancel:${displayCode}`)
+      .setLabel('취소')
+      .setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function createMissionSelectRow(missions) {
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('participant_mission_select')
+      .setPlaceholder('인증할 미션을 선택해 주세요')
+      .addOptions(missions.slice(0, 25).map((mission) => ({
+        label: truncateText(`${mission.displayCode} ${mission.title || mission.id}`, 100, mission.displayCode || mission.id),
+        description: truncateText(`${formatPoints(mission.rewardPoints || 0)} · 인증 ${mission.requiresSubmission === false ? '선택' : '필요'}`, 100, '미션'),
+        value: mission.displayCode || mission.id,
+      })))
+  );
+}
+
+function createMissionSubmissionModal(mission) {
+  return new ModalBuilder()
+    .setCustomId(`participant_mission_submit:${mission.displayCode || mission.id}`)
+    .setTitle(truncateText(`${mission.displayCode} 미션 인증`, 45, '미션 인증'))
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('content')
+          .setLabel('인증 내용')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+          .setMinLength(2)
+          .setMaxLength(1000)
+          .setPlaceholder('수행 내용을 필요한 만큼만 적어 주세요.')
+      )
+    );
 }
 
 function formatAdminMissionLine(mission) {
@@ -402,8 +479,7 @@ async function handlePointCommand(interaction) {
 
 async function handleShopCommand(interaction) {
   try {
-    const { shopItemsData } = pointsRepository.loadState();
-    const items = listActiveShopItems(shopItemsData);
+    const items = pointsRepository.listActiveShopItemsWithCodes();
 
     if (items.length === 0) {
       await interaction.reply({
@@ -413,7 +489,7 @@ async function handleShopCommand(interaction) {
             [
               '현재 표시할 수 있는 상점 항목이 없어요.',
               '',
-              '/교환 기능은 아직 준비 중입니다.',
+              '상점 항목이 열리면 `/상점` 선택 메뉴에서 교환 신청까지 이어갈 수 있어요.',
               '실제 항목과 비용은 운영진 확정 후 달라질 수 있어요.',
             ].join('\n')
           ),
@@ -425,6 +501,7 @@ async function handleShopCommand(interaction) {
 
     await interaction.reply({
       embeds: [createShopEmbed(items)],
+      components: [createShopSelectRow(items)],
       ephemeral: true,
     });
   } catch (error) {
@@ -513,8 +590,9 @@ async function handleMissionCommand(interaction) {
     const lines = missions.slice(0, 10).map((mission) => {
       const requiresSubmission = mission.requiresSubmission === false ? '아니오' : '예';
       return [
-        `**${mission.title || mission.id}**`,
+        `**${mission.displayCode} · ${mission.title || mission.id}**`,
         `미션 ID: \`${mission.id}\``,
+        `표시 코드: \`${mission.displayCode}\``,
         `설명: ${mission.description || '운영진 안내를 확인해 주세요.'}`,
         `지급 포인트: ${formatPoints(mission.rewardPoints || 0)}`,
         `인증 필요: ${requiresSubmission}`,
@@ -528,17 +606,200 @@ async function handleMissionCommand(interaction) {
           [
             ...lines.join('\n\n').split('\n'),
             '',
-            '`/인증 미션id:... 내용:...`으로 제출할 수 있어요.',
+            '아래 선택 메뉴에서 미션을 고르면 인증 입력 창이 열립니다.',
+            '`/인증 미션id:M001 내용:...`처럼 표시 코드로도 제출할 수 있어요.',
             '미션은 선택형 활동이며, 가능한 범위에서만 참여하면 됩니다.',
           ].join('\n')
         ),
       ],
+      components: [createMissionSelectRow(missions)],
       ephemeral: true,
     });
   } catch (error) {
     console.error('미션 목록 조회 실패:', error.message);
     await interaction.reply({
       content: '미션 목록을 불러오지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleShopSelect(interaction) {
+  const displayCode = interaction.values[0];
+  const item = pointsRepository.resolveActiveShopItem(displayCode);
+
+  if (!item) {
+    await interaction.update({
+      embeds: [
+        createGuideEmbed(
+          '상점 항목을 찾지 못했어요',
+          '`/상점`을 다시 실행해 현재 선택 가능한 항목을 확인해 주세요.',
+          { footer: OPERATOR_CHECK_FOOTER }
+        ),
+      ],
+      components: [],
+    });
+    return;
+  }
+
+  await interaction.update({
+    embeds: [
+      createGuideEmbed(
+        '교환 신청 확인',
+        [
+          `표시 코드: \`${item.displayCode}\``,
+          `항목: ${item.name}`,
+          `차감 포인트: ${formatPoints(item.cost)}`,
+          formatShopLimit(item),
+          '',
+          '아래 버튼을 누르면 포인트가 즉시 차감되고 운영진 처리 대기 신청이 생성됩니다.',
+          '청년동 포인트 전환권은 청년동 내부 사용처에 한정된 운영진 처리 항목입니다.',
+        ].join('\n'),
+        { footer: OPERATOR_CHECK_FOOTER }
+      ),
+    ],
+    components: [createRedemptionConfirmRow(item.displayCode)],
+  });
+}
+
+async function handleRedemptionConfirmButton(interaction) {
+  const displayCode = interaction.customId.split(':')[1];
+
+  if (interaction.customId.startsWith('participant_redeem_cancel:')) {
+    await interaction.update({
+      embeds: [
+        createGuideEmbed(
+          '교환 신청을 취소했어요',
+          '`/상점`에서 다시 항목을 선택할 수 있어요.'
+        ),
+      ],
+      components: [],
+    });
+    return;
+  }
+
+  try {
+    const result = pointsRepository.requestRedemption({
+      user: {
+        userId: interaction.user.id,
+        displayName: getMemberDisplayName(interaction.user, interaction.member),
+      },
+      itemId: displayCode,
+      note: `participant ux flow ${displayCode}`,
+    });
+
+    if (!result.ok) {
+      await interaction.update({
+        embeds: [
+          createGuideEmbed(
+            '교환 신청을 접수하지 못했어요',
+            getRedemptionFailureMessage(result.reason),
+            { footer: OPERATOR_CHECK_FOOTER }
+          ),
+        ],
+        components: [],
+      });
+      return;
+    }
+
+    await interaction.update({
+      embeds: [
+        createGuideEmbed(
+          '교환 신청이 접수됐어요',
+          [
+            `표시 코드: \`${result.item.displayCode || displayCode}\``,
+            `신청 ID: \`${result.redemption.id}\``,
+            `항목: ${result.item.name}`,
+            `차감 포인트: ${formatPoints(result.item.cost)}`,
+            `현재 잔액: ${formatPoints(result.transaction.balanceAfter)}`,
+            '',
+            '운영진이 실제 지급 가능 여부를 확인한 뒤 완료 또는 취소 처리합니다.',
+          ].join('\n'),
+          { footer: OPERATOR_CHECK_FOOTER }
+        ),
+      ],
+      components: [],
+    });
+  } catch (error) {
+    console.error('교환 확인 버튼 처리 실패:', error.message);
+    await interaction.update({
+      embeds: [
+        createGuideEmbed(
+          '교환 신청을 처리하지 못했어요',
+          '운영진에게 알려주세요.',
+          { footer: OPERATOR_CHECK_FOOTER }
+        ),
+      ],
+      components: [],
+    });
+  }
+}
+
+async function handleMissionSelect(interaction) {
+  const displayCode = interaction.values[0];
+  const mission = pointsRepository.resolveActiveMission(displayCode);
+
+  if (!mission) {
+    await interaction.reply({
+      content: '`/미션`을 다시 실행해 현재 선택 가능한 미션을 확인해 주세요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.showModal(createMissionSubmissionModal(mission));
+}
+
+async function handleMissionSubmissionModal(interaction) {
+  const displayCode = interaction.customId.split(':')[1];
+  const content = interaction.fields.getTextInputValue('content');
+
+  try {
+    const result = pointsRepository.createMissionSubmission({
+      user: {
+        userId: interaction.user.id,
+        displayName: getMemberDisplayName(interaction.user, interaction.member),
+      },
+      missionId: displayCode,
+      content,
+    });
+
+    if (!result.ok) {
+      await interaction.reply({
+        embeds: [
+          createGuideEmbed(
+            '인증 제출을 접수하지 못했어요',
+            getSubmissionFailureMessage(result.reason),
+            { footer: OPERATOR_CHECK_FOOTER }
+          ),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '인증 제출이 접수됐어요',
+          [
+            `표시 코드: \`${result.mission.displayCode || displayCode}\``,
+            `제출 ID: \`${result.submission.id}\``,
+            `미션: ${result.mission.title || result.mission.id}`,
+            '상태: pending',
+            '',
+            '운영자가 확인 후 승인하면 미션 지급 포인트가 적립됩니다.',
+          ].join('\n'),
+          { footer: OPERATOR_CHECK_FOOTER }
+        ),
+      ],
+      ephemeral: true,
+    });
+    await sendMissionSubmissionReviewAlert(interaction, result.submission, result.mission);
+  } catch (error) {
+    console.error('인증 입력 모달 처리 실패:', error.message);
+    await interaction.reply({
+      content: '인증 제출을 처리하지 못했어요. 운영진에게 알려주세요.',
       ephemeral: true,
     });
   }
@@ -1256,6 +1517,33 @@ async function handleRediCommand(interaction) {
 }
 
 async function handleInteractionCreate(interaction) {
+  if (interaction.isStringSelectMenu && interaction.isStringSelectMenu()) {
+    if (interaction.customId === 'participant_shop_select') {
+      await handleShopSelect(interaction);
+      return;
+    }
+
+    if (interaction.customId === 'participant_mission_select') {
+      await handleMissionSelect(interaction);
+      return;
+    }
+  }
+
+  if (interaction.isButton && interaction.isButton()) {
+    if (interaction.customId.startsWith('participant_redeem_confirm:')
+      || interaction.customId.startsWith('participant_redeem_cancel:')) {
+      await handleRedemptionConfirmButton(interaction);
+      return;
+    }
+  }
+
+  if (interaction.isModalSubmit && interaction.isModalSubmit()) {
+    if (interaction.customId.startsWith('participant_mission_submit:')) {
+      await handleMissionSubmissionModal(interaction);
+      return;
+    }
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === '공지') {
@@ -1364,6 +1652,8 @@ module.exports = {
   handleInteractionCreate,
   handleMissionManageCommand,
   handleMissionCommand,
+  handleMissionSelect,
+  handleMissionSubmissionModal,
   handleNoticeCommand,
   handleOperationStatusCommand,
   handleOperationExportCommand,
@@ -1377,7 +1667,9 @@ module.exports = {
   handleRediRulesCommand,
   handleRediScheduleCommand,
   handleRedemptionCommand,
+  handleRedemptionConfirmButton,
   handleRedemptionManageCommand,
+  handleShopSelect,
   handleSubmissionCommand,
   handleSubmissionManageCommand,
   handleShopManageCommand,

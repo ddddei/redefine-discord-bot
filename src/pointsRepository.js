@@ -34,6 +34,8 @@ const CHECKIN_REWARD_POINTS = 10;
 const MISSION_STATUSES = new Set(['draft', 'active', 'paused', 'closed', 'archived']);
 const SHOP_ITEM_STATUSES = new Set(['active', 'paused', 'soldOut', 'hidden']);
 const SHOP_ITEM_TYPES = new Set(['youthCenterPoint', 'reward', 'goods', 'event']);
+const SHOP_DISPLAY_PREFIX = 'S';
+const MISSION_DISPLAY_PREFIX = 'M';
 
 function createTimestamp() {
   return new Date().toISOString();
@@ -112,6 +114,34 @@ function sortNewestFirst(items, dateFields) {
 function limitItems(items, limit) {
   const safeLimit = Math.min(200, Math.max(1, Number(limit || 50)));
   return Array.isArray(items) ? items.slice(0, safeLimit) : [];
+}
+
+function createDisplayCode(prefix, index) {
+  return `${prefix}${String(index + 1).padStart(3, '0')}`;
+}
+
+function normalizeIdentifier(identifier) {
+  return typeof identifier === 'string' ? identifier.trim() : '';
+}
+
+function attachDisplayCodes(items, prefix) {
+  return items.map((item, index) => ({
+    ...item,
+    displayCode: createDisplayCode(prefix, index),
+  }));
+}
+
+function findByIdOrDisplayCode(items, identifier) {
+  const normalizedIdentifier = normalizeIdentifier(identifier);
+
+  if (!normalizedIdentifier) {
+    return null;
+  }
+
+  return items.find((item) => {
+    return item.id === normalizedIdentifier
+      || String(item.displayCode || '').toUpperCase() === normalizedIdentifier.toUpperCase();
+  }) || null;
 }
 
 function requireTrimmedString(value, fieldName) {
@@ -262,13 +292,15 @@ function createPointsRepository(paths = {}) {
     const pointsData = cloneJson(state.pointsData);
     const shopItemsData = cloneJson(state.shopItemsData);
     const redemptionsData = cloneJson(state.redemptionsData);
-    const eligibility = canRedeem(pointsData, shopItemsData, input.user.userId, input.itemId);
+    const resolvedItem = resolveActiveShopItem(input.itemId);
+    const redemptionItemId = resolvedItem ? resolvedItem.id : input.itemId;
+    const eligibility = canRedeem(pointsData, shopItemsData, input.user.userId, redemptionItemId);
 
     if (!eligibility.ok) {
       return { ok: false, reason: eligibility.reason };
     }
 
-    const item = getShopItem(shopItemsData, input.itemId);
+    const item = getShopItem(shopItemsData, redemptionItemId);
     const user = getUser(pointsData, input.user.userId);
     const currentPoints = getUserPoints(pointsData, input.user.userId);
     const balanceAfter = currentPoints - item.cost;
@@ -388,7 +420,14 @@ function createPointsRepository(paths = {}) {
   function listActiveMissions() {
     const missionsData = getMissionsData();
     const missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
-    return missions.filter((mission) => mission.status === 'active');
+    return attachDisplayCodes(
+      missions.filter((mission) => mission.status === 'active'),
+      MISSION_DISPLAY_PREFIX
+    );
+  }
+
+  function resolveActiveMission(missionIdOrCode) {
+    return findByIdOrDisplayCode(listActiveMissions(), missionIdOrCode);
   }
 
   function listMissionsForAdmin(options = {}) {
@@ -502,6 +541,19 @@ function createPointsRepository(paths = {}) {
   function findShopItem(itemId) {
     const { shopItemsData } = loadState();
     return getShopItem(shopItemsData, itemId);
+  }
+
+  function listActiveShopItemsWithCodes() {
+    const { shopItemsData } = loadState();
+    const shopItems = Array.isArray(shopItemsData.shopItems) ? shopItemsData.shopItems : [];
+    return attachDisplayCodes(
+      shopItems.filter((item) => item.status === 'active'),
+      SHOP_DISPLAY_PREFIX
+    );
+  }
+
+  function resolveActiveShopItem(itemIdOrCode) {
+    return findByIdOrDisplayCode(listActiveShopItemsWithCodes(), itemIdOrCode);
   }
 
   function listShopItemsForAdmin(options = {}) {
@@ -713,7 +765,8 @@ function createPointsRepository(paths = {}) {
   }
 
   function createMissionSubmission(input) {
-    const mission = findMission(input.missionId);
+    const activeMission = resolveActiveMission(input.missionId);
+    const mission = activeMission || findMission(input.missionId);
 
     if (!mission) {
       return { ok: false, reason: 'MISSION_NOT_FOUND' };
@@ -1062,6 +1115,7 @@ function createPointsRepository(paths = {}) {
     listMissionsForAdmin,
     listTransactions,
     listActiveMissions,
+    listActiveShopItemsWithCodes,
     listPendingRedemptions,
     listPendingSubmissions,
     listRecentSubmissions,
@@ -1073,6 +1127,8 @@ function createPointsRepository(paths = {}) {
     rejectSubmissionById,
     reviewSubmissionById,
     reviewRedemption,
+    resolveActiveMission,
+    resolveActiveShopItem,
     saveMissionsData,
     saveSubmissionsData,
     saveState,

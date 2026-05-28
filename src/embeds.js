@@ -144,12 +144,13 @@ function createShopEmbed(items) {
   );
 
   const fields = items.slice(0, 10).map((item) => ({
-    name: truncateText(item.name, 256, '상점 항목'),
+    name: truncateText(`${item.displayCode ? `${item.displayCode} · ` : ''}${item.name}`, 256, '상점 항목'),
     value: truncateEmbedValue([
       `필요 포인트: ${formatPoints(item.cost)}`,
       `설명: ${truncateText(item.description, 220, '상세 설명은 운영진 안내를 확인해 주세요.')}`,
       formatShopLimit(item),
-    ].join('\n')),
+      item.displayCode ? `표시 코드: ${item.displayCode}` : '',
+    ].filter(Boolean).join('\n')),
   }));
 
   if (fields.length > 0) {
