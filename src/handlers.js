@@ -24,6 +24,7 @@ const {
 } = require('./embeds');
 const {
   sendMissionSubmissionReviewAlert,
+  sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,
   sendUnansweredQuestionLog,
 } = require('./logging');
@@ -66,10 +67,10 @@ function isOperator(interaction) {
 function getRedemptionFailureMessage(reason) {
   const messages = {
     USER_NOT_FOUND: '아직 포인트 기록이 없어 교환 신청을 접수할 수 없어요.',
-    ITEM_NOT_FOUND: '해당 상점 항목을 찾지 못했어요. `/상점`에서 항목 ID를 확인해 주세요.',
+    ITEM_NOT_FOUND: '해당 항목을 찾지 못했어요. `/상점`에서 신청 코드를 다시 확인해 주세요.',
     SOLD_OUT: '해당 항목은 현재 재고가 없어 신청할 수 없어요.',
     ITEM_NOT_ACTIVE: '해당 항목은 현재 신청 가능한 상태가 아니에요.',
-    INSUFFICIENT_POINTS: '보유 포인트가 부족해 교환 신청을 접수할 수 없어요.',
+    INSUFFICIENT_POINTS: '현재 보유 포인트가 조금 부족해요.',
   };
 
   return messages[reason] || '교환 신청 조건을 확인하지 못했어요. 운영진에게 알려주세요.';
@@ -127,7 +128,7 @@ function createShopSelectRow(items) {
       .setPlaceholder('교환할 항목을 선택해 주세요')
       .addOptions(items.slice(0, 25).map((item) => ({
         label: truncateText(`${item.displayCode} ${item.name}`, 100, item.displayCode || item.id),
-        description: truncateText(`${formatPoints(item.cost)} · ${formatShopLimit(item)}`, 100, '상점 항목'),
+        description: truncateText(`필요 포인트 ${formatPoints(item.cost)}`, 100, '상점 항목'),
         value: item.displayCode || item.id,
       })))
   );
@@ -137,11 +138,11 @@ function createRedemptionConfirmRow(displayCode) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`participant_redeem_confirm:${displayCode}`)
-      .setLabel('교환 신청')
+      .setLabel('교환 신청하기')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(`participant_redeem_cancel:${displayCode}`)
-      .setLabel('취소')
+      .setLabel('신청하지 않기')
       .setStyle(ButtonStyle.Secondary)
   );
 }
@@ -153,7 +154,7 @@ function createMissionSelectRow(missions) {
       .setPlaceholder('인증할 미션을 선택해 주세요')
       .addOptions(missions.slice(0, 25).map((mission) => ({
         label: truncateText(`${mission.displayCode} ${mission.title || mission.id}`, 100, mission.displayCode || mission.id),
-        description: truncateText(`${formatPoints(mission.rewardPoints || 0)} · 인증 ${mission.requiresSubmission === false ? '선택' : '필요'}`, 100, '미션'),
+        description: truncateText(`지급 포인트 ${formatPoints(mission.rewardPoints || 0)}`, 100, '미션'),
         value: mission.displayCode || mission.id,
       })))
   );
@@ -175,6 +176,20 @@ function createMissionSubmissionModal(mission) {
           .setPlaceholder('수행 내용을 필요한 만큼만 적어 주세요.')
       )
     );
+}
+
+function serializeAttachment(attachment) {
+  if (!attachment) {
+    return null;
+  }
+
+  return {
+    id: attachment.id || null,
+    name: attachment.name || null,
+    url: attachment.url || null,
+    contentType: attachment.contentType || null,
+    size: typeof attachment.size === 'number' ? attachment.size : null,
+  };
 }
 
 function formatAdminMissionLine(mission) {
@@ -588,14 +603,11 @@ async function handleMissionCommand(interaction) {
     }
 
     const lines = missions.slice(0, 10).map((mission) => {
-      const requiresSubmission = mission.requiresSubmission === false ? '아니오' : '예';
+      const submissionMethod = mission.requiresSubmission === false ? '선택' : '글로 남기기';
       return [
         `**${mission.displayCode} · ${mission.title || mission.id}**`,
-        `미션 ID: \`${mission.id}\``,
-        `표시 코드: \`${mission.displayCode}\``,
-        `설명: ${mission.description || '운영진 안내를 확인해 주세요.'}`,
         `지급 포인트: ${formatPoints(mission.rewardPoints || 0)}`,
-        `인증 필요: ${requiresSubmission}`,
+        `인증 방법: ${submissionMethod}`,
       ].join('\n');
     });
 
@@ -606,9 +618,9 @@ async function handleMissionCommand(interaction) {
           [
             ...lines.join('\n\n').split('\n'),
             '',
-            '아래 선택 메뉴에서 미션을 고르면 인증 입력 창이 열립니다.',
-            '`/인증 미션id:M001 내용:...`처럼 표시 코드로도 제출할 수 있어요.',
-            '미션은 선택형 활동이며, 가능한 범위에서만 참여하면 됩니다.',
+            '가능한 범위에서 가볍게 참여해 주세요.',
+            '아래 선택 메뉴에서 인증할 미션을 고를 수 있어요.',
+            '사진이나 영상 인증이 필요한 경우 `/인증` 명령어에서 첨부파일을 함께 올릴 수 있어요.',
           ].join('\n')
         ),
       ],
@@ -642,18 +654,41 @@ async function handleShopSelect(interaction) {
     return;
   }
 
+  const currentPoints = getUserPoints(pointsRepository.loadState().pointsData, interaction.user.id);
+  const balanceAfter = currentPoints - item.cost;
+
+  if (balanceAfter < 0) {
+    await interaction.update({
+      embeds: [
+        createGuideEmbed(
+          '현재 보유 포인트가 조금 부족해요',
+          [
+            `신청 항목: ${item.displayCode} · ${item.name}`,
+            `필요 포인트: ${formatPoints(item.cost)}`,
+            `현재 보유 포인트: ${formatPoints(currentPoints)}`,
+            '',
+            '포인트가 충분해진 뒤 다시 신청할 수 있어요.',
+          ].join('\n'),
+          { footer: OPERATOR_CHECK_FOOTER }
+        ),
+      ],
+      components: [],
+    });
+    return;
+  }
+
   await interaction.update({
     embeds: [
       createGuideEmbed(
-        '교환 신청 확인',
+        '교환 신청 전 확인해 주세요',
         [
-          `표시 코드: \`${item.displayCode}\``,
-          `항목: ${item.name}`,
-          `차감 포인트: ${formatPoints(item.cost)}`,
-          formatShopLimit(item),
+          `신청 항목: ${item.displayCode} · ${item.name}`,
+          `필요 포인트: ${formatPoints(item.cost)}`,
+          `현재 보유 포인트: ${formatPoints(currentPoints)}`,
+          `신청 후 예상 잔액: ${formatPoints(balanceAfter)}`,
           '',
-          '아래 버튼을 누르면 포인트가 즉시 차감되고 운영진 처리 대기 신청이 생성됩니다.',
-          '청년동 포인트 전환권은 청년동 내부 사용처에 한정된 운영진 처리 항목입니다.',
+          '신청이 완료되면 포인트가 차감돼요.',
+          '단순 변심에 따른 취소나 환불은 원칙적으로 어렵습니다.',
         ].join('\n'),
         { footer: OPERATOR_CHECK_FOOTER }
       ),
@@ -669,8 +704,12 @@ async function handleRedemptionConfirmButton(interaction) {
     await interaction.update({
       embeds: [
         createGuideEmbed(
-          '교환 신청을 취소했어요',
-          '`/상점`에서 다시 항목을 선택할 수 있어요.'
+          '교환 신청을 진행하지 않았어요',
+          [
+            '포인트는 차감되지 않았습니다.',
+            '',
+            '`/상점`에서 다시 항목을 선택할 수 있어요.',
+          ].join('\n')
         ),
       ],
       components: [],
@@ -707,19 +746,21 @@ async function handleRedemptionConfirmButton(interaction) {
         createGuideEmbed(
           '교환 신청이 접수됐어요',
           [
-            `표시 코드: \`${result.item.displayCode || displayCode}\``,
+            `신청 코드: \`${result.item.displayCode || displayCode}\``,
             `신청 ID: \`${result.redemption.id}\``,
             `항목: ${result.item.name}`,
             `차감 포인트: ${formatPoints(result.item.cost)}`,
             `현재 잔액: ${formatPoints(result.transaction.balanceAfter)}`,
             '',
-            '운영진이 실제 지급 가능 여부를 확인한 뒤 완료 또는 취소 처리합니다.',
+            '운영진이 순차적으로 확인할게요.',
+            '신청 코드는 `/상점`에서 확인할 수 있어요.',
           ].join('\n'),
           { footer: OPERATOR_CHECK_FOOTER }
         ),
       ],
       components: [],
     });
+    await sendRedemptionReviewAlert(interaction, result.redemption, result.item, result.user, result.transaction);
   } catch (error) {
     console.error('교환 확인 버튼 처리 실패:', error.message);
     await interaction.update({
@@ -762,6 +803,7 @@ async function handleMissionSubmissionModal(interaction) {
       },
       missionId: displayCode,
       content,
+      attachment: null,
     });
 
     if (!result.ok) {
@@ -783,12 +825,13 @@ async function handleMissionSubmissionModal(interaction) {
         createGuideEmbed(
           '인증 제출이 접수됐어요',
           [
-            `표시 코드: \`${result.mission.displayCode || displayCode}\``,
+            `미션 코드: \`${result.mission.displayCode || displayCode}\``,
             `제출 ID: \`${result.submission.id}\``,
             `미션: ${result.mission.title || result.mission.id}`,
             '상태: pending',
             '',
-            '운영자가 확인 후 승인하면 미션 지급 포인트가 적립됩니다.',
+            '운영진 확인 후 포인트가 지급돼요.',
+            '사진이나 영상이 필요한 미션은 `/인증` 첨부파일 옵션으로 제출해 주세요.',
           ].join('\n'),
           { footer: OPERATOR_CHECK_FOOTER }
         ),
@@ -807,9 +850,9 @@ async function handleMissionSubmissionModal(interaction) {
 
 function getSubmissionFailureMessage(reason) {
   const messages = {
-    MISSION_NOT_FOUND: '입력한 미션 ID를 찾지 못했어요. `/미션`에서 미션 ID를 확인해 주세요.',
+    MISSION_NOT_FOUND: '해당 미션을 찾지 못했어요. `/미션`에서 현재 참여 가능한 미션을 확인해 주세요.',
     MISSION_NOT_ACTIVE: '해당 미션은 현재 인증을 접수하는 상태가 아니에요.',
-    DUPLICATE_SUBMISSION: '이미 같은 미션에 대해 대기 중이거나 승인된 제출이 있어요.',
+    DUPLICATE_SUBMISSION: '이 미션은 이미 제출한 기록이 있어요. 운영진 확인을 기다려 주세요.',
   };
 
   return messages[reason] || '인증 제출 조건을 확인하지 못했어요. 운영진에게 알려주세요.';
@@ -819,6 +862,9 @@ async function handleSubmissionCommand(interaction) {
   try {
     const missionId = interaction.options.getString('미션id');
     const content = interaction.options.getString('내용');
+    const attachment = typeof interaction.options.getAttachment === 'function'
+      ? serializeAttachment(interaction.options.getAttachment('첨부파일'))
+      : null;
     const result = pointsRepository.createMissionSubmission({
       user: {
         userId: interaction.user.id,
@@ -826,6 +872,7 @@ async function handleSubmissionCommand(interaction) {
       },
       missionId,
       content,
+      attachment,
     });
 
     if (!result.ok) {
@@ -851,11 +898,12 @@ async function handleSubmissionCommand(interaction) {
           [
             `제출 ID: \`${result.submission.id}\``,
             `미션: ${result.mission.title || result.mission.id}`,
+            attachment ? `첨부파일: ${attachment.name || '있음'}` : '첨부파일: 없음',
             '상태: pending',
             '',
-            '이 단계에서는 포인트가 자동 지급되지 않아요.',
-            '운영자가 확인 후 승인하면 미션 지급 포인트가 적립됩니다.',
-            '인증 내용에는 개인정보를 과도하게 적지 않아도 됩니다.',
+            '운영진 확인 후 포인트가 지급돼요.',
+            '사진이나 영상이 필요한 미션은 첨부파일을 함께 올려 주세요.',
+            '인증 내용과 첨부파일에는 개인정보가 자세히 드러나지 않도록 주의해 주세요.',
           ].join('\n'),
           {
             footer: OPERATOR_CHECK_FOOTER,
@@ -967,11 +1015,13 @@ async function handleRedemptionCommand(interaction) {
           '교환 신청이 접수됐어요',
           [
             `신청 ID: \`${result.redemption.id}\``,
+            `신청 코드: \`${result.item.displayCode || itemId}\``,
             `항목: ${result.item.name}`,
             `차감 포인트: ${formatPoints(result.item.cost)}`,
             `현재 잔액: ${formatPoints(result.transaction.balanceAfter)}`,
             '',
-            '운영진이 실제 지급 가능 여부를 확인한 뒤 완료 또는 취소 처리합니다.',
+            '운영진이 순차적으로 확인할게요.',
+            '신청 코드는 `/상점`에서 확인할 수 있어요.',
             '청년동 포인트 전환권은 청년동 내부 사용처에 한정된 운영진 처리 항목이며, 현금 환급이나 외부 교환 대상이 아니에요.',
           ].join('\n'),
           {
@@ -981,6 +1031,7 @@ async function handleRedemptionCommand(interaction) {
       ],
       ephemeral: true,
     });
+    await sendRedemptionReviewAlert(interaction, result.redemption, result.item, result.user, result.transaction);
   } catch (error) {
     console.error('교환 신청 처리 실패:', error.message);
     await interaction.reply({

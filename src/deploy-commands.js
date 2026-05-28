@@ -78,7 +78,7 @@ const commands = [
     .addStringOption((option) =>
       option
         .setName('미션id')
-        .setDescription('인증할 미션 ID를 입력해 주세요.')
+        .setDescription('인증할 미션 코드 또는 ID를 입력해 주세요.')
         .setRequired(true)
     )
     .addStringOption((option) =>
@@ -86,6 +86,12 @@ const commands = [
         .setName('내용')
         .setDescription('미션 수행 내용을 필요한 만큼만 적어 주세요.')
         .setRequired(true)
+    )
+    .addAttachmentOption((option) =>
+      option
+        .setName('첨부파일')
+        .setDescription('사진이나 영상 인증이 필요한 경우 첨부해 주세요.')
+        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
@@ -94,7 +100,7 @@ const commands = [
     .addStringOption((option) =>
       option
         .setName('항목')
-        .setDescription('신청할 상점 항목 ID를 입력해 주세요.')
+        .setDescription('신청할 상점 신청 코드 또는 내부 ID를 입력해 주세요.')
         .setRequired(true)
     )
     .addStringOption((option) =>

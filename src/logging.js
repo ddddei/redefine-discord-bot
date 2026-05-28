@@ -105,6 +105,11 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
     return;
   }
 
+  if (!interaction.client || !interaction.client.channels || typeof interaction.client.channels.fetch !== 'function') {
+    console.warn('인증 검토 알림 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    return;
+  }
+
   try {
     const channel = await interaction.client.channels.fetch(alertChannelId);
 
@@ -137,6 +142,17 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
           name: '제출 내용 일부',
           value: truncateEmbedValue(submission.content, 500),
         },
+        ...(submission.attachment ? [
+          {
+            name: '첨부파일',
+            value: truncateEmbedValue([
+              '있음',
+              submission.attachment.name ? `파일명: ${submission.attachment.name}` : '',
+              submission.attachment.contentType ? `종류: ${submission.attachment.contentType}` : '',
+              submission.attachment.url ? `링크: ${submission.attachment.url}` : '',
+            ].filter(Boolean).join('\n'), 700),
+          },
+        ] : []),
         {
           name: '제출 시간',
           value: formatKoreanTime(new Date(submission.createdAt)),
@@ -148,14 +164,74 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
       );
 
     await channel.send({ embeds: [embed] });
+    console.info(`인증 검토 알림 전송됨: channel=${alertChannelId} submission=${submission.id}`);
   } catch (error) {
     console.error('미션 인증 검토 알림 전송 실패:', error.message);
+  }
+}
+
+async function sendRedemptionReviewAlert(interaction, redemption, item, user, transaction) {
+  const alertChannelId = process.env.POINT_REDEEM_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+
+  if (!alertChannelId) {
+    console.warn('교환 신청 알림 채널이 설정되지 않아 알림을 건너뜁니다.');
+    return;
+  }
+
+  if (!interaction.client || !interaction.client.channels || typeof interaction.client.channels.fetch !== 'function') {
+    console.warn('교환 신청 알림 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    return;
+  }
+
+  try {
+    const channel = await interaction.client.channels.fetch(alertChannelId);
+
+    if (!channel || typeof channel.send !== 'function') {
+      console.warn('교환 신청 알림 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x8f7a5f)
+      .setTitle('교환 신청 확인 요청')
+      .addFields(
+        {
+          name: '신청 ID',
+          value: truncateEmbedValue(redemption.id, 300),
+        },
+        {
+          name: '신청자',
+          value: truncateEmbedValue(user.displayName || user.userId, 300),
+        },
+        {
+          name: '항목',
+          value: truncateEmbedValue(`${item.id} / ${item.name || '이름 없음'}`, 500),
+        },
+        {
+          name: '차감 포인트',
+          value: `${redemption.cost || 0}P`,
+        },
+        {
+          name: '차감 후 잔액',
+          value: `${transaction.balanceAfter || 0}P`,
+        },
+        {
+          name: '처리 안내',
+          value: `/교환관리 신청id:${redemption.id} 처리:지급완료 또는 /교환관리 신청id:${redemption.id} 처리:취소`,
+        }
+      );
+
+    await channel.send({ embeds: [embed] });
+    console.info(`교환 신청 알림 전송됨: channel=${alertChannelId} redemption=${redemption.id}`);
+  } catch (error) {
+    console.error('교환 신청 알림 전송 실패:', error.message);
   }
 }
 
 module.exports = {
   formatKoreanTime,
   sendMissionSubmissionReviewAlert,
+  sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,
   sendUnansweredQuestionLog,
 };

@@ -30,6 +30,9 @@ function createOptions(values) {
     getUser(name) {
       return Object.hasOwn(values, name) ? values[name] : null;
     },
+    getAttachment(name) {
+      return Object.hasOwn(values, name) ? values[name] : null;
+    },
   };
 }
 
@@ -236,7 +239,9 @@ function main() {
       assert.strictEqual(shopCommand.replyPayload.ephemeral, true);
       assert.strictEqual(getEmbedTitle(shopCommand.replyPayload), '여정 포인트 상점');
       assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].name, /S001/);
+      assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].value, /item_ux_active|표시 코드|설명/);
       assert.strictEqual(shopCommand.replyPayload.components.length, 1);
+      assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].description, /필요 포인트 100P/);
 
       const shopSelect = createSelectInteraction(
         'participant_shop_select',
@@ -245,9 +250,20 @@ function main() {
         '상점 UX 사용자'
       );
       await handleInteractionCreate(shopSelect);
-      assert.strictEqual(getEmbedTitle(shopSelect.updatePayload), '교환 신청 확인');
+      assert.strictEqual(getEmbedTitle(shopSelect.updatePayload), '교환 신청 전 확인해 주세요');
       assert.match(shopSelect.updatePayload.embeds[0].data.description, /S001/);
+      assert.match(shopSelect.updatePayload.embeds[0].data.description, /신청 후 예상 잔액: 150P/);
+      assert.strictEqual(shopSelect.updatePayload.components[0].components[1].toJSON().label, '신청하지 않기');
       assert.strictEqual(shopSelect.updatePayload.components.length, 1);
+
+      const cancelButton = createButtonInteraction(
+        'participant_redeem_cancel:S001',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(cancelButton);
+      assert.strictEqual(getEmbedTitle(cancelButton.updatePayload), '교환 신청을 진행하지 않았어요');
+      assert.match(cancelButton.updatePayload.embeds[0].data.description, /포인트는 차감되지 않았습니다/);
 
       const redeemButton = createButtonInteraction(
         'participant_redeem_confirm:S001',
@@ -270,6 +286,8 @@ function main() {
       assert.strictEqual(missionCommand.replyPayload.ephemeral, true);
       assert.strictEqual(getEmbedTitle(missionCommand.replyPayload), '오늘 참여 가능한 미션');
       assert.match(missionCommand.replyPayload.embeds[0].data.description, /M001/);
+      assert.doesNotMatch(missionCommand.replyPayload.embeds[0].data.description, /mission_ux_active|미션 ID|표시 코드/);
+      assert.match(missionCommand.replyPayload.embeds[0].data.description, /첨부파일/);
       assert.strictEqual(missionCommand.replyPayload.components.length, 1);
 
       const missionSelect = createSelectInteraction(
@@ -315,6 +333,30 @@ function main() {
       );
       await handleInteractionCreate(codeSubmission);
       assert.strictEqual(getEmbedTitle(codeSubmission.replyPayload), '인증 제출이 접수됐어요');
+
+      const attachmentSubmission = createChatInputInteraction(
+        '인증',
+        {
+          미션id: 'M001',
+          내용: '첨부파일 인증 테스트',
+          첨부파일: {
+            id: 'attachment_ux_photo',
+            name: 'qa-photo.jpg',
+            url: 'https://cdn.discordapp.example/qa-photo.jpg',
+            contentType: 'image/jpeg',
+            size: 12345,
+          },
+        },
+        'ux_user_attachment',
+        '첨부 UX 사용자'
+      );
+      await handleInteractionCreate(attachmentSubmission);
+      assert.strictEqual(getEmbedTitle(attachmentSubmission.replyPayload), '인증 제출이 접수됐어요');
+      assert.match(attachmentSubmission.replyPayload.embeds[0].data.description, /첨부파일: qa-photo.jpg/);
+      const submissionsWithAttachment = readJson(paths.submissions).submissions;
+      const attachmentRecord = submissionsWithAttachment.find((submission) => submission.userId === 'ux_user_attachment');
+      assert.strictEqual(attachmentRecord.attachment.name, 'qa-photo.jpg');
+      assert.strictEqual(attachmentRecord.attachment.contentType, 'image/jpeg');
 
       console.log('participant UX flow smoke test passed');
     });

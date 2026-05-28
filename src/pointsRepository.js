@@ -342,7 +342,16 @@ function createPointsRepository(paths = {}) {
     redemptionsData.redemptions.push(redemption);
     saveState({ pointsData, shopItemsData, redemptionsData });
 
-    return { ok: true, user, item, transaction, redemption };
+    return {
+      ok: true,
+      user,
+      item: {
+        ...item,
+        displayCode: resolvedItem ? resolvedItem.displayCode : undefined,
+      },
+      transaction,
+      redemption,
+    };
   }
 
   function findRedemption(redemptionsData, redemptionId) {
@@ -788,6 +797,7 @@ function createPointsRepository(paths = {}) {
       userId: input.user.userId,
       displayName: input.user.displayName || input.user.userId,
       content: input.content,
+      attachment: input.attachment || null,
       status: 'pending',
       reviewedBy: null,
       createdAt: createTimestamp(),

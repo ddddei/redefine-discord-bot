@@ -120,26 +120,21 @@ function createPointBalanceEmbed({ currentPoints, transactions = [], balanceChec
 }
 
 function formatShopLimit(item) {
-  const stockText = typeof item.stock === 'number'
-    ? `재고 ${item.stock}개`
-    : '재고 운영진 확인';
-  const monthlyLimitText = typeof item.monthlyLimit === 'number'
-    ? `월 한도 ${item.monthlyLimit}회`
-    : '월 한도 운영진 확인';
+  if (typeof item.stock === 'number') {
+    return `수량: ${item.stock}개`;
+  }
 
-  return `${stockText} / ${monthlyLimitText}`;
+  return '수량: 운영진 확인';
 }
 
 function createShopEmbed(items) {
   const embed = createGuideEmbed(
     '여정 포인트 상점',
     [
-      '현재 확인 가능한 교환 항목입니다.',
+      '교환 가능한 항목을 확인하고, 아래 선택 메뉴에서 신청할 항목을 골라주세요.',
       '',
-      '`/교환 항목`으로 신청할 수 있어요.',
-      '실제 항목과 비용, 재고, 월 한도는 운영진 확정 후 달라질 수 있어요.',
-      '청년동 포인트 전환권은 청년동 내부 사용처에 한정된 운영진 처리 항목이에요.',
-      '실제 신청 전 운영진 공지를 기준으로 확인해 주세요.',
+      '선택만으로는 포인트가 차감되지 않아요.',
+      '항목을 선택한 뒤 한 번 더 확인하고 신청할 수 있어요.',
     ].join('\n')
   );
 
@@ -147,9 +142,7 @@ function createShopEmbed(items) {
     name: truncateText(`${item.displayCode ? `${item.displayCode} · ` : ''}${item.name}`, 256, '상점 항목'),
     value: truncateEmbedValue([
       `필요 포인트: ${formatPoints(item.cost)}`,
-      `설명: ${truncateText(item.description, 220, '상세 설명은 운영진 안내를 확인해 주세요.')}`,
       formatShopLimit(item),
-      item.displayCode ? `표시 코드: ${item.displayCode}` : '',
     ].filter(Boolean).join('\n')),
   }));
 
