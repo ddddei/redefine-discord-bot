@@ -97,8 +97,65 @@ async function sendSensitiveQuestionAlert(interaction, question, detection) {
   }
 }
 
+async function sendMissionSubmissionReviewAlert(interaction, submission, mission) {
+  const alertChannelId = process.env.ACTIVITY_REVIEW_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+
+  if (!alertChannelId) {
+    console.warn('인증 검토 알림 채널이 설정되지 않아 알림을 건너뜁니다.');
+    return;
+  }
+
+  try {
+    const channel = await interaction.client.channels.fetch(alertChannelId);
+
+    if (!channel || typeof channel.send !== 'function') {
+      console.warn('인증 검토 알림 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x8f7a5f)
+      .setTitle('미션 인증 검토 요청')
+      .addFields(
+        {
+          name: '제출 ID',
+          value: truncateEmbedValue(submission.id, 300),
+        },
+        {
+          name: '제출자',
+          value: truncateEmbedValue(submission.displayName || submission.userId, 300),
+        },
+        {
+          name: '미션',
+          value: truncateEmbedValue(`${mission.id} / ${mission.title || '제목 없음'}`, 500),
+        },
+        {
+          name: '지급 예정 포인트',
+          value: `${mission.rewardPoints || 0}P`,
+        },
+        {
+          name: '제출 내용 일부',
+          value: truncateEmbedValue(submission.content, 500),
+        },
+        {
+          name: '제출 시간',
+          value: formatKoreanTime(new Date(submission.createdAt)),
+        },
+        {
+          name: '처리 안내',
+          value: `/인증관리 제출id:${submission.id} 처리:승인 또는 /인증관리 제출id:${submission.id} 처리:반려`,
+        }
+      );
+
+    await channel.send({ embeds: [embed] });
+  } catch (error) {
+    console.error('미션 인증 검토 알림 전송 실패:', error.message);
+  }
+}
+
 module.exports = {
   formatKoreanTime,
+  sendMissionSubmissionReviewAlert,
   sendSensitiveQuestionAlert,
   sendUnansweredQuestionLog,
 };

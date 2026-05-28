@@ -1,3 +1,4 @@
+const { PermissionFlagsBits } = require('discord.js');
 const {
   OPERATOR_CHECK_FOOTER,
   createChannelGuideEmbed,
@@ -10,7 +11,11 @@ const {
   formatTransactionDate,
   getNoticeTemplate,
 } = require('./embeds');
-const { sendSensitiveQuestionAlert, sendUnansweredQuestionLog } = require('./logging');
+const {
+  sendMissionSubmissionReviewAlert,
+  sendSensitiveQuestionAlert,
+  sendUnansweredQuestionLog,
+} = require('./logging');
 const { getAiFallbackAnswer } = require('./ai');
 const {
   getChannelGuideRoleNote,
@@ -24,7 +29,10 @@ const {
   listPointTransactions,
   validateUserBalance,
 } = require('./pointsStore');
-const { createPointsRepository } = require('./pointsRepository');
+const {
+  CHECKIN_REWARD_POINTS,
+  createPointsRepository,
+} = require('./pointsRepository');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
@@ -32,6 +40,16 @@ const pointsRepository = createPointsRepository();
 
 function getMemberDisplayName(user, member) {
   return member && member.displayName ? member.displayName : user.username;
+}
+
+function memberHasPermission(member, permission) {
+  return Boolean(member && member.permissions && typeof member.permissions.has === 'function'
+    && member.permissions.has(permission));
+}
+
+function isOperator(interaction) {
+  return memberHasPermission(interaction.member, PermissionFlagsBits.ManageMessages)
+    || memberHasPermission(interaction.member, PermissionFlagsBits.Administrator);
 }
 
 function getRedemptionFailureMessage(reason) {
@@ -276,6 +294,241 @@ async function handleShopCommand(interaction) {
     console.error('상점 정보 로드 실패:', error.message);
     await interaction.reply({
       content: '상점 정보를 불러오지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleCheckinCommand(interaction) {
+  try {
+    const content = interaction.options.getString('내용');
+    const result = pointsRepository.createCheckin({
+      user: {
+        userId: interaction.user.id,
+        displayName: getMemberDisplayName(interaction.user, interaction.member),
+      },
+      content,
+    });
+
+    if (!result.ok && result.reason === 'ALREADY_CHECKED_IN') {
+      await interaction.reply({
+        embeds: [
+          createGuideEmbed(
+            '오늘은 이미 체크인을 완료했어요',
+            [
+              '내일 다시 체크인할 수 있어요.',
+              '중복 포인트는 지급되지 않아요.',
+              '',
+              '체크인은 경쟁이나 출석 압박이 아니라 가벼운 참여 기록이에요.',
+            ].join('\n')
+          ),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '오늘의 체크인이 기록됐어요',
+          [
+            `지급 포인트: ${formatPoints(CHECKIN_REWARD_POINTS)}`,
+            `현재 보유 포인트: ${formatPoints(result.transaction.balanceAfter)}`,
+            `오늘 남긴 한마디: ${content || '남긴 한마디 없음'}`,
+            '',
+            '체크인은 참여를 돕는 가벼운 기록이에요. 운영 기준에 따라 지급 포인트는 조정될 수 있어요.',
+          ].join('\n')
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('체크인 처리 실패:', error.message);
+    await interaction.reply({
+      content: '체크인을 처리하지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleMissionCommand(interaction) {
+  try {
+    const missions = pointsRepository.listActiveMissions();
+
+    if (missions.length === 0) {
+      await interaction.reply({
+        embeds: [
+          createGuideEmbed(
+            '오늘 참여 가능한 미션',
+            [
+              '현재 표시할 수 있는 active 미션이 없어요.',
+              '',
+              '미션은 강제 과제가 아니라 선택형 활동이에요. 세부 기준은 운영진 안내를 확인해 주세요.',
+            ].join('\n')
+          ),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const lines = missions.slice(0, 10).map((mission) => {
+      const requiresSubmission = mission.requiresSubmission === false ? '아니오' : '예';
+      return [
+        `**${mission.title || mission.id}**`,
+        `미션 ID: \`${mission.id}\``,
+        `설명: ${mission.description || '운영진 안내를 확인해 주세요.'}`,
+        `지급 포인트: ${formatPoints(mission.rewardPoints || 0)}`,
+        `인증 필요: ${requiresSubmission}`,
+      ].join('\n');
+    });
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '오늘 참여 가능한 미션',
+          [
+            ...lines.join('\n\n').split('\n'),
+            '',
+            '`/인증 미션id:... 내용:...`으로 제출할 수 있어요.',
+            '미션은 선택형 활동이며, 가능한 범위에서만 참여하면 됩니다.',
+          ].join('\n')
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('미션 목록 조회 실패:', error.message);
+    await interaction.reply({
+      content: '미션 목록을 불러오지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+function getSubmissionFailureMessage(reason) {
+  const messages = {
+    MISSION_NOT_FOUND: '입력한 미션 ID를 찾지 못했어요. `/미션`에서 미션 ID를 확인해 주세요.',
+    MISSION_NOT_ACTIVE: '해당 미션은 현재 인증을 접수하는 상태가 아니에요.',
+    DUPLICATE_SUBMISSION: '이미 같은 미션에 대해 대기 중이거나 승인된 제출이 있어요.',
+  };
+
+  return messages[reason] || '인증 제출 조건을 확인하지 못했어요. 운영진에게 알려주세요.';
+}
+
+async function handleSubmissionCommand(interaction) {
+  try {
+    const missionId = interaction.options.getString('미션id');
+    const content = interaction.options.getString('내용');
+    const result = pointsRepository.createMissionSubmission({
+      user: {
+        userId: interaction.user.id,
+        displayName: getMemberDisplayName(interaction.user, interaction.member),
+      },
+      missionId,
+      content,
+    });
+
+    if (!result.ok) {
+      await interaction.reply({
+        embeds: [
+          createGuideEmbed(
+            '인증 제출을 접수하지 못했어요',
+            getSubmissionFailureMessage(result.reason),
+            {
+              footer: OPERATOR_CHECK_FOOTER,
+            }
+          ),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '인증 제출이 접수됐어요',
+          [
+            `제출 ID: \`${result.submission.id}\``,
+            `미션: ${result.mission.title || result.mission.id}`,
+            '상태: pending',
+            '',
+            '이 단계에서는 포인트가 자동 지급되지 않아요.',
+            '운영자가 확인 후 승인하면 미션 지급 포인트가 적립됩니다.',
+            '인증 내용에는 개인정보를 과도하게 적지 않아도 됩니다.',
+          ].join('\n'),
+          {
+            footer: OPERATOR_CHECK_FOOTER,
+          }
+        ),
+      ],
+      ephemeral: true,
+    });
+    await sendMissionSubmissionReviewAlert(interaction, result.submission, result.mission);
+  } catch (error) {
+    console.error('인증 제출 처리 실패:', error.message);
+    await interaction.reply({
+      content: '인증 제출을 처리하지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleSubmissionManageCommand(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 명령어는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const submissionId = interaction.options.getString('제출id');
+    const action = interaction.options.getString('처리');
+    const note = interaction.options.getString('메모');
+    const result = pointsRepository.reviewSubmissionById(
+      submissionId,
+      action,
+      {
+        userId: interaction.user.id,
+        displayName: getMemberDisplayName(interaction.user, interaction.member),
+      },
+      note
+    );
+    const pointLines = result.transaction
+      ? [
+        `지급 포인트: ${formatPoints(result.transaction.amount)}`,
+        `지급 후 잔액: ${formatPoints(result.transaction.balanceAfter)}`,
+        `거래 ID: \`${result.transaction.id}\``,
+      ]
+      : ['포인트는 지급하지 않았어요.'];
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          action === 'approve' ? '인증 승인 완료' : '인증 반려 완료',
+          [
+            `제출 ID: \`${result.submission.id}\``,
+            `상태: ${result.submission.status}`,
+            `미션 ID: ${result.submission.missionId}`,
+            ...pointLines,
+            `처리자 ID: ${interaction.user.id}`,
+            ...(note ? [`메모: ${note}`] : []),
+          ].join('\n'),
+          {
+            footer: OPERATOR_CHECK_FOOTER,
+          }
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('인증 관리 처리 실패:', error.message);
+    await interaction.reply({
+      content: `인증 처리를 완료하지 못했어요. ${error.message}`,
       ephemeral: true,
     });
   }
@@ -581,6 +834,21 @@ async function handleInteractionCreate(interaction) {
     return;
   }
 
+  if (interaction.commandName === '체크인') {
+    await handleCheckinCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '미션') {
+    await handleMissionCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '인증') {
+    await handleSubmissionCommand(interaction);
+    return;
+  }
+
   if (interaction.commandName === '교환') {
     await handleRedemptionCommand(interaction);
     return;
@@ -593,6 +861,11 @@ async function handleInteractionCreate(interaction) {
 
   if (interaction.commandName === '교환관리') {
     await handleRedemptionManageCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '인증관리') {
+    await handleSubmissionManageCommand(interaction);
     return;
   }
 
@@ -614,8 +887,10 @@ async function handleInteractionCreate(interaction) {
 module.exports = {
   createNoticeEmbed,
   handleChannelGuideCommand,
+  handleCheckinCommand,
   handleGuideCommand,
   handleInteractionCreate,
+  handleMissionCommand,
   handleNoticeCommand,
   handlePointLogCommand,
   handlePointManageCommand,
@@ -628,5 +903,7 @@ module.exports = {
   handleRediScheduleCommand,
   handleRedemptionCommand,
   handleRedemptionManageCommand,
+  handleSubmissionCommand,
+  handleSubmissionManageCommand,
   handleShopCommand,
 };

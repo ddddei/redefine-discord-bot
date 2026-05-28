@@ -59,6 +59,36 @@ const commands = [
     .setDescription('교환 가능한 리워드를 확인합니다.'),
 
   new SlashCommandBuilder()
+    .setName('체크인')
+    .setDescription('오늘의 체크인을 남기고 여정 포인트를 받습니다.')
+    .addStringOption((option) =>
+      option
+        .setName('내용')
+        .setDescription('오늘의 짧은 상태나 한마디를 남길 수 있어요.')
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('미션')
+    .setDescription('현재 참여 가능한 미션을 확인합니다.'),
+
+  new SlashCommandBuilder()
+    .setName('인증')
+    .setDescription('미션 수행 내용을 인증합니다.')
+    .addStringOption((option) =>
+      option
+        .setName('미션id')
+        .setDescription('인증할 미션 ID를 입력해 주세요.')
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName('내용')
+        .setDescription('미션 수행 내용을 필요한 만큼만 적어 주세요.')
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
     .setName('교환')
     .setDescription('여정 포인트로 교환 신청을 접수합니다.')
     .addStringOption((option) =>
@@ -122,6 +152,33 @@ const commands = [
       option
         .setName('메모')
         .setDescription('취소나 환불 사유 등 운영 메모를 입력해 주세요.')
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('인증관리')
+    .setDescription('운영자가 미션 인증을 승인 또는 반려합니다.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .addStringOption((option) =>
+      option
+        .setName('제출id')
+        .setDescription('처리할 인증 제출 ID를 입력해 주세요.')
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName('처리')
+        .setDescription('인증 처리 상태를 선택해 주세요.')
+        .setRequired(true)
+        .addChoices(
+          { name: '승인', value: 'approve' },
+          { name: '반려', value: 'reject' }
+        )
+    )
+    .addStringOption((option) =>
+      option
+        .setName('메모')
+        .setDescription('운영 메모가 있으면 입력해 주세요.')
         .setRequired(false)
     ),
 

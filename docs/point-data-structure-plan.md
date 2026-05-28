@@ -219,7 +219,7 @@ shopItems 1--+             missions 1--+--- N submissions
 
 ## 13. JSON MVP 파일 구조 제안
 
-이번 작업의 파일은 운영 데이터가 아니라 구조 이해와 후속 구현 논의를 위한 더미 example입니다.
+이번 작업의 example 파일은 구조 이해와 후속 구현 논의를 위한 더미 데이터입니다. MVP v1의 실제 local JSON 기본 경로는 `data/missions.local.json`, `data/submissions.local.json`이며 커밋하지 않습니다.
 
 | 파일 | 포함 최상위 키 | 표현하는 범위 |
 | --- | --- | --- |
@@ -229,13 +229,24 @@ shopItems 1--+             missions 1--+--- N submissions
 | `data/missions.example.json` | `missions` | 선택형 미션, 기간, 보상과 인증 필요 여부 |
 | `data/submissions.example.json` | `submissions` | `pending`, `approved`, `rejected` 검토 결과 |
 
-example에는 실제 Discord 사용자 ID, 운영자 이름, 채널 ID 또는 실제 참여자 인증 내용을 넣지 않습니다. 실제 운영 파일을 만들게 되면 커밋 금지 또는 `.gitignore` 처리 여부, 암호화/접근 권한, 백업 방식부터 검토해야 합니다.
+example에는 실제 Discord 사용자 ID, 운영자 이름, 채널 ID 또는 실제 참여자 인증 내용을 넣지 않습니다. `*.local.json` 운영 파일은 JSON repository MVP용이며 장기 운영 저장소가 아닙니다. 실제 참여자 운영이 길어지거나 동시 처리량이 늘면 PostgreSQL 같은 트랜잭션 저장소를 우선 검토합니다.
+
+### 참여 활동 MVP local 저장소
+
+| 파일 | 기본 경로 | 환경변수 override | 운영 메모 |
+| --- | --- | --- | --- |
+| 미션 목록 | `data/missions.local.json` | `MISSIONS_DATA_PATH` | 없으면 example 구조를 참고해 빈 `missions` 배열로 시작 |
+| 인증/체크인 기록 | `data/submissions.local.json` | `SUBMISSIONS_DATA_PATH` | 없으면 example 구조를 참고해 빈 `submissions` 배열로 시작 |
+
+`/체크인`은 `submissions`에 `type: "checkin"` 기록을 남기고, 한국 시간 기준 `YYYY-MM-DD` 문자열인 `checkinDate`와 `userId` 조합으로 하루 1회 지급을 막습니다. 기본 지급량은 10P이며 운영진 안내에 따라 조정될 수 있습니다.
+
+`/인증` 제출은 `type: "mission"`과 `status: "pending"`으로 저장됩니다. 운영자가 `/인증관리`에서 승인하면 `status: "approved"`로 바꾸고 `pointTransactions`의 `earn` 거래 ID를 `rewardTransactionId`에 연결합니다. 반려하면 `status: "rejected"`와 운영 메모만 남기며 포인트를 지급하지 않습니다. `approved` 또는 `rejected` 상태인 제출은 다시 처리하지 않습니다.
 
 ## 14. 저장 방식별 운영 판단
 
 | 방식 | 장점 | 단점 | 적합한 단계 | 운영 리스크 | 추천 여부 |
 | --- | --- | --- | --- | --- | --- |
-| JSON 파일 기반 | 구조가 단순하고 로컬에서 빠르게 확인 가능 | 동시 갱신, 원자적 처리, 백업과 조회에 취약 | 설계 검토, 비운영 MVP | 파일 충돌이나 손상으로 잔액/로그 불일치 | example 및 초기 검증에만 권장 |
+| JSON 파일 기반 | 구조가 단순하고 로컬에서 빠르게 확인 가능 | 동시 갱신, 원자적 처리, 백업과 조회에 취약 | 설계 검토, MVP v1 | 파일 충돌이나 손상으로 잔액/로그 불일치 | 초기 운영 검증에만 권장 |
 | SQLite | 단일 파일에서 트랜잭션과 제약을 사용할 수 있음 | 배포 환경의 영속 디스크와 백업 확인 필요 | 단일 인스턴스의 소규모 시험 운영 후보 | 파일 유실, 다중 인스턴스 충돌 | 배포/백업 조건 확인 시 후보 |
 | PostgreSQL | 트랜잭션, 동시성, 제약, 정산 조회 확장에 유리 | 스키마 마이그레이션, 접근 통제, 운용 부담 | 실제 참여자 운영 및 확장 | 권한 설정/백업/마이그레이션 실수 | 실제 운영의 우선 검토 후보 |
 | Google Sheets 연동 | 운영진이 정산 현황을 직접 확인하기 쉬움 | 원자적 처리와 감사 로그 확보가 어렵고 API 권한 관리 필요 | 정산 조회 또는 보조 워크플로 | 동시 편집, 개인정보 공유 범위 초과 | 보조 정산 도구로 검토 |
