@@ -3,8 +3,11 @@ const {
   createChannelGuideEmbed,
   createGuideEmbed,
   createKnowledgeEmbed,
+  createPointBalanceEmbed,
+  createShopEmbed,
   getNoticeTemplate,
 } = require('./embeds');
+const path = require('path');
 const { sendSensitiveQuestionAlert, sendUnansweredQuestionLog } = require('./logging');
 const { getAiFallbackAnswer } = require('./ai');
 const {
@@ -12,8 +15,19 @@ const {
   getOnboardingGuideMessage,
   getOnboardingRoleType,
 } = require('./onboardingRoles');
+const {
+  getUser,
+  getUserPoints,
+  listActiveShopItems,
+  listPointTransactions,
+  loadJsonFile,
+  validateUserBalance,
+} = require('./pointsStore');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
+
+const POINTS_EXAMPLE_PATH = path.join(__dirname, '..', 'data', 'points.example.json');
+const SHOP_ITEMS_EXAMPLE_PATH = path.join(__dirname, '..', 'data', 'shop-items.example.json');
 
 function createNoticeEmbed(type) {
   const noticeText = getNoticeTemplate(type);
@@ -160,6 +174,72 @@ async function handleNoticeCommand(interaction) {
   });
 }
 
+async function handlePointCommand(interaction) {
+  try {
+    const pointsData = loadJsonFile(POINTS_EXAMPLE_PATH);
+    const userId = interaction.user.id;
+    const user = getUser(pointsData, userId);
+    const currentPoints = getUserPoints(pointsData, userId);
+    const transactions = listPointTransactions(pointsData, userId, {
+      latestFirst: true,
+    });
+    const balanceCheck = user ? validateUserBalance(pointsData, userId) : null;
+
+    await interaction.reply({
+      embeds: [
+        createPointBalanceEmbed({
+          currentPoints,
+          transactions,
+          balanceCheck,
+        }),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('포인트 정보 로드 실패:', error.message);
+    await interaction.reply({
+      content: '포인트 정보를 불러오지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleShopCommand(interaction) {
+  try {
+    const shopItemsData = loadJsonFile(SHOP_ITEMS_EXAMPLE_PATH);
+    const items = listActiveShopItems(shopItemsData);
+
+    if (items.length === 0) {
+      await interaction.reply({
+        embeds: [
+          createGuideEmbed(
+            '여정 포인트 상점',
+            [
+              '현재 표시할 수 있는 상점 항목이 없어요.',
+              '',
+              '/교환 기능은 아직 준비 중입니다.',
+              '실제 항목과 비용은 운영진 확정 후 달라질 수 있어요.',
+            ].join('\n')
+          ),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      embeds: [createShopEmbed(items)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('상점 정보 로드 실패:', error.message);
+    await interaction.reply({
+      content: '상점 정보를 불러오지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
 async function handleRediHelpCommand(interaction) {
   const embed = createGuideEmbed(
     '리디파인 안내 봇 사용법',
@@ -284,6 +364,16 @@ async function handleInteractionCreate(interaction) {
     return;
   }
 
+  if (interaction.commandName === '포인트') {
+    await handlePointCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '상점') {
+    await handleShopCommand(interaction);
+    return;
+  }
+
   if (interaction.commandName === '질문') {
     await handleQuestionCommand(interaction);
     return;
@@ -300,10 +390,12 @@ module.exports = {
   handleGuideCommand,
   handleInteractionCreate,
   handleNoticeCommand,
+  handlePointCommand,
   handleQuestionCommand,
   handleRediCommand,
   handleRediContactCommand,
   handleRediHelpCommand,
   handleRediRulesCommand,
   handleRediScheduleCommand,
+  handleShopCommand,
 };

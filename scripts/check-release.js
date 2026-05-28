@@ -29,6 +29,16 @@ const checks = [
     args: ['--check', 'src/deploy-commands.js'],
   },
   {
+    label: 'src/handlers.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/handlers.js'],
+  },
+  {
+    label: 'src/embeds.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/embeds.js'],
+  },
+  {
     label: 'src/pointsStore.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/pointsStore.js'],
