@@ -127,21 +127,40 @@ function formatShopLimit(item) {
   return '수량: 운영진 확인';
 }
 
+function getShopTypeLabel(type) {
+  const normalizedType = String(type || '').trim();
+  const labels = {
+    youthCenterPoint: '🟢 청년동 포인트',
+    reward: '🎁 리워드',
+    goods: '🎁 굿즈',
+    event: '✨ 이벤트',
+    subscription: '🎟️ 구독권',
+  };
+
+  if (labels[normalizedType]) {
+    return labels[normalizedType];
+  }
+
+  if (/subscription|구독/.test(normalizedType)) {
+    return '🎟️ 구독권';
+  }
+
+  return '🎁 리워드';
+}
+
 function createShopEmbed(items) {
   const embed = createGuideEmbed(
     '여정 포인트 상점',
     [
-      '교환 가능한 항목을 확인하고, 아래 선택 메뉴에서 신청할 항목을 골라주세요.',
-      '',
+      '교환할 항목을 아래에서 골라주세요.',
       '선택만으로는 포인트가 차감되지 않아요.',
-      '항목을 선택한 뒤 한 번 더 확인하고 신청할 수 있어요.',
     ].join('\n')
   );
 
   const fields = items.slice(0, 10).map((item) => ({
-    name: truncateText(`${item.displayCode ? `${item.displayCode} · ` : ''}${item.name}`, 256, '상점 항목'),
+    name: truncateText(`${getShopTypeLabel(item.type)}\n${item.name}`, 256, '상점 항목'),
     value: truncateEmbedValue([
-      `필요 포인트: ${formatPoints(item.cost)}`,
+      `필요 포인트 ${formatPoints(item.cost)}`,
       formatShopLimit(item),
     ].filter(Boolean).join('\n')),
   }));
@@ -214,6 +233,7 @@ module.exports = {
   formatPoints,
   formatTransactionAmount,
   formatTransactionDate,
+  getShopTypeLabel,
   getNoticeTemplate,
   truncateEmbedValue,
   truncateText,

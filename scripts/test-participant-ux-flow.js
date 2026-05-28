@@ -238,9 +238,11 @@ function main() {
       await handleInteractionCreate(shopCommand);
       assert.strictEqual(shopCommand.replyPayload.ephemeral, true);
       assert.strictEqual(getEmbedTitle(shopCommand.replyPayload), '여정 포인트 상점');
-      assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].name, /S001/);
+      assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].name, /🎁 리워드/);
+      assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].name, /S001|item_ux_active/);
       assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].value, /item_ux_active|표시 코드|설명/);
       assert.strictEqual(shopCommand.replyPayload.components.length, 1);
+      assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /S001/);
       assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].description, /필요 포인트 100P/);
 
       const shopSelect = createSelectInteraction(
@@ -251,19 +253,41 @@ function main() {
       );
       await handleInteractionCreate(shopSelect);
       assert.strictEqual(getEmbedTitle(shopSelect.updatePayload), '교환 신청 전 확인해 주세요');
-      assert.match(shopSelect.updatePayload.embeds[0].data.description, /S001/);
-      assert.match(shopSelect.updatePayload.embeds[0].data.description, /신청 후 예상 잔액: 150P/);
+      assert.match(shopSelect.updatePayload.embeds[0].data.description, /🎁 리워드/);
+      assert.match(shopSelect.updatePayload.embeds[0].data.description, /신청 후 포인트: 150P/);
+      assert.match(shopSelect.updatePayload.embeds[0].data.description, /직접 입력용 신청 코드: S001/);
+      assert.doesNotMatch(shopSelect.updatePayload.embeds[0].data.description, /item_ux_active|항목 ID/);
       assert.strictEqual(shopSelect.updatePayload.components[0].components[1].toJSON().label, '신청하지 않기');
       assert.strictEqual(shopSelect.updatePayload.components.length, 1);
 
       const cancelButton = createButtonInteraction(
-        'participant_redeem_cancel:S001',
+        'participant_redeem_cancel_check:S001',
         'ux_user_shop',
         '상점 UX 사용자'
       );
       await handleInteractionCreate(cancelButton);
-      assert.strictEqual(getEmbedTitle(cancelButton.updatePayload), '교환 신청을 진행하지 않았어요');
-      assert.match(cancelButton.updatePayload.embeds[0].data.description, /포인트는 차감되지 않았습니다/);
+      assert.strictEqual(getEmbedTitle(cancelButton.updatePayload), '교환 신청을 종료할까요?');
+      assert.match(cancelButton.updatePayload.embeds[0].data.description, /아직 포인트는 차감되지 않았어요/);
+      assert.strictEqual(cancelButton.updatePayload.components[0].components[0].toJSON().label, '네, 종료할게요');
+      assert.strictEqual(cancelButton.updatePayload.components[0].components[1].toJSON().label, '다시 확인할게요');
+
+      const cancelBackButton = createButtonInteraction(
+        'participant_redeem_cancel_back:S001',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(cancelBackButton);
+      assert.strictEqual(getEmbedTitle(cancelBackButton.updatePayload), '교환 신청 전 확인해 주세요');
+      assert.match(cancelBackButton.updatePayload.embeds[0].data.description, /직접 입력용 신청 코드: S001/);
+
+      const cancelDoneButton = createButtonInteraction(
+        'participant_redeem_cancel_done:S001',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(cancelDoneButton);
+      assert.strictEqual(getEmbedTitle(cancelDoneButton.updatePayload), '교환 신청을 진행하지 않았어요');
+      assert.match(cancelDoneButton.updatePayload.embeds[0].data.description, /포인트는 차감되지 않았어요/);
 
       const redeemButton = createButtonInteraction(
         'participant_redeem_confirm:S001',
@@ -285,9 +309,10 @@ function main() {
       await handleInteractionCreate(missionCommand);
       assert.strictEqual(missionCommand.replyPayload.ephemeral, true);
       assert.strictEqual(getEmbedTitle(missionCommand.replyPayload), '오늘 참여 가능한 미션');
-      assert.match(missionCommand.replyPayload.embeds[0].data.description, /M001/);
+      assert.doesNotMatch(missionCommand.replyPayload.embeds[0].data.description, /M001/);
       assert.doesNotMatch(missionCommand.replyPayload.embeds[0].data.description, /mission_ux_active|미션 ID|표시 코드/);
       assert.match(missionCommand.replyPayload.embeds[0].data.description, /첨부파일/);
+      assert.match(missionCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /M001/);
       assert.strictEqual(missionCommand.replyPayload.components.length, 1);
 
       const missionSelect = createSelectInteraction(

@@ -19,6 +19,7 @@ const {
   formatPoints,
   formatTransactionAmount,
   formatTransactionDate,
+  getShopTypeLabel,
   getNoticeTemplate,
   truncateText,
 } = require('./embeds');
@@ -66,11 +67,17 @@ function isOperator(interaction) {
 
 function getRedemptionFailureMessage(reason) {
   const messages = {
-    USER_NOT_FOUND: '아직 포인트 기록이 없어 교환 신청을 접수할 수 없어요.',
+    USER_NOT_FOUND: [
+      '현재 포인트 기록이 없어 아직 신청할 수 없어요.',
+      '먼저 체크인이나 미션 참여 후 다시 확인해 주세요.',
+    ].join('\n'),
     ITEM_NOT_FOUND: '해당 항목을 찾지 못했어요. `/상점`에서 신청 코드를 다시 확인해 주세요.',
     SOLD_OUT: '해당 항목은 현재 재고가 없어 신청할 수 없어요.',
     ITEM_NOT_ACTIVE: '해당 항목은 현재 신청 가능한 상태가 아니에요.',
-    INSUFFICIENT_POINTS: '현재 보유 포인트가 조금 부족해요.',
+    INSUFFICIENT_POINTS: [
+      '현재 보유 포인트가 조금 부족해요.',
+      '필요 포인트와 내 포인트를 다시 확인해 주세요.',
+    ].join('\n'),
   };
 
   return messages[reason] || '교환 신청 조건을 확인하지 못했어요. 운영진에게 알려주세요.';
@@ -141,9 +148,22 @@ function createRedemptionConfirmRow(displayCode) {
       .setLabel('교환 신청하기')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId(`participant_redeem_cancel:${displayCode}`)
+      .setCustomId(`participant_redeem_cancel_check:${displayCode}`)
       .setLabel('신청하지 않기')
       .setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function createRedemptionCancelConfirmRow(displayCode) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`participant_redeem_cancel_done:${displayCode}`)
+      .setLabel('네, 종료할게요')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`participant_redeem_cancel_back:${displayCode}`)
+      .setLabel('다시 확인할게요')
+      .setStyle(ButtonStyle.Primary)
   );
 }
 
@@ -163,7 +183,7 @@ function createMissionSelectRow(missions) {
 function createMissionSubmissionModal(mission) {
   return new ModalBuilder()
     .setCustomId(`participant_mission_submit:${mission.displayCode || mission.id}`)
-    .setTitle(truncateText(`${mission.displayCode} 미션 인증`, 45, '미션 인증'))
+    .setTitle(truncateText('미션 인증하기', 45, '미션 인증'))
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -603,11 +623,10 @@ async function handleMissionCommand(interaction) {
     }
 
     const lines = missions.slice(0, 10).map((mission) => {
-      const submissionMethod = mission.requiresSubmission === false ? '선택' : '글로 남기기';
+      const submissionMethod = mission.requiresSubmission === false ? '선택' : '글로 인증';
       return [
-        `**${mission.displayCode} · ${mission.title || mission.id}**`,
-        `지급 포인트: ${formatPoints(mission.rewardPoints || 0)}`,
-        `인증 방법: ${submissionMethod}`,
+        `**🌱 ${mission.title || '미션'}**`,
+        `지급 포인트 ${formatPoints(mission.rewardPoints || 0)} · ${submissionMethod}`,
       ].join('\n');
     });
 
@@ -618,9 +637,9 @@ async function handleMissionCommand(interaction) {
           [
             ...lines.join('\n\n').split('\n'),
             '',
-            '가능한 범위에서 가볍게 참여해 주세요.',
-            '아래 선택 메뉴에서 인증할 미션을 고를 수 있어요.',
-            '사진이나 영상 인증이 필요한 경우 `/인증` 명령어에서 첨부파일을 함께 올릴 수 있어요.',
+            '미션은 선택형 활동이에요.',
+            '글로 남길 수 있는 미션은 아래에서 선택해 제출할 수 있어요.',
+            '사진이나 영상이 필요한 경우 `/인증`에서 첨부파일을 함께 올려 주세요.',
           ].join('\n')
         ),
       ],
@@ -663,11 +682,12 @@ async function handleShopSelect(interaction) {
         createGuideEmbed(
           '현재 보유 포인트가 조금 부족해요',
           [
-            `신청 항목: ${item.displayCode} · ${item.name}`,
+            `${getShopTypeLabel(item.type)} ${item.name}`,
             `필요 포인트: ${formatPoints(item.cost)}`,
             `현재 보유 포인트: ${formatPoints(currentPoints)}`,
             '',
-            '포인트가 충분해진 뒤 다시 신청할 수 있어요.',
+            '필요 포인트와 내 포인트를 다시 확인해 주세요.',
+            '`/포인트`, `/미션`, `/체크인`으로 현재 상태를 확인할 수 있어요.',
           ].join('\n'),
           { footer: OPERATOR_CHECK_FOOTER }
         ),
@@ -682,13 +702,16 @@ async function handleShopSelect(interaction) {
       createGuideEmbed(
         '교환 신청 전 확인해 주세요',
         [
-          `신청 항목: ${item.displayCode} · ${item.name}`,
+          `${getShopTypeLabel(item.type)}`,
+          `${item.name}`,
           `필요 포인트: ${formatPoints(item.cost)}`,
-          `현재 보유 포인트: ${formatPoints(currentPoints)}`,
-          `신청 후 예상 잔액: ${formatPoints(balanceAfter)}`,
+          `현재 포인트: ${formatPoints(currentPoints)}`,
+          `신청 후 포인트: ${formatPoints(balanceAfter)}`,
           '',
           '신청이 완료되면 포인트가 차감돼요.',
           '단순 변심에 따른 취소나 환불은 원칙적으로 어렵습니다.',
+          '',
+          `직접 입력용 신청 코드: ${item.displayCode}`,
         ].join('\n'),
         { footer: OPERATOR_CHECK_FOOTER }
       ),
@@ -700,13 +723,72 @@ async function handleShopSelect(interaction) {
 async function handleRedemptionConfirmButton(interaction) {
   const displayCode = interaction.customId.split(':')[1];
 
-  if (interaction.customId.startsWith('participant_redeem_cancel:')) {
+  if (interaction.customId.startsWith('participant_redeem_cancel_check:')) {
+    await interaction.update({
+      embeds: [
+        createGuideEmbed(
+          '교환 신청을 종료할까요?',
+          [
+            '아직 포인트는 차감되지 않았어요.',
+          ].join('\n')
+        ),
+      ],
+      components: [createRedemptionCancelConfirmRow(displayCode)],
+    });
+    return;
+  }
+
+  if (interaction.customId.startsWith('participant_redeem_cancel_back:')) {
+    const item = pointsRepository.resolveActiveShopItem(displayCode);
+
+    if (!item) {
+      await interaction.update({
+        embeds: [
+          createGuideEmbed(
+            '상점 항목을 찾지 못했어요',
+            '`/상점`을 다시 실행해 현재 선택 가능한 항목을 확인해 주세요.',
+            { footer: OPERATOR_CHECK_FOOTER }
+          ),
+        ],
+        components: [],
+      });
+      return;
+    }
+
+    const currentPoints = getUserPoints(pointsRepository.loadState().pointsData, interaction.user.id);
+    const balanceAfter = currentPoints - item.cost;
+
+    await interaction.update({
+      embeds: [
+        createGuideEmbed(
+          '교환 신청 전 확인해 주세요',
+          [
+            `${getShopTypeLabel(item.type)}`,
+            `${item.name}`,
+            `필요 포인트: ${formatPoints(item.cost)}`,
+            `현재 포인트: ${formatPoints(currentPoints)}`,
+            `신청 후 포인트: ${formatPoints(balanceAfter)}`,
+            '',
+            '신청이 완료되면 포인트가 차감돼요.',
+            '단순 변심에 따른 취소나 환불은 원칙적으로 어렵습니다.',
+            '',
+            `직접 입력용 신청 코드: ${item.displayCode}`,
+          ].join('\n'),
+          { footer: OPERATOR_CHECK_FOOTER }
+        ),
+      ],
+      components: [createRedemptionConfirmRow(displayCode)],
+    });
+    return;
+  }
+
+  if (interaction.customId.startsWith('participant_redeem_cancel_done:')) {
     await interaction.update({
       embeds: [
         createGuideEmbed(
           '교환 신청을 진행하지 않았어요',
           [
-            '포인트는 차감되지 않았습니다.',
+            '포인트는 차감되지 않았어요.',
             '',
             '`/상점`에서 다시 항목을 선택할 수 있어요.',
           ].join('\n')
@@ -897,12 +979,14 @@ async function handleSubmissionCommand(interaction) {
           '인증 제출이 접수됐어요',
           [
             `제출 ID: \`${result.submission.id}\``,
+            `미션 코드: \`${result.mission.displayCode || missionId}\``,
             `미션: ${result.mission.title || result.mission.id}`,
             attachment ? `첨부파일: ${attachment.name || '있음'}` : '첨부파일: 없음',
             '상태: pending',
             '',
             '운영진 확인 후 포인트가 지급돼요.',
-            '사진이나 영상이 필요한 미션은 첨부파일을 함께 올려 주세요.',
+            '글로 남길 수 있는 미션은 `/미션`에서 선택해 제출할 수 있어요.',
+            '사진이나 영상이 필요한 경우 `/인증`에서 첨부파일을 함께 올려 주세요.',
             '인증 내용과 첨부파일에는 개인정보가 자세히 드러나지 않도록 주의해 주세요.',
           ].join('\n'),
           {
@@ -1582,7 +1666,9 @@ async function handleInteractionCreate(interaction) {
 
   if (interaction.isButton && interaction.isButton()) {
     if (interaction.customId.startsWith('participant_redeem_confirm:')
-      || interaction.customId.startsWith('participant_redeem_cancel:')) {
+      || interaction.customId.startsWith('participant_redeem_cancel_check:')
+      || interaction.customId.startsWith('participant_redeem_cancel_done:')
+      || interaction.customId.startsWith('participant_redeem_cancel_back:')) {
       await handleRedemptionConfirmButton(interaction);
       return;
     }

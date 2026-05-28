@@ -166,7 +166,7 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
     await channel.send({ embeds: [embed] });
     console.info(`인증 검토 알림 전송됨: channel=${alertChannelId} submission=${submission.id}`);
   } catch (error) {
-    console.error('미션 인증 검토 알림 전송 실패:', error.message);
+    console.warn('미션 인증 검토 알림 전송 실패:', error.message);
   }
 }
 
@@ -224,7 +224,7 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
     await channel.send({ embeds: [embed] });
     console.info(`교환 신청 알림 전송됨: channel=${alertChannelId} redemption=${redemption.id}`);
   } catch (error) {
-    console.error('교환 신청 알림 전송 실패:', error.message);
+    console.warn('교환 신청 알림 전송 실패:', error.message);
   }
 }
 
