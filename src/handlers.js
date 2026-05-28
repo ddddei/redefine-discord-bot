@@ -5,9 +5,11 @@ const {
   createKnowledgeEmbed,
   createPointBalanceEmbed,
   createShopEmbed,
+  formatPoints,
+  formatTransactionAmount,
+  formatTransactionDate,
   getNoticeTemplate,
 } = require('./embeds');
-const path = require('path');
 const { sendSensitiveQuestionAlert, sendUnansweredQuestionLog } = require('./logging');
 const { getAiFallbackAnswer } = require('./ai');
 const {
@@ -20,14 +22,53 @@ const {
   getUserPoints,
   listActiveShopItems,
   listPointTransactions,
-  loadJsonFile,
   validateUserBalance,
 } = require('./pointsStore');
+const { createPointsRepository } = require('./pointsRepository');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
-const POINTS_EXAMPLE_PATH = path.join(__dirname, '..', 'data', 'points.example.json');
-const SHOP_ITEMS_EXAMPLE_PATH = path.join(__dirname, '..', 'data', 'shop-items.example.json');
+const pointsRepository = createPointsRepository();
+
+function getMemberDisplayName(user, member) {
+  return member && member.displayName ? member.displayName : user.username;
+}
+
+function getRedemptionFailureMessage(reason) {
+  const messages = {
+    USER_NOT_FOUND: '아직 포인트 기록이 없어 교환 신청을 접수할 수 없어요.',
+    ITEM_NOT_FOUND: '해당 상점 항목을 찾지 못했어요. `/상점`에서 항목 ID를 확인해 주세요.',
+    SOLD_OUT: '해당 항목은 현재 재고가 없어 신청할 수 없어요.',
+    ITEM_NOT_ACTIVE: '해당 항목은 현재 신청 가능한 상태가 아니에요.',
+    INSUFFICIENT_POINTS: '보유 포인트가 부족해 교환 신청을 접수할 수 없어요.',
+  };
+
+  return messages[reason] || '교환 신청 조건을 확인하지 못했어요. 운영진에게 알려주세요.';
+}
+
+function createPointTransactionLogEmbed(transactions) {
+  const lines = transactions.length > 0
+    ? transactions.map((transaction) => {
+      return [
+        `- ${formatTransactionDate(transaction.createdAt)}`,
+        transaction.id,
+        transaction.userId,
+        transaction.type,
+        formatTransactionAmount(transaction.amount),
+        `잔액 ${formatPoints(transaction.balanceAfter)}`,
+        transaction.reason,
+      ].join(' / ');
+    })
+    : ['표시할 포인트 로그가 없어요.'];
+
+  return createGuideEmbed(
+    '포인트 로그',
+    lines.join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
 
 function createNoticeEmbed(type) {
   const noticeText = getNoticeTemplate(type);
@@ -176,7 +217,7 @@ async function handleNoticeCommand(interaction) {
 
 async function handlePointCommand(interaction) {
   try {
-    const pointsData = loadJsonFile(POINTS_EXAMPLE_PATH);
+    const { pointsData } = pointsRepository.loadState();
     const userId = interaction.user.id;
     const user = getUser(pointsData, userId);
     const currentPoints = getUserPoints(pointsData, userId);
@@ -206,7 +247,7 @@ async function handlePointCommand(interaction) {
 
 async function handleShopCommand(interaction) {
   try {
-    const shopItemsData = loadJsonFile(SHOP_ITEMS_EXAMPLE_PATH);
+    const { shopItemsData } = pointsRepository.loadState();
     const items = listActiveShopItems(shopItemsData);
 
     if (items.length === 0) {
@@ -235,6 +276,172 @@ async function handleShopCommand(interaction) {
     console.error('상점 정보 로드 실패:', error.message);
     await interaction.reply({
       content: '상점 정보를 불러오지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleRedemptionCommand(interaction) {
+  try {
+    const itemId = interaction.options.getString('항목');
+    const note = interaction.options.getString('메모');
+    const result = pointsRepository.requestRedemption({
+      user: {
+        userId: interaction.user.id,
+        displayName: getMemberDisplayName(interaction.user, interaction.member),
+      },
+      itemId,
+      note,
+    });
+
+    if (!result.ok) {
+      await interaction.reply({
+        embeds: [
+          createGuideEmbed(
+            '교환 신청을 접수하지 못했어요',
+            getRedemptionFailureMessage(result.reason),
+            {
+              footer: OPERATOR_CHECK_FOOTER,
+            }
+          ),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '교환 신청이 접수됐어요',
+          [
+            `신청 ID: \`${result.redemption.id}\``,
+            `항목: ${result.item.name}`,
+            `차감 포인트: ${formatPoints(result.item.cost)}`,
+            `현재 잔액: ${formatPoints(result.transaction.balanceAfter)}`,
+            '',
+            '운영진이 실제 지급 가능 여부를 확인한 뒤 완료 또는 취소 처리합니다.',
+            '청년동 포인트 전환권은 청년동 내부 사용처에 한정된 운영진 처리 항목이며, 현금 환급이나 외부 교환 대상이 아니에요.',
+          ].join('\n'),
+          {
+            footer: OPERATOR_CHECK_FOOTER,
+          }
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('교환 신청 처리 실패:', error.message);
+    await interaction.reply({
+      content: '교환 신청을 처리하지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handlePointManageCommand(interaction) {
+  try {
+    const target = interaction.options.getUser('대상');
+    const amount = interaction.options.getInteger('증감');
+    const reason = interaction.options.getString('사유');
+    const result = pointsRepository.adjustUserPoints({
+      user: {
+        userId: target.id,
+        displayName: target.username,
+      },
+      amount,
+      reason,
+      operatorId: interaction.user.id,
+    });
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '포인트 조정 완료',
+          [
+            `대상: ${target.username}`,
+            `증감: ${formatTransactionAmount(result.transaction.amount)}`,
+            `조정 후 잔액: ${formatPoints(result.transaction.balanceAfter)}`,
+            `거래 ID: \`${result.transaction.id}\``,
+            `사유: ${reason}`,
+          ].join('\n'),
+          {
+            footer: OPERATOR_CHECK_FOOTER,
+          }
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('포인트 관리 처리 실패:', error.message);
+    await interaction.reply({
+      content: `포인트 조정을 처리하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleRedemptionManageCommand(interaction) {
+  try {
+    const redemptionId = interaction.options.getString('신청id');
+    const action = interaction.options.getString('처리');
+    const note = interaction.options.getString('메모');
+    const result = pointsRepository.reviewRedemption({
+      redemptionId,
+      action,
+      note,
+      operatorId: interaction.user.id,
+    });
+    const refundLine = result.refundTransaction
+      ? [`환불 거래 ID: \`${result.refundTransaction.id}\``, `환불 후 잔액: ${formatPoints(result.refundTransaction.balanceAfter)}`]
+      : [];
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '교환 신청 처리 완료',
+          [
+            `신청 ID: \`${result.redemption.id}\``,
+            `상태: ${result.redemption.status}`,
+            `사용자 ID: ${result.redemption.userId}`,
+            ...refundLine,
+            `처리자 ID: ${interaction.user.id}`,
+          ].join('\n'),
+          {
+            footer: OPERATOR_CHECK_FOOTER,
+          }
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('교환 관리 처리 실패:', error.message);
+    await interaction.reply({
+      content: `교환 신청 처리를 완료하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handlePointLogCommand(interaction) {
+  try {
+    const user = interaction.options.getUser('사용자');
+    const type = interaction.options.getString('종류');
+    const limit = interaction.options.getInteger('개수') || 10;
+    const transactions = pointsRepository.listTransactions({
+      userId: user ? user.id : undefined,
+      type: type || undefined,
+      limit,
+    });
+
+    await interaction.reply({
+      embeds: [createPointTransactionLogEmbed(transactions)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('포인트 로그 조회 실패:', error.message);
+    await interaction.reply({
+      content: '포인트 로그를 불러오지 못했어요. 운영진에게 알려주세요.',
       ephemeral: true,
     });
   }
@@ -374,6 +581,26 @@ async function handleInteractionCreate(interaction) {
     return;
   }
 
+  if (interaction.commandName === '교환') {
+    await handleRedemptionCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '포인트관리') {
+    await handlePointManageCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '교환관리') {
+    await handleRedemptionManageCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '포인트로그') {
+    await handlePointLogCommand(interaction);
+    return;
+  }
+
   if (interaction.commandName === '질문') {
     await handleQuestionCommand(interaction);
     return;
@@ -390,6 +617,8 @@ module.exports = {
   handleGuideCommand,
   handleInteractionCreate,
   handleNoticeCommand,
+  handlePointLogCommand,
+  handlePointManageCommand,
   handlePointCommand,
   handleQuestionCommand,
   handleRediCommand,
@@ -397,5 +626,7 @@ module.exports = {
   handleRediHelpCommand,
   handleRediRulesCommand,
   handleRediScheduleCommand,
+  handleRedemptionCommand,
+  handleRedemptionManageCommand,
   handleShopCommand,
 };

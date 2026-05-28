@@ -44,14 +44,29 @@ const checks = [
     args: ['--check', 'src/pointsStore.js'],
   },
   {
+    label: 'src/pointsRepository.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/pointsRepository.js'],
+  },
+  {
     label: 'scripts/test-points-store.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-points-store.js'],
   },
   {
+    label: 'scripts/test-points-repository.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-points-repository.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
+  },
+  {
+    label: 'pointsRepository smoke test',
+    command: 'node',
+    args: ['scripts/test-points-repository.js'],
   },
   {
     label: '데이터 구조 검사',

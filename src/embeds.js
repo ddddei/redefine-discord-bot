@@ -136,7 +136,7 @@ function createShopEmbed(items) {
     [
       '현재 확인 가능한 교환 항목입니다.',
       '',
-      '/교환 기능은 아직 준비 중입니다.',
+      '`/교환 항목`으로 신청할 수 있어요.',
       '실제 항목과 비용, 재고, 월 한도는 운영진 확정 후 달라질 수 있어요.',
       '청년동 포인트 전환권은 청년동 내부 사용처에 한정된 운영진 처리 항목이에요.',
       '실제 신청 전 운영진 공지를 기준으로 확인해 주세요.',
@@ -217,6 +217,9 @@ module.exports = {
   createPointBalanceEmbed,
   createShopEmbed,
   createKnowledgeEmbed,
+  formatPoints,
+  formatTransactionAmount,
+  formatTransactionDate,
   getNoticeTemplate,
   truncateEmbedValue,
   truncateText,
