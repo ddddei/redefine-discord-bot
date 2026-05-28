@@ -215,6 +215,125 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('운영현황')
+    .setDescription('운영자가 포인트, 교환, 인증 현황을 요약 확인합니다.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .addStringOption((option) =>
+      option
+        .setName('종류')
+        .setDescription('확인할 운영 현황 종류를 선택해 주세요.')
+        .setRequired(false)
+        .addChoices(
+          { name: '요약', value: 'summary' },
+          { name: '교환대기', value: 'pendingRedemptions' },
+          { name: '인증대기', value: 'pendingSubmissions' },
+          { name: '미션', value: 'missions' },
+          { name: '상점', value: 'shop' }
+        )
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName('개수')
+        .setDescription('최대 20개까지 확인할 수 있어요.')
+        .setRequired(false)
+        .setMinValue(1)
+        .setMaxValue(20)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('미션관리')
+    .setDescription('운영자가 미션을 추가하거나 상태를 변경합니다.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .addStringOption((option) =>
+      option
+        .setName('작업')
+        .setDescription('미션 관리 작업을 선택해 주세요.')
+        .setRequired(true)
+        .addChoices(
+          { name: '목록', value: 'list' },
+          { name: '추가', value: 'create' },
+          { name: '수정', value: 'update' },
+          { name: '활성화', value: 'activate' },
+          { name: '일시중지', value: 'pause' },
+          { name: '종료', value: 'close' }
+        )
+    )
+    .addStringOption((option) =>
+      option.setName('미션id').setDescription('대상 미션 ID를 입력해 주세요.').setRequired(false)
+    )
+    .addStringOption((option) =>
+      option.setName('제목').setDescription('미션 제목을 입력해 주세요.').setRequired(false)
+    )
+    .addStringOption((option) =>
+      option.setName('설명').setDescription('미션 설명을 입력해 주세요.').setRequired(false)
+    )
+    .addIntegerOption((option) =>
+      option.setName('포인트').setDescription('지급 포인트를 입력해 주세요.').setRequired(false).setMinValue(1)
+    )
+    .addBooleanOption((option) =>
+      option.setName('인증필요').setDescription('인증 제출이 필요한 미션인지 선택해 주세요.').setRequired(false)
+    )
+    .addStringOption((option) =>
+      option.setName('날짜').setDescription('미션 날짜를 YYYY-MM-DD 형식으로 입력해 주세요.').setRequired(false)
+    )
+    .addStringOption((option) =>
+      option.setName('메모').setDescription('운영 메모를 입력해 주세요.').setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('상점관리')
+    .setDescription('운영자가 상점 항목을 추가하거나 상태를 변경합니다.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .addStringOption((option) =>
+      option
+        .setName('작업')
+        .setDescription('상점 관리 작업을 선택해 주세요.')
+        .setRequired(true)
+        .addChoices(
+          { name: '목록', value: 'list' },
+          { name: '추가', value: 'create' },
+          { name: '수정', value: 'update' },
+          { name: '활성화', value: 'activate' },
+          { name: '일시중지', value: 'pause' },
+          { name: '품절', value: 'soldOut' },
+          { name: '숨김', value: 'hide' }
+        )
+    )
+    .addStringOption((option) =>
+      option.setName('항목id').setDescription('대상 상점 항목 ID를 입력해 주세요.').setRequired(false)
+    )
+    .addStringOption((option) =>
+      option.setName('이름').setDescription('상점 항목 이름을 입력해 주세요.').setRequired(false)
+    )
+    .addStringOption((option) =>
+      option.setName('설명').setDescription('상점 항목 설명을 입력해 주세요.').setRequired(false)
+    )
+    .addIntegerOption((option) =>
+      option.setName('비용').setDescription('필요 포인트를 입력해 주세요.').setRequired(false).setMinValue(1)
+    )
+    .addIntegerOption((option) =>
+      option.setName('재고').setDescription('재고 수량을 입력해 주세요.').setRequired(false).setMinValue(0)
+    )
+    .addIntegerOption((option) =>
+      option.setName('월한도').setDescription('월별 신청 한도를 입력해 주세요.').setRequired(false).setMinValue(0)
+    )
+    .addStringOption((option) =>
+      option
+        .setName('유형')
+        .setDescription('상점 항목 유형을 선택해 주세요.')
+        .setRequired(false)
+        .addChoices(
+          { name: '청년동포인트', value: 'youthCenterPoint' },
+          { name: '리워드', value: 'reward' },
+          { name: '굿즈', value: 'goods' },
+          { name: '이벤트', value: 'event' }
+        )
+    )
+    .addStringOption((option) =>
+      option.setName('메모').setDescription('운영 메모를 입력해 주세요.').setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
     .setName('공지')
     .setDescription('운영진이 복사해 쓸 수 있는 공지 템플릿을 보여줘요.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)

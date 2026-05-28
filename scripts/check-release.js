@@ -64,6 +64,11 @@ const checks = [
     args: ['--check', 'scripts/test-point-activity-flow.js'],
   },
   {
+    label: 'scripts/test-admin-management-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-admin-management-flow.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -77,6 +82,11 @@ const checks = [
     label: 'point activity flow smoke test',
     command: 'node',
     args: ['scripts/test-point-activity-flow.js'],
+  },
+  {
+    label: 'admin management flow smoke test',
+    command: 'node',
+    args: ['scripts/test-admin-management-flow.js'],
   },
   {
     label: '데이터 구조 검사',

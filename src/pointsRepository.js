@@ -18,11 +18,11 @@ const {
 const DATA_DIR = path.join(__dirname, '..', 'data');
 
 const DEFAULT_PATHS = {
-  points: process.env.POINTS_DATA_PATH || path.join(DATA_DIR, 'points.json'),
+  points: process.env.POINTS_DATA_PATH || path.join(DATA_DIR, 'points.local.json'),
   pointsFallback: path.join(DATA_DIR, 'points.example.json'),
-  shopItems: process.env.SHOP_ITEMS_DATA_PATH || path.join(DATA_DIR, 'shop-items.json'),
+  shopItems: process.env.SHOP_ITEMS_DATA_PATH || path.join(DATA_DIR, 'shop-items.local.json'),
   shopItemsFallback: path.join(DATA_DIR, 'shop-items.example.json'),
-  redemptions: process.env.REDEMPTIONS_DATA_PATH || path.join(DATA_DIR, 'redemptions.json'),
+  redemptions: process.env.REDEMPTIONS_DATA_PATH || path.join(DATA_DIR, 'redemptions.local.json'),
   redemptionsFallback: path.join(DATA_DIR, 'redemptions.example.json'),
   missions: process.env.MISSIONS_DATA_PATH || path.join(DATA_DIR, 'missions.local.json'),
   missionsFallback: path.join(DATA_DIR, 'missions.example.json'),
@@ -31,6 +31,9 @@ const DEFAULT_PATHS = {
 };
 
 const CHECKIN_REWARD_POINTS = 10;
+const MISSION_STATUSES = new Set(['draft', 'active', 'paused', 'closed', 'archived']);
+const SHOP_ITEM_STATUSES = new Set(['active', 'paused', 'soldOut', 'hidden']);
+const SHOP_ITEM_TYPES = new Set(['youthCenterPoint', 'reward', 'goods', 'event']);
 
 function createTimestamp() {
   return new Date().toISOString();
@@ -80,6 +83,34 @@ function loadActivityWithFallback(primaryPath, fallbackPath, collectionName) {
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function sortNewestFirst(items, dateFields) {
+  return items.slice().sort((left, right) => {
+    const leftDate = dateFields.map((field) => left[field]).find(Boolean);
+    const rightDate = dateFields.map((field) => right[field]).find(Boolean);
+    return new Date(rightDate || 0).getTime() - new Date(leftDate || 0).getTime();
+  });
+}
+
+function requireTrimmedString(value, fieldName) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`${fieldName} 값이 필요합니다.`);
+  }
+
+  return value.trim();
+}
+
+function requirePositiveInteger(value, fieldName) {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${fieldName} 값은 0보다 큰 정수여야 합니다.`);
+  }
+}
+
+function requireNonNegativeInteger(value, fieldName) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${fieldName} 값은 0 이상의 정수여야 합니다.`);
+  }
 }
 
 function createPointsRepository(paths = {}) {
@@ -329,10 +360,243 @@ function createPointsRepository(paths = {}) {
     return missions.filter((mission) => mission.status === 'active');
   }
 
+  function listMissionsForAdmin(options = {}) {
+    const missionsData = getMissionsData();
+    const missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
+    const sorted = sortNewestFirst(missions, ['updatedAt', 'createdAt', 'activeDate', 'startAt']);
+    return sorted.slice(0, options.limit || 10);
+  }
+
   function findMission(missionId) {
     const missionsData = getMissionsData();
     const missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
     return missions.find((mission) => mission.id === missionId) || null;
+  }
+
+  function createMission(input) {
+    const title = requireTrimmedString(input.title, '제목');
+    const description = requireTrimmedString(input.description, '설명');
+    requirePositiveInteger(input.rewardPoints, '포인트');
+
+    const missionsData = cloneJson(getMissionsData());
+    missionsData.missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
+
+    const id = input.id && input.id.trim() ? input.id.trim() : createOperationId('mission');
+    if (missionsData.missions.some((mission) => mission.id === id)) {
+      throw new Error('이미 같은 미션 ID가 있습니다.');
+    }
+
+    const now = createTimestamp();
+    const mission = {
+      id,
+      title,
+      description,
+      rewardPoints: input.rewardPoints,
+      activeDate: input.activeDate || getKoreanDateString(),
+      startAt: null,
+      endAt: null,
+      status: input.status || 'draft',
+      requiresSubmission: input.requiresSubmission !== false,
+      maxPerUser: 1,
+      createdAt: now,
+      updatedAt: now,
+      note: input.note || null,
+    };
+
+    if (!MISSION_STATUSES.has(mission.status)) {
+      throw new Error('지원하지 않는 미션 상태입니다.');
+    }
+
+    missionsData.missions.push(mission);
+    saveMissionsData(missionsData);
+    return mission;
+  }
+
+  function updateMission(missionId, updates) {
+    requireTrimmedString(missionId, '미션id');
+    const missionsData = cloneJson(getMissionsData());
+    const missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
+    const index = missions.findIndex((mission) => mission.id === missionId);
+
+    if (index === -1) {
+      throw new Error('미션을 찾을 수 없습니다.');
+    }
+
+    const nextUpdates = {};
+    if (updates.title !== undefined && updates.title !== null) {
+      nextUpdates.title = requireTrimmedString(updates.title, '제목');
+    }
+    if (updates.description !== undefined && updates.description !== null) {
+      nextUpdates.description = requireTrimmedString(updates.description, '설명');
+    }
+    if (updates.rewardPoints !== undefined && updates.rewardPoints !== null) {
+      requirePositiveInteger(updates.rewardPoints, '포인트');
+      nextUpdates.rewardPoints = updates.rewardPoints;
+    }
+    if (updates.requiresSubmission !== undefined && updates.requiresSubmission !== null) {
+      nextUpdates.requiresSubmission = Boolean(updates.requiresSubmission);
+    }
+    if (updates.activeDate !== undefined && updates.activeDate !== null) {
+      nextUpdates.activeDate = updates.activeDate;
+    }
+    if (updates.note !== undefined) {
+      nextUpdates.note = updates.note || null;
+    }
+    if (updates.status !== undefined && updates.status !== null) {
+      if (!MISSION_STATUSES.has(updates.status)) {
+        throw new Error('지원하지 않는 미션 상태입니다.');
+      }
+      nextUpdates.status = updates.status;
+    }
+
+    const mission = {
+      ...missions[index],
+      ...nextUpdates,
+      updatedAt: createTimestamp(),
+    };
+    missions[index] = mission;
+    missionsData.missions = missions;
+    saveMissionsData(missionsData);
+    return mission;
+  }
+
+  function setMissionStatus(missionId, status) {
+    if (!MISSION_STATUSES.has(status)) {
+      throw new Error('지원하지 않는 미션 상태입니다.');
+    }
+
+    return updateMission(missionId, { status });
+  }
+
+  function findShopItem(itemId) {
+    const { shopItemsData } = loadState();
+    return getShopItem(shopItemsData, itemId);
+  }
+
+  function listShopItemsForAdmin(options = {}) {
+    const { shopItemsData } = loadState();
+    const shopItems = Array.isArray(shopItemsData.shopItems) ? shopItemsData.shopItems : [];
+    const sorted = sortNewestFirst(shopItems, ['updatedAt', 'createdAt']);
+    return sorted.slice(0, options.limit || 10);
+  }
+
+  function createShopItem(input) {
+    const name = requireTrimmedString(input.name, '이름');
+    const description = requireTrimmedString(input.description, '설명');
+    requirePositiveInteger(input.cost, '비용');
+
+    if (!SHOP_ITEM_TYPES.has(input.type)) {
+      throw new Error('지원하지 않는 상점 항목 유형입니다.');
+    }
+
+    if (input.stock !== null && input.stock !== undefined) {
+      requireNonNegativeInteger(input.stock, '재고');
+    }
+
+    if (input.monthlyLimit !== null && input.monthlyLimit !== undefined) {
+      requireNonNegativeInteger(input.monthlyLimit, '월한도');
+    }
+
+    const state = loadState();
+    const shopItemsData = cloneJson(state.shopItemsData);
+    shopItemsData.shopItems = Array.isArray(shopItemsData.shopItems) ? shopItemsData.shopItems : [];
+
+    const id = input.id && input.id.trim() ? input.id.trim() : createOperationId('item');
+    if (shopItemsData.shopItems.some((item) => item.id === id)) {
+      throw new Error('이미 같은 상점 항목 ID가 있습니다.');
+    }
+
+    const now = createTimestamp();
+    const item = {
+      id,
+      name,
+      description,
+      cost: input.cost,
+      stock: input.stock ?? null,
+      monthlyLimit: input.monthlyLimit ?? null,
+      status: input.status || 'paused',
+      type: input.type,
+      createdAt: now,
+      updatedAt: now,
+      note: input.note || null,
+    };
+
+    if (!SHOP_ITEM_STATUSES.has(item.status)) {
+      throw new Error('지원하지 않는 상점 항목 상태입니다.');
+    }
+
+    shopItemsData.shopItems.push(item);
+    saveState({ ...state, shopItemsData });
+    return item;
+  }
+
+  function updateShopItem(itemId, updates) {
+    requireTrimmedString(itemId, '항목id');
+    const state = loadState();
+    const shopItemsData = cloneJson(state.shopItemsData);
+    const shopItems = Array.isArray(shopItemsData.shopItems) ? shopItemsData.shopItems : [];
+    const index = shopItems.findIndex((item) => item.id === itemId);
+
+    if (index === -1) {
+      throw new Error('상점 항목을 찾을 수 없습니다.');
+    }
+
+    const nextUpdates = {};
+    if (updates.name !== undefined && updates.name !== null) {
+      nextUpdates.name = requireTrimmedString(updates.name, '이름');
+    }
+    if (updates.description !== undefined && updates.description !== null) {
+      nextUpdates.description = requireTrimmedString(updates.description, '설명');
+    }
+    if (updates.cost !== undefined && updates.cost !== null) {
+      requirePositiveInteger(updates.cost, '비용');
+      nextUpdates.cost = updates.cost;
+    }
+    if (updates.stock !== undefined) {
+      if (updates.stock !== null) {
+        requireNonNegativeInteger(updates.stock, '재고');
+      }
+      nextUpdates.stock = updates.stock;
+    }
+    if (updates.monthlyLimit !== undefined) {
+      if (updates.monthlyLimit !== null) {
+        requireNonNegativeInteger(updates.monthlyLimit, '월한도');
+      }
+      nextUpdates.monthlyLimit = updates.monthlyLimit;
+    }
+    if (updates.type !== undefined && updates.type !== null) {
+      if (!SHOP_ITEM_TYPES.has(updates.type)) {
+        throw new Error('지원하지 않는 상점 항목 유형입니다.');
+      }
+      nextUpdates.type = updates.type;
+    }
+    if (updates.note !== undefined) {
+      nextUpdates.note = updates.note || null;
+    }
+    if (updates.status !== undefined && updates.status !== null) {
+      if (!SHOP_ITEM_STATUSES.has(updates.status)) {
+        throw new Error('지원하지 않는 상점 항목 상태입니다.');
+      }
+      nextUpdates.status = updates.status;
+    }
+
+    const item = {
+      ...shopItems[index],
+      ...nextUpdates,
+      updatedAt: createTimestamp(),
+    };
+    shopItems[index] = item;
+    shopItemsData.shopItems = shopItems;
+    saveState({ ...state, shopItemsData });
+    return item;
+  }
+
+  function setShopItemStatus(itemId, status) {
+    if (!SHOP_ITEM_STATUSES.has(status)) {
+      throw new Error('지원하지 않는 상점 항목 상태입니다.');
+    }
+
+    return updateShopItem(itemId, { status });
   }
 
   function hasCheckedInToday(userId, dateString = getKoreanDateString()) {
@@ -557,20 +821,71 @@ function createPointsRepository(paths = {}) {
       .slice(0, limit);
   }
 
+  function listPendingRedemptions(limit = 10) {
+    const { redemptionsData } = loadState();
+    const redemptions = Array.isArray(redemptionsData.redemptions) ? redemptionsData.redemptions : [];
+    return sortNewestFirst(redemptions, ['requestedAt', 'createdAt'])
+      .filter((redemption) => redemption.status === 'pending')
+      .slice(0, limit);
+  }
+
+  function listTodayCheckins(dateString = getKoreanDateString()) {
+    const submissionsData = getSubmissionsData();
+    const submissions = Array.isArray(submissionsData.submissions) ? submissionsData.submissions : [];
+    return submissions.filter((submission) => {
+      return submission.type === 'checkin'
+        && submission.checkinDate === dateString
+        && submission.status === 'approved';
+    });
+  }
+
+  function listRecentActivityLogs(limit = 10) {
+    return listTransactions({ limit });
+  }
+
+  function getOperationSummary() {
+    const state = loadState();
+    const activeShopItems = Array.isArray(state.shopItemsData.shopItems)
+      ? state.shopItemsData.shopItems.filter((item) => item.status === 'active')
+      : [];
+
+    return {
+      pendingRedemptionsCount: listPendingRedemptions(1000).length,
+      pendingSubmissionsCount: listPendingSubmissions(1000).length,
+      activeMissionsCount: listActiveMissions().length,
+      activeShopItemsCount: activeShopItems.length,
+      todayCheckinsCount: listTodayCheckins().length,
+      recentTransactions: listTransactions({ limit: 5 }),
+      recentRedemptions: sortNewestFirst(
+        Array.isArray(state.redemptionsData.redemptions) ? state.redemptionsData.redemptions : [],
+        ['requestedAt', 'createdAt']
+      ).slice(0, 5),
+    };
+  }
+
   return {
     adjustUserPoints,
     approveSubmissionById,
     createCheckin,
+    createMission,
     createMissionSubmission,
+    createShopItem,
     findMission,
+    findShopItem,
     findSubmission,
     getMissionsData,
+    getOperationSummary,
     getSubmissionsData,
     hasCheckedInToday,
+    listMissionsForAdmin,
     listTransactions,
     listActiveMissions,
+    listPendingRedemptions,
     listPendingSubmissions,
     listRecentSubmissions,
+    listRecentActivityLogs,
+    listShopItemsForAdmin,
+    listTodayCheckins,
     loadState,
     requestRedemption,
     rejectSubmissionById,
@@ -579,6 +894,10 @@ function createPointsRepository(paths = {}) {
     saveMissionsData,
     saveSubmissionsData,
     saveState,
+    setMissionStatus,
+    setShopItemStatus,
+    updateMission,
+    updateShopItem,
   };
 }
 

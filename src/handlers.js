@@ -10,6 +10,7 @@ const {
   formatTransactionAmount,
   formatTransactionDate,
   getNoticeTemplate,
+  truncateText,
 } = require('./embeds');
 const {
   sendMissionSubmissionReviewAlert,
@@ -82,6 +83,141 @@ function createPointTransactionLogEmbed(transactions) {
   return createGuideEmbed(
     '포인트 로그',
     lines.join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function createEmptyListEmbed(title, guideText) {
+  return createGuideEmbed(title, guideText, {
+    footer: OPERATOR_CHECK_FOOTER,
+  });
+}
+
+function formatNullableCount(value, unit) {
+  return typeof value === 'number' ? `${value}${unit}` : '운영진 확인';
+}
+
+function formatAdminMissionLine(mission) {
+  return [
+    `- ID: \`${mission.id}\``,
+    `  제목: ${mission.title || '제목 없음'}`,
+    `  상태: ${mission.status || '상태 없음'} / 포인트: ${formatPoints(mission.rewardPoints || 0)} / 날짜: ${mission.activeDate || '미지정'}`,
+  ].join('\n');
+}
+
+function formatAdminShopItemLine(item) {
+  return [
+    `- ID: \`${item.id}\``,
+    `  이름: ${item.name || '이름 없음'}`,
+    `  상태: ${item.status || '상태 없음'} / 비용: ${formatPoints(item.cost || 0)} / 재고: ${formatNullableCount(item.stock, '개')} / 유형: ${item.type || '미지정'}`,
+  ].join('\n');
+}
+
+function createOperationSummaryEmbed(summary) {
+  const recentLogLines = summary.recentTransactions.length > 0
+    ? summary.recentTransactions.map((transaction) => {
+      return `- ${formatTransactionDate(transaction.createdAt)} ${transaction.userId} ${formatTransactionAmount(transaction.amount)} ${transaction.reason}`;
+    })
+    : ['최근 포인트 로그가 없어요.'];
+
+  return createGuideEmbed(
+    '운영 현황 요약',
+    [
+      `교환 대기: ${summary.pendingRedemptionsCount}건`,
+      `인증 대기: ${summary.pendingSubmissionsCount}건`,
+      `활성 미션: ${summary.activeMissionsCount}개`,
+      `활성 상점 항목: ${summary.activeShopItemsCount}개`,
+      `오늘 체크인: ${summary.todayCheckinsCount}건`,
+      '',
+      '최근 포인트 로그',
+      ...recentLogLines,
+      '',
+      '다음 확인',
+      '`/운영현황 종류:교환대기`',
+      '`/운영현황 종류:인증대기`',
+      '`/미션관리 작업:목록`',
+      '`/상점관리 작업:목록`',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function createPendingRedemptionsEmbed(redemptions) {
+  if (redemptions.length === 0) {
+    return createEmptyListEmbed('교환 대기 목록', '현재 pending 교환 신청이 없어요.');
+  }
+
+  const lines = redemptions.map((redemption) => {
+    return [
+      `- 신청 ID: \`${redemption.id}\``,
+      `  사용자: ${redemption.displayName || redemption.userId}`,
+      `  항목 ID: \`${redemption.itemId}\` / 비용: ${formatPoints(redemption.cost || 0)}`,
+      `  신청 시간: ${formatTransactionDate(redemption.requestedAt)}`,
+      `  처리: \`/교환관리 신청id:${redemption.id} 처리:지급완료\` 또는 취소`,
+    ].join('\n');
+  });
+
+  return createGuideEmbed('교환 대기 목록', lines.join('\n\n'), {
+    footer: OPERATOR_CHECK_FOOTER,
+  });
+}
+
+function createPendingSubmissionsEmbed(submissions) {
+  if (submissions.length === 0) {
+    return createEmptyListEmbed('인증 대기 목록', '현재 pending 인증 제출이 없어요.');
+  }
+
+  const lines = submissions.map((submission) => {
+    const content = truncateText(submission.content, 80, '제출 내용 없음');
+    return [
+      `- 제출 ID: \`${submission.id}\``,
+      `  사용자: ${submission.displayName || submission.userId}`,
+      `  미션 ID: \`${submission.missionId}\``,
+      `  내용: ${content}`,
+      `  제출 시간: ${formatTransactionDate(submission.createdAt)}`,
+      `  처리: \`/인증관리 제출id:${submission.id} 처리:승인\` 또는 반려`,
+    ].join('\n');
+  });
+
+  return createGuideEmbed('인증 대기 목록', lines.join('\n\n'), {
+    footer: OPERATOR_CHECK_FOOTER,
+  });
+}
+
+function createAdminMissionListEmbed(missions) {
+  if (missions.length === 0) {
+    return createEmptyListEmbed('미션 관리 목록', '등록된 미션이 없어요. `/미션관리 작업:추가`로 먼저 생성해 주세요.');
+  }
+
+  return createGuideEmbed(
+    '미션 관리 목록',
+    [
+      ...missions.map(formatAdminMissionLine),
+      '',
+      'status가 active인 미션만 참여자 `/미션`에 노출됩니다.',
+    ].join('\n\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function createAdminShopListEmbed(items) {
+  if (items.length === 0) {
+    return createEmptyListEmbed('상점 관리 목록', '등록된 상점 항목이 없어요. `/상점관리 작업:추가`로 먼저 생성해 주세요.');
+  }
+
+  return createGuideEmbed(
+    '상점 관리 목록',
+    [
+      ...items.map(formatAdminShopItemLine),
+      '',
+      'status가 active인 항목만 참여자 `/상점`에 노출됩니다.',
+    ].join('\n\n'),
     {
       footer: OPERATOR_CHECK_FOOTER,
     }
@@ -700,6 +836,240 @@ async function handlePointLogCommand(interaction) {
   }
 }
 
+async function handleOperationStatusCommand(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 명령어는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const type = interaction.options.getString('종류') || 'summary';
+    const limit = interaction.options.getInteger('개수') || 10;
+    let embed;
+
+    if (type === 'pendingRedemptions') {
+      embed = createPendingRedemptionsEmbed(pointsRepository.listPendingRedemptions(limit));
+    } else if (type === 'pendingSubmissions') {
+      embed = createPendingSubmissionsEmbed(pointsRepository.listPendingSubmissions(limit));
+    } else if (type === 'missions') {
+      embed = createAdminMissionListEmbed(pointsRepository.listMissionsForAdmin({ limit }));
+    } else if (type === 'shop') {
+      embed = createAdminShopListEmbed(pointsRepository.listShopItemsForAdmin({ limit }));
+    } else {
+      embed = createOperationSummaryEmbed(pointsRepository.getOperationSummary());
+    }
+
+    await interaction.reply({
+      embeds: [embed],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('운영 현황 조회 실패:', error.message);
+    await interaction.reply({
+      content: `운영 현황을 불러오지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+function getMissionUpdatesFromOptions(options) {
+  const updates = {};
+  const title = options.getString('제목');
+  const description = options.getString('설명');
+  const rewardPoints = options.getInteger('포인트');
+  const requiresSubmission = options.getBoolean('인증필요');
+  const activeDate = options.getString('날짜');
+  const note = options.getString('메모');
+
+  if (title !== null) updates.title = title;
+  if (description !== null) updates.description = description;
+  if (rewardPoints !== null) updates.rewardPoints = rewardPoints;
+  if (requiresSubmission !== null) updates.requiresSubmission = requiresSubmission;
+  if (activeDate !== null) updates.activeDate = activeDate;
+  if (note !== null) updates.note = note;
+
+  return updates;
+}
+
+function createMissionAdminResultEmbed(title, mission, extraLines = []) {
+  const requiresSubmission = mission.requiresSubmission === false ? '아니오' : '예';
+  return createGuideEmbed(
+    title,
+    [
+      `미션 ID: \`${mission.id}\``,
+      `제목: ${mission.title || '제목 없음'}`,
+      `상태: ${mission.status}`,
+      `지급 포인트: ${formatPoints(mission.rewardPoints || 0)}`,
+      `인증 필요: ${requiresSubmission}`,
+      `날짜: ${mission.activeDate || '미지정'}`,
+      ...extraLines,
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+async function handleMissionManageCommand(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 명령어는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const action = interaction.options.getString('작업');
+    const missionId = interaction.options.getString('미션id');
+    let embed;
+
+    if (action === 'list') {
+      embed = createAdminMissionListEmbed(pointsRepository.listMissionsForAdmin({ limit: 20 }));
+    } else if (action === 'create') {
+      const mission = pointsRepository.createMission({
+        title: interaction.options.getString('제목'),
+        description: interaction.options.getString('설명'),
+        rewardPoints: interaction.options.getInteger('포인트'),
+        requiresSubmission: interaction.options.getBoolean('인증필요') ?? true,
+        activeDate: interaction.options.getString('날짜') || undefined,
+        note: interaction.options.getString('메모'),
+      });
+      embed = createMissionAdminResultEmbed('미션 생성 완료', mission, [
+        '',
+        `참여자에게 노출하려면 \`/미션관리 작업:활성화 미션id:${mission.id}\`를 실행해 주세요.`,
+      ]);
+    } else if (action === 'update') {
+      const mission = pointsRepository.updateMission(missionId, getMissionUpdatesFromOptions(interaction.options));
+      embed = createMissionAdminResultEmbed('미션 수정 완료', mission);
+    } else {
+      const statusByAction = {
+        activate: 'active',
+        pause: 'paused',
+        close: 'closed',
+      };
+      const mission = pointsRepository.setMissionStatus(missionId, statusByAction[action]);
+      embed = createMissionAdminResultEmbed('미션 상태 변경 완료', mission, [
+        mission.status === 'active' ? '이 미션은 참여자 `/미션`에 노출됩니다.' : '이 미션은 참여자 `/미션`에 노출되지 않습니다.',
+      ]);
+    }
+
+    await interaction.reply({
+      embeds: [embed],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('미션 관리 처리 실패:', error.message);
+    await interaction.reply({
+      content: `미션 관리를 완료하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+function getShopUpdatesFromOptions(options) {
+  const updates = {};
+  const name = options.getString('이름');
+  const description = options.getString('설명');
+  const cost = options.getInteger('비용');
+  const stock = options.getInteger('재고');
+  const monthlyLimit = options.getInteger('월한도');
+  const type = options.getString('유형');
+  const note = options.getString('메모');
+
+  if (name !== null) updates.name = name;
+  if (description !== null) updates.description = description;
+  if (cost !== null) updates.cost = cost;
+  if (stock !== null) updates.stock = stock;
+  if (monthlyLimit !== null) updates.monthlyLimit = monthlyLimit;
+  if (type !== null) updates.type = type;
+  if (note !== null) updates.note = note;
+
+  return updates;
+}
+
+function createShopAdminResultEmbed(title, item, extraLines = []) {
+  return createGuideEmbed(
+    title,
+    [
+      `항목 ID: \`${item.id}\``,
+      `이름: ${item.name || '이름 없음'}`,
+      `상태: ${item.status}`,
+      `비용: ${formatPoints(item.cost || 0)}`,
+      `재고: ${formatNullableCount(item.stock, '개')}`,
+      `월한도: ${formatNullableCount(item.monthlyLimit, '회')}`,
+      `유형: ${item.type || '미지정'}`,
+      ...extraLines,
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+async function handleShopManageCommand(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 명령어는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const action = interaction.options.getString('작업');
+    const itemId = interaction.options.getString('항목id');
+    let embed;
+
+    if (action === 'list') {
+      embed = createAdminShopListEmbed(pointsRepository.listShopItemsForAdmin({ limit: 20 }));
+    } else if (action === 'create') {
+      const item = pointsRepository.createShopItem({
+        name: interaction.options.getString('이름'),
+        description: interaction.options.getString('설명'),
+        cost: interaction.options.getInteger('비용'),
+        stock: interaction.options.getInteger('재고'),
+        monthlyLimit: interaction.options.getInteger('월한도'),
+        type: interaction.options.getString('유형'),
+        note: interaction.options.getString('메모'),
+      });
+      embed = createShopAdminResultEmbed('상점 항목 생성 완료', item, [
+        '',
+        `참여자에게 노출하려면 \`/상점관리 작업:활성화 항목id:${item.id}\`를 실행해 주세요.`,
+        item.type === 'youthCenterPoint' ? '청년동 포인트 전환권은 청년동 내부 사용처에 한정된 운영진 처리 항목입니다.' : '',
+      ].filter(Boolean));
+    } else if (action === 'update') {
+      const item = pointsRepository.updateShopItem(itemId, getShopUpdatesFromOptions(interaction.options));
+      embed = createShopAdminResultEmbed('상점 항목 수정 완료', item);
+    } else {
+      const statusByAction = {
+        activate: 'active',
+        pause: 'paused',
+        soldOut: 'soldOut',
+        hide: 'hidden',
+      };
+      const item = pointsRepository.setShopItemStatus(itemId, statusByAction[action]);
+      embed = createShopAdminResultEmbed('상점 항목 상태 변경 완료', item, [
+        item.status === 'active' ? '이 항목은 참여자 `/상점`에 노출됩니다.' : '이 항목은 참여자 `/상점`에 노출되지 않습니다.',
+      ]);
+    }
+
+    await interaction.reply({
+      embeds: [embed],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('상점 관리 처리 실패:', error.message);
+    await interaction.reply({
+      content: `상점 관리를 완료하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
 async function handleRediHelpCommand(interaction) {
   const embed = createGuideEmbed(
     '리디파인 안내 봇 사용법',
@@ -874,6 +1244,21 @@ async function handleInteractionCreate(interaction) {
     return;
   }
 
+  if (interaction.commandName === '운영현황') {
+    await handleOperationStatusCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '미션관리') {
+    await handleMissionManageCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '상점관리') {
+    await handleShopManageCommand(interaction);
+    return;
+  }
+
   if (interaction.commandName === '질문') {
     await handleQuestionCommand(interaction);
     return;
@@ -886,12 +1271,17 @@ async function handleInteractionCreate(interaction) {
 
 module.exports = {
   createNoticeEmbed,
+  createOperationSummaryEmbed,
+  createPendingRedemptionsEmbed,
+  createPendingSubmissionsEmbed,
   handleChannelGuideCommand,
   handleCheckinCommand,
   handleGuideCommand,
   handleInteractionCreate,
+  handleMissionManageCommand,
   handleMissionCommand,
   handleNoticeCommand,
+  handleOperationStatusCommand,
   handlePointLogCommand,
   handlePointManageCommand,
   handlePointCommand,
@@ -905,5 +1295,6 @@ module.exports = {
   handleRedemptionManageCommand,
   handleSubmissionCommand,
   handleSubmissionManageCommand,
+  handleShopManageCommand,
   handleShopCommand,
 };
