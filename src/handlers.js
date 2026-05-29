@@ -65,19 +65,28 @@ function isOperator(interaction) {
     || memberHasPermission(interaction.member, PermissionFlagsBits.Administrator);
 }
 
+function createInsufficientPointsDescription({ currentPoints = 0, requiredPoints = 0 } = {}) {
+  return [
+    '아직 포인트가 조금 부족해요.',
+    '',
+    `현재 포인트: ${formatPoints(currentPoints)}`,
+    `필요 포인트: ${formatPoints(requiredPoints)}`,
+    '',
+    '체크인이나 미션 참여 후 다시 신청할 수 있어요.',
+    '',
+    '- `/체크인`으로 오늘의 기록 남기기',
+    '- `/미션`에서 참여 가능한 활동 확인하기',
+    '- `/포인트`로 내 포인트 다시 확인하기',
+  ].join('\n');
+}
+
 function getRedemptionFailureMessage(reason) {
   const messages = {
-    USER_NOT_FOUND: [
-      '현재 포인트 기록이 없어 아직 신청할 수 없어요.',
-      '먼저 체크인이나 미션 참여 후 다시 확인해 주세요.',
-    ].join('\n'),
+    USER_NOT_FOUND: createInsufficientPointsDescription({ currentPoints: 0, requiredPoints: 0 }),
     ITEM_NOT_FOUND: '해당 항목을 찾지 못했어요. `/상점`에서 신청 코드를 다시 확인해 주세요.',
     SOLD_OUT: '해당 항목은 현재 재고가 없어 신청할 수 없어요.',
     ITEM_NOT_ACTIVE: '해당 항목은 현재 신청 가능한 상태가 아니에요.',
-    INSUFFICIENT_POINTS: [
-      '현재 보유 포인트가 조금 부족해요.',
-      '필요 포인트와 내 포인트를 다시 확인해 주세요.',
-    ].join('\n'),
+    INSUFFICIENT_POINTS: createInsufficientPointsDescription(),
   };
 
   return messages[reason] || '교환 신청 조건을 확인하지 못했어요. 운영진에게 알려주세요.';
@@ -611,9 +620,10 @@ async function handleMissionCommand(interaction) {
           createGuideEmbed(
             '오늘 참여 가능한 미션',
             [
-              '현재 표시할 수 있는 active 미션이 없어요.',
+              '지금 바로 참여할 수 있는 미션은 없어요.',
               '',
-              '미션은 강제 과제가 아니라 선택형 활동이에요. 세부 기준은 운영진 안내를 확인해 주세요.',
+              '운영진이 새 미션을 열면 이곳에서 확인할 수 있어요.',
+              '오늘은 `/체크인`으로 가볍게 기록을 남겨도 괜찮아요.',
             ].join('\n')
           ),
         ],
@@ -623,10 +633,12 @@ async function handleMissionCommand(interaction) {
     }
 
     const lines = missions.slice(0, 10).map((mission) => {
-      const submissionMethod = mission.requiresSubmission === false ? '선택' : '글로 인증';
+      const actionText = mission.requiresSubmission === false
+        ? `${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`
+        : `글로 남기면 ${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`;
       return [
         `**🌱 ${mission.title || '미션'}**`,
-        `지급 포인트 ${formatPoints(mission.rewardPoints || 0)} · ${submissionMethod}`,
+        actionText,
       ].join('\n');
     });
 
@@ -680,16 +692,15 @@ async function handleShopSelect(interaction) {
     await interaction.update({
       embeds: [
         createGuideEmbed(
-          '현재 보유 포인트가 조금 부족해요',
+          '아직 포인트가 조금 부족해요',
           [
             `${getShopTypeLabel(item.type)} ${item.name}`,
-            `필요 포인트: ${formatPoints(item.cost)}`,
-            `현재 보유 포인트: ${formatPoints(currentPoints)}`,
             '',
-            '필요 포인트와 내 포인트를 다시 확인해 주세요.',
-            '`/포인트`, `/미션`, `/체크인`으로 현재 상태를 확인할 수 있어요.',
+            createInsufficientPointsDescription({
+              currentPoints,
+              requiredPoints: item.cost,
+            }),
           ].join('\n'),
-          { footer: OPERATOR_CHECK_FOOTER }
         ),
       ],
       components: [],
@@ -702,8 +713,8 @@ async function handleShopSelect(interaction) {
       createGuideEmbed(
         '교환 신청 전 확인해 주세요',
         [
-          `${getShopTypeLabel(item.type)}`,
-          `${item.name}`,
+          `${getShopTypeLabel(item.type)} ${item.name}`,
+          '',
           `필요 포인트: ${formatPoints(item.cost)}`,
           `현재 포인트: ${formatPoints(currentPoints)}`,
           `신청 후 포인트: ${formatPoints(balanceAfter)}`,
@@ -763,8 +774,8 @@ async function handleRedemptionConfirmButton(interaction) {
         createGuideEmbed(
           '교환 신청 전 확인해 주세요',
           [
-            `${getShopTypeLabel(item.type)}`,
-            `${item.name}`,
+            `${getShopTypeLabel(item.type)} ${item.name}`,
+            '',
             `필요 포인트: ${formatPoints(item.cost)}`,
             `현재 포인트: ${formatPoints(currentPoints)}`,
             `신청 후 포인트: ${formatPoints(balanceAfter)}`,
@@ -828,16 +839,12 @@ async function handleRedemptionConfirmButton(interaction) {
         createGuideEmbed(
           '교환 신청이 접수됐어요',
           [
-            `신청 코드: \`${result.item.displayCode || displayCode}\``,
-            `신청 ID: \`${result.redemption.id}\``,
-            `항목: ${result.item.name}`,
+            `신청한 항목: ${result.item.name}`,
             `차감 포인트: ${formatPoints(result.item.cost)}`,
             `현재 잔액: ${formatPoints(result.transaction.balanceAfter)}`,
             '',
             '운영진이 순차적으로 확인할게요.',
-            '신청 코드는 `/상점`에서 확인할 수 있어요.',
           ].join('\n'),
-          { footer: OPERATOR_CHECK_FOOTER }
         ),
       ],
       components: [],
@@ -907,15 +914,11 @@ async function handleMissionSubmissionModal(interaction) {
         createGuideEmbed(
           '인증 제출이 접수됐어요',
           [
-            `미션 코드: \`${result.mission.displayCode || displayCode}\``,
-            `제출 ID: \`${result.submission.id}\``,
             `미션: ${result.mission.title || result.mission.id}`,
-            '상태: pending',
             '',
             '운영진 확인 후 포인트가 지급돼요.',
             '사진이나 영상이 필요한 미션은 `/인증` 첨부파일 옵션으로 제출해 주세요.',
           ].join('\n'),
-          { footer: OPERATOR_CHECK_FOOTER }
         ),
       ],
       ephemeral: true,
@@ -978,20 +981,13 @@ async function handleSubmissionCommand(interaction) {
         createGuideEmbed(
           '인증 제출이 접수됐어요',
           [
-            `제출 ID: \`${result.submission.id}\``,
-            `미션 코드: \`${result.mission.displayCode || missionId}\``,
             `미션: ${result.mission.title || result.mission.id}`,
             attachment ? `첨부파일: ${attachment.name || '있음'}` : '첨부파일: 없음',
-            '상태: pending',
             '',
             '운영진 확인 후 포인트가 지급돼요.',
             '글로 남길 수 있는 미션은 `/미션`에서 선택해 제출할 수 있어요.',
             '사진이나 영상이 필요한 경우 `/인증`에서 첨부파일을 함께 올려 주세요.',
-            '인증 내용과 첨부파일에는 개인정보가 자세히 드러나지 않도록 주의해 주세요.',
           ].join('\n'),
-          {
-            footer: OPERATOR_CHECK_FOOTER,
-          }
         ),
       ],
       ephemeral: true,

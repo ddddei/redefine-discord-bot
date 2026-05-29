@@ -114,17 +114,9 @@ function createPointBalanceEmbed({ currentPoints, transactions = [], balanceChec
       ...balanceNote,
       '',
       '여정 포인트는 참여를 돕는 선택형 요소이며, 비교나 경쟁을 위한 점수가 아니에요.',
-      '현재는 운영 전 조회형 v1이라 실제 운영 데이터 저장 방식은 확정 전이에요.',
+      '체크인, 미션, 상점 이용 내역을 여기에서 가볍게 확인할 수 있어요.',
     ].join('\n')
   );
-}
-
-function formatShopLimit(item) {
-  if (typeof item.stock === 'number') {
-    return `수량: ${item.stock}개`;
-  }
-
-  return '수량: 운영진 확인';
 }
 
 function getShopTypeLabel(type) {
@@ -148,6 +140,14 @@ function getShopTypeLabel(type) {
   return '🎁 리워드';
 }
 
+function formatShopParticipantSummary(item) {
+  if (String(item.type || '').trim() === 'youthCenterPoint') {
+    return `${formatPoints(item.cost)}로 청년동 포인트 전환을 신청할 수 있어요.`;
+  }
+
+  return `${formatPoints(item.cost)}로 교환을 신청할 수 있어요.`;
+}
+
 function createShopEmbed(items) {
   const embed = createGuideEmbed(
     '여정 포인트 상점',
@@ -159,10 +159,7 @@ function createShopEmbed(items) {
 
   const fields = items.slice(0, 10).map((item) => ({
     name: truncateText(`${getShopTypeLabel(item.type)}\n${item.name}`, 256, '상점 항목'),
-    value: truncateEmbedValue([
-      `필요 포인트 ${formatPoints(item.cost)}`,
-      formatShopLimit(item),
-    ].filter(Boolean).join('\n')),
+    value: truncateEmbedValue(formatShopParticipantSummary(item), 80),
   }));
 
   if (fields.length > 0) {

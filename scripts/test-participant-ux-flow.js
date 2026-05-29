@@ -185,6 +185,7 @@ function main() {
     users: [
       { userId: 'ux_user_shop', displayName: '상점 UX 사용자', totalPoints: 250, status: 'active' },
       { userId: 'ux_user_code', displayName: '코드 UX 사용자', totalPoints: 250, status: 'active' },
+      { userId: 'ux_user_low_points', displayName: '포인트 부족 UX 사용자', totalPoints: 20, status: 'active' },
     ],
     pointTransactions: [],
   });
@@ -194,7 +195,7 @@ function main() {
       {
         id: 'item_ux_active',
         name: 'UX 테스트 리워드',
-        description: '선택 메뉴와 확인 버튼 테스트 항목입니다.',
+        description: '짧게 교환 신청을 확인할 수 있어요.',
         cost: 100,
         stock: 3,
         monthlyLimit: 1,
@@ -241,6 +242,8 @@ function main() {
       assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].name, /🎁 리워드/);
       assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].name, /S001|item_ux_active/);
       assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].value, /item_ux_active|표시 코드|설명/);
+      assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].value, /100P로 교환을 신청할 수 있어요/);
+      assert.ok(shopCommand.replyPayload.embeds[0].data.fields[0].value.length <= 80);
       assert.strictEqual(shopCommand.replyPayload.components.length, 1);
       assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /S001/);
       assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].description, /필요 포인트 100P/);
@@ -259,6 +262,21 @@ function main() {
       assert.doesNotMatch(shopSelect.updatePayload.embeds[0].data.description, /item_ux_active|항목 ID/);
       assert.strictEqual(shopSelect.updatePayload.components[0].components[1].toJSON().label, '신청하지 않기');
       assert.strictEqual(shopSelect.updatePayload.components.length, 1);
+
+      const lowPointSelect = createSelectInteraction(
+        'participant_shop_select',
+        ['S001'],
+        'ux_user_low_points',
+        '포인트 부족 UX 사용자'
+      );
+      await handleInteractionCreate(lowPointSelect);
+      assert.strictEqual(getEmbedTitle(lowPointSelect.updatePayload), '아직 포인트가 조금 부족해요');
+      assert.match(lowPointSelect.updatePayload.embeds[0].data.description, /현재 포인트: 20P/);
+      assert.match(lowPointSelect.updatePayload.embeds[0].data.description, /필요 포인트: 100P/);
+      assert.match(lowPointSelect.updatePayload.embeds[0].data.description, /\/체크인/);
+      assert.match(lowPointSelect.updatePayload.embeds[0].data.description, /\/미션/);
+      assert.match(lowPointSelect.updatePayload.embeds[0].data.description, /\/포인트/);
+      assert.doesNotMatch(lowPointSelect.updatePayload.embeds[0].data.description, /실패|오류|접수할 수 없습니다/);
 
       const cancelButton = createButtonInteraction(
         'participant_redeem_cancel_check:S001',
@@ -296,7 +314,7 @@ function main() {
       );
       await handleInteractionCreate(redeemButton);
       assert.strictEqual(getEmbedTitle(redeemButton.updatePayload), '교환 신청이 접수됐어요');
-      assert.match(redeemButton.updatePayload.embeds[0].data.description, /S001/);
+      assert.doesNotMatch(redeemButton.updatePayload.embeds[0].data.description, /S001|신청 ID|pending|item_ux_active/);
       assert.strictEqual(redeemButton.updatePayload.components.length, 0);
 
       const redemptionsData = readJson(paths.redemptions);
@@ -311,6 +329,7 @@ function main() {
       assert.strictEqual(getEmbedTitle(missionCommand.replyPayload), '오늘 참여 가능한 미션');
       assert.doesNotMatch(missionCommand.replyPayload.embeds[0].data.description, /M001/);
       assert.doesNotMatch(missionCommand.replyPayload.embeds[0].data.description, /mission_ux_active|미션 ID|표시 코드/);
+      assert.match(missionCommand.replyPayload.embeds[0].data.description, /글로 남기면 15P를 받을 수 있어요/);
       assert.match(missionCommand.replyPayload.embeds[0].data.description, /첨부파일/);
       assert.match(missionCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /M001/);
       assert.strictEqual(missionCommand.replyPayload.components.length, 1);
@@ -334,7 +353,7 @@ function main() {
       await handleInteractionCreate(modalSubmit);
       assert.strictEqual(modalSubmit.replyPayload.ephemeral, true);
       assert.strictEqual(getEmbedTitle(modalSubmit.replyPayload), '인증 제출이 접수됐어요');
-      assert.match(modalSubmit.replyPayload.embeds[0].data.description, /M001/);
+      assert.doesNotMatch(modalSubmit.replyPayload.embeds[0].data.description, /M001|제출 ID|pending|mission_ux_active/);
 
       const submissionsData = readJson(paths.submissions);
       assert.strictEqual(submissionsData.submissions.length, 1);
@@ -358,6 +377,7 @@ function main() {
       );
       await handleInteractionCreate(codeSubmission);
       assert.strictEqual(getEmbedTitle(codeSubmission.replyPayload), '인증 제출이 접수됐어요');
+      assert.doesNotMatch(codeSubmission.replyPayload.embeds[0].data.description, /M001|제출 ID|pending|mission_ux_active/);
 
       const attachmentSubmission = createChatInputInteraction(
         '인증',
@@ -382,6 +402,29 @@ function main() {
       const attachmentRecord = submissionsWithAttachment.find((submission) => submission.userId === 'ux_user_attachment');
       assert.strictEqual(attachmentRecord.attachment.name, 'qa-photo.jpg');
       assert.strictEqual(attachmentRecord.attachment.contentType, 'image/jpeg');
+
+      writeJson(paths.missions, {
+        isExample: false,
+        missions: [
+          {
+            id: 'mission_ux_active',
+            title: 'UX 테스트 미션',
+            description: '선택 메뉴와 인증 모달 테스트 미션입니다.',
+            rewardPoints: 15,
+            activeDate: '2030-07-01',
+            status: 'paused',
+            requiresSubmission: true,
+            maxPerUser: 1,
+          },
+        ],
+      });
+
+      const noMissionCommand = createChatInputInteraction('미션', {}, 'ux_user_mission_empty', '미션 없음 UX 사용자');
+      await handleInteractionCreate(noMissionCommand);
+      assert.strictEqual(getEmbedTitle(noMissionCommand.replyPayload), '오늘 참여 가능한 미션');
+      assert.match(noMissionCommand.replyPayload.embeds[0].data.description, /지금 바로 참여할 수 있는 미션은 없어요/);
+      assert.match(noMissionCommand.replyPayload.embeds[0].data.description, /\/체크인/);
+      assert.doesNotMatch(noMissionCommand.replyPayload.embeds[0].data.description, /active|시스템|표시할 수/);
 
       console.log('participant UX flow smoke test passed');
     });
