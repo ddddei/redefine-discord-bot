@@ -30,6 +30,7 @@ MEE6는 환대, 채팅 EXP, 레벨업 보조 용도로만 사용합니다. 리�
 - 미션 관리
 - 상점 관리
 - 운영 데이터 내보내기
+- 읽기 전용 관리자 웹 대시보드(`/admin`)
 
 ## Slash Command 목록
 
@@ -124,6 +125,20 @@ npm run test:questions
 npm run check:release
 ```
 
+## 관리자 웹 대시보드 MVP
+
+읽기 전용 관리자 웹 대시보드가 `/admin` 경로에 추가되어 있습니다. 기본값은 비활성화이며, Railway Variables 또는 로컬 `.env`에 아래 값을 설정했을 때만 같은 봇 프로세스에서 웹 서버가 함께 켜집니다.
+
+```env
+ADMIN_DASHBOARD_ENABLED=true
+ADMIN_DASHBOARD_PASSWORD=원하는_관리자_비밀번호
+ADMIN_DASHBOARD_TITLE=리디파인 운영 대시보드
+```
+
+대시보드는 HTTP Basic Auth로 보호되며 API도 같은 인증을 사용합니다. 운영 요약 카드, 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록, `/운영내보내기` 안내와 운영 체크리스트를 보여줍니다.
+
+초기 MVP는 읽기 전용입니다. 승인, 거절, 포인트 지급/차감, 미션/상점 수정은 계속 Discord의 `/교환관리`, `/인증관리`, `/포인트관리`, `/미션관리`, `/상점관리` 명령어에서 처리합니다. Google Sheets와 PostgreSQL 연동은 포함하지 않습니다.
+
 ## 검증 명령어
 
 포인트 저장소와 운영 흐름 테스트:
@@ -164,6 +179,7 @@ npm run check:release
 - 미션/인증
 - 운영자 관리
 - 데이터 내보내기
+- 읽기 전용 관리자 웹 대시보드
 
 후속 과제:
 
@@ -172,6 +188,7 @@ npm run check:release
 - Google Sheets 연동 검토
 - PostgreSQL 또는 Railway Volume 검토
 - 운영자 웹 대시보드 검토
+- 웹에서 승인/거절/수정하는 관리자 액션 검토
 - 참여자 안내 문서/공지 템플릿 보강
 
 ## 운영 문서

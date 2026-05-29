@@ -3,6 +3,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { handleInteractionCreate } = require('./handlers');
 const { handleMissionReactionApproval } = require('./reactionApproval');
+const { startAdminServer } = require('./adminServer');
 const {
   findFaqAnswer,
   findKnowledgeAnswer,
@@ -37,6 +38,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 if (require.main === module) {
+  try {
+    startAdminServer();
+  } catch (error) {
+    console.warn('관리자 대시보드 초기화 실패:', error.message);
+  }
+
   client.login(process.env.DISCORD_TOKEN).catch((error) => {
     console.error('봇 로그인 실패:', error);
   });

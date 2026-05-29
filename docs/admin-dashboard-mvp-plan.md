@@ -614,6 +614,24 @@ PORT=Railway가 제공
 * `.env.example`에 필요한 환경변수 placeholder가 정리되어 있다.
 * README와 운영 문서에 관리자 대시보드 사용법이 정리되어 있다.
 
+## 11.1 v1 구현 상태
+
+관리자 웹 대시보드 MVP v1은 기존 봇 프로젝트 안에 Node 기본 `http` 서버로 구현한다.
+
+구현 범위:
+
+* `ADMIN_DASHBOARD_ENABLED=true`이고 `ADMIN_DASHBOARD_PASSWORD`가 있을 때만 `/admin`을 활성화한다.
+* `/admin` 페이지와 `/api/admin/*` endpoint는 HTTP Basic Auth로 보호한다.
+* 운영 요약 카드, 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록을 표시한다.
+* 내보내기는 웹 다운로드가 아니라 Discord `/운영내보내기` 사용법을 안내한다.
+* 운영 전/중/후 체크리스트를 표시한다.
+
+제외 범위:
+
+* 웹에서 승인, 거절, 완료, 포인트 지급/차감, 미션/상점 수정을 처리하지 않는다.
+* Google Sheets와 PostgreSQL 연동은 하지 않는다.
+* 새 Slash Command는 추가하지 않는다.
+
 ---
 
 ## 12. 향후 검토할 질문

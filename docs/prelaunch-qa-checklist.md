@@ -138,3 +138,15 @@
 - [ ] Railway 배포가 success 상태입니다.
 - [ ] Slash Command 구조 변경이 있을 때만 `npm run deploy` 필요 여부를 확인합니다.
 - [ ] 문서만 수정한 경우 `npm run deploy`는 실행하지 않습니다.
+
+## 9. 관리자 웹 대시보드 확인
+
+- [ ] `ADMIN_DASHBOARD_ENABLED=false`일 때 `/admin` 서버가 열리지 않습니다.
+- [ ] `ADMIN_DASHBOARD_PASSWORD`가 비어 있을 때 `/admin` 서버가 열리지 않습니다.
+- [ ] `ADMIN_DASHBOARD_ENABLED=true`와 비밀번호가 있을 때 `/admin` 접근 시 인증이 필요합니다.
+- [ ] 잘못된 비밀번호로 `/admin`과 `/api/admin/summary`에 접근하면 401 응답이 반환됩니다.
+- [ ] 올바른 비밀번호로 `/admin`에 접근하면 운영 요약 카드가 보입니다.
+- [ ] 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록이 보입니다.
+- [ ] 데이터가 비어 있어도 “현재 대기 항목이 없습니다” 안내가 보이고 화면이 깨지지 않습니다.
+- [ ] 승인/거절/수정 버튼이 없고, 처리는 Discord 명령어로 안내됩니다.
+- [ ] 기존 Discord 명령어와 봇 로그인 흐름이 정상 작동합니다.

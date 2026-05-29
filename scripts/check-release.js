@@ -59,6 +59,26 @@ const checks = [
     args: ['--check', 'src/reactionApproval.js'],
   },
   {
+    label: 'src/adminAuth.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/adminAuth.js'],
+  },
+  {
+    label: 'src/adminApi.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/adminApi.js'],
+  },
+  {
+    label: 'src/adminServer.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/adminServer.js'],
+  },
+  {
+    label: 'public/admin/admin.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/admin/admin.js'],
+  },
+  {
     label: 'src/exportUtils.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/exportUtils.js'],
@@ -104,6 +124,11 @@ const checks = [
     args: ['--check', 'scripts/test-operator-hub-flow.js'],
   },
   {
+    label: 'scripts/test-admin-dashboard-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-admin-dashboard-flow.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -142,6 +167,11 @@ const checks = [
     label: 'operator hub flow smoke test',
     command: 'node',
     args: ['scripts/test-operator-hub-flow.js'],
+  },
+  {
+    label: 'admin dashboard flow smoke test',
+    command: 'node',
+    args: ['scripts/test-admin-dashboard-flow.js'],
   },
   {
     label: '데이터 구조 검사',
