@@ -27,6 +27,7 @@
 | `redemptions` | `/교환` 신청과 지급 처리 상태 관리 | `id`, `userId`, `itemId`, `status`, `transactionId` | 사용자, 항목, 차감/환불 거래 참조 | 완료 전 실제 지급 확인, 장기 `pending` 점검 |
 | `missions` | 선택형 활동 및 보상 기준 관리 | `id`, `title`, `rewardPoints`, `status`, `maxPerUser` | 여러 `submissions.missionId`의 원본 | 기간과 중복 지급 기준을 게시 전 확정 |
 | `submissions` | `/인증` 제출 및 검토 결과 관리 | `id`, `missionId`, `userId`, `status`, `rewardTransactionId` | 사용자, 미션, 승인 지급 거래 참조 | 최소 인증 내용만 수집, 중복 승인 금지 |
+| `reactionApprovals` | 미션 인증 채널 메시지 반응 승인/반려 기록 | `messageId`, `authorId`, `status`, `transactionId` | 승인 시 `pointTransactions.relatedId`와 연결 | `messageId` 기준 중복 지급 방지, local JSON은 MVP용 |
 
 ## 4. `users` 구조
 
@@ -172,6 +173,7 @@ MVP에서는 처리 큐에 필요한 `pending`, `completed`, `cancelled`를 우�
 - 취소된 `redemptions`는 필요 시 반환 `refund` 거래 한 건과 연결됩니다.
 - `missions` 한 개는 여러 `submissions`와 연결될 수 있습니다.
 - 승인된 `submissions` 한 건은 지급 `earn` 거래 한 건과 연결됩니다.
+- 승인된 `reactionApprovals` 한 건은 메시지 ID 기준 지급 `earn` 거래 한 건과 연결됩니다.
 
 ```text
 users 1 --- N pointTransactions
@@ -181,7 +183,27 @@ users 1 --- N pointTransactions
              ^                         ^
              |                         |
 shopItems 1--+             missions 1--+--- N submissions
+                                      +--- N reactionApprovals
 ```
+
+## 10-1. `reactionApprovals` 구조
+
+`reactionApprovals`는 미션 인증 채널에 올라온 참여자 메시지를 운영자가 ✅ 또는 ❌ 반응으로 처리한 결과를 저장합니다. MVP 저장 파일은 `data/reaction-approvals.local.json`이며 local JSON 저장소는 장기 운영용 데이터베이스가 아니라 MVP용입니다.
+
+| 필드 | 설명 |
+| --- | --- |
+| `messageId` | Discord 원본 메시지 ID. 중복 지급 방지 기준 |
+| `channelId`, `guildId` | 원본 메시지 위치 |
+| `authorId`, `authorDisplayName` | 인증 메시지 작성 참여자 |
+| `status` | `approved` 또는 `rejected` |
+| `rewardPoints` | 승인 시 지급 포인트. 반려는 `0` |
+| `transactionId` | 승인 지급 거래 ID. 반려는 `null` |
+| `reviewedBy`, `reviewedByDisplayName` | 반응을 누른 운영자 |
+| `reviewEmoji` | 처리에 사용된 이모지 |
+| `messageUrl` | Discord 원본 메시지 링크 |
+| `createdAt`, `reviewedAt` | 기록 생성 및 처리 시각 |
+
+같은 `messageId`가 이미 `approved` 또는 `rejected`로 저장되어 있으면 다시 처리하지 않습니다. 승인 기록은 `pointTransactions`에 `type: "earn"`, `relatedType: "missionReactionApproval"`, `relatedId: messageId` 거래를 남겨 `/포인트`와 `/포인트로그`에서 확인할 수 있게 합니다. 장기 운영에서는 Railway Volume, Google Sheets, PostgreSQL 중 하나로 이전할지 별도로 검토합니다.
 
 ## 11. 포인트 증감 규칙
 

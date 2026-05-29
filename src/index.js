@@ -1,7 +1,8 @@
 require('dotenv').config();
 
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { handleInteractionCreate } = require('./handlers');
+const { handleMissionReactionApproval } = require('./reactionApproval');
 const {
   findFaqAnswer,
   findKnowledgeAnswer,
@@ -12,7 +13,17 @@ const {
 console.log('봇 실행 준비 중...');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+  ],
+  partials: [
+    Partials.Message,
+    Partials.Channel,
+    Partials.Reaction,
+    Partials.User,
+  ],
 });
 
 client.once('clientReady', () => {
@@ -20,6 +31,10 @@ client.once('clientReady', () => {
 });
 
 client.on('interactionCreate', handleInteractionCreate);
+
+client.on('messageReactionAdd', async (reaction, user) => {
+  await handleMissionReactionApproval(reaction, user, client);
+});
 
 if (require.main === module) {
   client.login(process.env.DISCORD_TOKEN).catch((error) => {
@@ -32,6 +47,7 @@ module.exports = {
   findFaqAnswer,
   findKnowledgeAnswer,
   handleInteractionCreate,
+  handleMissionReactionApproval,
   normalizeText,
   scoreFaqItem,
 };

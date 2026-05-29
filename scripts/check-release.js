@@ -49,6 +49,11 @@ const checks = [
     args: ['--check', 'src/pointsRepository.js'],
   },
   {
+    label: 'src/reactionApproval.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/reactionApproval.js'],
+  },
+  {
     label: 'src/exportUtils.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/exportUtils.js'],
@@ -84,6 +89,11 @@ const checks = [
     args: ['--check', 'scripts/test-participant-ux-flow.js'],
   },
   {
+    label: 'scripts/test-reaction-approval-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-reaction-approval-flow.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -112,6 +122,11 @@ const checks = [
     label: 'participant UX flow smoke test',
     command: 'node',
     args: ['scripts/test-participant-ux-flow.js'],
+  },
+  {
+    label: 'reaction approval flow smoke test',
+    command: 'node',
+    args: ['scripts/test-reaction-approval-flow.js'],
   },
   {
     label: '데이터 구조 검사',

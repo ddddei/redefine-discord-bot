@@ -56,6 +56,10 @@
 
 `/인증`은 미션 코드를 몰라도 실행할 수 있으며, 단독 실행 시 `/미션`과 같은 선택 메뉴를 보여줍니다. 미션과 내용을 직접 입력하면 바로 제출하고, 미션만 입력하면 글 인증 모달을 엽니다. 제출은 `pending`으로 저장할 뿐 포인트를 즉시 지급하지 않습니다. 참여자에게는 "글 인증은 `/미션`이나 `/인증`에서 선택, 사진이나 영상은 `/인증` 첨부파일" 정도로 짧게 안내합니다. 선택 첨부파일이 있으면 파일명, URL, content type, 크기를 제출 기록에 함께 저장합니다. 제출이 접수되면 `ACTIVITY_REVIEW_CHANNEL_ID` 또는 `LOG_CHANNEL_ID`로 운영자 검토 알림이 전송됩니다. 채널 ID가 없어도 봇은 중단되지 않고 콘솔 경고만 남깁니다.
 
+미션 인증 채널 반응 승인 흐름을 사용할 경우 참여자는 `/인증`을 입력하지 않고 `MISSION_SUBMISSION_CHANNEL_ID`로 지정된 채널에 글, 사진, 영상 인증 메시지를 올립니다. 운영자는 지급 대상 메시지에 ✅ 반응을 누르고, 지급 대상이 아니면 ❌ 반응을 누릅니다. 봇은 `MISSION_SUBMISSION_CHANNEL_ID` 채널의 `MISSION_APPROVE_EMOJI`와 `MISSION_REJECT_EMOJI` 반응만 처리하며, 기본 지급 포인트는 `MISSION_REACTION_REWARD_POINTS` 값입니다. 같은 메시지는 `messageId` 기준으로 한 번만 처리되어 중복 지급되지 않고, 운영자 권한이 없는 사용자의 반응은 무시됩니다.
+
+반응 승인을 처리할 수 있는 운영자는 `Administrator`, `ManageMessages`, 또는 선택 환경변수 `OPERATOR_ROLE_ID` 역할 보유자입니다. 승인 기록은 `data/reaction-approvals.local.json`에 저장되고, 승인 시 `pointTransactions`에는 `relatedType: "missionReactionApproval"` 지급 거래가 남습니다. 처리 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `LOG_CHANNEL_ID`로 전송되며, 가능하면 원본 메시지에도 짧은 답글을 남깁니다. `MISSION_SUBMISSION_CHANNEL_ID`가 없으면 반응 승인 기능은 동작하지 않고 콘솔 경고만 남습니다.
+
 `/상점`과 `/교환`도 모두 선택형으로 안내할 수 있습니다. `/교환`을 단독 실행하면 `/상점`과 같은 항목 선택 메뉴가 열리고, 신청 코드를 알고 있는 참여자는 `/교환 항목:S001`처럼 직접 입력해도 됩니다. 운영자는 참여자 안내에서 코드보다 항목 이름과 미션 이름을 중심으로 설명해도 됩니다.
 
 상점과 미션 제목은 짧고 명확하게 작성합니다. 참여자 화면에는 코드보다 이름과 행동이 먼저 보이도록 관리하고, 사진이나 영상 인증이 필요한 미션은 운영 전 안내합니다.

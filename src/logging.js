@@ -170,6 +170,61 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
   }
 }
 
+async function sendMissionReactionApprovalLog(client, record) {
+  const alertChannelId = process.env.ACTIVITY_REVIEW_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+
+  if (!alertChannelId) {
+    console.warn('미션 인증 반응 처리 로그 채널이 설정되지 않아 알림을 건너뜁니다.');
+    return;
+  }
+
+  if (!client || !client.channels || typeof client.channels.fetch !== 'function') {
+    console.warn('미션 인증 반응 처리 로그 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    return;
+  }
+
+  try {
+    const channel = await client.channels.fetch(alertChannelId);
+
+    if (!channel || typeof channel.send !== 'function') {
+      console.warn('미션 인증 반응 처리 로그 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      return;
+    }
+
+    const approved = record.status === 'approved';
+    const embed = new EmbedBuilder()
+      .setColor(approved ? 0x5f8f6b : 0x8f6b5f)
+      .setTitle(approved ? '미션 인증 반응 승인' : '미션 인증 반응 반려')
+      .addFields(
+        {
+          name: '참여자',
+          value: truncateEmbedValue(record.authorDisplayName || record.authorId, 300),
+        },
+        {
+          name: '처리자',
+          value: truncateEmbedValue(record.reviewedByDisplayName || record.reviewedBy, 300),
+        },
+        {
+          name: '처리 상태',
+          value: approved ? `지급 완료 (${record.rewardPoints || 0}P)` : '포인트 미지급',
+        },
+        {
+          name: '원본 메시지',
+          value: record.messageUrl || `${record.guildId}/${record.channelId}/${record.messageId}`,
+        },
+        {
+          name: '처리 시간',
+          value: formatKoreanTime(new Date(record.reviewedAt)),
+        }
+      );
+
+    await channel.send({ embeds: [embed] });
+    console.info(`미션 인증 반응 처리 로그 전송됨: channel=${alertChannelId} message=${record.messageId}`);
+  } catch (error) {
+    console.warn('미션 인증 반응 처리 로그 전송 실패:', error.message);
+  }
+}
+
 async function sendRedemptionReviewAlert(interaction, redemption, item, user, transaction) {
   const alertChannelId = process.env.POINT_REDEEM_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
 
@@ -230,6 +285,7 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
 
 module.exports = {
   formatKoreanTime,
+  sendMissionReactionApprovalLog,
   sendMissionSubmissionReviewAlert,
   sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,

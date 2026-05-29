@@ -28,6 +28,7 @@ const DEFAULT_PATHS = {
   missionsFallback: path.join(DATA_DIR, 'missions.example.json'),
   submissions: process.env.SUBMISSIONS_DATA_PATH || path.join(DATA_DIR, 'submissions.local.json'),
   submissionsFallback: path.join(DATA_DIR, 'submissions.example.json'),
+  reactionApprovals: process.env.REACTION_APPROVALS_DATA_PATH || path.join(DATA_DIR, 'reaction-approvals.local.json'),
 };
 
 const CHECKIN_REWARD_POINTS = 10;
@@ -97,6 +98,15 @@ function loadActivityWithFallback(primaryPath, fallbackPath, collectionName) {
   const initialData = createInitialActivityData(fallbackPath, collectionName);
   saveJsonFile(primaryPath, initialData);
   return initialData;
+}
+
+function createInitialReactionApprovalsData() {
+  return {
+    version: 1,
+    isExample: false,
+    description: 'Local reaction approval data for mission submission channel MVP. JSON storage is for MVP operation only.',
+    records: [],
+  };
 }
 
 function cloneJson(value) {
@@ -170,6 +180,10 @@ function createPointsRepository(paths = {}) {
     ...paths,
   };
 
+  if (!paths.reactionApprovals && paths.submissions) {
+    resolvedPaths.reactionApprovals = path.join(path.dirname(paths.submissions), 'reaction-approvals.local.json');
+  }
+
   function loadState() {
     return {
       pointsData: loadWithFallback(resolvedPaths.points, resolvedPaths.pointsFallback),
@@ -206,6 +220,29 @@ function createPointsRepository(paths = {}) {
 
   function saveSubmissionsData(submissionsData) {
     saveJsonFile(resolvedPaths.submissions, submissionsData);
+  }
+
+  function getReactionApprovalData() {
+    if (fs.existsSync(resolvedPaths.reactionApprovals)) {
+      const data = loadJsonFile(resolvedPaths.reactionApprovals);
+      return {
+        ...data,
+        records: Array.isArray(data.records) ? data.records : [],
+      };
+    }
+
+    const initialData = createInitialReactionApprovalsData();
+    saveJsonFile(resolvedPaths.reactionApprovals, initialData);
+    return initialData;
+  }
+
+  function saveReactionApprovalData(reactionApprovalData) {
+    saveJsonFile(resolvedPaths.reactionApprovals, {
+      version: 1,
+      isExample: false,
+      description: reactionApprovalData.description || createInitialReactionApprovalsData().description,
+      records: Array.isArray(reactionApprovalData.records) ? reactionApprovalData.records : [],
+    });
   }
 
   function saveState(state) {
@@ -901,6 +938,120 @@ function createPointsRepository(paths = {}) {
     return reviewSubmissionById(submissionId, 'reject', reviewer, note);
   }
 
+  function findReactionApprovalByMessageId(messageId) {
+    const data = getReactionApprovalData();
+    const records = Array.isArray(data.records) ? data.records : [];
+    return records.find((record) => record.messageId === messageId) || null;
+  }
+
+  function hasReactionMessageBeenReviewed(messageId) {
+    return Boolean(findReactionApprovalByMessageId(messageId));
+  }
+
+  function createReactionApprovalRecord(input) {
+    const now = createTimestamp();
+    return {
+      id: input.id || createOperationId('reaction_approval'),
+      messageId: input.messageId,
+      channelId: input.channelId,
+      guildId: input.guildId,
+      authorId: input.authorId,
+      authorDisplayName: input.authorDisplayName || input.authorId,
+      status: input.status,
+      rewardPoints: input.rewardPoints || 0,
+      transactionId: input.transactionId || null,
+      reviewedBy: input.reviewedBy,
+      reviewedByDisplayName: input.reviewedByDisplayName || input.reviewedBy,
+      reviewEmoji: input.reviewEmoji,
+      messageUrl: input.messageUrl || null,
+      createdAt: input.createdAt || now,
+      reviewedAt: input.reviewedAt || now,
+    };
+  }
+
+  function approveReactionMessage(input) {
+    if (hasReactionMessageBeenReviewed(input.messageId)) {
+      return {
+        ok: false,
+        reason: 'ALREADY_REVIEWED',
+        record: findReactionApprovalByMessageId(input.messageId),
+        transaction: null,
+      };
+    }
+
+    const rewardPoints = input.rewardPoints;
+    requireNonNegativeInteger(rewardPoints, 'rewardPoints');
+
+    const state = loadState();
+    const pointsData = cloneJson(state.pointsData);
+    const approvalsData = cloneJson(getReactionApprovalData());
+    const user = ensureUser(pointsData, {
+      userId: input.authorId,
+      displayName: input.authorDisplayName || input.authorId,
+    });
+    const currentPoints = getUserPoints(pointsData, input.authorId);
+    const balanceAfter = currentPoints + rewardPoints;
+    const transaction = addTransaction(pointsData, {
+      id: createOperationId('tx_reaction'),
+      userId: input.authorId,
+      type: 'earn',
+      amount: rewardPoints,
+      balanceAfter,
+      reason: '미션 인증 채널 반응 승인',
+      relatedType: 'missionReactionApproval',
+      relatedId: input.messageId,
+      createdBy: input.reviewedBy,
+      note: [
+        input.messageUrl ? `messageUrl=${input.messageUrl}` : null,
+        input.reviewEmoji ? `emoji=${input.reviewEmoji}` : null,
+      ].filter(Boolean).join(' ') || null,
+    });
+    const record = createReactionApprovalRecord({
+      ...input,
+      status: 'approved',
+      transactionId: transaction.id,
+    });
+
+    updateUserBalance(user, balanceAfter, input.authorDisplayName);
+    approvalsData.records = Array.isArray(approvalsData.records) ? approvalsData.records : [];
+    approvalsData.records.push(record);
+    saveState({ ...state, pointsData });
+    saveReactionApprovalData(approvalsData);
+
+    return { ok: true, record, transaction };
+  }
+
+  function rejectReactionMessage(input) {
+    if (hasReactionMessageBeenReviewed(input.messageId)) {
+      return {
+        ok: false,
+        reason: 'ALREADY_REVIEWED',
+        record: findReactionApprovalByMessageId(input.messageId),
+        transaction: null,
+      };
+    }
+
+    const approvalsData = cloneJson(getReactionApprovalData());
+    const record = createReactionApprovalRecord({
+      ...input,
+      status: 'rejected',
+      rewardPoints: 0,
+      transactionId: null,
+    });
+
+    approvalsData.records = Array.isArray(approvalsData.records) ? approvalsData.records : [];
+    approvalsData.records.push(record);
+    saveReactionApprovalData(approvalsData);
+
+    return { ok: true, record, transaction: null };
+  }
+
+  function listRecentReactionApprovals(limit = 10) {
+    const data = getReactionApprovalData();
+    const records = Array.isArray(data.records) ? data.records : [];
+    return sortNewestFirst(records, ['reviewedAt', 'createdAt']).slice(0, limit);
+  }
+
   function listRecentSubmissions(limit = 10) {
     const submissionsData = getSubmissionsData();
     const submissions = Array.isArray(submissionsData.submissions) ? submissionsData.submissions : [];
@@ -946,6 +1097,7 @@ function createPointsRepository(paths = {}) {
     return {
       pendingRedemptionsCount: listPendingRedemptions(1000).length,
       pendingSubmissionsCount: listPendingSubmissions(1000).length,
+      reactionApprovalsCount: listRecentReactionApprovals(1000).length,
       activeMissionsCount: listActiveMissions().length,
       activeShopItemsCount: activeShopItems.length,
       todayCheckinsCount: listTodayCheckins().length,
@@ -966,6 +1118,8 @@ function createPointsRepository(paths = {}) {
     const submissions = Array.isArray(state.submissionsData.submissions) ? state.submissionsData.submissions : [];
     const missions = Array.isArray(state.missionsData.missions) ? state.missionsData.missions : [];
     const shopItems = Array.isArray(state.shopItemsData.shopItems) ? state.shopItemsData.shopItems : [];
+    const reactionApprovalsData = getReactionApprovalData();
+    const reactionApprovals = Array.isArray(reactionApprovalsData.records) ? reactionApprovalsData.records : [];
 
     return {
       usersCount: users.length,
@@ -974,6 +1128,9 @@ function createPointsRepository(paths = {}) {
       pendingRedemptionsCount: redemptions.filter((redemption) => redemption.status === 'pending').length,
       submissionsCount: submissions.length,
       pendingSubmissionsCount: submissions.filter((submission) => submission.status === 'pending').length,
+      reactionApprovalsCount: reactionApprovals.length,
+      approvedReactionApprovalsCount: reactionApprovals.filter((record) => record.status === 'approved').length,
+      rejectedReactionApprovalsCount: reactionApprovals.filter((record) => record.status === 'rejected').length,
       missionsCount: missions.length,
       activeMissionsCount: missions.filter((mission) => mission.status === 'active').length,
       shopItemsCount: shopItems.length,
@@ -1081,6 +1238,9 @@ function createPointsRepository(paths = {}) {
       submissions: {
         submissions: getSubmissionsExportData(limit).submissions,
       },
+      reactionApprovals: {
+        records: listRecentReactionApprovals(limit),
+      },
       missions: {
         missions: getMissionsExportData(limit).missions,
       },
@@ -1103,12 +1263,14 @@ function createPointsRepository(paths = {}) {
   return {
     adjustUserPoints,
     approveSubmissionById,
+    approveReactionMessage,
     createCheckin,
     createMission,
     createMissionSubmission,
     createShopItem,
     findMission,
     findShopItem,
+    findReactionApprovalByMessageId,
     findSubmission,
     getAllOperationData,
     getExportData,
@@ -1121,7 +1283,9 @@ function createPointsRepository(paths = {}) {
     getSubmissionsExportData,
     getSummaryExportData,
     getSubmissionsData,
+    getReactionApprovalData,
     hasCheckedInToday,
+    hasReactionMessageBeenReviewed,
     listMissionsForAdmin,
     listTransactions,
     listActiveMissions,
@@ -1130,17 +1294,20 @@ function createPointsRepository(paths = {}) {
     listPendingSubmissions,
     listRecentSubmissions,
     listRecentActivityLogs,
+    listRecentReactionApprovals,
     listShopItemsForAdmin,
     listTodayCheckins,
     loadState,
     requestRedemption,
     rejectSubmissionById,
+    rejectReactionMessage,
     reviewSubmissionById,
     reviewRedemption,
     resolveActiveMission,
     resolveActiveShopItem,
     saveMissionsData,
     saveSubmissionsData,
+    saveReactionApprovalData,
     saveState,
     setMissionStatus,
     setShopItemStatus,
