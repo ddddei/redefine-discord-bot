@@ -147,6 +147,8 @@ Railway에서 Public Domain을 생성한 뒤 `https://Railway-도메인/admin`�
 
 관리자 대시보드와 `/api/admin/*` 응답은 `data/*.example.json`의 example/demo/sample 데이터를 실제 운영 데이터처럼 보이지 않도록 제외합니다. 실제 운영 전에는 `data/*.local.json` 상태를 확인하고, 테스트용 local 데이터가 남아 있으면 정리한 뒤 운영용 미션과 상점 항목을 `/미션관리`, `/상점관리`로 등록합니다.
 
+운영 전 기본 미션과 상점 항목은 자동 생성되지 않습니다. 실제 운영 데이터는 `/미션관리`, `/상점관리`로 직접 등록하고, 기본 후보와 등록 순서는 [운영용 기본 미션/상점 설계](docs/operation-default-items-plan.md)와 [미션/상점 등록 가이드](docs/mission-shop-setup-guide.md)를 기준으로 확인합니다.
+
 초기 MVP는 읽기 전용입니다. 승인, 거절, 포인트 지급/차감, 미션/상점 수정은 계속 Discord의 `/교환관리`, `/인증관리`, `/포인트관리`, `/미션관리`, `/상점관리` 명령어에서 처리합니다. Google Sheets와 PostgreSQL 연동은 포함하지 않습니다.
 
 ## 검증 명령어
@@ -206,6 +208,8 @@ npm run check:release
 운영 문서 전체 목록은 [docs/README.md](docs/README.md)를 참고해 주세요.
 
 - [운영 가이드](docs/operation-guide.md)
+- [운영용 기본 미션/상점 설계](docs/operation-default-items-plan.md)
+- [미션/상점 등록 가이드](docs/mission-shop-setup-guide.md)
 - [운영자 명령어 가이드](docs/operator-command-guide.md)
 - [운영자 허브 가이드](docs/operator-dashboard-guide.md)
 - [참여자 명령어 가이드](docs/participant-command-guide.md)
