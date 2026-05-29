@@ -189,6 +189,82 @@ function createMissionSelectRow(missions) {
   );
 }
 
+async function replyWithShopSelection(interaction) {
+  const items = pointsRepository.listActiveShopItemsWithCodes();
+
+  if (items.length === 0) {
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '여정 포인트 상점',
+          [
+            '지금 교환할 수 있는 항목이 없어요.',
+            '',
+            '운영진이 새 항목을 열면 이곳에서 확인할 수 있어요.',
+          ].join('\n')
+        ),
+      ],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    embeds: [createShopEmbed(items)],
+    components: [createShopSelectRow(items)],
+    ephemeral: true,
+  });
+}
+
+async function replyWithMissionSelection(interaction) {
+  const missions = pointsRepository.listActiveMissions();
+
+  if (missions.length === 0) {
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '오늘 참여 가능한 미션',
+          [
+            '지금 바로 참여할 수 있는 미션은 없어요.',
+            '',
+            '운영진이 새 미션을 열면 이곳에서 확인할 수 있어요.',
+            '오늘은 `/체크인`으로 가볍게 기록을 남겨도 괜찮아요.',
+          ].join('\n')
+        ),
+      ],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const lines = missions.slice(0, 10).map((mission) => {
+    const actionText = mission.requiresSubmission === false
+      ? `${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`
+      : `글로 남기면 ${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`;
+    return [
+      `**🌱 ${mission.title || '미션'}**`,
+      actionText,
+    ].join('\n');
+  });
+
+  await interaction.reply({
+    embeds: [
+      createGuideEmbed(
+        '오늘 참여 가능한 미션',
+        [
+          ...lines.join('\n\n').split('\n'),
+          '',
+          '미션은 선택형 활동이에요.',
+          '글로 남길 수 있는 미션은 아래에서 선택해 제출할 수 있어요.',
+          '사진이나 영상이 필요한 경우 `/인증`에서 첨부파일을 함께 올려 주세요.',
+        ].join('\n')
+      ),
+    ],
+    components: [createMissionSelectRow(missions)],
+    ephemeral: true,
+  });
+}
+
 function createMissionSubmissionModal(mission) {
   return new ModalBuilder()
     .setCustomId(`participant_mission_submit:${mission.displayCode || mission.id}`)
@@ -219,6 +295,14 @@ function serializeAttachment(attachment) {
     contentType: attachment.contentType || null,
     size: typeof attachment.size === 'number' ? attachment.size : null,
   };
+}
+
+function getOptionalStringOption(options, name) {
+  try {
+    return options.getString(name);
+  } catch (error) {
+    return null;
+  }
 }
 
 function formatAdminMissionLine(mission) {
@@ -523,31 +607,7 @@ async function handlePointCommand(interaction) {
 
 async function handleShopCommand(interaction) {
   try {
-    const items = pointsRepository.listActiveShopItemsWithCodes();
-
-    if (items.length === 0) {
-      await interaction.reply({
-        embeds: [
-          createGuideEmbed(
-            '여정 포인트 상점',
-            [
-              '현재 표시할 수 있는 상점 항목이 없어요.',
-              '',
-              '상점 항목이 열리면 `/상점` 선택 메뉴에서 교환 신청까지 이어갈 수 있어요.',
-              '실제 항목과 비용은 운영진 확정 후 달라질 수 있어요.',
-            ].join('\n')
-          ),
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
-
-    await interaction.reply({
-      embeds: [createShopEmbed(items)],
-      components: [createShopSelectRow(items)],
-      ephemeral: true,
-    });
+    await replyWithShopSelection(interaction);
   } catch (error) {
     console.error('상점 정보 로드 실패:', error.message);
     await interaction.reply({
@@ -612,52 +672,7 @@ async function handleCheckinCommand(interaction) {
 
 async function handleMissionCommand(interaction) {
   try {
-    const missions = pointsRepository.listActiveMissions();
-
-    if (missions.length === 0) {
-      await interaction.reply({
-        embeds: [
-          createGuideEmbed(
-            '오늘 참여 가능한 미션',
-            [
-              '지금 바로 참여할 수 있는 미션은 없어요.',
-              '',
-              '운영진이 새 미션을 열면 이곳에서 확인할 수 있어요.',
-              '오늘은 `/체크인`으로 가볍게 기록을 남겨도 괜찮아요.',
-            ].join('\n')
-          ),
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const lines = missions.slice(0, 10).map((mission) => {
-      const actionText = mission.requiresSubmission === false
-        ? `${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`
-        : `글로 남기면 ${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`;
-      return [
-        `**🌱 ${mission.title || '미션'}**`,
-        actionText,
-      ].join('\n');
-    });
-
-    await interaction.reply({
-      embeds: [
-        createGuideEmbed(
-          '오늘 참여 가능한 미션',
-          [
-            ...lines.join('\n\n').split('\n'),
-            '',
-            '미션은 선택형 활동이에요.',
-            '글로 남길 수 있는 미션은 아래에서 선택해 제출할 수 있어요.',
-            '사진이나 영상이 필요한 경우 `/인증`에서 첨부파일을 함께 올려 주세요.',
-          ].join('\n')
-        ),
-      ],
-      components: [createMissionSelectRow(missions)],
-      ephemeral: true,
-    });
+    await replyWithMissionSelection(interaction);
   } catch (error) {
     console.error('미션 목록 조회 실패:', error.message);
     await interaction.reply({
@@ -945,11 +960,40 @@ function getSubmissionFailureMessage(reason) {
 
 async function handleSubmissionCommand(interaction) {
   try {
-    const missionId = interaction.options.getString('미션id');
-    const content = interaction.options.getString('내용');
+    const missionId = getOptionalStringOption(interaction.options, '미션')
+      || getOptionalStringOption(interaction.options, '미션id');
+    const content = getOptionalStringOption(interaction.options, '내용');
     const attachment = typeof interaction.options.getAttachment === 'function'
       ? serializeAttachment(interaction.options.getAttachment('첨부파일'))
       : null;
+
+    if (!missionId) {
+      await replyWithMissionSelection(interaction);
+      return;
+    }
+
+    if (!content && !attachment) {
+      const mission = pointsRepository.resolveActiveMission(missionId);
+
+      if (!mission) {
+        const existingMission = pointsRepository.findMission(missionId);
+        await interaction.reply({
+          embeds: [
+            createGuideEmbed(
+              '인증 제출을 접수하지 못했어요',
+              getSubmissionFailureMessage(existingMission ? 'MISSION_NOT_ACTIVE' : 'MISSION_NOT_FOUND'),
+              { footer: OPERATOR_CHECK_FOOTER }
+            ),
+          ],
+          ephemeral: true,
+        });
+        return;
+      }
+
+      await interaction.showModal(createMissionSubmissionModal(mission));
+      return;
+    }
+
     const result = pointsRepository.createMissionSubmission({
       user: {
         userId: interaction.user.id,
@@ -1062,8 +1106,14 @@ async function handleSubmissionManageCommand(interaction) {
 
 async function handleRedemptionCommand(interaction) {
   try {
-    const itemId = interaction.options.getString('항목');
-    const note = interaction.options.getString('메모');
+    const itemId = getOptionalStringOption(interaction.options, '항목');
+    const note = getOptionalStringOption(interaction.options, '메모');
+
+    if (!itemId) {
+      await replyWithShopSelection(interaction);
+      return;
+    }
+
     const result = pointsRepository.requestRedemption({
       user: {
         userId: interaction.user.id,
@@ -1094,7 +1144,6 @@ async function handleRedemptionCommand(interaction) {
         createGuideEmbed(
           '교환 신청이 접수됐어요',
           [
-            `신청 ID: \`${result.redemption.id}\``,
             `신청 코드: \`${result.item.displayCode || itemId}\``,
             `항목: ${result.item.name}`,
             `차감 포인트: ${formatPoints(result.item.cost)}`,

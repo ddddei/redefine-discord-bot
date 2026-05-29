@@ -58,6 +58,7 @@ function createChatInputInteraction(commandName, optionValues, userId, displayNa
     member: createMember(displayName),
     options: createOptions(optionValues),
     replyPayload: null,
+    modal: null,
     isChatInputCommand() {
       return true;
     },
@@ -72,6 +73,9 @@ function createChatInputInteraction(commandName, optionValues, userId, displayNa
     },
     async reply(payload) {
       this.replyPayload = payload;
+    },
+    async showModal(modal) {
+      this.modal = modal;
     },
   };
 
@@ -185,6 +189,7 @@ function main() {
     users: [
       { userId: 'ux_user_shop', displayName: '상점 UX 사용자', totalPoints: 250, status: 'active' },
       { userId: 'ux_user_code', displayName: '코드 UX 사용자', totalPoints: 250, status: 'active' },
+      { userId: 'ux_user_internal_item', displayName: '내부 항목 UX 사용자', totalPoints: 250, status: 'active' },
       { userId: 'ux_user_low_points', displayName: '포인트 부족 UX 사용자', totalPoints: 20, status: 'active' },
     ],
     pointTransactions: [],
@@ -247,6 +252,13 @@ function main() {
       assert.strictEqual(shopCommand.replyPayload.components.length, 1);
       assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /S001/);
       assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].description, /필요 포인트 100P/);
+
+      const redemptionEntryCommand = createChatInputInteraction('교환', {}, 'ux_user_shop', '상점 UX 사용자');
+      await handleInteractionCreate(redemptionEntryCommand);
+      assert.strictEqual(redemptionEntryCommand.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(redemptionEntryCommand.replyPayload), '여정 포인트 상점');
+      assert.strictEqual(redemptionEntryCommand.replyPayload.components.length, 1);
+      assert.match(redemptionEntryCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /S001/);
 
       const shopSelect = createSelectInteraction(
         'participant_shop_select',
@@ -368,6 +380,16 @@ function main() {
       );
       await handleInteractionCreate(codeRedemption);
       assert.strictEqual(getEmbedTitle(codeRedemption.replyPayload), '교환 신청이 접수됐어요');
+      assert.doesNotMatch(codeRedemption.replyPayload.embeds[0].data.description, /신청 ID|item_ux_active/);
+
+      const internalIdRedemption = createChatInputInteraction(
+        '교환',
+        { 항목: 'item_ux_active', 메모: null },
+        'ux_user_internal_item',
+        '내부 항목 UX 사용자'
+      );
+      await handleInteractionCreate(internalIdRedemption);
+      assert.strictEqual(getEmbedTitle(internalIdRedemption.replyPayload), '교환 신청이 접수됐어요');
 
       const codeSubmission = createChatInputInteraction(
         '인증',
@@ -379,10 +401,27 @@ function main() {
       assert.strictEqual(getEmbedTitle(codeSubmission.replyPayload), '인증 제출이 접수됐어요');
       assert.doesNotMatch(codeSubmission.replyPayload.embeds[0].data.description, /M001|제출 ID|pending|mission_ux_active/);
 
+      const submissionEntryCommand = createChatInputInteraction('인증', {}, 'ux_user_submission_entry', '인증 진입 UX 사용자');
+      await handleInteractionCreate(submissionEntryCommand);
+      assert.strictEqual(submissionEntryCommand.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(submissionEntryCommand.replyPayload), '오늘 참여 가능한 미션');
+      assert.strictEqual(submissionEntryCommand.replyPayload.components.length, 1);
+      assert.match(submissionEntryCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /M001/);
+
+      const missionOnlySubmission = createChatInputInteraction(
+        '인증',
+        { 미션: 'M001', 내용: null },
+        'ux_user_submission_modal',
+        '인증 모달 UX 사용자'
+      );
+      await handleInteractionCreate(missionOnlySubmission);
+      assert.ok(missionOnlySubmission.modal);
+      assert.strictEqual(missionOnlySubmission.modal.data.custom_id, 'participant_mission_submit:M001');
+
       const attachmentSubmission = createChatInputInteraction(
         '인증',
         {
-          미션id: 'M001',
+          미션: 'M001',
           내용: '첨부파일 인증 테스트',
           첨부파일: {
             id: 'attachment_ux_photo',
@@ -402,6 +441,38 @@ function main() {
       const attachmentRecord = submissionsWithAttachment.find((submission) => submission.userId === 'ux_user_attachment');
       assert.strictEqual(attachmentRecord.attachment.name, 'qa-photo.jpg');
       assert.strictEqual(attachmentRecord.attachment.contentType, 'image/jpeg');
+
+      const internalIdSubmission = createChatInputInteraction(
+        '인증',
+        { 미션id: 'mission_ux_active', 내용: '내부 ID 호환 인증 테스트' },
+        'ux_user_internal_mission',
+        '내부 ID UX 사용자'
+      );
+      await handleInteractionCreate(internalIdSubmission);
+      assert.strictEqual(getEmbedTitle(internalIdSubmission.replyPayload), '인증 제출이 접수됐어요');
+
+      writeJson(paths.shopItems, {
+        isExample: false,
+        shopItems: [
+          {
+            id: 'item_ux_active',
+            name: 'UX 테스트 리워드',
+            description: '선택 메뉴와 인증 모달 테스트 항목입니다.',
+            cost: 100,
+            stock: 3,
+            monthlyLimit: 1,
+            status: 'paused',
+            type: 'reward',
+          },
+        ],
+      });
+
+      const noShopRedemptionCommand = createChatInputInteraction('교환', {}, 'ux_user_shop_empty', '상점 없음 UX 사용자');
+      await handleInteractionCreate(noShopRedemptionCommand);
+      assert.strictEqual(getEmbedTitle(noShopRedemptionCommand.replyPayload), '여정 포인트 상점');
+      assert.match(noShopRedemptionCommand.replyPayload.embeds[0].data.description, /지금 교환할 수 있는 항목이 없어요/);
+      assert.match(noShopRedemptionCommand.replyPayload.embeds[0].data.description, /운영진이 새 항목을 열면/);
+      assert.strictEqual(noShopRedemptionCommand.replyPayload.components, undefined);
 
       writeJson(paths.missions, {
         isExample: false,
@@ -425,6 +496,12 @@ function main() {
       assert.match(noMissionCommand.replyPayload.embeds[0].data.description, /지금 바로 참여할 수 있는 미션은 없어요/);
       assert.match(noMissionCommand.replyPayload.embeds[0].data.description, /\/체크인/);
       assert.doesNotMatch(noMissionCommand.replyPayload.embeds[0].data.description, /active|시스템|표시할 수/);
+
+      const noMissionSubmissionCommand = createChatInputInteraction('인증', {}, 'ux_user_submission_empty', '인증 없음 UX 사용자');
+      await handleInteractionCreate(noMissionSubmissionCommand);
+      assert.strictEqual(getEmbedTitle(noMissionSubmissionCommand.replyPayload), '오늘 참여 가능한 미션');
+      assert.match(noMissionSubmissionCommand.replyPayload.embeds[0].data.description, /지금 바로 참여할 수 있는 미션은 없어요/);
+      assert.match(noMissionSubmissionCommand.replyPayload.embeds[0].data.description, /\/체크인/);
 
       console.log('participant UX flow smoke test passed');
     });
