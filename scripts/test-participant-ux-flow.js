@@ -268,13 +268,17 @@ function main() {
         guideSelect.options.map((option) => option.value),
         ['start', 'today', 'points', 'shop', 'mission', 'question']
       );
+      assert.deepStrictEqual(
+        guideSelect.options.map((option) => option.label),
+        ['처음 왔어요', '오늘 뭐 하면 되나요?', '내 포인트', '상점/교환', '미션/인증', '문의하기']
+      );
 
       const guideCases = [
         ['start', '처음 안내', /천천히 둘러봐도 괜찮아요/],
-        ['today', '오늘 할 일', /현재 참여 가능한 미션: 1개/],
-        ['points', '포인트 안내', /현재 내 포인트: 250P/],
-        ['shop', '상점과 교환', /선택만으로는 포인트가 차감되지 않아요/],
-        ['mission', '미션과 인증', /✅로 확인하면 여정 포인트가 지급/],
+        ['today', '오늘 뭐 하면 되나요?', /\/포인트`로 내 포인트를 확인/],
+        ['points', '내 포인트', /현재 내 포인트: 250P/],
+        ['shop', '상점\/교환', /선택만으로는 포인트가 차감되지 않아요/],
+        ['mission', '미션\/인증', /직접 제출이 필요한 경우에는 `\/인증` 명령어/],
         ['question', '문의하기', /민감한 개인정보/],
       ];
 
@@ -554,6 +558,9 @@ function main() {
       assert.strictEqual(getEmbedTitle(noMissionSubmissionCommand.replyPayload), '오늘 참여 가능한 미션');
       assert.match(noMissionSubmissionCommand.replyPayload.embeds[0].data.description, /지금 바로 참여할 수 있는 미션은 없어요/);
       assert.match(noMissionSubmissionCommand.replyPayload.embeds[0].data.description, /\/체크인/);
+
+      assert.ok(fs.existsSync(path.join(__dirname, '..', 'docs', 'participant-onboarding-notice.md')));
+      assert.ok(fs.existsSync(path.join(__dirname, '..', 'docs', 'first-time-participant-guide.md')));
 
       console.log('participant UX flow smoke test passed');
     });

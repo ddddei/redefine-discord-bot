@@ -4,34 +4,34 @@ const GUIDE_HUB_SELECT_ID = 'guide_hub_select';
 
 const GUIDE_HUB_OPTIONS = [
   {
-    label: '처음 안내',
+    label: '처음 왔어요',
     value: 'start',
-    description: '처음 왔을 때 보면 좋은 흐름을 확인해요.',
+    description: '처음 들어온 분을 위한 기본 안내',
   },
   {
-    label: '오늘 할 일',
+    label: '오늘 뭐 하면 되나요?',
     value: 'today',
-    description: '오늘 가볍게 시작할 수 있는 일을 확인해요.',
+    description: '오늘 참여할 수 있는 흐름 보기',
   },
   {
-    label: '포인트',
+    label: '내 포인트',
     value: 'points',
-    description: '여정 포인트의 의미와 확인 방법을 봐요.',
+    description: '여정 포인트 확인 방법',
   },
   {
-    label: '상점과 교환',
+    label: '상점/교환',
     value: 'shop',
-    description: '상점 이용과 교환 신청 흐름을 확인해요.',
+    description: '포인트 사용과 교환 신청 안내',
   },
   {
-    label: '미션과 인증',
+    label: '미션/인증',
     value: 'mission',
-    description: '미션 참여와 인증 방법을 확인해요.',
+    description: '미션 참여와 인증 방법 안내',
   },
   {
     label: '문의하기',
     value: 'question',
-    description: '질문하거나 운영진에게 문의하는 방법을 봐요.',
+    description: '질문과 문의 방법 안내',
   },
 ];
 
