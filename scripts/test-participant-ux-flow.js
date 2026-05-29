@@ -236,10 +236,62 @@ function main() {
 
   resetModule('../src/pointsRepository');
   resetModule('../src/handlers');
+  resetModule('../src/components');
+  resetModule('../src/embeds');
   const { handleInteractionCreate } = require('../src/handlers');
+  const { GUIDE_HUB_OPTIONS, GUIDE_HUB_SELECT_ID } = require('../src/components');
 
   return Promise.resolve()
     .then(async () => {
+      assert.strictEqual(GUIDE_HUB_SELECT_ID, 'guide_hub_select');
+      assert.deepStrictEqual(
+        GUIDE_HUB_OPTIONS.map((option) => option.value),
+        ['start', 'today', 'points', 'shop', 'mission', 'question']
+      );
+      assert.notStrictEqual(GUIDE_HUB_SELECT_ID, 'participant_shop_select');
+      assert.notStrictEqual(GUIDE_HUB_SELECT_ID, 'participant_mission_select');
+
+      const guideCommand = createChatInputInteraction('안내', {}, 'ux_user_shop', '상점 UX 사용자');
+      await handleInteractionCreate(guideCommand);
+      assert.strictEqual(guideCommand.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(guideCommand.replyPayload), '처음 오셨다면 여기서 시작해요');
+      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/안내/);
+      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/포인트/);
+      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/상점/);
+      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/미션/);
+      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/체크인/);
+      assert.strictEqual(guideCommand.replyPayload.components.length, 1);
+      const guideSelect = guideCommand.replyPayload.components[0].components[0].toJSON();
+      assert.strictEqual(guideSelect.custom_id, GUIDE_HUB_SELECT_ID);
+      assert.strictEqual(guideSelect.placeholder, '궁금한 내용을 선택해 주세요');
+      assert.deepStrictEqual(
+        guideSelect.options.map((option) => option.value),
+        ['start', 'today', 'points', 'shop', 'mission', 'question']
+      );
+
+      const guideCases = [
+        ['start', '처음 안내', /천천히 둘러봐도 괜찮아요/],
+        ['today', '오늘 할 일', /현재 참여 가능한 미션: 1개/],
+        ['points', '포인트 안내', /현재 내 포인트: 250P/],
+        ['shop', '상점과 교환', /선택만으로는 포인트가 차감되지 않아요/],
+        ['mission', '미션과 인증', /✅로 확인하면 여정 포인트가 지급/],
+        ['question', '문의하기', /민감한 개인정보/],
+      ];
+
+      for (const [value, title, pattern] of guideCases) {
+        const guideHubSelect = createSelectInteraction(
+          GUIDE_HUB_SELECT_ID,
+          [value],
+          'ux_user_shop',
+          '상점 UX 사용자'
+        );
+        await handleInteractionCreate(guideHubSelect);
+        assert.strictEqual(getEmbedTitle(guideHubSelect.updatePayload), title);
+        assert.ok(guideHubSelect.updatePayload.embeds[0].data.description.length > 20);
+        assert.match(guideHubSelect.updatePayload.embeds[0].data.description, pattern);
+        assert.strictEqual(guideHubSelect.updatePayload.components[0].components[0].toJSON().custom_id, GUIDE_HUB_SELECT_ID);
+      }
+
       const shopCommand = createChatInputInteraction('상점', {}, 'ux_user_shop', '상점 UX 사용자');
       await handleInteractionCreate(shopCommand);
       assert.strictEqual(shopCommand.replyPayload.ephemeral, true);

@@ -119,6 +119,128 @@ function createPointBalanceEmbed({ currentPoints, transactions = [], balanceChec
   );
 }
 
+function createGuideHubEmbed() {
+  return createGuideEmbed(
+    '처음 오셨다면 여기서 시작해요',
+    [
+      '리디파인 봇은 포인트, 미션, 상점, 인증 방법을 도와주는 안내 봇이에요.',
+      '아래 메뉴에서 궁금한 내용을 골라 확인해 주세요.',
+      '',
+      '처음에는 `/안내`, `/포인트`, `/상점`, `/미션`, `/체크인` 정도만 기억해도 충분해요.',
+    ].join('\n')
+  );
+}
+
+function createGuideHubDetailEmbed(value, options = {}) {
+  const currentPoints = formatPoints(options.currentPoints);
+  const activeMissionCount = typeof options.activeMissionCount === 'number'
+    ? options.activeMissionCount
+    : null;
+
+  const details = {
+    start: {
+      title: '처음 안내',
+      description: [
+        '처음에는 천천히 둘러봐도 괜찮아요.',
+        '',
+        '리디파인 디스코드는 안내, 미션, 포인트, 상점, 문의가 한곳에 모여 있는 공간이에요.',
+        '모든 활동은 강제 과제가 아니라, 가능한 범위에서 참여하는 선택형 활동입니다.',
+        '',
+        '먼저 해볼 수 있는 것:',
+        '- `/체크인`으로 오늘의 상태를 가볍게 남기기',
+        '- `/미션`에서 참여 가능한 활동 확인하기',
+        '- `/포인트`로 내 여정 포인트 확인하기',
+        '- `/상점`에서 교환 가능한 항목 둘러보기',
+      ].join('\n'),
+    },
+    today: {
+      title: '오늘 할 일',
+      description: [
+        '오늘은 이렇게 시작해도 좋아요.',
+        '',
+        ...(activeMissionCount === null ? [] : [`현재 참여 가능한 미션: ${activeMissionCount}개`, '']),
+        '1. `/체크인`으로 오늘의 상태를 가볍게 남겨요.',
+        '2. `/미션`에서 지금 참여 가능한 미션을 확인해요.',
+        '3. 인증이 필요한 활동은 미션 인증 채널에 글이나 사진을 올려요.',
+        '4. 운영진이 확인하면 여정 포인트가 지급돼요.',
+      ].join('\n'),
+    },
+    points: {
+      title: '포인트 안내',
+      description: [
+        '여정 포인트는 참여를 기록하기 위한 작은 보상이에요.',
+        '',
+        '포인트는 경쟁이나 순위를 위한 점수가 아니에요.',
+        '체크인, 미션 참여, 프로그램 활동 등을 통해 받을 수 있고, 운영진이 정한 항목으로 교환할 수 있어요.',
+        '',
+        `현재 내 포인트: ${currentPoints}`,
+        '',
+        '확인 방법:',
+        '- `/포인트`로 내 포인트 확인',
+        '- `/상점`으로 교환 가능한 항목 확인',
+      ].join('\n'),
+    },
+    shop: {
+      title: '상점과 교환',
+      description: [
+        '상점에서는 여정 포인트로 교환 가능한 항목을 볼 수 있어요.',
+        '',
+        '사용 방법:',
+        '1. `/상점` 또는 `/교환`을 입력해요.',
+        '2. 목록에서 원하는 항목을 선택해요.',
+        '3. 신청 전 내용을 한 번 더 확인해요.',
+        '4. 교환 신청이 접수되면 운영진이 순차적으로 확인해요.',
+        '',
+        '안내:',
+        '- 선택만으로는 포인트가 차감되지 않아요.',
+        '- 교환 신청을 완료하면 포인트가 차감돼요.',
+        '- 단순 변심에 따른 취소나 환불은 원칙적으로 어려울 수 있어요.',
+      ].join('\n'),
+    },
+    mission: {
+      title: '미션과 인증',
+      description: [
+        '미션은 가능한 범위에서 참여하는 선택형 활동이에요.',
+        '',
+        '기본 참여 방법:',
+        '1. `/미션`으로 참여 가능한 미션을 확인해요.',
+        '2. 글로 남길 수 있는 활동은 미션 선택 후 제출할 수 있어요.',
+        '3. 사진이나 영상 인증은 미션 인증 채널에 올려 주세요.',
+        '4. 운영진이 확인하면 여정 포인트가 지급돼요.',
+        '',
+        '반응 승인 안내:',
+        '미션 인증 채널에 올린 글/사진/영상은 운영진이 확인해요.',
+        '운영진이 ✅로 확인하면 여정 포인트가 지급됩니다.',
+        '지급 대상이 아니면 ❌로 확인될 수 있어요.',
+        '',
+        '`/인증` 명령어는 직접 제출이 필요할 때 사용할 수 있어요.',
+      ].join('\n'),
+    },
+    question: {
+      title: '문의하기',
+      description: [
+        '궁금한 점은 편하게 남겨 주세요.',
+        '',
+        '가벼운 질문은 `/질문`으로 물어볼 수 있어요.',
+        '운영진 확인이 필요한 내용은 운영진 문의 채널을 이용해 주세요.',
+        '',
+        '예시:',
+        '- 프로그램 일정이 궁금해요.',
+        '- 포인트가 지급되지 않은 것 같아요.',
+        '- 교환 신청을 확인하고 싶어요.',
+        '- 미션 인증 방법이 헷갈려요.',
+        '',
+        '민감한 개인정보는 공개 채널에 자세히 남기지 않는 편이 좋아요.',
+        '위기 표현이나 긴급한 안전 문제가 담긴 문의는 운영진이 확인할 수 있어요.',
+      ].join('\n'),
+    },
+  };
+
+  const detail = details[value] || details.start;
+
+  return createGuideEmbed(detail.title, detail.description);
+}
+
 function getShopTypeLabel(type) {
   const normalizedType = String(type || '').trim();
   const labels = {
@@ -223,6 +345,8 @@ function createChannelGuideEmbed(options = {}) {
 module.exports = {
   OPERATOR_CHECK_FOOTER,
   createChannelGuideEmbed,
+  createGuideHubDetailEmbed,
+  createGuideHubEmbed,
   createGuideEmbed,
   createPointBalanceEmbed,
   createShopEmbed,

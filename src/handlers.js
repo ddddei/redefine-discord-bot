@@ -13,6 +13,8 @@ const {
   OPERATOR_CHECK_FOOTER,
   createChannelGuideEmbed,
   createGuideEmbed,
+  createGuideHubDetailEmbed,
+  createGuideHubEmbed,
   createKnowledgeEmbed,
   createPointBalanceEmbed,
   createShopEmbed,
@@ -24,6 +26,10 @@ const {
   truncateText,
 } = require('./embeds');
 const {
+  GUIDE_HUB_SELECT_ID,
+  createGuideHubSelectRow,
+} = require('./components');
+const {
   sendMissionSubmissionReviewAlert,
   sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,
@@ -32,7 +38,6 @@ const {
 const { getAiFallbackAnswer } = require('./ai');
 const {
   getChannelGuideRoleNote,
-  getOnboardingGuideMessage,
   getOnboardingRoleType,
 } = require('./onboardingRoles');
 const {
@@ -450,36 +455,28 @@ function createNoticeEmbed(type) {
 }
 
 async function handleGuideCommand(interaction) {
-  const roleType = getOnboardingRoleType(interaction.member);
-  const roleGuideMessage = getOnboardingGuideMessage(roleType);
-  const embed = createGuideEmbed(
-    '처음 오셨다면 여기부터 확인해 주세요',
-    [
-      '안녕하세요. 여기는 프로젝트 리디파인 디스코드 공간이에요.',
-      '',
-      '처음부터 모든 채널을 다 살펴보지 않아도 괜찮아요.',
-      '온보딩 기간에는 역할에 따라 보이는 채널이 다를 수 있어요.',
-      '보이는 채널이 적어도 문제가 아니며, 각자의 속도에 맞춰 필요한 공간이 열립니다.',
-      ...(roleGuideMessage ? ['', roleGuideMessage] : []),
-      '',
-      '먼저 `/채널안내`를 확인해 주세요.',
-      '지금 보이는 채널 중에서 무엇부터 보면 좋을지 천천히 살펴볼 수 있어요.',
-      '',
-      '궁금한 점은 `/질문 내용: 궁금한 내용`으로 물어볼 수 있어요.',
-      '',
-      '예시:',
-      '`/질문 내용: 결석하면 어떻게 하나요?`',
-      '`/질문 내용: 왜 저는 채널이 적게 보여요?`',
-      '`/질문 내용: 준비물이 있나요?`',
-      '`/질문 내용: 처음이라 어색하면 어떡하죠?`',
-      '',
-      '리디파인은 완벽하게 참여해야 하는 공간이 아니에요.',
-      '각자의 속도에 맞춰 천천히 이어가면 됩니다.',
-      '불편하거나 어렵거나 헷갈리는 부분은 운영진에게 알려주세요.',
-    ].join('\n')
-  );
+  await interaction.reply({
+    embeds: [createGuideHubEmbed()],
+    components: [createGuideHubSelectRow()],
+    ephemeral: true,
+  });
+}
 
-  await interaction.reply({ embeds: [embed] });
+async function handleGuideHubSelect(interaction) {
+  const selectedValue = interaction.values[0];
+  const pointsData = pointsRepository.loadState().pointsData;
+  const currentPoints = getUserPoints(pointsData, interaction.user.id);
+  const activeMissionCount = pointsRepository.listActiveMissions().length;
+
+  await interaction.update({
+    embeds: [
+      createGuideHubDetailEmbed(selectedValue, {
+        currentPoints,
+        activeMissionCount,
+      }),
+    ],
+    components: [createGuideHubSelectRow(selectedValue)],
+  });
 }
 
 async function handleChannelGuideCommand(interaction) {
@@ -1698,6 +1695,11 @@ async function handleRediCommand(interaction) {
 
 async function handleInteractionCreate(interaction) {
   if (interaction.isStringSelectMenu && interaction.isStringSelectMenu()) {
+    if (interaction.customId === GUIDE_HUB_SELECT_ID) {
+      await handleGuideHubSelect(interaction);
+      return;
+    }
+
     if (interaction.customId === 'participant_shop_select') {
       await handleShopSelect(interaction);
       return;
@@ -1831,6 +1833,7 @@ module.exports = {
   handleChannelGuideCommand,
   handleCheckinCommand,
   handleGuideCommand,
+  handleGuideHubSelect,
   handleInteractionCreate,
   handleMissionManageCommand,
   handleMissionCommand,

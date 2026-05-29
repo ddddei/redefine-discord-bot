@@ -39,6 +39,11 @@ const checks = [
     args: ['--check', 'src/embeds.js'],
   },
   {
+    label: 'src/components.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/components.js'],
+  },
+  {
     label: 'src/pointsStore.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/pointsStore.js'],
