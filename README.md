@@ -135,7 +135,17 @@ ADMIN_DASHBOARD_PASSWORD=원하는_관리자_비밀번호
 ADMIN_DASHBOARD_TITLE=리디파인 운영 대시보드
 ```
 
+Railway에서 Public Domain을 생성한 뒤 `https://Railway-도메인/admin`으로 접속합니다. Public Domain은 Railway 프로젝트의 서비스 `Settings` -> `Networking` -> `Public Networking`에서 생성합니다.
+
 대시보드는 HTTP Basic Auth로 보호되며 API도 같은 인증을 사용합니다. 운영 요약 카드, 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록, `/운영내보내기` 안내와 운영 체크리스트를 보여줍니다.
+
+운영 로그와 알림 채널은 아래 환경변수를 기준으로 분리합니다.
+
+- `LOG_CHANNEL_ID`: 기본 운영 로그, fallback 질문, 일반 알림
+- `ACTIVITY_REVIEW_CHANNEL_ID`: 미션 인증 검토와 반응 승인/반려 처리 로그
+- `POINT_REDEEM_CHANNEL_ID`: 교환 신청과 교환 처리 알림
+
+관리자 대시보드와 `/api/admin/*` 응답은 `data/*.example.json`의 example/demo/sample 데이터를 실제 운영 데이터처럼 보이지 않도록 제외합니다. 실제 운영 전에는 `data/*.local.json` 상태를 확인하고, 테스트용 local 데이터가 남아 있으면 정리한 뒤 운영용 미션과 상점 항목을 `/미션관리`, `/상점관리`로 등록합니다.
 
 초기 MVP는 읽기 전용입니다. 승인, 거절, 포인트 지급/차감, 미션/상점 수정은 계속 Discord의 `/교환관리`, `/인증관리`, `/포인트관리`, `/미션관리`, `/상점관리` 명령어에서 처리합니다. Google Sheets와 PostgreSQL 연동은 포함하지 않습니다.
 
@@ -202,5 +212,7 @@ npm run check:release
 - [처음 안내 채널 고정 공지문](docs/participant-onboarding-notice.md)
 - [처음 참여자 요약 안내문](docs/first-time-participant-guide.md)
 - [실제 운영 전 QA 체크리스트](docs/prelaunch-qa-checklist.md)
+- [Railway 환경변수 가이드](docs/railway-env-guide.md)
+- [운영 전 데이터 초기화 가이드](docs/production-data-reset-guide.md)
 - [운영 데이터 내보내기 및 백업 가이드](docs/export-and-backup-guide.md)
 - [운영 릴리즈 체크리스트](docs/release-checklist.md)

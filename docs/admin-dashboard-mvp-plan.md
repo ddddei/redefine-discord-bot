@@ -623,14 +623,24 @@ PORT=Railway가 제공
 * `ADMIN_DASHBOARD_ENABLED=true`이고 `ADMIN_DASHBOARD_PASSWORD`가 있을 때만 `/admin`을 활성화한다.
 * `/admin` 페이지와 `/api/admin/*` endpoint는 HTTP Basic Auth로 보호한다.
 * 운영 요약 카드, 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록을 표시한다.
+* 운영 대시보드 조회에서는 example/demo/sample 계열 데이터와 명백한 샘플용 미래 날짜 데이터를 제외한다.
+* `/api/admin/*` 목록 응답은 `data`와 `meta`를 반환하며, `meta.exampleRecordsExcluded`로 제외된 example-like 레코드 수를 제공한다.
+* 화면 상단에는 `읽기 전용 · local-json · example 데이터 제외` 상태 안내를 표시한다.
 * 내보내기는 웹 다운로드가 아니라 Discord `/운영내보내기` 사용법을 안내한다.
 * 운영 전/중/후 체크리스트를 표시한다.
+* Railway 운영 시 Public Domain과 `ADMIN_DASHBOARD_*`, 로그/알림 채널 환경변수가 필요하다.
 
 제외 범위:
 
 * 웹에서 승인, 거절, 완료, 포인트 지급/차감, 미션/상점 수정을 처리하지 않는다.
 * Google Sheets와 PostgreSQL 연동은 하지 않는다.
 * 새 Slash Command는 추가하지 않는다.
+
+남은 안정화 과제:
+
+* local JSON은 MVP 저장 방식이므로 실제 운영 전 백업 절차와 저장 위치를 확인한다.
+* 운영 규모가 커지면 Railway Volume, PostgreSQL 같은 안정적인 저장소 전환을 우선 검토한다.
+* 운영 전 `docs/railway-env-guide.md`와 `docs/production-data-reset-guide.md` 기준으로 환경변수와 초기 데이터 상태를 점검한다.
 
 ---
 

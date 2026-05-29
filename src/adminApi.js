@@ -50,12 +50,87 @@ function countByStatus(items) {
   }, {});
 }
 
+function isExampleLikeValue(value, key = '') {
+  if (value === null || value === undefined) {
+    return false;
+  }
+
+  const normalizedKey = String(key).toLowerCase();
+  if (typeof value === 'string') {
+    const normalized = value.toLowerCase();
+    const isIdentifierField = normalizedKey === 'id'
+      || normalizedKey.endsWith('id')
+      || normalizedKey.includes('userid')
+      || normalizedKey.includes('itemid')
+      || normalizedKey.includes('missionid')
+      || normalizedKey.includes('submissionid')
+      || normalizedKey.includes('redemptionid')
+      || normalizedKey.includes('transactionid');
+    const isTextField = ['title', 'name', 'description', 'reason', 'note', 'content', 'displayname'].some((field) => normalizedKey.includes(field));
+
+    if ((isIdentifierField || isTextField) && (normalized.includes('example') || normalized.includes('sample') || normalized.includes('demo') || value.includes('예시'))) {
+      return true;
+    }
+
+    if ((normalizedKey.endsWith('at') || normalizedKey.includes('date')) && /^20[3-9]\d/.test(value)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isExampleLikeRecord(record) {
+  if (!record || typeof record !== 'object') {
+    return false;
+  }
+
+  return Object.entries(record).some(([key, value]) => isExampleLikeValue(value, key));
+}
+
+function filterOperationalRecords(records) {
+  const original = toArray(records);
+  const data = original.filter((record) => !isExampleLikeRecord(record));
+
+  return {
+    data,
+    excluded: original.length - data.length,
+  };
+}
+
+function buildAdminMeta(exampleRecordsExcluded = 0) {
+  return {
+    exampleRecordsExcluded,
+    storageMode: 'local-json',
+    readOnly: true,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+function buildListResponse(records, originalRecords) {
+  const filtered = filterOperationalRecords(records);
+  const originalFiltered = originalRecords ? filterOperationalRecords(originalRecords) : filtered;
+
+  return {
+    data: clone(filtered.data),
+    meta: buildAdminMeta(originalFiltered.excluded),
+  };
+}
+
 function readState(repository) {
   if (repository && typeof repository.loadState === 'function') {
     return repository.loadState();
   }
 
   return createDefaultRepository().loadState();
+}
+
+function readStateForMeta(repository) {
+  if (repository && typeof repository.loadState === 'function') {
+    return repository.loadState();
+  }
+
+  return null;
 }
 
 function readReactionApprovals(repository) {
@@ -69,13 +144,27 @@ function readReactionApprovals(repository) {
 
 function buildAdminSummary(repository = createDefaultRepository()) {
   const state = readState(repository);
-  const users = toArray(state.pointsData && state.pointsData.users);
-  const pointTransactions = toArray(state.pointsData && state.pointsData.pointTransactions);
-  const redemptions = toArray(state.redemptionsData && state.redemptionsData.redemptions);
-  const submissions = toArray(state.submissionsData && state.submissionsData.submissions);
-  const missions = toArray(state.missionsData && state.missionsData.missions);
-  const shopItems = toArray(state.shopItemsData && state.shopItemsData.shopItems);
-  const reactionApprovals = readReactionApprovals(repository);
+  const usersResult = filterOperationalRecords(state.pointsData && state.pointsData.users);
+  const pointTransactionsResult = filterOperationalRecords(state.pointsData && state.pointsData.pointTransactions);
+  const redemptionsResult = filterOperationalRecords(state.redemptionsData && state.redemptionsData.redemptions);
+  const submissionsResult = filterOperationalRecords(state.submissionsData && state.submissionsData.submissions);
+  const missionsResult = filterOperationalRecords(state.missionsData && state.missionsData.missions);
+  const shopItemsResult = filterOperationalRecords(state.shopItemsData && state.shopItemsData.shopItems);
+  const reactionApprovalsResult = filterOperationalRecords(readReactionApprovals(repository));
+  const users = usersResult.data;
+  const pointTransactions = pointTransactionsResult.data;
+  const redemptions = redemptionsResult.data;
+  const submissions = submissionsResult.data;
+  const missions = missionsResult.data;
+  const shopItems = shopItemsResult.data;
+  const reactionApprovals = reactionApprovalsResult.data;
+  const exampleRecordsExcluded = usersResult.excluded
+    + pointTransactionsResult.excluded
+    + redemptionsResult.excluded
+    + submissionsResult.excluded
+    + missionsResult.excluded
+    + shopItemsResult.excluded
+    + reactionApprovalsResult.excluded;
 
   return {
     title: process.env.ADMIN_DASHBOARD_TITLE || '리디파인 운영 대시보드',
@@ -92,69 +181,106 @@ function buildAdminSummary(repository = createDefaultRepository()) {
     todayReactionApprovalsCount: reactionApprovals.filter((record) => isTodayKst(record.reviewedAt || record.createdAt)).length,
     missionStatusCounts: countByStatus(missions),
     shopItemStatusCounts: countByStatus(shopItems),
+    exampleRecordsExcluded,
+    storageMode: 'local-json',
+    readOnly: true,
     generatedAt: new Date().toISOString(),
+    meta: buildAdminMeta(exampleRecordsExcluded),
   };
 }
 
 function listPendingRedemptions(repository = createDefaultRepository(), limit = 10) {
   if (repository && typeof repository.listPendingRedemptions === 'function') {
-    return clone(repository.listPendingRedemptions(parseLimit(limit)));
+    const state = readStateForMeta(repository);
+    return buildListResponse(
+      repository.listPendingRedemptions(parseLimit(limit)),
+      state && toArray(state.redemptionsData && state.redemptionsData.redemptions)
+        .filter((redemption) => redemption.status === 'pending')
+    );
   }
 
   const state = readState(repository);
-  return sortNewestFirst(toArray(state.redemptionsData && state.redemptionsData.redemptions), ['requestedAt', 'createdAt'])
+  return buildListResponse(sortNewestFirst(toArray(state.redemptionsData && state.redemptionsData.redemptions), ['requestedAt', 'createdAt'])
     .filter((redemption) => redemption.status === 'pending')
-    .slice(0, parseLimit(limit));
+    .slice(0, parseLimit(limit)), toArray(state.redemptionsData && state.redemptionsData.redemptions)
+    .filter((redemption) => redemption.status === 'pending'));
 }
 
 function listPendingSubmissions(repository = createDefaultRepository(), limit = 10) {
   if (repository && typeof repository.listPendingSubmissions === 'function') {
-    return clone(repository.listPendingSubmissions(parseLimit(limit)));
+    const state = readStateForMeta(repository);
+    return buildListResponse(
+      repository.listPendingSubmissions(parseLimit(limit)),
+      state && toArray(state.submissionsData && state.submissionsData.submissions)
+        .filter((submission) => submission.status === 'pending')
+    );
   }
 
   const state = readState(repository);
-  return sortNewestFirst(toArray(state.submissionsData && state.submissionsData.submissions), ['createdAt', 'reviewedAt'])
+  return buildListResponse(sortNewestFirst(toArray(state.submissionsData && state.submissionsData.submissions), ['createdAt', 'reviewedAt'])
     .filter((submission) => submission.status === 'pending')
-    .slice(0, parseLimit(limit));
+    .slice(0, parseLimit(limit)), toArray(state.submissionsData && state.submissionsData.submissions)
+    .filter((submission) => submission.status === 'pending'));
 }
 
 function listRecentPointTransactions(repository = createDefaultRepository(), limit = 10) {
   if (repository && typeof repository.listTransactions === 'function') {
-    return clone(repository.listTransactions({ limit: parseLimit(limit) }));
+    const state = readStateForMeta(repository);
+    return buildListResponse(
+      repository.listTransactions({ limit: parseLimit(limit) }),
+      state && toArray(state.pointsData && state.pointsData.pointTransactions)
+    );
   }
 
   const state = readState(repository);
-  return sortNewestFirst(toArray(state.pointsData && state.pointsData.pointTransactions), ['createdAt'])
-    .slice(0, parseLimit(limit));
+  return buildListResponse(
+    sortNewestFirst(toArray(state.pointsData && state.pointsData.pointTransactions), ['createdAt']).slice(0, parseLimit(limit)),
+    toArray(state.pointsData && state.pointsData.pointTransactions)
+  );
 }
 
 function listMissionStatus(repository = createDefaultRepository(), limit = 10) {
   if (repository && typeof repository.listMissionsForAdmin === 'function') {
-    return clone(repository.listMissionsForAdmin({ limit: parseLimit(limit) }));
+    const state = readStateForMeta(repository);
+    return buildListResponse(
+      repository.listMissionsForAdmin({ limit: parseLimit(limit) }),
+      state && toArray(state.missionsData && state.missionsData.missions)
+    );
   }
 
   const state = readState(repository);
-  return sortNewestFirst(toArray(state.missionsData && state.missionsData.missions), ['updatedAt', 'createdAt', 'activeDate'])
-    .slice(0, parseLimit(limit));
+  return buildListResponse(
+    sortNewestFirst(toArray(state.missionsData && state.missionsData.missions), ['updatedAt', 'createdAt', 'activeDate']).slice(0, parseLimit(limit)),
+    toArray(state.missionsData && state.missionsData.missions)
+  );
 }
 
 function listShopItemStatus(repository = createDefaultRepository(), limit = 10) {
   if (repository && typeof repository.listShopItemsForAdmin === 'function') {
-    return clone(repository.listShopItemsForAdmin({ limit: parseLimit(limit) }));
+    const state = readStateForMeta(repository);
+    return buildListResponse(
+      repository.listShopItemsForAdmin({ limit: parseLimit(limit) }),
+      state && toArray(state.shopItemsData && state.shopItemsData.shopItems)
+    );
   }
 
   const state = readState(repository);
-  return sortNewestFirst(toArray(state.shopItemsData && state.shopItemsData.shopItems), ['updatedAt', 'createdAt'])
-    .slice(0, parseLimit(limit));
+  return buildListResponse(
+    sortNewestFirst(toArray(state.shopItemsData && state.shopItemsData.shopItems), ['updatedAt', 'createdAt']).slice(0, parseLimit(limit)),
+    toArray(state.shopItemsData && state.shopItemsData.shopItems)
+  );
 }
 
 function listRecentReactionApprovals(repository = createDefaultRepository(), limit = 10) {
+  const reactionApprovals = readReactionApprovals(repository);
   if (repository && typeof repository.listRecentReactionApprovals === 'function') {
-    return clone(repository.listRecentReactionApprovals(parseLimit(limit)));
+    return buildListResponse(repository.listRecentReactionApprovals(parseLimit(limit)), reactionApprovals);
   }
 
-  return sortNewestFirst(readReactionApprovals(repository), ['reviewedAt', 'createdAt'])
-    .slice(0, parseLimit(limit));
+  return buildListResponse(
+    sortNewestFirst(reactionApprovals, ['reviewedAt', 'createdAt']).slice(0, parseLimit(limit)),
+    reactionApprovals
+  );
 }
 
 module.exports = {
@@ -165,5 +291,8 @@ module.exports = {
   listRecentPointTransactions,
   listRecentReactionApprovals,
   listShopItemStatus,
+  filterOperationalRecords,
+  isExampleLikeRecord,
+  isExampleLikeValue,
   parseLimit,
 };

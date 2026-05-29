@@ -203,6 +203,8 @@ push 또는 pull request를 올린 뒤에는 GitHub의 Actions 탭이나 PR 하�
 - `.env`는 절대 커밋하지 않습니다.
 - `.env.example`에는 실제 토큰이나 실제 채널 ID를 넣지 않고 예시값만 넣습니다.
 - Railway Variables에는 실제 `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `LOG_CHANNEL_ID` 값을 넣습니다.
+- 관리자 웹 대시보드를 사용할 경우 Railway Public Domain을 만든 뒤 `ADMIN_DASHBOARD_ENABLED=true`, `ADMIN_DASHBOARD_PASSWORD`, `ADMIN_DASHBOARD_TITLE`을 설정합니다.
+- 알림 채널은 `LOG_CHANNEL_ID`, `ACTIVITY_REVIEW_CHANNEL_ID`, `POINT_REDEEM_CHANNEL_ID` 3종을 운영 채널 구조에 맞게 확인합니다.
 - 미션 인증 채널 반응 승인 알림 정책에 맞게 `REACTION_APPROVAL_PUBLIC_REPLY=false`, `REACTION_APPROVAL_DM_USER=true`를 Railway Variables에 추가합니다.
 - 로컬에서 `npm run start`로 봇을 켠 상태에서 Railway 봇도 동시에 켜져 있으면 충돌할 수 있습니다.
 - FAQ, 지식창고, 공지 템플릿, 채널 안내 데이터만 수정했다면 `npm run deploy`는 필요하지 않습니다.
@@ -222,7 +224,18 @@ push 또는 pull request를 올린 뒤에는 GitHub의 Actions 탭이나 PR 하�
 
 운영 중에는 신청 ID, 제출 ID, 미션 ID, 항목 ID를 복사해 후속 명령에 입력하므로 ID를 잘못 붙여 넣지 않았는지 확인합니다. 운영자 명령은 Manage Messages 또는 Administrator 권한이 있는 사용자만 실행할 수 있어야 하며, 응답은 가능한 한 ephemeral로 확인합니다.
 
-이번 MVP v1은 local JSON repository 기반입니다. `data/*.local.json`은 실제 운영 데이터 파일이므로 커밋하지 않습니다. Google Sheets, PostgreSQL, 웹 대시보드는 이번 단계에 포함하지 않고 후속 단계에서 검토합니다.
+이번 MVP v1은 local JSON repository 기반입니다. `data/*.local.json`은 실제 운영 데이터 파일이므로 커밋하지 않습니다. Google Sheets와 PostgreSQL 연동은 이번 단계에 포함하지 않고 후속 단계에서 검토합니다.
+
+## 관리자 웹 대시보드 운영 루틴
+
+관리자 웹 대시보드 `/admin`은 읽기 전용 점검 화면입니다. 운영자는 `/운영현황`으로 Discord 내부 상태를 확인하고, 브라우저의 `/admin`에서 요약과 목록을 함께 대조합니다.
+
+- 실제 운영 전 `/admin`에서 `user_example`, `rd_example`, `submission_example`, `tx_example`, 2030년 샘플 날짜 같은 example 데이터가 보이지 않는지 확인합니다.
+- `/admin` 상단에 `읽기 전용 · local-json · example 데이터 제외` 안내가 표시되는지 확인합니다.
+- 교환, 인증, 포인트, 미션, 상점의 실제 처리는 계속 `/교환관리`, `/인증관리`, `/포인트관리`, `/미션관리`, `/상점관리`에서 진행합니다.
+- 대시보드가 비어 있으면 example 데이터가 제외된 정상 상태일 수 있으므로, 운영용 미션과 상점 항목은 Discord 명령어로 등록합니다.
+- 운영 전 데이터 정리는 [production-data-reset-guide.md](production-data-reset-guide.md)를 확인합니다.
+- Railway 환경변수와 Public Domain 설정은 [railway-env-guide.md](railway-env-guide.md)를 확인합니다.
 
 ## 전체 운영 순서
 

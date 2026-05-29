@@ -2,6 +2,8 @@ const assert = require('assert');
 const { Writable } = require('stream');
 const {
   buildAdminSummary,
+  filterOperationalRecords,
+  isExampleLikeRecord,
   listMissionStatus,
   listPendingRedemptions,
   listPendingSubmissions,
@@ -47,6 +49,18 @@ function createRepository() {
           createdBy: 'operator',
           createdAt: now,
         },
+        {
+          id: 'tx_example_001',
+          userId: 'user_example_001',
+          type: 'earn',
+          amount: 999,
+          balanceAfter: 999,
+          reason: '예시 활동 지급',
+          relatedType: 'mission',
+          relatedId: 'submission_example_pending',
+          createdBy: 'operator_example',
+          createdAt: '2030-01-01T00:00:00.000Z',
+        },
       ],
     },
     redemptionsData: {
@@ -58,6 +72,15 @@ function createRepository() {
           cost: 50,
           status: 'pending',
           requestedAt: now,
+        },
+        {
+          id: 'rd_example_pending',
+          userId: 'user_example_001',
+          itemId: 'item_youth_point_100_example',
+          itemName: '청년동 포인트 전환권 100P 예시',
+          cost: 100,
+          status: 'pending',
+          requestedAt: '2030-01-01T00:00:00.000Z',
         },
       ],
     },
@@ -73,6 +96,16 @@ function createRepository() {
           createdAt: now,
           attachment: null,
         },
+        {
+          id: 'submission_example_pending',
+          type: 'mission',
+          missionId: 'mission_example',
+          userId: 'user_example_001',
+          displayName: '참여자 예시',
+          status: 'pending',
+          createdAt: '2030-01-01T00:00:00.000Z',
+          attachment: null,
+        },
       ],
     },
     missionsData: {
@@ -84,6 +117,14 @@ function createRepository() {
           rewardPoints: 20,
           createdAt: now,
           updatedAt: now,
+        },
+        {
+          id: 'mission_example',
+          title: '예시 미션',
+          status: 'active',
+          rewardPoints: 20,
+          createdAt: '2030-01-01T00:00:00.000Z',
+          updatedAt: '2030-01-01T00:00:00.000Z',
         },
       ],
     },
@@ -98,6 +139,15 @@ function createRepository() {
           createdAt: now,
           updatedAt: now,
         },
+        {
+          id: 'item_example',
+          name: '예시 상점 항목',
+          status: 'active',
+          cost: 100,
+          stock: null,
+          createdAt: '2030-01-01T00:00:00.000Z',
+          updatedAt: '2030-01-01T00:00:00.000Z',
+        },
       ],
     },
   };
@@ -110,6 +160,15 @@ function createRepository() {
       status: 'approved',
       rewardPoints: 20,
       reviewedAt: now,
+    },
+    {
+      id: 'reaction_example',
+      authorId: 'user_example_001',
+      authorDisplayName: '참여자 예시',
+      reviewedBy: 'operator_example',
+      status: 'approved',
+      rewardPoints: 20,
+      reviewedAt: '2030-01-01T00:00:00.000Z',
     },
   ];
 
@@ -139,6 +198,66 @@ function createEmptyRepository() {
       shopItemsData: {},
     }),
     getReactionApprovalData: () => ({}),
+  };
+}
+
+function createExampleOnlyRepository() {
+  return {
+    loadState: () => ({
+      pointsData: {
+        users: [{ userId: 'user_example_001', displayName: '참여자 예시', totalPoints: 999 }],
+        pointTransactions: [{
+          id: 'tx_example_001',
+          userId: 'user_example_001',
+          type: 'earn',
+          amount: 999,
+          reason: '예시 활동 지급',
+          createdAt: '2030-01-01T00:00:00.000Z',
+        }],
+      },
+      redemptionsData: {
+        redemptions: [{
+          id: 'rd_example_pending',
+          userId: 'user_example_001',
+          itemId: 'item_youth_point_100_example',
+          status: 'pending',
+          requestedAt: '2030-01-01T00:00:00.000Z',
+        }],
+      },
+      submissionsData: {
+        submissions: [{
+          id: 'submission_example_pending',
+          missionId: 'mission_example',
+          userId: 'user_example_001',
+          status: 'pending',
+          createdAt: '2030-01-01T00:00:00.000Z',
+        }],
+      },
+      missionsData: {
+        missions: [{
+          id: 'mission_example',
+          title: '예시 미션',
+          status: 'active',
+          createdAt: '2030-01-01T00:00:00.000Z',
+        }],
+      },
+      shopItemsData: {
+        shopItems: [{
+          id: 'item_example',
+          name: '예시 항목',
+          status: 'active',
+          createdAt: '2030-01-01T00:00:00.000Z',
+        }],
+      },
+    }),
+    getReactionApprovalData: () => ({
+      records: [{
+        id: 'reaction_example',
+        authorId: 'user_example_001',
+        status: 'approved',
+        reviewedAt: '2030-01-01T00:00:00.000Z',
+      }],
+    }),
   };
 }
 
@@ -204,6 +323,12 @@ async function main() {
     assert.strictEqual(parseBasicAuthHeader(createRequest('Bearer token')), null);
     assert.strictEqual(safeComparePassword('wrong', 'secret'), false);
     assert.strictEqual(safeComparePassword('secret', 'secret'), true);
+    assert.strictEqual(isExampleLikeRecord({ id: 'rd_example_pending' }), true);
+    assert.strictEqual(isExampleLikeRecord({ id: 'rd1', title: '운영 미션' }), false);
+    assert.deepStrictEqual(filterOperationalRecords([{ id: 'rd1' }, { id: 'rd_example_pending' }]), {
+      data: [{ id: 'rd1' }],
+      excluded: 1,
+    });
 
     const repository = createRepository();
     const summary = buildAdminSummary(repository);
@@ -216,25 +341,45 @@ async function main() {
     assert.strictEqual(summary.activeShopItemsCount, 1);
     assert.strictEqual(summary.todayReactionApprovalsCount, 1);
     assert.strictEqual(summary.todayEarnedPoints, 20);
+    assert.strictEqual(summary.exampleRecordsExcluded, 6);
+    assert.strictEqual(summary.meta.exampleRecordsExcluded, 6);
+    assert.strictEqual(summary.storageMode, 'local-json');
+    assert.strictEqual(summary.readOnly, true);
 
     const emptyRepository = createEmptyRepository();
     const emptySummary = buildAdminSummary(emptyRepository);
     assert.strictEqual(emptySummary.usersCount, 0);
     assert.strictEqual(emptySummary.pointTransactionsCount, 0);
     assert.strictEqual(emptySummary.todayEarnedPoints, 0);
-    assert.deepStrictEqual(listPendingRedemptions(emptyRepository, 10), []);
-    assert.deepStrictEqual(listPendingSubmissions(emptyRepository, 10), []);
-    assert.deepStrictEqual(listRecentPointTransactions(emptyRepository, 10), []);
-    assert.deepStrictEqual(listMissionStatus(emptyRepository, 10), []);
-    assert.deepStrictEqual(listShopItemStatus(emptyRepository, 10), []);
-    assert.deepStrictEqual(listRecentReactionApprovals(emptyRepository, 10), []);
+    assert.deepStrictEqual(listPendingRedemptions(emptyRepository, 10).data, []);
+    assert.deepStrictEqual(listPendingSubmissions(emptyRepository, 10).data, []);
+    assert.deepStrictEqual(listRecentPointTransactions(emptyRepository, 10).data, []);
+    assert.deepStrictEqual(listMissionStatus(emptyRepository, 10).data, []);
+    assert.deepStrictEqual(listShopItemStatus(emptyRepository, 10).data, []);
+    assert.deepStrictEqual(listRecentReactionApprovals(emptyRepository, 10).data, []);
 
-    assert.ok(Array.isArray(listPendingRedemptions(repository, 10)));
-    assert.ok(Array.isArray(listPendingSubmissions(repository, 10)));
-    assert.ok(Array.isArray(listRecentPointTransactions(repository, 10)));
-    assert.ok(Array.isArray(listMissionStatus(repository, 10)));
-    assert.ok(Array.isArray(listShopItemStatus(repository, 10)));
-    assert.ok(Array.isArray(listRecentReactionApprovals(repository, 10)));
+    const exampleOnlyRepository = createExampleOnlyRepository();
+    const exampleOnlySummary = buildAdminSummary(exampleOnlyRepository);
+    assert.strictEqual(exampleOnlySummary.usersCount, 0);
+    assert.strictEqual(exampleOnlySummary.pointTransactionsCount, 0);
+    assert.strictEqual(exampleOnlySummary.pendingRedemptionsCount, 0);
+    assert.strictEqual(exampleOnlySummary.pendingSubmissionsCount, 0);
+    assert.strictEqual(exampleOnlySummary.activeMissionsCount, 0);
+    assert.strictEqual(exampleOnlySummary.activeShopItemsCount, 0);
+    assert.strictEqual(exampleOnlySummary.exampleRecordsExcluded, 7);
+    assert.deepStrictEqual(listPendingRedemptions(exampleOnlyRepository, 10).data, []);
+    assert.deepStrictEqual(listPendingSubmissions(exampleOnlyRepository, 10).data, []);
+    assert.deepStrictEqual(listRecentPointTransactions(exampleOnlyRepository, 10).data, []);
+    assert.deepStrictEqual(listMissionStatus(exampleOnlyRepository, 10).data, []);
+    assert.deepStrictEqual(listShopItemStatus(exampleOnlyRepository, 10).data, []);
+    assert.deepStrictEqual(listRecentReactionApprovals(exampleOnlyRepository, 10).data, []);
+
+    assert.strictEqual(listPendingRedemptions(repository, 10).data.length, 1);
+    assert.strictEqual(listPendingSubmissions(repository, 10).data.length, 1);
+    assert.strictEqual(listRecentPointTransactions(repository, 10).data.length, 1);
+    assert.strictEqual(listMissionStatus(repository, 10).data.length, 1);
+    assert.strictEqual(listShopItemStatus(repository, 10).data.length, 1);
+    assert.strictEqual(listRecentReactionApprovals(repository, 10).data.length, 1);
 
     const handler = createAdminRequestHandler(repository);
     const unauthorized = await invokeHandler(handler, '/api/admin/summary');
@@ -247,6 +392,11 @@ async function main() {
     const accepted = await invokeHandler(handler, '/api/admin/summary', basic('admin', 'secret'));
     assert.strictEqual(accepted.statusCode, 200);
     assert.strictEqual(JSON.parse(accepted.body).usersCount, 1);
+
+    const redemptionsResponse = await invokeHandler(handler, '/api/admin/redemptions', basic('admin', 'secret'));
+    const redemptionsPayload = JSON.parse(redemptionsResponse.body);
+    assert.strictEqual(redemptionsPayload.data.length, 1);
+    assert.strictEqual(redemptionsPayload.meta.exampleRecordsExcluded, 1);
 
     const page = await invokeHandler(handler, '/admin', basic('admin', 'secret'));
     assert.strictEqual(page.statusCode, 200);

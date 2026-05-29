@@ -5,6 +5,7 @@
 ## 1. 환경변수 확인
 
 - [ ] `DISCORD_TOKEN`이 운영 환경에 등록되어 있습니다.
+- [ ] Railway Public Domain이 생성되어 있습니다.
 - [ ] `CLIENT_ID`가 운영 봇 애플리케이션 기준입니다.
 - [ ] `GUILD_ID`가 실제 운영 서버 기준입니다.
 - [ ] `LOG_CHANNEL_ID`가 운영진 로그 채널 기준입니다.
@@ -22,6 +23,7 @@
 - [ ] `OPERATOR_ROLE_ID` 사용 여부가 운영자 권한 정책과 맞습니다.
 - [ ] `REACTION_APPROVAL_PUBLIC_REPLY=false`일 때 미션 인증 채널에 공개 답글이 남지 않습니다.
 - [ ] `REACTION_APPROVAL_DM_USER=true`일 때 참여자 DM 알림이 전송됩니다.
+- [ ] `ADMIN_DASHBOARD_ENABLED=true`를 사용할 경우 `ADMIN_DASHBOARD_PASSWORD`가 실제 운영 비밀번호로 설정되어 있습니다.
 
 ## 2. Discord 권한 확인
 
@@ -146,7 +148,13 @@
 - [ ] `ADMIN_DASHBOARD_ENABLED=true`와 비밀번호가 있을 때 `/admin` 접근 시 인증이 필요합니다.
 - [ ] 잘못된 비밀번호로 `/admin`과 `/api/admin/summary`에 접근하면 401 응답이 반환됩니다.
 - [ ] 올바른 비밀번호로 `/admin`에 접근하면 운영 요약 카드가 보입니다.
+- [ ] Railway Public Domain의 `https://도메인/admin` 주소로 접속됩니다.
+- [ ] Basic Auth가 `/admin`과 `/api/admin/*` 양쪽에서 동작합니다.
+- [ ] 관리자 대시보드 상단에 읽기 전용, local JSON, example 데이터 제외 안내가 보입니다.
+- [ ] 관리자 대시보드에 `user_example`, `rd_example`, `submission_example`, `tx_example`, 2030년 샘플 날짜가 운영 데이터처럼 노출되지 않습니다.
+- [ ] `/api/admin/summary`에서 example 데이터가 제외된 운영 기준 숫자가 반환됩니다.
 - [ ] 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록이 보입니다.
-- [ ] 데이터가 비어 있어도 “현재 대기 항목이 없습니다” 안내가 보이고 화면이 깨지지 않습니다.
+- [ ] 데이터가 비어 있어도 교환, 인증, 포인트 로그, 미션, 상점, 반응 승인별 자연스러운 빈 상태 안내가 보이고 화면이 깨지지 않습니다.
+- [ ] 실제 운영용 미션/상점 등록 전에는 빈 상태 안내가 보이고, 등록 후에는 운영용 항목만 표시됩니다.
 - [ ] 승인/거절/수정 버튼이 없고, 처리는 Discord 명령어로 안내됩니다.
 - [ ] 기존 Discord 명령어와 봇 로그인 흐름이 정상 작동합니다.

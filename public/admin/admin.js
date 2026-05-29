@@ -73,6 +73,10 @@
     return response.json();
   }
 
+  function rowsFromResponse(response) {
+    return response && Array.isArray(response.data) ? response.data : response;
+  }
+
   function renderSummary(summary) {
     if (summary.title) {
       $('dashboard-title').textContent = summary.title;
@@ -83,11 +87,17 @@
       const suffix = key === 'todayEarnedPoints' ? 'P' : '';
       return '<article class="summary-card"><span>' + labels[key] + '</span><strong>' + text(summary[key], 0) + suffix + '</strong></article>';
     }).join('');
+
+    const meta = summary.meta || summary;
+    const excluded = Number(meta.exampleRecordsExcluded || 0);
+    const notice = '읽기 전용 · ' + text(meta.storageMode, 'local-json') + ' · example 데이터 제외'
+      + (excluded > 0 ? ' ' + excluded + '건' : '');
+    $('global-status').textContent = notice;
   }
 
   function renderTable(targetId, rows, headers, emptyMessage) {
     if (!Array.isArray(rows) || rows.length === 0) {
-      $(targetId).innerHTML = '<p class="empty">' + emptyMessage + '</p>';
+      $(targetId).innerHTML = '<p class="empty">' + emptyMessage.replace(/\n/g, '<br>') + '</p>';
       return;
     }
 
@@ -112,7 +122,7 @@
       { label: '포인트', render: function (row) { return escapeHtml(row.cost || 0) + 'P'; } },
       { label: '상태', render: function (row) { return badge(row.status); } },
       { label: '신청 ID', render: function (row) { return '<span class="mono">' + escapeHtml(shortId(row.id)) + '</span>'; } },
-    ], '현재 교환 대기 항목이 없습니다.');
+    ], '현재 교환 대기 항목이 없습니다.\n실제 신청이 접수되면 이곳에 표시됩니다.');
   }
 
   function renderSubmissions(rows) {
@@ -124,7 +134,7 @@
       { label: '첨부', render: function (row) { return row.attachment ? '있음' : '없음'; } },
       { label: '상태', render: function (row) { return badge(row.status); } },
       { label: '제출 ID', render: function (row) { return '<span class="mono">' + escapeHtml(shortId(row.id)) + '</span>'; } },
-    ], '현재 인증 대기 항목이 없습니다.');
+    ], '현재 인증 대기 항목이 없습니다.\n참여자가 /인증으로 제출하면 이곳에 표시됩니다.');
   }
 
   function renderTransactions(rows) {
@@ -136,7 +146,7 @@
       { label: '잔액', render: function (row) { return escapeHtml(row.balanceAfter || 0) + 'P'; } },
       { label: '사유', render: function (row) { return escapeHtml(row.reason); } },
       { label: '출처', render: function (row) { return escapeHtml(row.relatedType || '-'); } },
-    ], '최근 포인트 로그가 없습니다.');
+    ], '아직 표시할 포인트 로그가 없습니다.\n체크인, 미션 승인, 교환 처리 후 기록이 표시됩니다.');
   }
 
   function renderMissions(rows) {
@@ -146,7 +156,7 @@
       { label: '포인트', render: function (row) { return escapeHtml(row.rewardPoints || 0) + 'P'; } },
       { label: '인증 필요', render: function (row) { return row.requiresSubmission === false ? '아니오' : '예'; } },
       { label: '최근 변경', render: function (row) { return escapeHtml(formatDate(row.updatedAt || row.createdAt)); } },
-    ], '등록된 미션이 없습니다.');
+    ], '등록된 운영 미션이 없습니다.\n운영 전 /미션관리 명령어로 미션을 등록해 주세요.');
   }
 
   function renderShopItems(rows) {
@@ -156,7 +166,7 @@
       { label: '비용', render: function (row) { return escapeHtml(row.cost || 0) + 'P'; } },
       { label: '재고', render: function (row) { return escapeHtml(row.stock === null || row.stock === undefined ? '제한 없음' : row.stock); } },
       { label: '최근 변경', render: function (row) { return escapeHtml(formatDate(row.updatedAt || row.createdAt)); } },
-    ], '등록된 상점 항목이 없습니다.');
+    ], '등록된 운영 상점 항목이 없습니다.\n운영 전 /상점관리 명령어로 항목을 등록해 주세요.');
   }
 
   function renderReactions(rows) {
@@ -167,7 +177,7 @@
       { label: '상태', render: function (row) { return badge(row.status); } },
       { label: '포인트', render: function (row) { return escapeHtml(row.rewardPoints || 0) + 'P'; } },
       { label: '원본', render: function (row) { return row.messageUrl ? '<a href="' + escapeHtml(row.messageUrl) + '" target="_blank" rel="noreferrer">열기</a>' : '-'; } },
-    ], '최근 반응 승인 기록이 없습니다.');
+    ], '아직 반응 승인 기록이 없습니다.\n미션 인증 채널에서 운영자가 승인/반려하면 이곳에 표시됩니다.');
   }
 
   async function loadDashboard() {
@@ -184,15 +194,14 @@
       ]);
 
       renderSummary(results[0]);
-      renderRedemptions(results[1]);
-      renderSubmissions(results[2]);
-      renderTransactions(results[3]);
-      renderMissions(results[4]);
-      renderShopItems(results[5]);
-      renderReactions(results[6]);
+      renderRedemptions(rowsFromResponse(results[1]));
+      renderSubmissions(rowsFromResponse(results[2]));
+      renderTransactions(rowsFromResponse(results[3]));
+      renderMissions(rowsFromResponse(results[4]));
+      renderShopItems(rowsFromResponse(results[5]));
+      renderReactions(rowsFromResponse(results[6]));
 
       $('last-updated').textContent = '마지막 갱신: ' + formatDate(new Date().toISOString());
-      $('global-status').textContent = '읽기 전용 데이터입니다.';
     } catch (error) {
       $('global-status').textContent = '데이터를 불러오지 못했습니다.';
       ['redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals'].forEach(function (id) {
