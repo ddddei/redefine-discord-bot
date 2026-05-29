@@ -192,6 +192,7 @@ async function sendMissionReactionApprovalLog(client, record) {
     }
 
     const approved = record.status === 'approved';
+    const notificationSettings = record.notificationSettings || {};
     const embed = new EmbedBuilder()
       .setColor(approved ? 0x5f8f6b : 0x8f6b5f)
       .setTitle(approved ? '미션 인증 반응 승인' : '미션 인증 반응 반려')
@@ -211,6 +212,14 @@ async function sendMissionReactionApprovalLog(client, record) {
         {
           name: '원본 메시지',
           value: record.messageUrl || `${record.guildId}/${record.channelId}/${record.messageId}`,
+        },
+        {
+          name: '참여자 DM',
+          value: notificationSettings.dmUser ? '전송 시도 예정' : '비활성',
+        },
+        {
+          name: '공개 답글',
+          value: notificationSettings.publicReply ? '전송 시도 예정' : '비활성',
         },
         {
           name: '처리 시간',

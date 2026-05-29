@@ -5,6 +5,8 @@ const { createPointsRepository } = require('./pointsRepository');
 const DEFAULT_APPROVE_EMOJI = '✅';
 const DEFAULT_REJECT_EMOJI = '❌';
 const DEFAULT_REWARD_POINTS = 20;
+const DEFAULT_PUBLIC_REPLY_ENABLED = false;
+const DEFAULT_DM_USER_ENABLED = true;
 
 let warnedMissingSubmissionChannel = false;
 
@@ -53,6 +55,22 @@ function getReactionRewardPoints() {
   }
 
   return parsed;
+}
+
+function parseBooleanEnv(value, defaultValue) {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  return value === 'true';
+}
+
+function shouldSendReactionApprovalPublicReply() {
+  return parseBooleanEnv(process.env.REACTION_APPROVAL_PUBLIC_REPLY, DEFAULT_PUBLIC_REPLY_ENABLED);
+}
+
+function shouldDmReactionApprovalUser() {
+  return parseBooleanEnv(process.env.REACTION_APPROVAL_DM_USER, DEFAULT_DM_USER_ENABLED);
 }
 
 function buildMessageUrl(guildId, channelId, messageId) {
@@ -117,14 +135,38 @@ function getDisplayName(member, user) {
 }
 
 async function sendReviewReply(message, text) {
+  if (!shouldSendReactionApprovalPublicReply()) {
+    return false;
+  }
+
   if (!message || typeof message.reply !== 'function') {
-    return;
+    return false;
   }
 
   try {
     await message.reply({ content: text, allowedMentions: { repliedUser: false } });
+    return true;
   } catch (error) {
     console.warn('미션 인증 반응 답글 전송 실패:', error.message);
+    return false;
+  }
+}
+
+async function sendReviewDm(user, text) {
+  if (!shouldDmReactionApprovalUser()) {
+    return false;
+  }
+
+  if (!user || typeof user.send !== 'function') {
+    return false;
+  }
+
+  try {
+    await user.send(text);
+    return true;
+  } catch (error) {
+    console.warn('미션 인증 반응 DM 전송 실패:', error.message);
+    return false;
   }
 }
 
@@ -203,12 +245,27 @@ async function handleMissionReactionApproval(reaction, user, client, options = {
       return result;
     }
 
-    await sendMissionReactionApprovalLog(client, result.record);
+    const approved = result.record.status === 'approved';
+    const participantDmText = approved
+      ? `확인됐어요. 여정 포인트 ${result.record.rewardPoints}P가 지급됐습니다.\n\`/포인트\`에서 현재 포인트를 확인할 수 있어요.`
+      : '운영진이 확인했어요. 이번에는 포인트 지급 대상은 아니에요.\n`/포인트`에서 현재 포인트를 확인할 수 있어요.';
+    const publicReplyText = approved
+      ? `확인했어요. 여정 포인트 ${result.record.rewardPoints}P가 지급됐습니다.`
+      : '운영진이 확인했어요. 이번에는 포인트 지급 대상은 아니에요.';
+    const notificationSettings = {
+      dmUser: shouldDmReactionApprovalUser(),
+      publicReply: shouldSendReactionApprovalPublicReply(),
+    };
+
+    await sendMissionReactionApprovalLog(client, {
+      ...result.record,
+      notificationSettings,
+    });
+
+    await sendReviewDm(message.author, participantDmText);
     await sendReviewReply(
       message,
-      result.record.status === 'approved'
-        ? `확인했어요. 여정 포인트 ${result.record.rewardPoints}P가 지급됐습니다.`
-        : '운영진이 확인했어요. 이번에는 포인트 지급 대상은 아니에요.'
+      publicReplyText
     );
 
     return result;
@@ -227,5 +284,9 @@ module.exports = {
   isMissionSubmissionChannel,
   isOperatorMember,
   isRejectEmoji,
+  sendReviewDm,
+  sendReviewReply,
+  shouldDmReactionApprovalUser,
   shouldIgnoreReaction,
+  shouldSendReactionApprovalPublicReply,
 };

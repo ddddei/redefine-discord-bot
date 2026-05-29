@@ -58,7 +58,7 @@
 
 미션 인증 채널 반응 승인 흐름을 사용할 경우 참여자는 `/인증`을 입력하지 않고 `MISSION_SUBMISSION_CHANNEL_ID`로 지정된 채널에 글, 사진, 영상 인증 메시지를 올립니다. 운영자는 지급 대상 메시지에 ✅ 반응을 누르고, 지급 대상이 아니면 ❌ 반응을 누릅니다. 봇은 `MISSION_SUBMISSION_CHANNEL_ID` 채널의 `MISSION_APPROVE_EMOJI`와 `MISSION_REJECT_EMOJI` 반응만 처리하며, 기본 지급 포인트는 `MISSION_REACTION_REWARD_POINTS` 값입니다. 같은 메시지는 `messageId` 기준으로 한 번만 처리되어 중복 지급되지 않고, 운영자 권한이 없는 사용자의 반응은 무시됩니다.
 
-반응 승인을 처리할 수 있는 운영자는 `Administrator`, `ManageMessages`, 또는 선택 환경변수 `OPERATOR_ROLE_ID` 역할 보유자입니다. 승인 기록은 `data/reaction-approvals.local.json`에 저장되고, 승인 시 `pointTransactions`에는 `relatedType: "missionReactionApproval"` 지급 거래가 남습니다. 처리 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `LOG_CHANNEL_ID`로 전송되며, 가능하면 원본 메시지에도 짧은 답글을 남깁니다. `MISSION_SUBMISSION_CHANNEL_ID`가 없으면 반응 승인 기능은 동작하지 않고 콘솔 경고만 남습니다.
+반응 승인을 처리할 수 있는 운영자는 `Administrator`, `ManageMessages`, 또는 선택 환경변수 `OPERATOR_ROLE_ID` 역할 보유자입니다. 승인 기록은 `data/reaction-approvals.local.json`에 저장되고, 승인 시 `pointTransactions`에는 `relatedType: "missionReactionApproval"` 지급 거래가 남습니다. 처리 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `LOG_CHANNEL_ID`로 전송됩니다. 원본 인증 채널 공개 답글은 `REACTION_APPROVAL_PUBLIC_REPLY`가 `true`일 때만 남기며 기본값은 `false`입니다. 참여자 DM 알림은 `REACTION_APPROVAL_DM_USER`로 제어하고 기본값은 `true`입니다. DM 전송에 실패해도 포인트 지급, 반려 기록, 포인트 로그는 유지됩니다. `MISSION_SUBMISSION_CHANNEL_ID`가 없으면 반응 승인 기능은 동작하지 않고 콘솔 경고만 남습니다.
 
 `/상점`과 `/교환`도 모두 선택형으로 안내할 수 있습니다. `/교환`을 단독 실행하면 `/상점`과 같은 항목 선택 메뉴가 열리고, 신청 코드를 알고 있는 참여자는 `/교환 항목:S001`처럼 직접 입력해도 됩니다. 운영자는 참여자 안내에서 코드보다 항목 이름과 미션 이름을 중심으로 설명해도 됩니다.
 
@@ -196,6 +196,7 @@ push 또는 pull request를 올린 뒤에는 GitHub의 Actions 탭이나 PR 하�
 - `.env`는 절대 커밋하지 않습니다.
 - `.env.example`에는 실제 토큰이나 실제 채널 ID를 넣지 않고 예시값만 넣습니다.
 - Railway Variables에는 실제 `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `LOG_CHANNEL_ID` 값을 넣습니다.
+- 미션 인증 채널 반응 승인 알림 정책에 맞게 `REACTION_APPROVAL_PUBLIC_REPLY=false`, `REACTION_APPROVAL_DM_USER=true`를 Railway Variables에 추가합니다.
 - 로컬에서 `npm run start`로 봇을 켠 상태에서 Railway 봇도 동시에 켜져 있으면 충돌할 수 있습니다.
 - FAQ, 지식창고, 공지 템플릿, 채널 안내 데이터만 수정했다면 `npm run deploy`는 필요하지 않습니다.
 - Slash Command 구조를 바꾸면 `npm run deploy`로 명령어를 다시 등록해야 합니다.

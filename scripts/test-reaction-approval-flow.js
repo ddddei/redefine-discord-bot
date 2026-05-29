@@ -11,6 +11,10 @@ const {
   isMissionSubmissionChannel,
   isOperatorMember,
   isRejectEmoji,
+  sendReviewDm,
+  sendReviewReply,
+  shouldDmReactionApprovalUser,
+  shouldSendReactionApprovalPublicReply,
 } = require('../src/reactionApproval');
 const { createPointsRepository } = require('../src/pointsRepository');
 
@@ -45,7 +49,13 @@ function createOperatorMember(roleIds = []) {
   };
 }
 
-function createReaction({ messageId, authorId, emoji, channelId = 'mission_channel_test' }) {
+function createReaction({
+  messageId,
+  authorId,
+  emoji,
+  channelId = 'mission_channel_test',
+  authorSend,
+}) {
   const message = {
     id: messageId,
     channelId,
@@ -54,6 +64,15 @@ function createReaction({ messageId, authorId, emoji, channelId = 'mission_chann
       id: authorId,
       username: `participant_${authorId}`,
       bot: false,
+      dms: [],
+      async send(payload) {
+        if (authorSend) {
+          return authorSend(payload);
+        }
+
+        this.dms.push(payload);
+        return payload;
+      },
     },
     member: {
       displayName: `참여자 ${authorId}`,
@@ -83,6 +102,8 @@ async function main() {
     MISSION_REACTION_REWARD_POINTS: process.env.MISSION_REACTION_REWARD_POINTS,
     MISSION_SUBMISSION_CHANNEL_ID: process.env.MISSION_SUBMISSION_CHANNEL_ID,
     OPERATOR_ROLE_ID: process.env.OPERATOR_ROLE_ID,
+    REACTION_APPROVAL_PUBLIC_REPLY: process.env.REACTION_APPROVAL_PUBLIC_REPLY,
+    REACTION_APPROVAL_DM_USER: process.env.REACTION_APPROVAL_DM_USER,
   };
 
   process.env.MISSION_APPROVE_EMOJI = '✅';
@@ -90,8 +111,23 @@ async function main() {
   process.env.MISSION_REACTION_REWARD_POINTS = '';
   process.env.MISSION_SUBMISSION_CHANNEL_ID = 'mission_channel_test';
   process.env.OPERATOR_ROLE_ID = 'operator_role_test';
+  delete process.env.REACTION_APPROVAL_PUBLIC_REPLY;
+  delete process.env.REACTION_APPROVAL_DM_USER;
 
   try {
+    assert.strictEqual(shouldSendReactionApprovalPublicReply(), false);
+    assert.strictEqual(shouldDmReactionApprovalUser(), true);
+    process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'true';
+    assert.strictEqual(shouldSendReactionApprovalPublicReply(), true);
+    process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'false';
+    assert.strictEqual(shouldSendReactionApprovalPublicReply(), false);
+    process.env.REACTION_APPROVAL_DM_USER = 'false';
+    assert.strictEqual(shouldDmReactionApprovalUser(), false);
+    process.env.REACTION_APPROVAL_DM_USER = 'true';
+    assert.strictEqual(shouldDmReactionApprovalUser(), true);
+    delete process.env.REACTION_APPROVAL_PUBLIC_REPLY;
+    delete process.env.REACTION_APPROVAL_DM_USER;
+
     assert.strictEqual(isApprovalEmoji('✅'), true);
     assert.strictEqual(isApprovalEmoji('❌'), false);
     assert.strictEqual(isRejectEmoji('❌'), true);
@@ -119,6 +155,32 @@ async function main() {
       permissions: new PermissionsBitField(0n),
       roles: { cache: { has: () => false } },
     }), false);
+
+    const helperMessage = {
+      replies: [],
+      async reply(payload) {
+        this.replies.push(payload);
+      },
+    };
+    assert.strictEqual(await sendReviewReply(helperMessage, 'helper reply off'), false);
+    assert.strictEqual(helperMessage.replies.length, 0);
+    process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'true';
+    assert.strictEqual(await sendReviewReply(helperMessage, 'helper reply on'), true);
+    assert.strictEqual(helperMessage.replies.length, 1);
+    process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'false';
+
+    const helperUser = {
+      dms: [],
+      async send(payload) {
+        this.dms.push(payload);
+      },
+    };
+    assert.strictEqual(await sendReviewDm(helperUser, 'helper dm on'), true);
+    assert.strictEqual(helperUser.dms.length, 1);
+    process.env.REACTION_APPROVAL_DM_USER = 'false';
+    assert.strictEqual(await sendReviewDm(helperUser, 'helper dm off'), false);
+    assert.strictEqual(helperUser.dms.length, 1);
+    process.env.REACTION_APPROVAL_DM_USER = 'true';
 
     const paths = createTempPaths();
     const repository = createPointsRepository(paths);
@@ -203,6 +265,8 @@ async function main() {
 
     const handlerPaths = createTempPaths();
     const handlerRepository = createPointsRepository(handlerPaths);
+    process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'false';
+    process.env.REACTION_APPROVAL_DM_USER = 'true';
     const approveReaction = createReaction({
       messageId: 'message_handler_approve',
       authorId: 'participant_handler_approve',
@@ -217,7 +281,8 @@ async function main() {
 
     assert.strictEqual(approveResult.ok, true);
     assert.strictEqual(approveResult.record.status, 'approved');
-    assert.strictEqual(approveReaction.message.replies.length, 1);
+    assert.strictEqual(approveReaction.message.replies.length, 0);
+    assert.strictEqual(approveReaction.message.author.dms.length, 1);
 
     const duplicateHandlerResult = await handleMissionReactionApproval(
       approveReaction,
@@ -228,6 +293,8 @@ async function main() {
     assert.strictEqual(duplicateHandlerResult.ok, false);
     assert.strictEqual(duplicateHandlerResult.reason, 'ALREADY_REVIEWED');
 
+    process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'true';
+    process.env.REACTION_APPROVAL_DM_USER = 'false';
     const rejectReaction = createReaction({
       messageId: 'message_handler_reject',
       authorId: 'participant_handler_reject',
@@ -243,6 +310,34 @@ async function main() {
     assert.strictEqual(rejectResult.ok, true);
     assert.strictEqual(rejectResult.record.status, 'rejected');
     assert.strictEqual(rejectReaction.message.replies.length, 1);
+    assert.strictEqual(rejectReaction.message.author.dms.length, 0);
+
+    process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'false';
+    process.env.REACTION_APPROVAL_DM_USER = 'true';
+    const dmFailureReaction = createReaction({
+      messageId: 'message_handler_dm_failure',
+      authorId: 'participant_handler_dm_failure',
+      emoji: '✅',
+      authorSend: async () => {
+        throw new Error('DM blocked');
+      },
+    });
+    const dmFailureResult = await handleMissionReactionApproval(
+      dmFailureReaction,
+      { id: 'operator_handler', username: 'operator_handler', bot: false },
+      { user: { id: 'bot_test' } },
+      { repository: handlerRepository }
+    );
+
+    assert.strictEqual(dmFailureResult.ok, true);
+    assert.strictEqual(dmFailureResult.record.status, 'approved');
+    assert.strictEqual(dmFailureReaction.message.replies.length, 0);
+
+    pointsData = readJson(handlerPaths.points);
+    assert.strictEqual(
+      pointsData.pointTransactions.some((transaction) => transaction.relatedId === 'message_handler_dm_failure'),
+      true
+    );
 
     console.log('reaction approval flow smoke test passed');
   } finally {
