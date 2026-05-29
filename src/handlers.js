@@ -11,6 +11,14 @@ const {
 } = require('discord.js');
 const {
   OPERATOR_CHECK_FOOTER,
+  buildOperatorChecklistEmbed,
+  buildOperatorExportGuideEmbed,
+  buildOperatorHubEmbed,
+  buildOperatorMissionsShopEmbed,
+  buildOperatorPointLogsEmbed,
+  buildOperatorReactionApprovalsEmbed,
+  buildOperatorRedemptionsEmbed,
+  buildOperatorSubmissionsEmbed,
   createChannelGuideEmbed,
   createGuideEmbed,
   createGuideHubDetailEmbed,
@@ -27,7 +35,9 @@ const {
 } = require('./embeds');
 const {
   GUIDE_HUB_SELECT_ID,
+  OPERATOR_HUB_SELECT_ID,
   createGuideHubSelectRow,
+  createOperatorHubSelectRow,
 } = require('./components');
 const {
   sendMissionSubmissionReviewAlert,
@@ -327,76 +337,15 @@ function formatAdminShopItemLine(item) {
 }
 
 function createOperationSummaryEmbed(summary) {
-  const recentLogLines = summary.recentTransactions.length > 0
-    ? summary.recentTransactions.map((transaction) => {
-      return `- ${formatTransactionDate(transaction.createdAt)} ${transaction.userId} ${formatTransactionAmount(transaction.amount)} ${transaction.reason}`;
-    })
-    : ['최근 포인트 로그가 없어요.'];
-
-  return createGuideEmbed(
-    '운영 현황 요약',
-    [
-      `교환 대기: ${summary.pendingRedemptionsCount}건`,
-      `인증 대기: ${summary.pendingSubmissionsCount}건`,
-      `활성 미션: ${summary.activeMissionsCount}개`,
-      `활성 상점 항목: ${summary.activeShopItemsCount}개`,
-      `오늘 체크인: ${summary.todayCheckinsCount}건`,
-      '',
-      '최근 포인트 로그',
-      ...recentLogLines,
-      '',
-      '다음 확인',
-      '`/운영현황 종류:교환대기`',
-      '`/운영현황 종류:인증대기`',
-      '`/미션관리 작업:목록`',
-      '`/상점관리 작업:목록`',
-    ].join('\n'),
-    {
-      footer: OPERATOR_CHECK_FOOTER,
-    }
-  );
+  return buildOperatorHubEmbed(summary);
 }
 
 function createPendingRedemptionsEmbed(redemptions) {
-  if (redemptions.length === 0) {
-    return createEmptyListEmbed('교환 대기 목록', '현재 pending 교환 신청이 없어요.');
-  }
-
-  const lines = redemptions.map((redemption) => {
-    return [
-      `- 신청 ID: \`${redemption.id}\``,
-      `  사용자: ${redemption.displayName || redemption.userId}`,
-      `  항목 ID: \`${redemption.itemId}\` / 비용: ${formatPoints(redemption.cost || 0)}`,
-      `  신청 시간: ${formatTransactionDate(redemption.requestedAt)}`,
-      `  처리: \`/교환관리 신청id:${redemption.id} 처리:지급완료\` 또는 취소`,
-    ].join('\n');
-  });
-
-  return createGuideEmbed('교환 대기 목록', lines.join('\n\n'), {
-    footer: OPERATOR_CHECK_FOOTER,
-  });
+  return buildOperatorRedemptionsEmbed(redemptions);
 }
 
 function createPendingSubmissionsEmbed(submissions) {
-  if (submissions.length === 0) {
-    return createEmptyListEmbed('인증 대기 목록', '현재 pending 인증 제출이 없어요.');
-  }
-
-  const lines = submissions.map((submission) => {
-    const content = truncateText(submission.content, 80, '제출 내용 없음');
-    return [
-      `- 제출 ID: \`${submission.id}\``,
-      `  사용자: ${submission.displayName || submission.userId}`,
-      `  미션 ID: \`${submission.missionId}\``,
-      `  내용: ${content}`,
-      `  제출 시간: ${formatTransactionDate(submission.createdAt)}`,
-      `  처리: \`/인증관리 제출id:${submission.id} 처리:승인\` 또는 반려`,
-    ].join('\n');
-  });
-
-  return createGuideEmbed('인증 대기 목록', lines.join('\n\n'), {
-    footer: OPERATOR_CHECK_FOOTER,
-  });
+  return buildOperatorSubmissionsEmbed(submissions);
 }
 
 function createAdminMissionListEmbed(missions) {
@@ -1275,6 +1224,73 @@ async function handlePointLogCommand(interaction) {
   }
 }
 
+function getOperatorHubEmbed(value, limit = 10) {
+  if (value === 'redemptions') {
+    return buildOperatorRedemptionsEmbed(pointsRepository.listPendingRedemptions(limit));
+  }
+
+  if (value === 'submissions') {
+    return buildOperatorSubmissionsEmbed(pointsRepository.listPendingSubmissions(limit));
+  }
+
+  if (value === 'points') {
+    return buildOperatorPointLogsEmbed(pointsRepository.listTransactions({ limit }));
+  }
+
+  if (value === 'missions_shop') {
+    return buildOperatorMissionsShopEmbed(pointsRepository.getOperationSummary());
+  }
+
+  if (value === 'reaction_approvals') {
+    return buildOperatorReactionApprovalsEmbed(pointsRepository.listRecentReactionApprovals(limit));
+  }
+
+  if (value === 'exports') {
+    return buildOperatorExportGuideEmbed();
+  }
+
+  if (value === 'checklist') {
+    return buildOperatorChecklistEmbed();
+  }
+
+  return buildOperatorHubEmbed(pointsRepository.getOperationSummary());
+}
+
+async function handleOperatorHubSelect(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const selectedValue = interaction.values && interaction.values[0] ? interaction.values[0] : 'overview';
+    const embed = getOperatorHubEmbed(selectedValue, 10);
+    const payload = {
+      embeds: [embed],
+      components: [createOperatorHubSelectRow(selectedValue)],
+    };
+
+    if (typeof interaction.update === 'function') {
+      await interaction.update(payload);
+      return;
+    }
+
+    await interaction.reply({
+      ...payload,
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('운영 허브 메뉴 조회 실패:', error.message);
+    await interaction.reply({
+      content: `운영 허브 메뉴를 불러오지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
 async function handleOperationStatusCommand(interaction) {
   if (!isOperator(interaction)) {
     await interaction.reply({
@@ -1287,15 +1303,20 @@ async function handleOperationStatusCommand(interaction) {
   try {
     const type = interaction.options.getString('종류') || 'summary';
     const limit = interaction.options.getInteger('개수') || 10;
+    let selectedValue = 'overview';
     let embed;
 
     if (type === 'pendingRedemptions') {
+      selectedValue = 'redemptions';
       embed = createPendingRedemptionsEmbed(pointsRepository.listPendingRedemptions(limit));
     } else if (type === 'pendingSubmissions') {
+      selectedValue = 'submissions';
       embed = createPendingSubmissionsEmbed(pointsRepository.listPendingSubmissions(limit));
     } else if (type === 'missions') {
+      selectedValue = 'missions_shop';
       embed = createAdminMissionListEmbed(pointsRepository.listMissionsForAdmin({ limit }));
     } else if (type === 'shop') {
+      selectedValue = 'missions_shop';
       embed = createAdminShopListEmbed(pointsRepository.listShopItemsForAdmin({ limit }));
     } else {
       embed = createOperationSummaryEmbed(pointsRepository.getOperationSummary());
@@ -1303,6 +1324,7 @@ async function handleOperationStatusCommand(interaction) {
 
     await interaction.reply({
       embeds: [embed],
+      components: [createOperatorHubSelectRow(selectedValue)],
       ephemeral: true,
     });
   } catch (error) {
@@ -1700,6 +1722,11 @@ async function handleInteractionCreate(interaction) {
       return;
     }
 
+    if (interaction.customId === OPERATOR_HUB_SELECT_ID) {
+      await handleOperatorHubSelect(interaction);
+      return;
+    }
+
     if (interaction.customId === 'participant_shop_select') {
       await handleShopSelect(interaction);
       return;
@@ -1830,6 +1857,7 @@ module.exports = {
   createOperationSummaryEmbed,
   createPendingRedemptionsEmbed,
   createPendingSubmissionsEmbed,
+  getOperatorHubEmbed,
   handleChannelGuideCommand,
   handleCheckinCommand,
   handleGuideCommand,
@@ -1841,6 +1869,7 @@ module.exports = {
   handleMissionSubmissionModal,
   handleNoticeCommand,
   handleOperationStatusCommand,
+  handleOperatorHubSelect,
   handleOperationExportCommand,
   handlePointLogCommand,
   handlePointManageCommand,

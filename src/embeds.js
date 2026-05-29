@@ -88,6 +88,51 @@ function formatTransactionDate(createdAt) {
   });
 }
 
+function formatTransactionDateTime(createdAt) {
+  if (!createdAt) {
+    return '날짜 없음';
+  }
+
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) {
+    return '날짜 없음';
+  }
+
+  return date.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatStatusCounts(counts = {}) {
+  const entries = Object.entries(counts).filter(([, count]) => count > 0);
+  if (entries.length === 0) {
+    return '없음';
+  }
+
+  return entries.map(([status, count]) => `${status} ${count}개`).join(' / ');
+}
+
+function formatAttachmentSummary(attachment) {
+  if (!attachment) {
+    return '없음';
+  }
+
+  if (typeof attachment === 'string') {
+    return attachment.trim() ? '있음' : '없음';
+  }
+
+  if (attachment.url || attachment.name || attachment.id) {
+    return attachment.name ? `있음(${truncateText(attachment.name, 40, '첨부파일')})` : '있음';
+  }
+
+  return '없음';
+}
+
 function createPointBalanceEmbed({ currentPoints, transactions = [], balanceCheck }) {
   const recentTransactions = transactions.slice(0, 3);
   const transactionLines = recentTransactions.length > 0
@@ -239,6 +284,263 @@ function createGuideHubDetailEmbed(value, options = {}) {
   return createGuideEmbed(detail.title, detail.description);
 }
 
+function buildOperatorHubEmbed(summary = {}) {
+  const recentLogLines = Array.isArray(summary.recentTransactions) && summary.recentTransactions.length > 0
+    ? summary.recentTransactions.slice(0, 3).map((transaction) => {
+      return `- ${formatTransactionDate(transaction.createdAt)} ${truncateText(transaction.userId, 24, '사용자')} ${formatTransactionAmount(transaction.amount)} ${truncateText(transaction.reason, 50, '포인트 기록')}`;
+    })
+    : ['최근 포인트 로그가 없어요.'];
+  const needs = [
+    `교환 대기 ${summary.pendingRedemptionsCount || 0}건`,
+    `인증 대기 ${summary.pendingSubmissionsCount || 0}건`,
+    `오늘 반응 승인 ${summary.todayReactionApprovalsCount || 0}건`,
+  ];
+
+  return createGuideEmbed(
+    '운영 현황 허브',
+    [
+      '현재 운영 상태를 한눈에 확인할 수 있어요.',
+      '아래 요약을 확인한 뒤 필요한 메뉴를 선택해 주세요.',
+      '',
+      `전체 사용자: ${summary.usersCount || 0}명`,
+      `총 포인트 거래: ${summary.pointTransactionsCount || 0}건`,
+      `교환 대기: ${summary.pendingRedemptionsCount || 0}건`,
+      `인증 대기: ${summary.pendingSubmissionsCount || 0}건`,
+      `활성 미션: ${summary.activeMissionsCount || 0}개`,
+      `활성 상점 항목: ${summary.activeShopItemsCount || 0}개`,
+      `오늘 체크인: ${summary.todayCheckinsCount || 0}건`,
+      `오늘 반응 승인: ${summary.todayReactionApprovalsCount || 0}건`,
+      `오늘 포인트 거래: ${summary.todayPointTransactionsCount || 0}건`,
+      '',
+      '확인 필요 항목',
+      ...needs.map((line) => `- ${line}`),
+      '',
+      '최근 포인트 로그',
+      ...recentLogLines,
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorRedemptionsEmbed(redemptions = []) {
+  if (redemptions.length === 0) {
+    return createGuideEmbed('교환 대기', '현재 대기 중인 교환 신청은 없어요.', {
+      footer: OPERATOR_CHECK_FOOTER,
+    });
+  }
+
+  const lines = redemptions.slice(0, 10).map((redemption, index) => {
+    return [
+      `${index + 1}. ${truncateText(redemption.itemName || redemption.itemId, 80, '교환 항목')}`,
+      `   신청자: ${truncateText(redemption.displayName || redemption.userId, 60, '사용자')}`,
+      `   신청 ID: \`${truncateText(redemption.id, 80, '신청 ID')}\``,
+      `   필요 포인트: ${formatPoints(redemption.cost || 0)} / 상태: ${redemption.status || 'pending'}`,
+      `   신청 시각: ${formatTransactionDateTime(redemption.requestedAt || redemption.createdAt)}`,
+    ].join('\n');
+  });
+
+  return createGuideEmbed(
+    '교환 대기',
+    [
+      `대기 중인 교환 신청 ${redemptions.length}건`,
+      '',
+      ...lines,
+      '',
+      '처리는 `/교환관리` 명령어에서 진행할 수 있어요.',
+    ].join('\n\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorSubmissionsEmbed(submissions = []) {
+  if (submissions.length === 0) {
+    return createGuideEmbed('인증 대기', '현재 확인할 인증 제출은 없어요.', {
+      footer: OPERATOR_CHECK_FOOTER,
+    });
+  }
+
+  const lines = submissions.slice(0, 10).map((submission, index) => {
+    return [
+      `${index + 1}. ${truncateText(submission.missionTitle || submission.missionId, 80, '미션')}`,
+      `   제출자: ${truncateText(submission.displayName || submission.userId, 60, '사용자')}`,
+      `   제출 ID: \`${truncateText(submission.id, 80, '제출 ID')}\``,
+      `   지급 예정: ${formatPoints(submission.rewardPoints || 0)} / 상태: ${submission.status || 'pending'}`,
+      `   첨부파일: ${formatAttachmentSummary(submission.attachment)} / 제출 시각: ${formatTransactionDateTime(submission.createdAt)}`,
+    ].join('\n');
+  });
+
+  return createGuideEmbed(
+    '인증 대기',
+    [
+      `확인할 인증 제출 ${submissions.length}건`,
+      '',
+      ...lines,
+      '',
+      '처리는 `/인증관리` 명령어에서 진행할 수 있어요.',
+      '미션 인증 채널 반응 승인으로 처리된 건은 별도 반응 승인 기록에서 확인할 수 있어요.',
+    ].join('\n\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorPointLogsEmbed(transactions = []) {
+  if (transactions.length === 0) {
+    return createGuideEmbed('최근 포인트 로그', '아직 표시할 포인트 로그가 없어요.', {
+      footer: OPERATOR_CHECK_FOOTER,
+    });
+  }
+
+  const lines = transactions.slice(0, 10).map((transaction) => {
+    return [
+      `- ${formatTransactionDateTime(transaction.createdAt)}`,
+      `${truncateText(transaction.userId, 32, '사용자')} / ${transaction.type || 'type 없음'} / ${formatTransactionAmount(transaction.amount)}`,
+      `사유: ${truncateText(transaction.reason, 80, '포인트 기록')} / 잔액: ${formatPoints(transaction.balanceAfter || 0)}`,
+    ].join('\n  ');
+  });
+
+  return createGuideEmbed(
+    '최근 포인트 로그',
+    [
+      ...lines,
+      '',
+      '자세한 기록은 `/포인트로그` 또는 `/운영내보내기`로 확인할 수 있어요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorMissionsShopEmbed(summary = {}) {
+  const missionLines = Array.isArray(summary.recentMissions) && summary.recentMissions.length > 0
+    ? summary.recentMissions.slice(0, 5).map((mission) => `- ${truncateText(mission.title || mission.id, 70, '미션')} / ${mission.status || 'unknown'} / ${formatPoints(mission.rewardPoints || 0)}`)
+    : ['- 최근 등록된 미션이 없어요.'];
+  const shopLines = Array.isArray(summary.recentShopItems) && summary.recentShopItems.length > 0
+    ? summary.recentShopItems.slice(0, 5).map((item) => `- ${truncateText(item.name || item.id, 70, '상점 항목')} / ${item.status || 'unknown'} / ${formatPoints(item.cost || 0)}`)
+    : ['- 최근 등록된 상점 항목이 없어요.'];
+
+  return createGuideEmbed(
+    '미션/상점 상태',
+    [
+      '미션',
+      `- 활성 미션: ${summary.activeMissionsCount || 0}개`,
+      `- 상태별: ${formatStatusCounts(summary.missionStatusCounts)}`,
+      ...missionLines,
+      '',
+      '상점',
+      `- 활성 상점 항목: ${summary.activeShopItemsCount || 0}개`,
+      `- 상태별: ${formatStatusCounts(summary.shopItemStatusCounts)}`,
+      ...shopLines,
+      '',
+      '미션은 `/미션관리`, 상점은 `/상점관리`에서 수정할 수 있어요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorReactionApprovalsEmbed(records = []) {
+  if (records.length === 0) {
+    return createGuideEmbed(
+      '반응 승인 기록',
+      [
+        '아직 표시할 반응 승인 기록이 없어요.',
+        '',
+        '반응 승인 기록은 미션 인증 채널에서 운영자가 이모지로 확인한 내역이에요.',
+        '전체 백업은 `/운영내보내기`를 활용해 주세요.',
+      ].join('\n'),
+      {
+        footer: OPERATOR_CHECK_FOOTER,
+      }
+    );
+  }
+
+  const lines = records.slice(0, 10).map((record) => {
+    const messageLine = record.messageUrl ? ` / 원본: ${record.messageUrl}` : '';
+    return [
+      `- ${record.status || 'unknown'} / ${formatPoints(record.rewardPoints || 0)}`,
+      `참여자: ${truncateText(record.authorDisplayName || record.authorId, 40, '참여자')}`,
+      `처리자: ${truncateText(record.reviewedByDisplayName || record.reviewedBy, 40, '운영자')}`,
+      `시각: ${formatTransactionDateTime(record.reviewedAt || record.createdAt)}${messageLine}`,
+    ].join('\n  ');
+  });
+
+  return createGuideEmbed(
+    '반응 승인 기록',
+    [
+      ...lines,
+      '',
+      '반응 승인 기록은 미션 인증 채널에서 운영자가 이모지로 확인한 내역이에요.',
+      '전체 백업은 `/운영내보내기`를 활용해 주세요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorExportGuideEmbed() {
+  return createGuideEmbed(
+    '내보내기 안내',
+    [
+      '운영 데이터는 정기적으로 백업하는 것을 권장합니다.',
+      '',
+      '확인 가능한 데이터',
+      '- 포인트 로그',
+      '- 교환 신청',
+      '- 인증 제출',
+      '- 반응 승인 기록',
+      '- 전체 운영 요약',
+      '',
+      '사용 방법',
+      '- `/운영내보내기 종류:포인트 형식:CSV`',
+      '- `/운영내보내기 종류:교환 형식:JSON`',
+      '- `/운영내보내기 종류:인증 형식:JSON`',
+      '- `/운영내보내기 종류:전체 형식:JSON`',
+      '',
+      '내보낸 파일에는 개인정보와 운영 메모가 포함될 수 있으니 외부 공유 전 확인해 주세요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorChecklistEmbed() {
+  return createGuideEmbed(
+    '운영 체크리스트',
+    [
+      '운영 전',
+      '- `/안내`가 정상 작동하는지 확인',
+      '- 미션 인증 채널 ID가 설정되어 있는지 확인',
+      '- 운영자 역할/권한이 정상인지 확인',
+      '- 반응 승인 ✅/❌가 정상 작동하는지 확인',
+      '',
+      '운영 중',
+      '- 교환 대기 건 확인',
+      '- 인증 대기 건 확인',
+      '- 포인트 로그 확인',
+      '- 미션/상점 활성 상태 확인',
+      '',
+      '운영 후',
+      '- `/운영내보내기`로 데이터 백업',
+      '- 이상 지급/중복 지급 여부 확인',
+      '',
+      '자세한 기준은 `docs/operator-dashboard-guide.md`를 확인해 주세요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
 function getShopTypeLabel(type) {
   const normalizedType = String(type || '').trim();
   const labels = {
@@ -342,6 +644,14 @@ function createChannelGuideEmbed(options = {}) {
 
 module.exports = {
   OPERATOR_CHECK_FOOTER,
+  buildOperatorChecklistEmbed,
+  buildOperatorExportGuideEmbed,
+  buildOperatorHubEmbed,
+  buildOperatorMissionsShopEmbed,
+  buildOperatorPointLogsEmbed,
+  buildOperatorReactionApprovalsEmbed,
+  buildOperatorRedemptionsEmbed,
+  buildOperatorSubmissionsEmbed,
   createChannelGuideEmbed,
   createGuideHubDetailEmbed,
   createGuideHubEmbed,
@@ -352,6 +662,7 @@ module.exports = {
   formatPoints,
   formatTransactionAmount,
   formatTransactionDate,
+  formatTransactionDateTime,
   getShopTypeLabel,
   getNoticeTemplate,
   truncateEmbedValue,

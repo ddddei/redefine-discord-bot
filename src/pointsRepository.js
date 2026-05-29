@@ -189,6 +189,8 @@ function createPointsRepository(paths = {}) {
       pointsData: loadWithFallback(resolvedPaths.points, resolvedPaths.pointsFallback),
       shopItemsData: loadWithFallback(resolvedPaths.shopItems, resolvedPaths.shopItemsFallback),
       redemptionsData: loadWithFallback(resolvedPaths.redemptions, resolvedPaths.redemptionsFallback),
+      missionsData: loadActivityWithFallback(resolvedPaths.missions, resolvedPaths.missionsFallback, 'missions'),
+      submissionsData: loadActivityWithFallback(resolvedPaths.submissions, resolvedPaths.submissionsFallback, 'submissions'),
     };
   }
 
@@ -1063,6 +1065,14 @@ function createPointsRepository(paths = {}) {
   function listPendingSubmissions(limit = 10) {
     return listRecentSubmissions(1000)
       .filter((submission) => submission.status === 'pending')
+      .map((submission) => {
+        const mission = findMission(submission.missionId);
+        return {
+          ...submission,
+          missionTitle: mission ? mission.title : null,
+          rewardPoints: mission ? mission.rewardPoints : submission.rewardPoints,
+        };
+      })
       .slice(0, limit);
   }
 
@@ -1071,6 +1081,13 @@ function createPointsRepository(paths = {}) {
     const redemptions = Array.isArray(redemptionsData.redemptions) ? redemptionsData.redemptions : [];
     return sortNewestFirst(redemptions, ['requestedAt', 'createdAt'])
       .filter((redemption) => redemption.status === 'pending')
+      .map((redemption) => {
+        const item = findShopItem(redemption.itemId);
+        return {
+          ...redemption,
+          itemName: item ? item.name : null,
+        };
+      })
       .slice(0, limit);
   }
 
@@ -1090,22 +1107,59 @@ function createPointsRepository(paths = {}) {
 
   function getOperationSummary() {
     const state = loadState();
+    const users = Array.isArray(state.pointsData.users) ? state.pointsData.users : [];
+    const pointTransactions = Array.isArray(state.pointsData.pointTransactions)
+      ? state.pointsData.pointTransactions
+      : [];
+    const redemptions = Array.isArray(state.redemptionsData.redemptions) ? state.redemptionsData.redemptions : [];
+    const submissions = Array.isArray(state.submissionsData.submissions) ? state.submissionsData.submissions : [];
+    const missions = Array.isArray(state.missionsData.missions) ? state.missionsData.missions : [];
+    const reactionApprovalsData = getReactionApprovalData();
+    const reactionApprovals = Array.isArray(reactionApprovalsData.records) ? reactionApprovalsData.records : [];
     const activeShopItems = Array.isArray(state.shopItemsData.shopItems)
       ? state.shopItemsData.shopItems.filter((item) => item.status === 'active')
       : [];
+    const today = getKoreanDateString();
+    const isToday = (value) => {
+      if (!value) {
+        return false;
+      }
+
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return false;
+      }
+
+      return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }) === today;
+    };
+    const countByStatus = (items) => items.reduce((counts, item) => {
+      const status = item && item.status ? item.status : 'unknown';
+      counts[status] = (counts[status] || 0) + 1;
+      return counts;
+    }, {});
 
     return {
+      usersCount: users.length,
+      pointTransactionsCount: pointTransactions.length,
       pendingRedemptionsCount: listPendingRedemptions(1000).length,
       pendingSubmissionsCount: listPendingSubmissions(1000).length,
       reactionApprovalsCount: listRecentReactionApprovals(1000).length,
+      todayReactionApprovalsCount: reactionApprovals.filter((record) => isToday(record.reviewedAt || record.createdAt)).length,
       activeMissionsCount: listActiveMissions().length,
       activeShopItemsCount: activeShopItems.length,
       todayCheckinsCount: listTodayCheckins().length,
+      todayPointTransactionsCount: pointTransactions.filter((transaction) => isToday(transaction.createdAt)).length,
+      missionStatusCounts: countByStatus(missions),
+      shopItemStatusCounts: countByStatus(Array.isArray(state.shopItemsData.shopItems) ? state.shopItemsData.shopItems : []),
       recentTransactions: listTransactions({ limit: 5 }),
+      recentMissions: listMissionsForAdmin({ limit: 5 }),
+      recentShopItems: listShopItemsForAdmin({ limit: 5 }),
       recentRedemptions: sortNewestFirst(
-        Array.isArray(state.redemptionsData.redemptions) ? state.redemptionsData.redemptions : [],
+        redemptions,
         ['requestedAt', 'createdAt']
       ).slice(0, 5),
+      recentSubmissions: sortNewestFirst(submissions, ['createdAt', 'reviewedAt']).slice(0, 5),
+      recentReactionApprovals: listRecentReactionApprovals(5),
     };
   }
 

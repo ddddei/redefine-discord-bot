@@ -1,0 +1,170 @@
+const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const {
+  OPERATOR_HUB_OPTIONS,
+  OPERATOR_HUB_SELECT_ID,
+  createOperatorHubSelectRow,
+} = require('../src/components');
+const {
+  buildOperatorChecklistEmbed,
+  buildOperatorExportGuideEmbed,
+  buildOperatorHubEmbed,
+  buildOperatorMissionsShopEmbed,
+  buildOperatorPointLogsEmbed,
+  buildOperatorReactionApprovalsEmbed,
+  buildOperatorRedemptionsEmbed,
+  buildOperatorSubmissionsEmbed,
+} = require('../src/embeds');
+const { createPointsRepository } = require('../src/pointsRepository');
+
+const dataDir = path.join(__dirname, '..', 'data');
+
+function createTempRepository() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'operator-hub-flow-'));
+  return createPointsRepository({
+    points: path.join(tempDir, 'points.json'),
+    pointsFallback: path.join(dataDir, 'points.example.json'),
+    shopItems: path.join(tempDir, 'shop-items.json'),
+    shopItemsFallback: path.join(dataDir, 'shop-items.example.json'),
+    redemptions: path.join(tempDir, 'redemptions.json'),
+    redemptionsFallback: path.join(dataDir, 'redemptions.example.json'),
+    missions: path.join(tempDir, 'missions.json'),
+    missionsFallback: path.join(dataDir, 'missions.example.json'),
+    submissions: path.join(tempDir, 'submissions.json'),
+    submissionsFallback: path.join(dataDir, 'submissions.example.json'),
+    reactionApprovals: path.join(tempDir, 'reaction-approvals.json'),
+  });
+}
+
+function getEmbedTitle(embed) {
+  return embed.data && embed.data.title;
+}
+
+function getEmbedDescription(embed) {
+  return (embed.data && embed.data.description) || '';
+}
+
+function main() {
+  assert.strictEqual(OPERATOR_HUB_SELECT_ID, 'operator_hub_select');
+  assert.deepStrictEqual(
+    OPERATOR_HUB_OPTIONS.map((option) => option.value),
+    [
+      'overview',
+      'redemptions',
+      'submissions',
+      'points',
+      'missions_shop',
+      'reaction_approvals',
+      'exports',
+      'checklist',
+    ]
+  );
+
+  const row = createOperatorHubSelectRow('points');
+  const menu = row.components[0];
+  assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
+  assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
+  assert.strictEqual(menu.options.length, 8);
+
+  const repository = createTempRepository();
+  const mission = repository.createMission({
+    title: '운영 허브 테스트 미션',
+    description: '운영 허브 smoke test용 미션입니다.',
+    rewardPoints: 30,
+    requiresSubmission: true,
+  });
+  repository.setMissionStatus(mission.id, 'active');
+  repository.adjustUserPoints({
+    user: {
+      userId: 'operator_hub_user',
+      displayName: '운영 허브 사용자',
+    },
+    amount: 200,
+    reason: 'operator hub redemption seed points',
+    operatorId: 'operator_hub_operator',
+  });
+
+  const redemption = repository.requestRedemption({
+    user: {
+      userId: 'operator_hub_user',
+      displayName: '운영 허브 사용자',
+    },
+    itemId: 'item_youth_point_100_example',
+    note: 'operator hub pending redemption',
+  });
+  assert.strictEqual(redemption.ok, true);
+
+  const submission = repository.createMissionSubmission({
+    user: {
+      userId: 'operator_hub_submitter',
+      displayName: '운영 허브 인증자',
+    },
+    missionId: mission.id,
+    content: 'operator hub pending submission',
+    attachment: {
+      name: 'proof.png',
+      url: 'https://example.invalid/proof.png',
+    },
+  });
+  assert.strictEqual(submission.ok, true);
+
+  repository.approveReactionMessage({
+    messageId: 'operator_hub_message',
+    channelId: 'operator_hub_channel',
+    guildId: 'operator_hub_guild',
+    authorId: 'operator_hub_reaction_user',
+    authorDisplayName: '반응 승인 사용자',
+    rewardPoints: 20,
+    reviewedBy: 'operator_hub_operator',
+    reviewedByDisplayName: '운영 허브 운영자',
+    reviewEmoji: '✅',
+    messageUrl: 'https://discord.com/channels/operator_hub_guild/operator_hub_channel/operator_hub_message',
+  });
+
+  const summary = repository.getOperationSummary();
+  assert.ok(summary.usersCount >= 1);
+  assert.ok(summary.pointTransactionsCount >= 1);
+  assert.ok(summary.pendingRedemptionsCount >= 1);
+  assert.ok(summary.pendingSubmissionsCount >= 1);
+  assert.ok(summary.activeMissionsCount >= 1);
+  assert.ok(summary.todayReactionApprovalsCount >= 1);
+
+  const overview = buildOperatorHubEmbed(summary);
+  assert.strictEqual(getEmbedTitle(overview), '운영 현황 허브');
+  assert.match(getEmbedDescription(overview), /전체 사용자/);
+  assert.match(getEmbedDescription(overview), /오늘 포인트 거래/);
+
+  const redemptions = buildOperatorRedemptionsEmbed(repository.listPendingRedemptions(10));
+  assert.strictEqual(getEmbedTitle(redemptions), '교환 대기');
+  assert.match(getEmbedDescription(redemptions), /처리는 `\/교환관리`/);
+  assert.match(getEmbedDescription(redemptions), /청년동 포인트 전환권/);
+
+  const submissions = buildOperatorSubmissionsEmbed(repository.listPendingSubmissions(10));
+  assert.strictEqual(getEmbedTitle(submissions), '인증 대기');
+  assert.match(getEmbedDescription(submissions), /처리는 `\/인증관리`/);
+  assert.match(getEmbedDescription(submissions), /운영 허브 테스트 미션/);
+  assert.match(getEmbedDescription(submissions), /첨부파일: 있음/);
+
+  const points = buildOperatorPointLogsEmbed(repository.listTransactions({ limit: 10 }));
+  assert.strictEqual(getEmbedTitle(points), '최근 포인트 로그');
+  assert.match(getEmbedDescription(points), /\/포인트로그/);
+
+  const missionsShop = buildOperatorMissionsShopEmbed(summary);
+  assert.strictEqual(getEmbedTitle(missionsShop), '미션/상점 상태');
+  assert.match(getEmbedDescription(missionsShop), /\/미션관리/);
+  assert.match(getEmbedDescription(missionsShop), /\/상점관리/);
+
+  const reactions = buildOperatorReactionApprovalsEmbed(repository.listRecentReactionApprovals(10));
+  assert.strictEqual(getEmbedTitle(reactions), '반응 승인 기록');
+  assert.match(getEmbedDescription(reactions), /반응 승인 사용자/);
+
+  assert.match(getEmbedDescription(buildOperatorExportGuideEmbed()), /\/운영내보내기 종류:전체 형식:JSON/);
+  assert.match(getEmbedDescription(buildOperatorChecklistEmbed()), /docs\/operator-dashboard-guide\.md/);
+
+  console.log('operator hub flow smoke test passed');
+}
+
+main();

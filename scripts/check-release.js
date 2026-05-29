@@ -99,6 +99,11 @@ const checks = [
     args: ['--check', 'scripts/test-reaction-approval-flow.js'],
   },
   {
+    label: 'scripts/test-operator-hub-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-operator-hub-flow.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -132,6 +137,11 @@ const checks = [
     label: 'reaction approval flow smoke test',
     command: 'node',
     args: ['scripts/test-reaction-approval-flow.js'],
+  },
+  {
+    label: 'operator hub flow smoke test',
+    command: 'node',
+    args: ['scripts/test-operator-hub-flow.js'],
   },
   {
     label: '데이터 구조 검사',
