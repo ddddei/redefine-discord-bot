@@ -208,6 +208,7 @@ npm run check:release
 운영 문서 전체 목록은 [docs/README.md](docs/README.md)를 참고해 주세요.
 
 - [운영 가이드](docs/operation-guide.md)
+- [운영 전 QA 리허설 시나리오](docs/prelaunch-rehearsal-scenario.md)
 - [운영용 기본 미션/상점 설계](docs/operation-default-items-plan.md)
 - [미션/상점 등록 가이드](docs/mission-shop-setup-guide.md)
 - [운영자 명령어 가이드](docs/operator-command-guide.md)
@@ -220,3 +221,5 @@ npm run check:release
 - [운영 전 데이터 초기화 가이드](docs/production-data-reset-guide.md)
 - [운영 데이터 내보내기 및 백업 가이드](docs/export-and-backup-guide.md)
 - [운영 릴리즈 체크리스트](docs/release-checklist.md)
+
+실제 운영 전에는 [운영 전 QA 리허설 시나리오](docs/prelaunch-rehearsal-scenario.md)를 기준으로 테스트 참여자와 운영자 흐름을 1회 이상 끝까지 실행합니다. 리허설 후에는 테스트 데이터와 실제 운영 데이터를 구분하고, 운영용 미션/상점만 active 상태로 남겼는지 확인합니다.
