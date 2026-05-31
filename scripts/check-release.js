@@ -119,6 +119,11 @@ const checks = [
     args: ['--check', 'scripts/test-reaction-approval-flow.js'],
   },
   {
+    label: 'scripts/test-submission-review-buttons-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-submission-review-buttons-flow.js'],
+  },
+  {
     label: 'scripts/test-operator-hub-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-operator-hub-flow.js'],
@@ -162,6 +167,11 @@ const checks = [
     label: 'reaction approval flow smoke test',
     command: 'node',
     args: ['scripts/test-reaction-approval-flow.js'],
+  },
+  {
+    label: 'submission review buttons flow smoke test',
+    command: 'node',
+    args: ['scripts/test-submission-review-buttons-flow.js'],
   },
   {
     label: 'operator hub flow smoke test',

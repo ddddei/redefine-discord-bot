@@ -3,6 +3,7 @@ const {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
+  EmbedBuilder,
   ModalBuilder,
   PermissionFlagsBits,
   StringSelectMenuBuilder,
@@ -40,6 +41,7 @@ const {
   createOperatorHubSelectRow,
 } = require('./components');
 const {
+  createSubmissionReviewActionRow,
   sendMissionSubmissionReviewAlert,
   sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,
@@ -189,6 +191,93 @@ function createRedemptionCancelConfirmRow(displayCode) {
       .setLabel('다시 확인할게요')
       .setStyle(ButtonStyle.Primary)
   );
+}
+
+function getSubmissionReviewButtonAction(customId) {
+  if (customId.startsWith('operator_submission_approve:')) {
+    return 'approve';
+  }
+
+  if (customId.startsWith('operator_submission_reject:')) {
+    return 'reject';
+  }
+
+  return null;
+}
+
+function getSubmissionIdFromReviewButton(customId) {
+  const separatorIndex = customId.indexOf(':');
+  return separatorIndex === -1 ? '' : customId.slice(separatorIndex + 1);
+}
+
+function getEmbedJson(embed) {
+  if (!embed) {
+    return {};
+  }
+
+  if (typeof embed.toJSON === 'function') {
+    return embed.toJSON();
+  }
+
+  return embed.data || embed;
+}
+
+function buildSubmissionReviewStatusEmbed(baseEmbed, result, reviewerDisplayName, alreadyProcessed = false) {
+  const approved = result.submission.status === 'approved';
+  const baseJson = getEmbedJson(baseEmbed);
+  const filteredFields = Array.isArray(baseJson.fields)
+    ? baseJson.fields.filter((field) => !['처리 안내', '처리 상태', '처리자'].includes(field.name))
+    : [];
+  const statusLine = alreadyProcessed
+    ? `이미 ${approved ? '승인' : '반려'} 처리된 인증 제출이에요.`
+    : `${approved ? '승인' : '반려'} 완료`;
+  const pointLine = result.transaction
+    ? `지급 포인트: ${formatPoints(result.transaction.amount)}`
+    : '지급 포인트: 없음';
+
+  return new EmbedBuilder({
+    ...baseJson,
+    fields: [
+      ...filteredFields,
+      {
+        name: '처리 상태',
+        value: [
+          statusLine,
+          pointLine,
+          `처리 시간: ${formatTransactionDate(result.submission.reviewedAt)}`,
+        ].join('\n'),
+      },
+      {
+        name: '처리자',
+        value: truncateText(reviewerDisplayName || result.submission.reviewedBy || '운영진', 300),
+      },
+    ],
+  })
+    .setColor(approved ? 0x5f8f6b : 0x8f6b5f)
+    .setTitle(approved ? '미션 인증 승인 완료' : '미션 인증 반려 완료');
+}
+
+async function sendSubmissionReviewDm(interaction, result) {
+  if (!interaction.client || !interaction.client.users || typeof interaction.client.users.fetch !== 'function') {
+    return;
+  }
+
+  try {
+    const targetUser = await interaction.client.users.fetch(result.submission.userId);
+
+    if (!targetUser || typeof targetUser.send !== 'function') {
+      return;
+    }
+
+    const approved = result.submission.status === 'approved';
+    await targetUser.send([
+      approved ? '미션 인증이 승인됐어요.' : '미션 인증이 반려됐어요.',
+      result.mission ? `미션: ${result.mission.title || result.mission.id}` : `미션 ID: ${result.submission.missionId}`,
+      result.transaction ? `지급 포인트: ${formatPoints(result.transaction.amount)}` : '포인트는 지급되지 않았어요.',
+    ].join('\n'));
+  } catch (error) {
+    console.warn('미션 인증 검토 DM 전송 실패:', error.message);
+  }
 }
 
 function createMissionSelectRow(missions) {
@@ -1050,6 +1139,110 @@ async function handleSubmissionManageCommand(interaction) {
   }
 }
 
+async function sendEphemeralAfterUpdate(interaction, payload) {
+  if (typeof interaction.followUp === 'function') {
+    await interaction.followUp({
+      ...payload,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (typeof interaction.reply === 'function') {
+    await interaction.reply({
+      ...payload,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleSubmissionReviewButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '운영진만 처리할 수 있어요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const action = getSubmissionReviewButtonAction(interaction.customId);
+  const submissionId = getSubmissionIdFromReviewButton(interaction.customId);
+  const reviewer = {
+    userId: interaction.user.id,
+    displayName: getMemberDisplayName(interaction.user, interaction.member),
+  };
+
+  try {
+    const result = action === 'approve'
+      ? pointsRepository.approveSubmissionById(submissionId, reviewer, '운영자 검토 버튼 처리')
+      : pointsRepository.rejectSubmissionById(submissionId, reviewer, '운영자 검토 버튼 처리');
+    const embed = buildSubmissionReviewStatusEmbed(
+      interaction.message && interaction.message.embeds && interaction.message.embeds[0],
+      result,
+      reviewer.displayName
+    );
+
+    await interaction.update({
+      embeds: [embed],
+      components: [createSubmissionReviewActionRow(submissionId, true)],
+    });
+    await sendSubmissionReviewDm(interaction, result);
+
+    const participant = result.submission.displayName || result.submission.userId;
+    const lines = action === 'approve'
+      ? [
+        '승인 완료',
+        `지급 포인트: ${formatPoints(result.transaction ? result.transaction.amount : 0)}`,
+        `참여자: ${participant}`,
+      ]
+      : [
+        '반려 완료',
+        `참여자: ${participant}`,
+      ];
+
+    await sendEphemeralAfterUpdate(interaction, {
+      content: lines.join('\n'),
+    });
+  } catch (error) {
+    if (/이미 처리된 인증 제출/.test(error.message)) {
+      const submission = pointsRepository.findSubmission(submissionId);
+      const mission = submission ? pointsRepository.findMission(submission.missionId) : null;
+      const result = {
+        submission: submission || {
+          id: submissionId,
+          status: 'reviewed',
+          missionId: null,
+          reviewedBy: null,
+          reviewedAt: null,
+        },
+        mission,
+        transaction: null,
+      };
+      const embed = buildSubmissionReviewStatusEmbed(
+        interaction.message && interaction.message.embeds && interaction.message.embeds[0],
+        result,
+        reviewer.displayName,
+        true
+      );
+
+      await interaction.update({
+        embeds: [embed],
+        components: [createSubmissionReviewActionRow(submissionId, true)],
+      });
+      await sendEphemeralAfterUpdate(interaction, {
+        content: '이미 처리된 인증 제출이에요.',
+      });
+      return;
+    }
+
+    console.error('인증 검토 버튼 처리 실패:', error.message);
+    await interaction.reply({
+      content: `인증 처리를 완료하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
 async function handleRedemptionCommand(interaction) {
   try {
     const itemId = getOptionalStringOption(interaction.options, '항목');
@@ -1739,6 +1932,11 @@ async function handleInteractionCreate(interaction) {
   }
 
   if (interaction.isButton && interaction.isButton()) {
+    if (getSubmissionReviewButtonAction(interaction.customId)) {
+      await handleSubmissionReviewButton(interaction);
+      return;
+    }
+
     if (interaction.customId.startsWith('participant_redeem_confirm:')
       || interaction.customId.startsWith('participant_redeem_cancel_check:')
       || interaction.customId.startsWith('participant_redeem_cancel_done:')
@@ -1886,6 +2084,7 @@ module.exports = {
   handleShopSelect,
   handleSubmissionCommand,
   handleSubmissionManageCommand,
+  handleSubmissionReviewButton,
   handleShopManageCommand,
   handleShopCommand,
 };

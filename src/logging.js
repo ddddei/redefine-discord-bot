@@ -1,5 +1,25 @@
-const { EmbedBuilder } = require('discord.js');
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+} = require('discord.js');
 const { truncateEmbedValue } = require('./embeds');
+
+function createSubmissionReviewActionRow(submissionId, disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`operator_submission_approve:${submissionId}`)
+      .setLabel('승인하고 포인트 지급')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId(`operator_submission_reject:${submissionId}`)
+      .setLabel('반려하기')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(disabled)
+  );
+}
 
 function formatKoreanTime(date = new Date()) {
   const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
@@ -159,11 +179,18 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
         },
         {
           name: '처리 안내',
-          value: `/인증관리 제출id:${submission.id} 처리:승인 또는 /인증관리 제출id:${submission.id} 처리:반려`,
+          value: [
+            '아래 버튼으로 바로 처리할 수 있어요.',
+            '문제가 있으면 `/인증관리` 명령어로 직접 처리할 수 있어요.',
+            `제출 ID: \`${submission.id}\``,
+          ].join('\n'),
         }
       );
 
-    await channel.send({ embeds: [embed] });
+    await channel.send({
+      embeds: [embed],
+      components: [createSubmissionReviewActionRow(submission.id)],
+    });
     console.info(`인증 검토 알림 전송됨: channel=${alertChannelId} submission=${submission.id}`);
   } catch (error) {
     console.warn('미션 인증 검토 알림 전송 실패:', error.message);
@@ -293,6 +320,7 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
 }
 
 module.exports = {
+  createSubmissionReviewActionRow,
   formatKoreanTime,
   sendMissionReactionApprovalLog,
   sendMissionSubmissionReviewAlert,
