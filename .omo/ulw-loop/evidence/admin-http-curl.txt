@@ -1,3 +1,52 @@
+## /health
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Date: Thu, 04 Jun 2026 02:36:31 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Content-Length: 40
+
+{"ok":true,"adminDashboardEnabled":true}
+
+## /api/admin/summary unauthorized
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Basic realm="redefine-admin", charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Date: Thu, 04 Jun 2026 02:36:31 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Content-Length: 12
+
+Unauthorized
+
+## /api/admin/summary authorized with approved+pending checkins present
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Date: Thu, 04 Jun 2026 02:36:31 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Content-Length: 649
+
+{"title":"QA 대시보드","usersCount":2,"pointTransactionsCount":2,"todayPointTransactionsCount":2,"todayEarnedPoints":25,"pendingRedemptionsCount":0,"pendingSubmissionsCount":1,"reviewedSubmissionsCount":2,"activeMissionsCount":1,"activeShopItemsCount":0,"todayReactionApprovalsCount":0,"submissionStatusCounts":{"pending":1,"approved":1,"rejected":1},"missionStatusCounts":{"active":1},"shopItemStatusCounts":{},"exampleRecordsExcluded":25,"storageMode":"local-json","readOnly":true,"generatedAt":"2026-06-04T02:36:31.225Z","meta":{"exampleRecordsExcluded":25,"storageMode":"local-json","readOnly":true,"generatedAt":"2026-06-04T02:36:31.225Z"}}
+
+## /api/admin/submissions authorized excludes checkins
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Date: Thu, 04 Jun 2026 02:36:31 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Content-Length: 511
+
+{"data":[{"id":"submission_1780540574902_z0njm1","type":"mission","missionId":"mission_1780540574900_maurb0","userId":"qa_user_pending","displayName":"QA 대기","content":"pending proof","attachment":null,"status":"pending","reviewedBy":null,"createdAt":"2026-06-04T02:36:14.902Z","reviewedAt":null,"rewardTransactionId":null,"note":null,"missionTitle":"HTTP QA 미션","rewardPoints":15}],"meta":{"exampleRecordsExcluded":0,"storageMode":"local-json","readOnly":true,"generatedAt":"2026-06-04T02:36:31.239Z"}}
+
+## /admin authorized
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Date: Thu, 04 Jun 2026 02:36:31 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
 <!doctype html>
 <html lang="ko">
   <head>
@@ -81,15 +130,3 @@
         <article class="panel">
           <h2>운영 체크리스트</h2>
           <ul class="checklist">
-            <li>운영 전: 대시보드 접속과 인증 상태를 확인합니다.</li>
-            <li>운영 중: 교환 대기와 인증 대기 건을 주기적으로 확인합니다.</li>
-            <li>운영 중: 최근 포인트 로그와 반응 승인 기록을 대조합니다.</li>
-            <li>운영 후: /운영내보내기로 백업 파일을 확보합니다.</li>
-          </ul>
-        </article>
-      </section>
-    </main>
-
-    <script src="/admin/admin.js"></script>
-  </body>
-</html>

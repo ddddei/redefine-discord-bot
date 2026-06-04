@@ -50,6 +50,10 @@ function countByStatus(items) {
   }, {});
 }
 
+function isMissionSubmissionRecord(submission) {
+  return submission && submission.type !== 'checkin';
+}
+
 function isExampleLikeValue(value, key = '') {
   if (value === null || value === undefined) {
     return false;
@@ -155,6 +159,7 @@ function buildAdminSummary(repository = createDefaultRepository()) {
   const pointTransactions = pointTransactionsResult.data;
   const redemptions = redemptionsResult.data;
   const submissions = submissionsResult.data;
+  const missionSubmissions = submissions.filter(isMissionSubmissionRecord);
   const missions = missionsResult.data;
   const shopItems = shopItemsResult.data;
   const reactionApprovals = reactionApprovalsResult.data;
@@ -175,10 +180,14 @@ function buildAdminSummary(repository = createDefaultRepository()) {
       .filter((transaction) => isTodayKst(transaction.createdAt) && Number(transaction.amount) > 0)
       .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0),
     pendingRedemptionsCount: redemptions.filter((redemption) => redemption.status === 'pending').length,
-    pendingSubmissionsCount: submissions.filter((submission) => submission.status === 'pending').length,
+    pendingSubmissionsCount: missionSubmissions.filter((submission) => submission.status === 'pending').length,
+    reviewedSubmissionsCount: missionSubmissions.filter((submission) => {
+      return submission.status === 'approved' || submission.status === 'rejected';
+    }).length,
     activeMissionsCount: missions.filter((mission) => mission.status === 'active').length,
     activeShopItemsCount: shopItems.filter((item) => item.status === 'active').length,
     todayReactionApprovalsCount: reactionApprovals.filter((record) => isTodayKst(record.reviewedAt || record.createdAt)).length,
+    submissionStatusCounts: countByStatus(missionSubmissions),
     missionStatusCounts: countByStatus(missions),
     shopItemStatusCounts: countByStatus(shopItems),
     exampleRecordsExcluded,
@@ -212,14 +221,17 @@ function listPendingSubmissions(repository = createDefaultRepository(), limit = 
     return buildListResponse(
       repository.listPendingSubmissions(parseLimit(limit)),
       state && toArray(state.submissionsData && state.submissionsData.submissions)
+        .filter(isMissionSubmissionRecord)
         .filter((submission) => submission.status === 'pending')
     );
   }
 
   const state = readState(repository);
   return buildListResponse(sortNewestFirst(toArray(state.submissionsData && state.submissionsData.submissions), ['createdAt', 'reviewedAt'])
+    .filter(isMissionSubmissionRecord)
     .filter((submission) => submission.status === 'pending')
     .slice(0, parseLimit(limit)), toArray(state.submissionsData && state.submissionsData.submissions)
+    .filter(isMissionSubmissionRecord)
     .filter((submission) => submission.status === 'pending'));
 }
 

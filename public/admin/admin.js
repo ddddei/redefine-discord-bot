@@ -15,6 +15,7 @@
     todayEarnedPoints: '오늘 지급 포인트',
     pendingRedemptionsCount: '교환 대기',
     pendingSubmissionsCount: '인증 대기',
+    reviewedSubmissionsCount: '인증 처리',
     activeMissionsCount: '활성 미션',
     activeShopItemsCount: '활성 상점 항목',
     todayReactionApprovalsCount: '오늘 반응 승인',
@@ -93,6 +94,13 @@
     const notice = '읽기 전용 · ' + text(meta.storageMode, 'local-json') + ' · example 데이터 제외'
       + (excluded > 0 ? ' ' + excluded + '건' : '');
     $('global-status').textContent = notice;
+
+    const statusCounts = summary.submissionStatusCounts || {};
+    $('submission-status-summary').textContent = [
+      '대기 ' + text(statusCounts.pending, 0) + '건',
+      '승인 ' + text(statusCounts.approved, 0) + '건',
+      '반려 ' + text(statusCounts.rejected, 0) + '건',
+    ].join(' · ');
   }
 
   function renderTable(targetId, rows, headers, emptyMessage) {

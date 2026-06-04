@@ -197,6 +197,69 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
   }
 }
 
+async function sendMissionSubmissionReviewLog(client, result, reviewerDisplayName) {
+  const alertChannelId = process.env.ACTIVITY_REVIEW_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+
+  if (!alertChannelId) {
+    console.warn('미션 인증 버튼 처리 로그 채널이 설정되지 않아 알림을 건너뜁니다.');
+    return;
+  }
+
+  if (!client || !client.channels || typeof client.channels.fetch !== 'function') {
+    console.warn('미션 인증 버튼 처리 로그 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    return;
+  }
+
+  try {
+    const channel = await client.channels.fetch(alertChannelId);
+
+    if (!channel || typeof channel.send !== 'function') {
+      console.warn('미션 인증 버튼 처리 로그 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      return;
+    }
+
+    const approved = result.submission.status === 'approved';
+    const embed = new EmbedBuilder()
+      .setColor(approved ? 0x5f8f6b : 0x8f6b5f)
+      .setTitle(approved ? '미션 인증 버튼 승인' : '미션 인증 버튼 반려')
+      .addFields(
+        {
+          name: '제출 ID',
+          value: truncateEmbedValue(result.submission.id, 300),
+        },
+        {
+          name: '참여자',
+          value: truncateEmbedValue(result.submission.displayName || result.submission.userId, 300),
+        },
+        {
+          name: '미션',
+          value: result.mission
+            ? truncateEmbedValue(`${result.mission.id} / ${result.mission.title || '제목 없음'}`, 500)
+            : truncateEmbedValue(result.submission.missionId, 300),
+        },
+        {
+          name: '처리자',
+          value: truncateEmbedValue(reviewerDisplayName || result.submission.reviewedBy || '운영진', 300),
+        },
+        {
+          name: '처리 결과',
+          value: approved
+            ? `지급 완료 (${result.transaction ? result.transaction.amount : 0}P)`
+            : '반려 완료 / 포인트 미지급',
+        },
+        {
+          name: '처리 시간',
+          value: formatKoreanTime(new Date(result.submission.reviewedAt)),
+        }
+      );
+
+    await channel.send({ embeds: [embed] });
+    console.info(`미션 인증 버튼 처리 로그 전송됨: channel=${alertChannelId} submission=${result.submission.id}`);
+  } catch (error) {
+    console.warn('미션 인증 버튼 처리 로그 전송 실패:', error.message);
+  }
+}
+
 async function sendMissionReactionApprovalLog(client, record) {
   const alertChannelId = process.env.ACTIVITY_REVIEW_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
 
@@ -324,6 +387,7 @@ module.exports = {
   formatKoreanTime,
   sendMissionReactionApprovalLog,
   sendMissionSubmissionReviewAlert,
+  sendMissionSubmissionReviewLog,
   sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,
   sendUnansweredQuestionLog,

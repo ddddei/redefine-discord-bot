@@ -306,6 +306,7 @@ function buildOperatorHubEmbed(summary = {}) {
       `총 포인트 거래: ${summary.pointTransactionsCount || 0}건`,
       `교환 대기: ${summary.pendingRedemptionsCount || 0}건`,
       `인증 대기: ${summary.pendingSubmissionsCount || 0}건`,
+      `인증 처리: 승인 ${(summary.submissionStatusCounts && summary.submissionStatusCounts.approved) || 0}건 / 반려 ${(summary.submissionStatusCounts && summary.submissionStatusCounts.rejected) || 0}건`,
       `활성 미션: ${summary.activeMissionsCount || 0}개`,
       `활성 상점 항목: ${summary.activeShopItemsCount || 0}개`,
       `오늘 체크인: ${summary.todayCheckinsCount || 0}건`,
@@ -358,7 +359,7 @@ function buildOperatorRedemptionsEmbed(redemptions = []) {
 
 function buildOperatorSubmissionsEmbed(submissions = []) {
   if (submissions.length === 0) {
-    return createGuideEmbed('인증 대기', '현재 확인할 인증 제출은 없어요.', {
+    return createGuideEmbed('인증 대기', '표시할 인증 대기 건이 없어요.', {
       footer: OPERATOR_CHECK_FOOTER,
     });
   }

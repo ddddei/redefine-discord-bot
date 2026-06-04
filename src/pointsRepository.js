@@ -1065,6 +1065,7 @@ function createPointsRepository(paths = {}) {
   function listPendingSubmissions(limit = 10) {
     return listRecentSubmissions(1000)
       .filter((submission) => submission.status === 'pending')
+      .filter((submission) => submission.type !== 'checkin')
       .map((submission) => {
         const mission = findMission(submission.missionId);
         return {
@@ -1113,6 +1114,7 @@ function createPointsRepository(paths = {}) {
       : [];
     const redemptions = Array.isArray(state.redemptionsData.redemptions) ? state.redemptionsData.redemptions : [];
     const submissions = Array.isArray(state.submissionsData.submissions) ? state.submissionsData.submissions : [];
+    const missionSubmissions = submissions.filter((submission) => submission.type !== 'checkin');
     const missions = Array.isArray(state.missionsData.missions) ? state.missionsData.missions : [];
     const reactionApprovalsData = getReactionApprovalData();
     const reactionApprovals = Array.isArray(reactionApprovalsData.records) ? reactionApprovalsData.records : [];
@@ -1143,12 +1145,16 @@ function createPointsRepository(paths = {}) {
       pointTransactionsCount: pointTransactions.length,
       pendingRedemptionsCount: listPendingRedemptions(1000).length,
       pendingSubmissionsCount: listPendingSubmissions(1000).length,
+      reviewedSubmissionsCount: missionSubmissions.filter((submission) => {
+        return submission.status === 'approved' || submission.status === 'rejected';
+      }).length,
       reactionApprovalsCount: listRecentReactionApprovals(1000).length,
       todayReactionApprovalsCount: reactionApprovals.filter((record) => isToday(record.reviewedAt || record.createdAt)).length,
       activeMissionsCount: listActiveMissions().length,
       activeShopItemsCount: activeShopItems.length,
       todayCheckinsCount: listTodayCheckins().length,
       todayPointTransactionsCount: pointTransactions.filter((transaction) => isToday(transaction.createdAt)).length,
+      submissionStatusCounts: countByStatus(missionSubmissions),
       missionStatusCounts: countByStatus(missions),
       shopItemStatusCounts: countByStatus(Array.isArray(state.shopItemsData.shopItems) ? state.shopItemsData.shopItems : []),
       recentTransactions: listTransactions({ limit: 5 }),

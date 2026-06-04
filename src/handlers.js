@@ -43,6 +43,7 @@ const {
 const {
   createSubmissionReviewActionRow,
   sendMissionSubmissionReviewAlert,
+  sendMissionSubmissionReviewLog,
   sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,
   sendUnansweredQuestionLog,
@@ -1187,6 +1188,7 @@ async function handleSubmissionReviewButton(interaction) {
       components: [createSubmissionReviewActionRow(submissionId, true)],
     });
     await sendSubmissionReviewDm(interaction, result);
+    await sendMissionSubmissionReviewLog(interaction.client, result, reviewer.displayName);
 
     const participant = result.submission.displayName || result.submission.userId;
     const lines = action === 'approve'
