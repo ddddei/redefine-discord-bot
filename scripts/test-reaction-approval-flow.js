@@ -101,6 +101,7 @@ async function main() {
     MISSION_REJECT_EMOJI: process.env.MISSION_REJECT_EMOJI,
     MISSION_REACTION_REWARD_POINTS: process.env.MISSION_REACTION_REWARD_POINTS,
     MISSION_SUBMISSION_CHANNEL_ID: process.env.MISSION_SUBMISSION_CHANNEL_ID,
+    TODAY_MISSION_CHANNEL_ID: process.env.TODAY_MISSION_CHANNEL_ID,
     OPERATOR_ROLE_ID: process.env.OPERATOR_ROLE_ID,
     REACTION_APPROVAL_PUBLIC_REPLY: process.env.REACTION_APPROVAL_PUBLIC_REPLY,
     REACTION_APPROVAL_DM_USER: process.env.REACTION_APPROVAL_DM_USER,
@@ -110,6 +111,7 @@ async function main() {
   process.env.MISSION_REJECT_EMOJI = '❌';
   process.env.MISSION_REACTION_REWARD_POINTS = '';
   process.env.MISSION_SUBMISSION_CHANNEL_ID = 'mission_channel_test';
+  process.env.TODAY_MISSION_CHANNEL_ID = 'today_mission_channel_test';
   process.env.OPERATOR_ROLE_ID = 'operator_role_test';
   delete process.env.REACTION_APPROVAL_PUBLIC_REPLY;
   delete process.env.REACTION_APPROVAL_DM_USER;
@@ -134,6 +136,7 @@ async function main() {
     assert.strictEqual(isRejectEmoji('✅'), false);
     assert.strictEqual(isMissionSubmissionChannel('mission_channel_test'), true);
     assert.strictEqual(isMissionSubmissionChannel('other_channel'), false);
+    assert.strictEqual(isMissionSubmissionChannel('today_mission_channel_test'), false);
     assert.strictEqual(
       buildMessageUrl('guild_test', 'mission_channel_test', 'message_test'),
       'https://discord.com/channels/guild_test/mission_channel_test/message_test'
@@ -292,6 +295,26 @@ async function main() {
     );
     assert.strictEqual(duplicateHandlerResult.ok, false);
     assert.strictEqual(duplicateHandlerResult.reason, 'ALREADY_REVIEWED');
+
+    const todayMissionReaction = createReaction({
+      messageId: 'message_today_mission_reaction',
+      authorId: 'participant_today_mission_reaction',
+      emoji: '✅',
+      channelId: 'today_mission_channel_test',
+    });
+    const todayMissionReactionResult = await handleMissionReactionApproval(
+      todayMissionReaction,
+      { id: 'operator_handler', username: 'operator_handler', bot: false },
+      { user: { id: 'bot_test' } },
+      { repository: handlerRepository }
+    );
+
+    assert.strictEqual(todayMissionReactionResult.ok, false);
+    assert.strictEqual(todayMissionReactionResult.reason, 'TODAY_MISSION_CHANNEL_REACTION_APPROVAL_DISABLED');
+    assert.strictEqual(
+      handlerRepository.hasReactionMessageBeenReviewed('message_today_mission_reaction'),
+      false
+    );
 
     process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'true';
     process.env.REACTION_APPROVAL_DM_USER = 'false';

@@ -4,6 +4,7 @@ const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { handleInteractionCreate } = require('./handlers');
 const { handleMissionReactionApproval } = require('./reactionApproval');
 const { startAdminServer } = require('./adminServer');
+const { startDailyMissionAnnouncementScheduler } = require('./dailyMissionAnnouncement');
 const { handleTodayMissionMessageCreate } = require('./todayMission');
 const {
   findFaqAnswer,
@@ -31,6 +32,7 @@ const client = new Client({
 
 client.once('clientReady', () => {
   console.log(`${client.user.tag} 봇이 준비됐어요.`);
+  startDailyMissionAnnouncementScheduler(client);
 });
 
 client.on('interactionCreate', handleInteractionCreate);

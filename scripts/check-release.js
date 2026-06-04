@@ -59,6 +59,11 @@ const checks = [
     args: ['--check', 'src/reactionApproval.js'],
   },
   {
+    label: 'src/dailyMissionAnnouncement.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dailyMissionAnnouncement.js'],
+  },
+  {
     label: 'src/todayMission.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/todayMission.js'],
@@ -124,6 +129,11 @@ const checks = [
     args: ['--check', 'scripts/test-reaction-approval-flow.js'],
   },
   {
+    label: 'scripts/test-daily-mission-announcement-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-daily-mission-announcement-flow.js'],
+  },
+  {
     label: 'scripts/test-submission-review-buttons-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-submission-review-buttons-flow.js'],
@@ -172,6 +182,11 @@ const checks = [
     label: 'reaction approval flow smoke test',
     command: 'node',
     args: ['scripts/test-reaction-approval-flow.js'],
+  },
+  {
+    label: 'daily mission announcement flow smoke test',
+    command: 'node',
+    args: ['scripts/test-daily-mission-announcement-flow.js'],
   },
   {
     label: 'submission review buttons flow smoke test',

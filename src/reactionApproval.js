@@ -33,6 +33,10 @@ function isRejectEmoji(emoji) {
 }
 
 function isMissionSubmissionChannel(channelId) {
+  if (channelId && process.env.TODAY_MISSION_CHANNEL_ID && channelId === process.env.TODAY_MISSION_CHANNEL_ID) {
+    return false;
+  }
+
   const submissionChannelId = process.env.MISSION_SUBMISSION_CHANNEL_ID;
 
   if (!submissionChannelId) {
@@ -188,6 +192,10 @@ async function handleMissionReactionApproval(reaction, user, client, options = {
     const message = context.message;
     const reactor = context.user;
     const emoji = getEmojiText(context.reaction.emoji);
+
+    if (message && message.channelId && process.env.TODAY_MISSION_CHANNEL_ID && message.channelId === process.env.TODAY_MISSION_CHANNEL_ID) {
+      return { ok: false, reason: 'TODAY_MISSION_CHANNEL_REACTION_APPROVAL_DISABLED' };
+    }
 
     if (!message || !isMissionSubmissionChannel(message.channelId)) {
       return { ok: false, reason: 'NOT_MISSION_SUBMISSION_CHANNEL' };

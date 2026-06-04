@@ -44,6 +44,9 @@ ADMIN_DASHBOARD_TITLE=리디파인 운영 대시보드
 ```env
 TODAY_MISSION_CHANNEL_ID=
 DAILY_MISSION_REWARD_POINTS=20
+DAILY_MISSION_ANNOUNCEMENT_ENABLED=false
+DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID=
+DAILY_MISSION_ANNOUNCEMENT_HOUR=9
 MISSION_SUBMISSION_CHANNEL_ID=
 ACTIVITY_REVIEW_CHANNEL_ID=
 POINT_REDEEM_CHANNEL_ID=
@@ -53,6 +56,10 @@ MISSION_REJECT_EMOJI=❌
 ```
 
 `TODAY_MISSION_CHANNEL_ID`는 참여자가 글이나 첨부파일을 올리면 오늘의 미션 인증 후보로 자동 접수되는 채널입니다. 접수 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`로 전송되고, 같은 사용자에게 같은 날짜의 오늘의 미션 포인트는 1회만 지급됩니다. `DAILY_MISSION_REWARD_POINTS`는 오늘의 미션 승인 시 기본 지급 포인트이며 비어 있거나 잘못된 값이면 20P를 사용합니다.
+
+`DAILY_MISSION_ANNOUNCEMENT_ENABLED`가 `true`일 때만 오늘의 미션 자동 안내가 동작합니다. `DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID`가 있으면 해당 채널에 안내를 보내고, 비어 있으면 `TODAY_MISSION_CHANNEL_ID`에 보냅니다. `DAILY_MISSION_ANNOUNCEMENT_HOUR`는 Asia/Seoul 기준 발송 시각이며 비어 있거나 잘못된 값이면 9시를 사용합니다. 봇 안내 메시지가 삭제되면 MEE6에서 봇 메시지 예외 처리 또는 안내 채널 분리 필요.
+
+오늘의 미션 채널에서는 원본 사진에 `MISSION_APPROVE_EMOJI`, `MISSION_REJECT_EMOJI`를 눌러도 반응 승인 기능이 동작하지 않습니다. 오늘의 미션은 `ACTIVITY_REVIEW_CHANNEL_ID`에 올라오는 검토 카드 버튼으로만 승인/반려합니다.
 
 알림 채널 권장 구조:
 
