@@ -1,0 +1,201 @@
+{
+  "isExample": true,
+  "description": "매일/오늘의 미션 UX 설계 문서에 맞춘 미션 템플릿 예시 데이터입니다. 실제 운영 데이터, 실제 Discord 채널 ID, 사용자 ID, 토큰은 포함하지 않습니다.",
+  "schemaNote": "이 파일은 문서와 운영 준비용 예시입니다. 현재 봇 런타임에서 자동으로 사용되는 운영 데이터가 아닙니다.",
+  "missionTemplates": [
+    {
+      "id": "template_daily_checkin_example",
+      "key": "daily_checkin_example",
+      "type": "daily_habit",
+      "title": "오늘 상태 남기기",
+      "description": "오늘의 몸과 마음 상태를 짧은 글로 남기는 매일 습관 미션 예시입니다.",
+      "defaultRewardPoints": 10,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["text"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_active",
+      "operatorNote": "참여자가 미션 ID를 입력하지 않고 오늘의 미션 채널에 글을 남기는 흐름을 설명하기 위한 예시입니다."
+    },
+    {
+      "id": "template_daily_water_example",
+      "key": "daily_water_example",
+      "type": "daily_habit",
+      "title": "물 한 잔 마시기",
+      "description": "물을 한 잔 마신 뒤 짧게 기록하는 매일 습관 미션 예시입니다.",
+      "defaultRewardPoints": 5,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["text", "image"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_active",
+      "operatorNote": "사진을 요구하지 않아도 되는 가벼운 루틴 예시입니다."
+    },
+    {
+      "id": "template_daily_bedding_example",
+      "key": "daily_bedding_example",
+      "type": "daily_habit",
+      "title": "이불 정리하기",
+      "description": "이불이나 잠자리를 정리하고 글 또는 사진으로 인증하는 매일 습관 미션 예시입니다.",
+      "defaultRewardPoints": 10,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["text", "image"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_active",
+      "operatorNote": "개인 공간이 과도하게 드러나지 않도록 안내 문구를 함께 쓰는 것을 권장합니다."
+    },
+    {
+      "id": "template_daily_ventilation_example",
+      "key": "daily_ventilation_example",
+      "type": "daily_habit",
+      "title": "방 환기하기",
+      "description": "창문을 열어 방을 환기하고 짧게 기록하는 매일 습관 미션 예시입니다.",
+      "defaultRewardPoints": 5,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["text", "image"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_active",
+      "operatorNote": "실내 주소, 창밖 위치 정보, 사적 공간이 드러나지 않도록 안내합니다."
+    },
+    {
+      "id": "template_today_walk_10min_example",
+      "key": "today_walk_10min_example",
+      "type": "today_activity",
+      "title": "10분 산책하기",
+      "description": "오늘 10분 이상 산책한 뒤 글 또는 사진으로 남기는 오늘의 활동 미션 예시입니다.",
+      "defaultRewardPoints": 20,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["text", "image"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_draft",
+      "operatorNote": "운영자가 특정 날짜에 선택해 활성화하는 활동형 미션 예시입니다."
+    },
+    {
+      "id": "template_today_5000_steps_example",
+      "key": "today_5000_steps_example",
+      "type": "today_activity",
+      "title": "5,000보 걷기",
+      "description": "하루 걸음 수 5,000보를 달성하고 최소 정보로 인증하는 오늘의 활동 미션 예시입니다.",
+      "defaultRewardPoints": 30,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["text", "image"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_draft",
+      "operatorNote": "건강 앱 화면을 올릴 때 이름, 위치, 연락처 등 개인정보가 보이지 않게 안내합니다."
+    },
+    {
+      "id": "template_today_nike_run_1km_example",
+      "key": "today_nike_run_1km_example",
+      "type": "today_activity",
+      "title": "나이키 런 1km 인증하기",
+      "description": "나이키 런 또는 유사한 러닝 기록으로 1km 활동을 인증하는 오늘의 활동 미션 예시입니다.",
+      "defaultRewardPoints": 40,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["image"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_draft",
+      "operatorNote": "지도 경로, 집 주변 위치, 계정명처럼 민감할 수 있는 정보는 가리고 올리도록 안내합니다."
+    },
+    {
+      "id": "template_today_photo_log_example",
+      "key": "today_photo_log_example",
+      "type": "today_activity",
+      "title": "오늘의 사진 기록",
+      "description": "오늘 기억하고 싶은 장면을 사진으로 남기는 오늘의 활동 미션 예시입니다.",
+      "defaultRewardPoints": 20,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["image", "video"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_active",
+      "operatorNote": "얼굴, 주소, 타인의 개인정보가 드러나지 않는 사진을 권장합니다."
+    },
+    {
+      "id": "template_today_reflection_example",
+      "key": "today_reflection_example",
+      "type": "today_activity",
+      "title": "오늘의 회고 남기기",
+      "description": "오늘 좋았던 점이나 배운 점을 짧게 남기는 오늘의 활동 미션 예시입니다.",
+      "defaultRewardPoints": 30,
+      "submissionMode": "channel_message",
+      "allowedAttachmentTypes": ["text"],
+      "rewardLimit": {
+        "scope": "mission_per_user_per_day",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "today_mission_channel",
+      "status": "example_active",
+      "operatorNote": "회고는 평가가 아니라 기록이라는 톤으로 안내합니다."
+    },
+    {
+      "id": "template_special_guerrilla_example",
+      "key": "special_guerrilla_example",
+      "type": "special_event",
+      "title": "게릴라 특별 미션 예시",
+      "description": "운영자가 특정 기간이나 상황에 맞춰 여는 게릴라/특별 미션 템플릿 예시입니다.",
+      "defaultRewardPoints": 50,
+      "submissionMode": "slash_command_or_channel_message",
+      "allowedAttachmentTypes": ["text", "image", "video"],
+      "rewardLimit": {
+        "scope": "mission_rule_defined",
+        "maxRewards": 1,
+        "timezone": "Asia/Seoul"
+      },
+      "defaultChannelRef": "operator_announcement_channel",
+      "status": "example_draft",
+      "operatorNote": "복잡한 조건, 기간 한정, 운영자 공지가 필요한 경우 기존 /미션, /인증 흐름과 함께 쓰는 예시입니다."
+    }
+  ],
+  "dailyMissionActivationsExample": [
+    {
+      "id": "activation_20300115_daily_checkin_example",
+      "templateId": "template_daily_checkin_example",
+      "type": "daily_habit",
+      "activeDate": "2030-01-15",
+      "title": "오늘 상태 남기기",
+      "rewardPoints": 10,
+      "submissionChannelRef": "today_mission_channel",
+      "status": "example_active",
+      "createdBy": "example_operator",
+      "createdAt": "2030-01-15T09:00:00+09:00"
+    }
+  ]
+}
