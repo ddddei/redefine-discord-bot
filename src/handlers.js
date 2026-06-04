@@ -225,6 +225,7 @@ function getEmbedJson(embed) {
 
 function buildSubmissionReviewStatusEmbed(baseEmbed, result, reviewerDisplayName, alreadyProcessed = false) {
   const approved = result.submission.status === 'approved';
+  const duplicateBlocked = result.submission.duplicateRewardBlocked === true;
   const baseJson = getEmbedJson(baseEmbed);
   const filteredFields = Array.isArray(baseJson.fields)
     ? baseJson.fields.filter((field) => !['처리 안내', '처리 상태', '처리자'].includes(field.name))
@@ -234,7 +235,7 @@ function buildSubmissionReviewStatusEmbed(baseEmbed, result, reviewerDisplayName
     : `${approved ? '승인' : '반려'} 완료`;
   const pointLine = result.transaction
     ? `지급 포인트: ${formatPoints(result.transaction.amount)}`
-    : '지급 포인트: 없음';
+    : (duplicateBlocked ? '지급 포인트: 이미 오늘 지급 완료 / 추가 지급 없음' : '지급 포인트: 없음');
 
   return new EmbedBuilder({
     ...baseJson,
@@ -271,10 +272,15 @@ async function sendSubmissionReviewDm(interaction, result) {
     }
 
     const approved = result.submission.status === 'approved';
+    const duplicateBlocked = result.submission.duplicateRewardBlocked === true;
     await targetUser.send([
       approved ? '미션 인증이 승인됐어요.' : '미션 인증이 반려됐어요.',
-      result.mission ? `미션: ${result.mission.title || result.mission.id}` : `미션 ID: ${result.submission.missionId}`,
-      result.transaction ? `지급 포인트: ${formatPoints(result.transaction.amount)}` : '포인트는 지급되지 않았어요.',
+      result.mission
+        ? `미션: ${result.mission.title || result.mission.id}`
+        : `미션 ID: ${result.submission.missionId || '확인 필요'}`,
+      result.transaction
+        ? `지급 포인트: ${formatPoints(result.transaction.amount)}`
+        : (duplicateBlocked ? '이미 오늘 지급이 완료되어 추가 포인트는 지급되지 않았어요.' : '포인트는 지급되지 않았어요.'),
     ].join('\n'));
   } catch (error) {
     console.warn('미션 인증 검토 DM 전송 실패:', error.message);
@@ -1191,10 +1197,13 @@ async function handleSubmissionReviewButton(interaction) {
     await sendMissionSubmissionReviewLog(interaction.client, result, reviewer.displayName);
 
     const participant = result.submission.displayName || result.submission.userId;
+    const duplicateBlocked = result.submission.duplicateRewardBlocked === true;
     const lines = action === 'approve'
       ? [
         '승인 완료',
-        `지급 포인트: ${formatPoints(result.transaction ? result.transaction.amount : 0)}`,
+        duplicateBlocked
+          ? '지급 포인트: 이미 오늘 지급 완료 / 추가 지급 없음'
+          : `지급 포인트: ${formatPoints(result.transaction ? result.transaction.amount : 0)}`,
         `참여자: ${participant}`,
       ]
       : [

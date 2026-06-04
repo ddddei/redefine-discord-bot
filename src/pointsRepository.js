@@ -854,6 +854,91 @@ function createPointsRepository(paths = {}) {
     return { ok: true, mission, submission };
   }
 
+  function createTodayMissionSubmission(input) {
+    requireTrimmedString(input.user && input.user.userId, 'userId');
+    requirePositiveInteger(input.rewardPoints, 'rewardPoints');
+
+    const now = createTimestamp();
+    const submissionsData = cloneJson(getSubmissionsData());
+    const content = typeof input.content === 'string' ? input.content : '';
+    const attachmentCount = Number.isInteger(input.attachmentCount) && input.attachmentCount > 0
+      ? input.attachmentCount
+      : 0;
+    const todayMissionDate = input.todayMissionDate || getKoreanDateString();
+    const submission = {
+      id: createOperationId('today_submission'),
+      type: 'todayMission',
+      missionId: null,
+      missionTitle: '오늘의 미션',
+      userId: input.user.userId,
+      displayName: input.user.displayName || input.user.userId,
+      content,
+      contentSummary: content.trim().slice(0, 500),
+      attachment: null,
+      attachmentCount,
+      status: 'pending',
+      reviewedBy: null,
+      createdAt: now,
+      reviewedAt: null,
+      rewardTransactionId: null,
+      note: null,
+      rewardPoints: input.rewardPoints,
+      todayMissionDate,
+      source: 'todayMissionChannel',
+      messageId: input.messageId || null,
+      channelId: input.channelId || null,
+      guildId: input.guildId || null,
+      messageUrl: input.messageUrl || null,
+      duplicateRewardBlocked: false,
+    };
+    const mission = {
+      id: 'today_mission',
+      title: '오늘의 미션',
+      rewardPoints: input.rewardPoints,
+      status: 'active',
+    };
+
+    submissionsData.submissions = Array.isArray(submissionsData.submissions)
+      ? submissionsData.submissions
+      : [];
+    submissionsData.submissions.push(submission);
+    saveSubmissionsData(submissionsData);
+
+    return { ok: true, mission, submission };
+  }
+
+  function hasPaidTodayMissionReward(userId, todayMissionDate, ignoredSubmissionId = null) {
+    const submissionsData = getSubmissionsData();
+    const submissions = Array.isArray(submissionsData.submissions) ? submissionsData.submissions : [];
+
+    return submissions.some((submission) => {
+      return submission.id !== ignoredSubmissionId
+        && submission.type === 'todayMission'
+        && submission.userId === userId
+        && submission.todayMissionDate === todayMissionDate
+        && submission.status === 'approved'
+        && Boolean(submission.rewardTransactionId)
+        && submission.duplicateRewardBlocked !== true;
+    });
+  }
+
+  function getSubmissionMission(submission) {
+    if (!submission) {
+      return null;
+    }
+
+    if (submission.type === 'todayMission') {
+      return {
+        id: 'today_mission',
+        title: submission.missionTitle || '오늘의 미션',
+        rewardPoints: typeof submission.rewardPoints === 'number' ? submission.rewardPoints : 0,
+        status: 'active',
+      };
+    }
+
+    return findMission(submission.missionId);
+  }
+
   function reviewSubmissionById(submissionId, action, reviewer, note) {
     const state = loadState();
     const pointsData = cloneJson(state.pointsData);
@@ -882,20 +967,40 @@ function createPointsRepository(paths = {}) {
       submissions[index] = rejectedSubmission;
       submissionsData.submissions = submissions;
       saveSubmissionsData(submissionsData);
-      return { submission: rejectedSubmission, transaction: null, mission: findMission(submission.missionId) };
+      return { submission: rejectedSubmission, transaction: null, mission: getSubmissionMission(submission) };
     }
 
     if (action !== 'approve') {
       throw new Error('지원하지 않는 인증 관리 작업입니다.');
     }
 
-    const mission = findMission(submission.missionId);
+    const mission = getSubmissionMission(submission);
 
     if (!mission) {
       throw new Error('연결된 미션을 찾을 수 없습니다.');
     }
 
     const rewardPoints = typeof mission.rewardPoints === 'number' ? mission.rewardPoints : 0;
+
+    if (submission.type === 'todayMission'
+      && hasPaidTodayMissionReward(submission.userId, submission.todayMissionDate, submission.id)) {
+      const duplicateBlockedSubmission = {
+        ...submission,
+        status: 'approved',
+        reviewedBy: reviewer.userId,
+        reviewedAt: createTimestamp(),
+        rewardTransactionId: null,
+        duplicateRewardBlocked: true,
+        note: note || '이미 오늘의 미션 포인트 지급 완료',
+      };
+
+      submissions[index] = duplicateBlockedSubmission;
+      submissionsData.submissions = submissions;
+      saveSubmissionsData(submissionsData);
+
+      return { submission: duplicateBlockedSubmission, transaction: null, mission };
+    }
+
     const user = ensureUser(pointsData, {
       userId: submission.userId,
       displayName: submission.displayName || submission.userId,
@@ -908,8 +1013,10 @@ function createPointsRepository(paths = {}) {
       type: 'earn',
       amount: rewardPoints,
       balanceAfter,
-      reason: `미션 인증 승인: ${mission.title || mission.id}`,
-      relatedType: 'missionSubmission',
+      reason: submission.type === 'todayMission'
+        ? `오늘의 미션 인증 승인: ${submission.todayMissionDate || getKoreanDateString()}`
+        : `미션 인증 승인: ${mission.title || mission.id}`,
+      relatedType: submission.type === 'todayMission' ? 'todayMissionSubmission' : 'missionSubmission',
       relatedId: submission.id,
       createdBy: reviewer.userId,
       note: note || null,
@@ -920,6 +1027,7 @@ function createPointsRepository(paths = {}) {
       reviewedBy: reviewer.userId,
       reviewedAt: createTimestamp(),
       rewardTransactionId: transaction.id,
+      duplicateRewardBlocked: false,
       note: note || null,
     };
 
@@ -1327,6 +1435,7 @@ function createPointsRepository(paths = {}) {
     createCheckin,
     createMission,
     createMissionSubmission,
+    createTodayMissionSubmission,
     createShopItem,
     findMission,
     findShopItem,
@@ -1345,6 +1454,7 @@ function createPointsRepository(paths = {}) {
     getSubmissionsData,
     getReactionApprovalData,
     hasCheckedInToday,
+    hasPaidTodayMissionReward,
     hasReactionMessageBeenReviewed,
     listMissionsForAdmin,
     listTransactions,

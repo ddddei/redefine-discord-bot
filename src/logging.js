@@ -10,7 +10,7 @@ function createSubmissionReviewActionRow(submissionId, disabled = false) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`operator_submission_approve:${submissionId}`)
-      .setLabel('승인하고 포인트 지급')
+      .setLabel('승인하고 지급')
       .setStyle(ButtonStyle.Success)
       .setDisabled(disabled),
     new ButtonBuilder()
@@ -19,6 +19,31 @@ function createSubmissionReviewActionRow(submissionId, disabled = false) {
       .setStyle(ButtonStyle.Danger)
       .setDisabled(disabled)
   );
+}
+
+function getAttachmentCount(submission) {
+  if (typeof submission.attachmentCount === 'number') {
+    return submission.attachmentCount;
+  }
+
+  return submission.attachment ? 1 : 0;
+}
+
+function getSubmissionContentSummary(submission) {
+  const content = submission.contentSummary || submission.content || '';
+  return content.trim() || '텍스트 없음';
+}
+
+function getSubmissionSourceText(submission) {
+  if (submission.messageUrl) {
+    return submission.messageUrl;
+  }
+
+  if (submission.guildId && submission.channelId && submission.messageId) {
+    return `${submission.guildId}/${submission.channelId}/${submission.messageId}`;
+  }
+
+  return 'Slash Command 제출';
 }
 
 function formatKoreanTime(date = new Date()) {
@@ -138,9 +163,13 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
       return;
     }
 
+    const attachmentCount = getAttachmentCount(submission);
+    const rewardPoints = typeof submission.rewardPoints === 'number'
+      ? submission.rewardPoints
+      : (mission && typeof mission.rewardPoints === 'number' ? mission.rewardPoints : 0);
     const embed = new EmbedBuilder()
       .setColor(0x8f7a5f)
-      .setTitle('미션 인증 검토 요청')
+      .setTitle(submission.type === 'todayMission' ? '오늘의 미션 인증 후보' : '미션 인증 검토 요청')
       .addFields(
         {
           name: '제출 ID',
@@ -152,15 +181,25 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
         },
         {
           name: '미션',
-          value: truncateEmbedValue(`${mission.id} / ${mission.title || '제목 없음'}`, 500),
+          value: mission
+            ? truncateEmbedValue(`${mission.id} / ${mission.title || '제목 없음'}`, 500)
+            : truncateEmbedValue(submission.missionTitle || submission.missionId || '오늘의 미션', 500),
+        },
+        {
+          name: '원본 메시지',
+          value: truncateEmbedValue(getSubmissionSourceText(submission), 700),
         },
         {
           name: '지급 예정 포인트',
-          value: `${mission.rewardPoints || 0}P`,
+          value: `${rewardPoints}P`,
         },
         {
-          name: '제출 내용 일부',
-          value: truncateEmbedValue(submission.content, 500),
+          name: '텍스트 내용 요약',
+          value: truncateEmbedValue(getSubmissionContentSummary(submission), 500),
+        },
+        {
+          name: '첨부파일 개수',
+          value: `${attachmentCount}개`,
         },
         ...(submission.attachment ? [
           {
@@ -219,6 +258,7 @@ async function sendMissionSubmissionReviewLog(client, result, reviewerDisplayNam
     }
 
     const approved = result.submission.status === 'approved';
+    const duplicateBlocked = result.submission.duplicateRewardBlocked === true;
     const embed = new EmbedBuilder()
       .setColor(approved ? 0x5f8f6b : 0x8f6b5f)
       .setTitle(approved ? '미션 인증 버튼 승인' : '미션 인증 버튼 반려')
@@ -237,15 +277,23 @@ async function sendMissionSubmissionReviewLog(client, result, reviewerDisplayNam
             ? truncateEmbedValue(`${result.mission.id} / ${result.mission.title || '제목 없음'}`, 500)
             : truncateEmbedValue(result.submission.missionId, 300),
         },
+        ...(result.submission.messageUrl ? [
+          {
+            name: '원본 메시지',
+            value: truncateEmbedValue(result.submission.messageUrl, 700),
+          },
+        ] : []),
         {
           name: '처리자',
           value: truncateEmbedValue(reviewerDisplayName || result.submission.reviewedBy || '운영진', 300),
         },
         {
           name: '처리 결과',
-          value: approved
-            ? `지급 완료 (${result.transaction ? result.transaction.amount : 0}P)`
-            : '반려 완료 / 포인트 미지급',
+          value: duplicateBlocked
+            ? '이미 오늘 지급 완료 / 추가 지급 없음'
+            : (approved
+              ? `지급 완료 (${result.transaction ? result.transaction.amount : 0}P)`
+              : '반려 완료 / 포인트 미지급'),
         },
         {
           name: '처리 시간',

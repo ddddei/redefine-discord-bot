@@ -24,6 +24,8 @@ function setupEnvironment() {
   process.env.SUBMISSIONS_DATA_PATH = path.join(tempDir, 'submissions.json');
   process.env.REACTION_APPROVALS_DATA_PATH = path.join(tempDir, 'reaction-approvals.json');
   process.env.ACTIVITY_REVIEW_CHANNEL_ID = 'review_channel_test';
+  process.env.TODAY_MISSION_CHANNEL_ID = 'today_mission_channel_test';
+  process.env.DAILY_MISSION_REWARD_POINTS = '33';
   process.env.LOG_CHANNEL_ID = '';
 
   return tempDir;
@@ -143,6 +145,7 @@ async function main() {
   const { createPointsRepository } = require('../src/pointsRepository');
   const { sendMissionSubmissionReviewAlert } = require('../src/logging');
   const { handleInteractionCreate } = require('../src/handlers');
+  const { handleTodayMissionMessageCreate } = require('../src/todayMission');
 
   const repository = createPointsRepository();
   const mission = repository.createMission({
@@ -192,7 +195,7 @@ async function main() {
   );
   assert.deepStrictEqual(
     alertButtons.map((button) => button.label),
-    ['승인하고 포인트 지급', '반려하기']
+    ['승인하고 지급', '반려하기']
   );
   assert.match(
     sentMessages[0].embeds[0].data.fields.find((field) => field.name === '처리 안내').value,
@@ -281,6 +284,117 @@ async function main() {
   const finalSubmissionsData = readJson(finalSubmissionsPath);
   assert.strictEqual(finalSubmissionsData.submissions.find((item) => item.id === rejectedSubmission.submission.id).status, 'rejected');
 
+  const todayMissionMessages = [];
+  const todayMissionClient = {
+    user: { id: 'bot_today_mission_test' },
+    channels: {
+      async fetch(channelId) {
+        assert.strictEqual(channelId, 'review_channel_test');
+        return {
+          async send(payload) {
+            todayMissionMessages.push(payload);
+          },
+        };
+      },
+    },
+  };
+  const ignoredEmptyMessage = await handleTodayMissionMessageCreate({
+    id: 'today_empty_message',
+    channelId: 'today_mission_channel_test',
+    guildId: 'guild_today_test',
+    content: '',
+    attachments: { size: 0 },
+    author: createUser('today_user_ignored', '빈 메시지 사용자'),
+  }, todayMissionClient);
+  assert.strictEqual(ignoredEmptyMessage.ok, false);
+  assert.strictEqual(todayMissionMessages.length, 0);
+
+  const ignoredBotMessage = await handleTodayMissionMessageCreate({
+    id: 'today_bot_message',
+    channelId: 'today_mission_channel_test',
+    guildId: 'guild_today_test',
+    content: '봇 공지',
+    attachments: { size: 0 },
+    author: { ...createUser('operator_bot_message', '운영자 봇'), bot: true },
+  }, todayMissionClient);
+  assert.strictEqual(ignoredBotMessage.ok, false);
+  assert.strictEqual(todayMissionMessages.length, 0);
+
+  const firstTodaySubmission = await handleTodayMissionMessageCreate({
+    id: 'today_message_001',
+    channelId: 'today_mission_channel_test',
+    guildId: 'guild_today_test',
+    content: '오늘 산책 인증합니다.',
+    attachments: { size: 2 },
+    author: createUser('today_mission_user', '오늘미션사용자'),
+    member: createMember('오늘 미션 사용자', false),
+  }, todayMissionClient);
+  assert.strictEqual(firstTodaySubmission.ok, true);
+  assert.strictEqual(firstTodaySubmission.submission.type, 'todayMission');
+  assert.strictEqual(firstTodaySubmission.submission.rewardPoints, 33);
+  assert.strictEqual(firstTodaySubmission.submission.attachmentCount, 2);
+  assert.strictEqual(todayMissionMessages.length, 1);
+  assert.strictEqual(todayMissionMessages[0].embeds[0].data.title, '오늘의 미션 인증 후보');
+  assert.match(
+    todayMissionMessages[0].embeds[0].data.fields.find((field) => field.name === '원본 메시지').value,
+    /https:\/\/discord.com\/channels\/guild_today_test\/today_mission_channel_test\/today_message_001/
+  );
+  assert.strictEqual(
+    todayMissionMessages[0].embeds[0].data.fields.find((field) => field.name === '첨부파일 개수').value,
+    '2개'
+  );
+  assert.deepStrictEqual(
+    todayMissionMessages[0].components[0].components.map((button) => button.toJSON().label),
+    ['승인하고 지급', '반려하기']
+  );
+
+  const approveTodayButton = createButtonInteraction(
+    `operator_submission_approve:${firstTodaySubmission.submission.id}`,
+    todayMissionMessages[0],
+    true
+  );
+  await handleInteractionCreate(approveTodayButton);
+  assert.match(approveTodayButton.followUpPayload.content, /지급 포인트: 33P/);
+  assert.match(approveTodayButton.sentDmMessages[0].content, /오늘의 미션/);
+  assert.strictEqual(approveTodayButton.sentLogMessages[0].embeds[0].data.title, '미션 인증 버튼 승인');
+  assert.match(
+    approveTodayButton.sentLogMessages[0].embeds[0].data.fields.find((field) => field.name === '처리 결과').value,
+    /지급 완료 \(33P\)/
+  );
+
+  const secondTodaySubmission = await handleTodayMissionMessageCreate({
+    id: 'today_message_002',
+    channelId: 'today_mission_channel_test',
+    guildId: 'guild_today_test',
+    content: '',
+    attachments: { size: 1 },
+    author: createUser('today_mission_user', '오늘미션사용자'),
+    member: createMember('오늘 미션 사용자', false),
+  }, todayMissionClient);
+  assert.strictEqual(secondTodaySubmission.ok, true);
+  assert.strictEqual(todayMissionMessages.length, 2);
+
+  const duplicateTodayButton = createButtonInteraction(
+    `operator_submission_approve:${secondTodaySubmission.submission.id}`,
+    todayMissionMessages[1],
+    true
+  );
+  await handleInteractionCreate(duplicateTodayButton);
+  assert.match(duplicateTodayButton.followUpPayload.content, /이미 오늘 지급 완료/);
+  assert.match(
+    duplicateTodayButton.updatePayload.embeds[0].data.fields.find((field) => field.name === '처리 상태').value,
+    /이미 오늘 지급 완료/
+  );
+  assert.match(duplicateTodayButton.sentDmMessages[0].content, /이미 오늘 지급이 완료/);
+
+  const todayPointsData = readJson(path.join(tempDir, 'points.json'));
+  assert.strictEqual(getUserPoints(todayPointsData, 'today_mission_user'), 33);
+  const todaySubmissionsData = readJson(finalSubmissionsPath);
+  assert.strictEqual(
+    todaySubmissionsData.submissions.find((item) => item.id === secondTodaySubmission.submission.id).duplicateRewardBlocked,
+    true
+  );
+
   const checkin = repository.createCheckin({
     user: {
       userId: 'submission_button_checkin_user',
@@ -312,7 +426,7 @@ async function main() {
   await handleInteractionCreate(operationSummary);
   assert.strictEqual(operationSummary.replyPayload.ephemeral, true);
   assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 대기: 0건/);
-  assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 처리: 승인 1건 \/ 반려 1건/);
+  assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 처리: 승인 3건 \/ 반려 1건/);
 
   const pendingSubmissions = createOperationStatusInteraction('pendingSubmissions');
   await handleInteractionCreate(pendingSubmissions);
