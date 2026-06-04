@@ -1,4 +1,9 @@
 const { createPointsRepository, getKoreanDateString } = require('./pointsRepository');
+const {
+  filterOperationalRecords,
+  isExampleLikeRecord,
+  isExampleLikeValue,
+} = require('./operationalRecords');
 
 function createDefaultRepository() {
   return createPointsRepository();
@@ -52,54 +57,6 @@ function countByStatus(items) {
 
 function isMissionSubmissionRecord(submission) {
   return submission && submission.type !== 'checkin';
-}
-
-function isExampleLikeValue(value, key = '') {
-  if (value === null || value === undefined) {
-    return false;
-  }
-
-  const normalizedKey = String(key).toLowerCase();
-  if (typeof value === 'string') {
-    const normalized = value.toLowerCase();
-    const isIdentifierField = normalizedKey === 'id'
-      || normalizedKey.endsWith('id')
-      || normalizedKey.includes('userid')
-      || normalizedKey.includes('itemid')
-      || normalizedKey.includes('missionid')
-      || normalizedKey.includes('submissionid')
-      || normalizedKey.includes('redemptionid')
-      || normalizedKey.includes('transactionid');
-    const isTextField = ['title', 'name', 'description', 'reason', 'note', 'content', 'displayname'].some((field) => normalizedKey.includes(field));
-
-    if ((isIdentifierField || isTextField) && (normalized.includes('example') || normalized.includes('sample') || normalized.includes('demo') || value.includes('예시'))) {
-      return true;
-    }
-
-    if ((normalizedKey.endsWith('at') || normalizedKey.includes('date')) && /^20[3-9]\d/.test(value)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function isExampleLikeRecord(record) {
-  if (!record || typeof record !== 'object') {
-    return false;
-  }
-
-  return Object.entries(record).some(([key, value]) => isExampleLikeValue(value, key));
-}
-
-function filterOperationalRecords(records) {
-  const original = toArray(records);
-  const data = original.filter((record) => !isExampleLikeRecord(record));
-
-  return {
-    data,
-    excluded: original.length - data.length,
-  };
 }
 
 function buildAdminMeta(exampleRecordsExcluded = 0) {
@@ -236,10 +193,10 @@ function listPendingSubmissions(repository = createDefaultRepository(), limit = 
 }
 
 function listRecentPointTransactions(repository = createDefaultRepository(), limit = 10) {
-  if (repository && typeof repository.listTransactions === 'function') {
+  if (repository && typeof repository.listOperationalTransactions === 'function') {
     const state = readStateForMeta(repository);
     return buildListResponse(
-      repository.listTransactions({ limit: parseLimit(limit) }),
+      repository.listOperationalTransactions({ limit: parseLimit(limit) }),
       state && toArray(state.pointsData && state.pointsData.pointTransactions)
     );
   }

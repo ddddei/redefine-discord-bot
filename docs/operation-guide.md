@@ -239,6 +239,7 @@ push 또는 pull request를 올린 뒤에는 GitHub의 Actions 탭이나 PR 하�
 
 관리자 웹 대시보드 `/admin`은 읽기 전용 점검 화면입니다. 운영자는 `/운영현황`으로 Discord 내부 상태를 확인하고, 브라우저의 `/admin`에서 요약과 목록을 함께 대조합니다.
 
+- `data/*.example.json`의 문서용 더미 데이터는 smoke test와 fallback 설명에만 사용하며, `/포인트로그`, `/운영현황`, `/admin`에서는 실제 운영 데이터처럼 표시하지 않습니다.
 - 실제 운영 전 `/admin`에서 `user_example`, `rd_example`, `submission_example`, `tx_example`, 2030년 샘플 날짜 같은 example 데이터가 보이지 않는지 확인합니다.
 - `/admin` 상단에 `읽기 전용 · local-json · example 데이터 제외` 안내가 표시되는지 확인합니다.
 - 교환, 인증, 포인트, 미션, 상점의 실제 처리는 계속 `/교환관리`, `/인증관리`, `/포인트관리`, `/미션관리`, `/상점관리`에서 진행합니다.

@@ -30,7 +30,10 @@ function main() {
   const repository = createTempRepository();
 
   const initialSummary = repository.getOperationSummary();
-  assert.ok(initialSummary.pendingRedemptionsCount >= 1);
+  assert.strictEqual(initialSummary.pendingRedemptionsCount, 0);
+  assert.strictEqual(initialSummary.pointTransactionsCount, 0);
+  assert.deepStrictEqual(initialSummary.recentTransactions, []);
+  assert.deepStrictEqual(repository.listOperationalTransactions({ limit: 10 }), []);
   assert.ok(initialSummary.pendingSubmissionsCount >= 0);
   assert.ok(initialSummary.activeMissionsCount >= 0);
   assert.ok(initialSummary.activeShopItemsCount >= 0);
@@ -107,12 +110,30 @@ function main() {
   assert.strictEqual(hiddenShopItem.status, 'hidden');
   assert.ok(repository.listShopItemsForAdmin({ limit: 20 }).some((item) => item.id === shopItem.id));
 
-  const redemption = repository.requestRedemption({
+  const redemptionShopItem = repository.createShopItem({
+    name: '교환 대기 테스트 리워드',
+    description: '교환 대기 smoke test용 상점 항목입니다.',
+    cost: 40,
+    type: 'reward',
+    note: 'created by smoke test',
+  });
+  repository.setShopItemStatus(redemptionShopItem.id, 'active');
+  repository.adjustUserPoints({
     user: {
-      userId: 'user_example_002',
+      userId: 'admin_management_redemption_user',
       displayName: '교환 대기 테스트 사용자',
     },
-    itemId: 'item_youth_point_100_example',
+    amount: 80,
+    reason: 'admin management redemption seed points',
+    operatorId: 'operator_admin_management_test',
+  });
+
+  const redemption = repository.requestRedemption({
+    user: {
+      userId: 'admin_management_redemption_user',
+      displayName: '교환 대기 테스트 사용자',
+    },
+    itemId: redemptionShopItem.id,
     note: 'pending redemption smoke test',
   });
   assert.strictEqual(redemption.ok, true);
