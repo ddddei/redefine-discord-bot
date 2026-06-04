@@ -97,6 +97,39 @@ function createRepository() {
           attachment: null,
         },
         {
+          id: 'sub_approved',
+          type: 'mission',
+          missionId: 'mission1',
+          userId: 'user1234567890',
+          displayName: '테스트 참여자',
+          status: 'approved',
+          createdAt: now,
+          reviewedAt: now,
+          attachment: null,
+        },
+        {
+          id: 'sub_rejected',
+          type: 'mission',
+          missionId: 'mission1',
+          userId: 'user1234567890',
+          displayName: '테스트 참여자',
+          status: 'rejected',
+          createdAt: now,
+          reviewedAt: now,
+          attachment: null,
+        },
+        {
+          id: 'checkin_approved',
+          type: 'checkin',
+          missionId: null,
+          userId: 'user1234567890',
+          displayName: '테스트 참여자',
+          status: 'approved',
+          createdAt: now,
+          reviewedAt: now,
+          attachment: null,
+        },
+        {
           id: 'submission_example_pending',
           type: 'mission',
           missionId: 'mission_example',
@@ -176,11 +209,14 @@ function createRepository() {
     loadState: () => state,
     getReactionApprovalData: () => ({ records: reactionRecords }),
     listPendingRedemptions: (limit) => state.redemptionsData.redemptions.slice(0, limit),
-    listPendingSubmissions: (limit) => state.submissionsData.submissions.map((submission) => ({
-      ...submission,
-      missionTitle: '테스트 미션',
-      rewardPoints: 20,
-    })).slice(0, limit),
+    listPendingSubmissions: (limit) => state.submissionsData.submissions
+      .filter((submission) => submission.status === 'pending')
+      .map((submission) => ({
+        ...submission,
+        missionTitle: '테스트 미션',
+        rewardPoints: 20,
+      }))
+      .slice(0, limit),
     listTransactions: ({ limit }) => state.pointsData.pointTransactions.slice(0, limit),
     listMissionsForAdmin: ({ limit }) => state.missionsData.missions.slice(0, limit),
     listShopItemsForAdmin: ({ limit }) => state.shopItemsData.shopItems.slice(0, limit),
@@ -337,6 +373,12 @@ async function main() {
     assert.strictEqual(summary.pointTransactionsCount, 1);
     assert.strictEqual(summary.pendingRedemptionsCount, 1);
     assert.strictEqual(summary.pendingSubmissionsCount, 1);
+    assert.strictEqual(summary.reviewedSubmissionsCount, 2);
+    assert.deepStrictEqual(summary.submissionStatusCounts, {
+      pending: 1,
+      approved: 1,
+      rejected: 1,
+    });
     assert.strictEqual(summary.activeMissionsCount, 1);
     assert.strictEqual(summary.activeShopItemsCount, 1);
     assert.strictEqual(summary.todayReactionApprovalsCount, 1);
@@ -391,7 +433,14 @@ async function main() {
 
     const accepted = await invokeHandler(handler, '/api/admin/summary', basic('admin', 'secret'));
     assert.strictEqual(accepted.statusCode, 200);
-    assert.strictEqual(JSON.parse(accepted.body).usersCount, 1);
+    const acceptedSummary = JSON.parse(accepted.body);
+    assert.strictEqual(acceptedSummary.usersCount, 1);
+    assert.strictEqual(acceptedSummary.reviewedSubmissionsCount, 2);
+    assert.deepStrictEqual(acceptedSummary.submissionStatusCounts, {
+      pending: 1,
+      approved: 1,
+      rejected: 1,
+    });
 
     const redemptionsResponse = await invokeHandler(handler, '/api/admin/redemptions', basic('admin', 'secret'));
     const redemptionsPayload = JSON.parse(redemptionsResponse.body);
@@ -401,6 +450,7 @@ async function main() {
     const page = await invokeHandler(handler, '/admin', basic('admin', 'secret'));
     assert.strictEqual(page.statusCode, 200);
     assert.ok(page.body.includes('summary-cards'));
+    assert.ok(page.body.includes('submission-status-card'));
   } finally {
     if (originalEnabled === undefined) {
       delete process.env.ADMIN_DASHBOARD_ENABLED;

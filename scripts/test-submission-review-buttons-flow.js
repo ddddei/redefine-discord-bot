@@ -41,19 +41,33 @@ function createMember(displayName, isOperator) {
 }
 
 function createButtonInteraction(customId, message, isOperator = true) {
+  const sentDmMessages = [];
+  const sentLogMessages = [];
+
   return {
     customId,
     message,
+    sentDmMessages,
+    sentLogMessages,
     user: createUser(isOperator ? 'operator_button_test' : 'participant_button_test', isOperator ? '버튼 운영자' : '일반 참여자'),
     member: createMember(isOperator ? '버튼 운영자' : '일반 참여자', isOperator),
     client: {
+      channels: {
+        async fetch(channelId) {
+          assert.strictEqual(channelId, 'review_channel_test');
+          return {
+            async send(payload) {
+              sentLogMessages.push(payload);
+            },
+          };
+        },
+      },
       users: {
         async fetch(userId) {
           return {
             id: userId,
-            sentMessages: [],
             async send(content) {
-              this.sentMessages.push(content);
+              sentDmMessages.push({ userId, content });
             },
           };
         },
@@ -82,6 +96,38 @@ function createButtonInteraction(customId, message, isOperator = true) {
     },
     async followUp(payload) {
       this.followUpPayload = payload;
+    },
+  };
+}
+
+function createOperationStatusInteraction(type = 'summary') {
+  return {
+    commandName: '운영현황',
+    user: createUser('operator_button_test', '버튼 운영자'),
+    member: createMember('버튼 운영자', true),
+    options: {
+      getString(name) {
+        return name === '종류' ? type : null;
+      },
+      getInteger() {
+        return 10;
+      },
+    },
+    replyPayload: null,
+    isChatInputCommand() {
+      return true;
+    },
+    isStringSelectMenu() {
+      return false;
+    },
+    isButton() {
+      return false;
+    },
+    isModalSubmit() {
+      return false;
+    },
+    async reply(payload) {
+      this.replyPayload = payload;
     },
   };
 }
@@ -171,9 +217,23 @@ async function main() {
   assert.strictEqual(approveButton.updatePayload.components[0].components[0].toJSON().disabled, true);
   assert.strictEqual(approveButton.updatePayload.components[0].components[1].toJSON().disabled, true);
   assert.strictEqual(approveButton.updatePayload.embeds[0].data.title, '미션 인증 승인 완료');
+  assert.match(
+    approveButton.updatePayload.embeds[0].data.fields.find((field) => field.name === '처리 상태').value,
+    /승인 완료/
+  );
   assert.strictEqual(approveButton.followUpPayload.ephemeral, true);
   assert.match(approveButton.followUpPayload.content, /승인 완료/);
   assert.match(approveButton.followUpPayload.content, /지급 포인트: 25P/);
+  assert.strictEqual(approveButton.sentDmMessages.length, 1);
+  assert.strictEqual(approveButton.sentDmMessages[0].userId, 'submission_button_user');
+  assert.match(approveButton.sentDmMessages[0].content, /미션 인증이 승인/);
+  assert.match(approveButton.sentDmMessages[0].content, /지급 포인트: 25P/);
+  assert.strictEqual(approveButton.sentLogMessages.length, 1);
+  assert.strictEqual(approveButton.sentLogMessages[0].embeds[0].data.title, '미션 인증 버튼 승인');
+  assert.match(
+    approveButton.sentLogMessages[0].embeds[0].data.fields.find((field) => field.name === '처리 결과').value,
+    /지급 완료 \(25P\)/
+  );
 
   const pointsData = readJson(path.join(tempDir, 'points.json'));
   assert.strictEqual(getUserPoints(pointsData, 'submission_button_user'), 25);
@@ -188,6 +248,8 @@ async function main() {
   await handleInteractionCreate(duplicateButton);
   assert.match(duplicateButton.followUpPayload.content, /이미 처리된 인증 제출/);
   assert.strictEqual(duplicateButton.updatePayload.components[0].components[0].toJSON().disabled, true);
+  assert.strictEqual(duplicateButton.sentDmMessages.length, 0);
+  assert.strictEqual(duplicateButton.sentLogMessages.length, 0);
 
   const rejectedSubmission = repository.createMissionSubmission({
     user: {
@@ -207,11 +269,54 @@ async function main() {
   await handleInteractionCreate(rejectButton);
   assert.strictEqual(rejectButton.updatePayload.embeds[0].data.title, '미션 인증 반려 완료');
   assert.match(rejectButton.followUpPayload.content, /반려 완료/);
+  assert.strictEqual(rejectButton.sentDmMessages.length, 1);
+  assert.match(rejectButton.sentDmMessages[0].content, /미션 인증이 반려/);
+  assert.match(rejectButton.sentDmMessages[0].content, /포인트는 지급되지 않았어요/);
+  assert.strictEqual(rejectButton.sentLogMessages.length, 1);
+  assert.strictEqual(rejectButton.sentLogMessages[0].embeds[0].data.title, '미션 인증 버튼 반려');
 
   const finalPointsData = readJson(path.join(tempDir, 'points.json'));
   assert.strictEqual(getUserPoints(finalPointsData, 'submission_reject_button_user'), 0);
-  const finalSubmissionsData = readJson(path.join(tempDir, 'submissions.json'));
+  const finalSubmissionsPath = path.join(tempDir, 'submissions.json');
+  const finalSubmissionsData = readJson(finalSubmissionsPath);
   assert.strictEqual(finalSubmissionsData.submissions.find((item) => item.id === rejectedSubmission.submission.id).status, 'rejected');
+
+  const checkin = repository.createCheckin({
+    user: {
+      userId: 'submission_button_checkin_user',
+      displayName: '체크인 사용자',
+    },
+    content: '인증 처리 카운트에 포함되면 안 되는 체크인',
+    checkinDate: '2030-06-04',
+  });
+  assert.strictEqual(checkin.ok, true);
+  const submissionsWithMalformedCheckin = readJson(finalSubmissionsPath);
+  submissionsWithMalformedCheckin.submissions.push({
+    id: 'checkin_pending_malformed',
+    type: 'checkin',
+    missionId: null,
+    userId: 'submission_button_checkin_user',
+    displayName: '체크인 사용자',
+    content: '수동 데이터 오류로 대기 상태가 된 체크인',
+    checkinDate: '2030-06-05',
+    status: 'pending',
+    reviewedBy: null,
+    createdAt: '2030-06-05T00:00:00.000Z',
+    reviewedAt: null,
+    rewardTransactionId: null,
+    note: null,
+  });
+  fs.writeFileSync(finalSubmissionsPath, JSON.stringify(submissionsWithMalformedCheckin, null, 2));
+
+  const operationSummary = createOperationStatusInteraction('summary');
+  await handleInteractionCreate(operationSummary);
+  assert.strictEqual(operationSummary.replyPayload.ephemeral, true);
+  assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 대기: 0건/);
+  assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 처리: 승인 1건 \/ 반려 1건/);
+
+  const pendingSubmissions = createOperationStatusInteraction('pendingSubmissions');
+  await handleInteractionCreate(pendingSubmissions);
+  assert.match(pendingSubmissions.replyPayload.embeds[0].data.description, /표시할 인증 대기 건이 없어요/);
 
   console.log('submission review buttons flow smoke test passed');
 }
