@@ -4,6 +4,7 @@ const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { handleInteractionCreate } = require('./handlers');
 const { handleMissionReactionApproval } = require('./reactionApproval');
 const { startAdminServer } = require('./adminServer');
+const { handleTodayMissionMessageCreate } = require('./todayMission');
 const {
   findFaqAnswer,
   findKnowledgeAnswer,
@@ -18,6 +19,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent,
   ],
   partials: [
     Partials.Message,
@@ -32,6 +34,10 @@ client.once('clientReady', () => {
 });
 
 client.on('interactionCreate', handleInteractionCreate);
+
+client.on('messageCreate', async (message) => {
+  await handleTodayMissionMessageCreate(message, client);
+});
 
 client.on('messageReactionAdd', async (reaction, user) => {
   await handleMissionReactionApproval(reaction, user, client);
@@ -55,6 +61,7 @@ module.exports = {
   findKnowledgeAnswer,
   handleInteractionCreate,
   handleMissionReactionApproval,
+  handleTodayMissionMessageCreate,
   normalizeText,
   scoreFaqItem,
 };

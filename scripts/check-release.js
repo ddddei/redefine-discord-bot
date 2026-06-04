@@ -59,6 +59,11 @@ const checks = [
     args: ['--check', 'src/reactionApproval.js'],
   },
   {
+    label: 'src/todayMission.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/todayMission.js'],
+  },
+  {
     label: 'src/adminAuth.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/adminAuth.js'],
