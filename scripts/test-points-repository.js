@@ -20,6 +20,8 @@ function main() {
     redemptionsFallback: path.join(dataDir, 'redemptions.example.json'),
   };
   const repository = createPointsRepository(paths);
+  assert.ok(repository.listTransactions({ limit: 5 }).length > 0);
+  assert.deepStrictEqual(repository.listOperationalTransactions({ limit: 5 }), []);
 
   const redemptionResult = repository.requestRedemption({
     user: {

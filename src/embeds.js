@@ -392,7 +392,7 @@ function buildOperatorSubmissionsEmbed(submissions = []) {
 
 function buildOperatorPointLogsEmbed(transactions = []) {
   if (transactions.length === 0) {
-    return createGuideEmbed('최근 포인트 로그', '아직 표시할 포인트 로그가 없어요.', {
+    return createGuideEmbed('최근 포인트 로그', '아직 표시할 실제 포인트 로그가 없습니다.', {
       footer: OPERATOR_CHECK_FOOTER,
     });
   }

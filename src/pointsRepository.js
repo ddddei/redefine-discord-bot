@@ -14,6 +14,7 @@ const {
   refundRedemption,
   saveJsonFile,
 } = require('./pointsStore');
+const { filterOperationalRecords } = require('./operationalRecords');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 
@@ -124,6 +125,10 @@ function sortNewestFirst(items, dateFields) {
 function limitItems(items, limit) {
   const safeLimit = Math.min(200, Math.max(1, Number(limit || 50)));
   return Array.isArray(items) ? items.slice(0, safeLimit) : [];
+}
+
+function getOperationalRecords(records) {
+  return filterOperationalRecords(records).data;
 }
 
 function createDisplayCode(prefix, index) {
@@ -463,6 +468,15 @@ function createPointsRepository(paths = {}) {
       type: options.type,
       latestFirst: true,
     }).slice(0, options.limit || 10);
+  }
+
+  function listOperationalTransactions(options = {}) {
+    const state = loadState();
+    const transactions = listPointTransactions(state.pointsData, options.userId, {
+      type: options.type,
+      latestFirst: true,
+    });
+    return getOperationalRecords(transactions).slice(0, options.limit || 10);
   }
 
   function listActiveMissions() {
@@ -1171,7 +1185,7 @@ function createPointsRepository(paths = {}) {
   }
 
   function listPendingSubmissions(limit = 10) {
-    return listRecentSubmissions(1000)
+    return getOperationalRecords(listRecentSubmissions(1000))
       .filter((submission) => submission.status === 'pending')
       .filter((submission) => submission.type !== 'checkin')
       .map((submission) => {
@@ -1188,7 +1202,7 @@ function createPointsRepository(paths = {}) {
   function listPendingRedemptions(limit = 10) {
     const { redemptionsData } = loadState();
     const redemptions = Array.isArray(redemptionsData.redemptions) ? redemptionsData.redemptions : [];
-    return sortNewestFirst(redemptions, ['requestedAt', 'createdAt'])
+    return getOperationalRecords(sortNewestFirst(redemptions, ['requestedAt', 'createdAt']))
       .filter((redemption) => redemption.status === 'pending')
       .map((redemption) => {
         const item = findShopItem(redemption.itemId);
@@ -1211,23 +1225,21 @@ function createPointsRepository(paths = {}) {
   }
 
   function listRecentActivityLogs(limit = 10) {
-    return listTransactions({ limit });
+    return listOperationalTransactions({ limit });
   }
 
   function getOperationSummary() {
     const state = loadState();
-    const users = Array.isArray(state.pointsData.users) ? state.pointsData.users : [];
-    const pointTransactions = Array.isArray(state.pointsData.pointTransactions)
-      ? state.pointsData.pointTransactions
-      : [];
-    const redemptions = Array.isArray(state.redemptionsData.redemptions) ? state.redemptionsData.redemptions : [];
-    const submissions = Array.isArray(state.submissionsData.submissions) ? state.submissionsData.submissions : [];
+    const users = getOperationalRecords(state.pointsData.users);
+    const pointTransactions = getOperationalRecords(state.pointsData.pointTransactions);
+    const redemptions = getOperationalRecords(state.redemptionsData.redemptions);
+    const submissions = getOperationalRecords(state.submissionsData.submissions);
     const missionSubmissions = submissions.filter((submission) => submission.type !== 'checkin');
-    const missions = Array.isArray(state.missionsData.missions) ? state.missionsData.missions : [];
+    const missions = getOperationalRecords(state.missionsData.missions);
     const reactionApprovalsData = getReactionApprovalData();
-    const reactionApprovals = Array.isArray(reactionApprovalsData.records) ? reactionApprovalsData.records : [];
+    const reactionApprovals = getOperationalRecords(reactionApprovalsData.records);
     const activeShopItems = Array.isArray(state.shopItemsData.shopItems)
-      ? state.shopItemsData.shopItems.filter((item) => item.status === 'active')
+      ? getOperationalRecords(state.shopItemsData.shopItems).filter((item) => item.status === 'active')
       : [];
     const today = getKoreanDateString();
     const isToday = (value) => {
@@ -1264,10 +1276,10 @@ function createPointsRepository(paths = {}) {
       todayPointTransactionsCount: pointTransactions.filter((transaction) => isToday(transaction.createdAt)).length,
       submissionStatusCounts: countByStatus(missionSubmissions),
       missionStatusCounts: countByStatus(missions),
-      shopItemStatusCounts: countByStatus(Array.isArray(state.shopItemsData.shopItems) ? state.shopItemsData.shopItems : []),
-      recentTransactions: listTransactions({ limit: 5 }),
-      recentMissions: listMissionsForAdmin({ limit: 5 }),
-      recentShopItems: listShopItemsForAdmin({ limit: 5 }),
+      shopItemStatusCounts: countByStatus(getOperationalRecords(state.shopItemsData.shopItems)),
+      recentTransactions: listOperationalTransactions({ limit: 5 }),
+      recentMissions: getOperationalRecords(listMissionsForAdmin({ limit: 1000 })).slice(0, 5),
+      recentShopItems: getOperationalRecords(listShopItemsForAdmin({ limit: 1000 })).slice(0, 5),
       recentRedemptions: sortNewestFirst(
         redemptions,
         ['requestedAt', 'createdAt']
@@ -1457,6 +1469,7 @@ function createPointsRepository(paths = {}) {
     hasPaidTodayMissionReward,
     hasReactionMessageBeenReviewed,
     listMissionsForAdmin,
+    listOperationalTransactions,
     listTransactions,
     listActiveMissions,
     listActiveShopItemsWithCodes,

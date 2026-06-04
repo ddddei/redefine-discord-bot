@@ -123,7 +123,7 @@ function createPointTransactionLogEmbed(transactions) {
         transaction.reason,
       ].join(' / ');
     })
-    : ['표시할 포인트 로그가 없어요.'];
+    : ['아직 표시할 실제 포인트 로그가 없습니다.'];
 
   return createGuideEmbed(
     '포인트 로그',
@@ -1409,7 +1409,7 @@ async function handlePointLogCommand(interaction) {
     const user = interaction.options.getUser('사용자');
     const type = interaction.options.getString('종류');
     const limit = interaction.options.getInteger('개수') || 10;
-    const transactions = pointsRepository.listTransactions({
+    const transactions = pointsRepository.listOperationalTransactions({
       userId: user ? user.id : undefined,
       type: type || undefined,
       limit,
@@ -1438,7 +1438,7 @@ function getOperatorHubEmbed(value, limit = 10) {
   }
 
   if (value === 'points') {
-    return buildOperatorPointLogsEmbed(pointsRepository.listTransactions({ limit }));
+    return buildOperatorPointLogsEmbed(pointsRepository.listOperationalTransactions({ limit }));
   }
 
   if (value === 'missions_shop') {

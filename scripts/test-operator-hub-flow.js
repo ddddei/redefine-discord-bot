@@ -70,6 +70,15 @@ function main() {
   assert.strictEqual(menu.options.length, 8);
 
   const repository = createTempRepository();
+  const emptySummary = repository.getOperationSummary();
+  assert.strictEqual(emptySummary.usersCount, 0);
+  assert.strictEqual(emptySummary.pointTransactionsCount, 0);
+  assert.strictEqual(emptySummary.pendingRedemptionsCount, 0);
+  assert.deepStrictEqual(emptySummary.recentTransactions, []);
+  assert.deepStrictEqual(repository.listOperationalTransactions({ limit: 10 }), []);
+  const emptyPoints = buildOperatorPointLogsEmbed(repository.listOperationalTransactions({ limit: 10 }));
+  assert.match(getEmbedDescription(emptyPoints), /아직 표시할 실제 포인트 로그가 없습니다/);
+
   const mission = repository.createMission({
     title: '운영 허브 테스트 미션',
     description: '운영 허브 smoke test용 미션입니다.',
@@ -86,13 +95,20 @@ function main() {
     reason: 'operator hub redemption seed points',
     operatorId: 'operator_hub_operator',
   });
+  const shopItem = repository.createShopItem({
+    name: '운영 허브 테스트 리워드',
+    description: '운영 허브 smoke test용 상점 항목입니다.',
+    cost: 100,
+    type: 'reward',
+  });
+  repository.setShopItemStatus(shopItem.id, 'active');
 
   const redemption = repository.requestRedemption({
     user: {
       userId: 'operator_hub_user',
       displayName: '운영 허브 사용자',
     },
-    itemId: 'item_youth_point_100_example',
+    itemId: shopItem.id,
     note: 'operator hub pending redemption',
   });
   assert.strictEqual(redemption.ok, true);
@@ -140,7 +156,7 @@ function main() {
   const redemptions = buildOperatorRedemptionsEmbed(repository.listPendingRedemptions(10));
   assert.strictEqual(getEmbedTitle(redemptions), '교환 대기');
   assert.match(getEmbedDescription(redemptions), /처리는 `\/교환관리`/);
-  assert.match(getEmbedDescription(redemptions), /청년동 포인트 전환권/);
+  assert.match(getEmbedDescription(redemptions), /운영 허브 테스트 리워드/);
 
   const submissions = buildOperatorSubmissionsEmbed(repository.listPendingSubmissions(10));
   assert.strictEqual(getEmbedTitle(submissions), '인증 대기');
@@ -148,7 +164,10 @@ function main() {
   assert.match(getEmbedDescription(submissions), /운영 허브 테스트 미션/);
   assert.match(getEmbedDescription(submissions), /첨부파일: 있음/);
 
-  const points = buildOperatorPointLogsEmbed(repository.listTransactions({ limit: 10 }));
+  const operationalTransactions = repository.listOperationalTransactions({ limit: 10 });
+  assert.ok(operationalTransactions.length >= 1);
+  assert.ok(!operationalTransactions.some((transaction) => String(transaction.id).includes('example')));
+  const points = buildOperatorPointLogsEmbed(operationalTransactions);
   assert.strictEqual(getEmbedTitle(points), '최근 포인트 로그');
   assert.match(getEmbedDescription(points), /\/포인트로그/);
 
