@@ -18,6 +18,7 @@
 | [export-and-backup-guide.md](export-and-backup-guide.md) | 운영 데이터 내보내기와 백업 가이드 | 포인트 운영 데이터를 백업하거나 외부 공유 전 보관 주의사항을 확인할 때 | `/운영내보내기`, JSON/CSV 백업, 개인정보 보관 주의사항, local JSON 한계 |
 | [operator-command-guide.md](operator-command-guide.md) | 운영자 명령어 가이드 | 운영자가 포인트, 교환, 인증, 미션, 상점, 내보내기 명령어를 처리할 때 | 명령어별 사용 흐름, 주요 옵션, 확인 사항, 실수 방지 포인트 |
 | [operator-dashboard-guide.md](operator-dashboard-guide.md) | 운영자 허브 가이드 | `/운영현황`에서 운영 상태를 확인하고 다음 처리 명령어를 찾을 때 | 전체 요약, 교환/인증 대기, 포인트 로그, 미션/상점, 반응 승인, 백업 체크리스트 |
+| [google-sheets-integration-plan.md](google-sheets-integration-plan.md) | Google Sheets 운영 데이터 연동 설계안 | local JSON 운영 데이터 유실 위험을 줄이고 Sheets 보조 로그 저장소를 검토할 때 | append-only 포인트/인증 로그, 탭 구조, Apps Script 방식, fallback, DB 전환 고려사항 |
 | [mission-template-guide.md](mission-template-guide.md) | 미션 템플릿 운영 가이드 | 매일/오늘의 미션 템플릿 예시 구조와 개인정보 주의사항을 확인할 때 | `data/mission-templates.example.json`, 반복 미션 유형, 하루 1회 지급 제한, 실제 ID 금지 원칙 |
 | [participant-command-guide.md](participant-command-guide.md) | 참여자 명령어 가이드 | 참여자 안내문이나 운영진 응대 문구를 정리할 때 | 참여자 명령어 목적, 공개 범위, 안내 톤, 교환/인증 주의사항 |
 | [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md) | 실제 운영 전 QA 체크리스트 | 실제 참여자 입장 전 운영 환경과 명령어 흐름을 점검할 때 | 환경변수, Discord 권한, 참여자/운영자 명령어, 포인트/인증 흐름, 백업, 배포 확인 |
@@ -62,6 +63,7 @@
 - [mission-template-guide.md](mission-template-guide.md)
 - [operation-guide.md](operation-guide.md)
 - [export-and-backup-guide.md](export-and-backup-guide.md)
+- [google-sheets-integration-plan.md](google-sheets-integration-plan.md)
 
 운영자는 `/운영현황`으로 대기 건을 확인한 뒤 `/교환관리`, `/인증관리`, `/포인트로그`, `/운영내보내기`를 사용합니다. 매일/오늘의 미션 템플릿을 검토할 때는 미션 템플릿 운영 가이드를 함께 확인합니다. 참여자에게는 `/포인트`, `/상점`, `/교환`, `/체크인`, `/미션`, `/인증`을 경쟁이나 순위가 아닌 선택형 참여 흐름으로 안내해 주세요.
 
