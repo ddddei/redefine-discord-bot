@@ -18,6 +18,8 @@ const {
 } = require('../src/reactionApproval');
 const { createPointsRepository } = require('../src/pointsRepository');
 
+process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }

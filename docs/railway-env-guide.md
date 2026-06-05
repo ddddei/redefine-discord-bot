@@ -61,6 +61,18 @@ MISSION_REJECT_EMOJI=❌
 
 오늘의 미션 채널에서는 원본 사진에 `MISSION_APPROVE_EMOJI`, `MISSION_REJECT_EMOJI`를 눌러도 반응 승인 기능이 동작하지 않습니다. 오늘의 미션은 `ACTIVITY_REVIEW_CHANNEL_ID`에 올라오는 검토 카드 버튼으로만 승인/반려합니다.
 
+## 6. Google Sheets 보조 로그 환경변수
+
+Google Sheets append-only 운영 로그는 기본 비활성화입니다. Apps Script Web App을 준비한 운영 환경에서만 아래 값을 Railway Variables에 설정합니다.
+
+```env
+GOOGLE_SHEETS_LOGGING_ENABLED=false
+GOOGLE_SHEETS_WEB_APP_URL=
+GOOGLE_SHEETS_WEB_APP_SECRET=
+```
+
+`GOOGLE_SHEETS_LOGGING_ENABLED`가 `true`이고 Web App URL과 secret이 모두 있을 때만 포인트 거래와 미션 제출 접수 로그 append를 시도합니다. 실패해도 Discord의 기존 포인트 지급, 인증 접수, 승인/반려 흐름은 계속 진행됩니다. 실제 Web App URL과 secret은 문서, 코드, `.env.example`에 남기지 않습니다.
+
 알림 채널 권장 구조:
 
 ```txt
@@ -85,7 +97,7 @@ Discord 설정 -> 고급 -> 개발자 모드 ON
 채널 우클릭 -> 채널 ID 복사
 ```
 
-## 6. Public Domain 생성 방법
+## 7. Public Domain 생성 방법
 
 ```txt
 Railway 프로젝트 -> 서비스 선택 -> Settings -> Networking -> Public Networking -> Generate Domain
@@ -97,11 +109,11 @@ Railway 프로젝트 -> 서비스 선택 -> Settings -> Networking -> Public Net
 https://생성된-Railway-도메인/admin
 ```
 
-## 7. Redeploy 방법
+## 8. Redeploy 방법
 
 Variables를 바꾼 뒤 Railway가 자동 재배포하지 않으면 서비스 화면에서 수동 Redeploy를 실행합니다. Slash Command 구조를 바꾸지 않은 환경변수 수정만으로는 `npm run deploy`를 실행하지 않습니다.
 
-## 8. 확인 순서
+## 9. 확인 순서
 
 1. Railway Variables에 필수 변수를 입력합니다.
 2. 로그 채널, 인증 검토 채널, 교환 알림 채널 권한을 확인합니다.
@@ -112,7 +124,7 @@ Variables를 바꾼 뒤 Railway가 자동 재배포하지 않으면 서비스 �
 7. 대시보드 상단에 `읽기 전용 · local-json · example 데이터 제외` 안내가 보이는지 확인합니다.
 8. 교환 대기, 인증 대기, 포인트 로그가 실제 운영 데이터 기준으로 표시되는지 확인합니다.
 
-## 9. 문제 해결
+## 10. 문제 해결
 
 - `/admin`이 열리지 않으면 `ADMIN_DASHBOARD_ENABLED=true`와 `ADMIN_DASHBOARD_PASSWORD` 설정 여부를 확인합니다.
 - 401이 나오면 Basic Auth 비밀번호를 다시 확인합니다.

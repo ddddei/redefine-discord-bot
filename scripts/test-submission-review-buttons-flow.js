@@ -4,6 +4,8 @@ const os = require('os');
 const path = require('path');
 const { PermissionsBitField, PermissionFlagsBits } = require('discord.js');
 
+process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
+
 const dataDir = path.join(__dirname, '..', 'data');
 
 function resetModule(modulePath) {
@@ -320,19 +322,40 @@ async function main() {
   assert.strictEqual(ignoredBotMessage.ok, false);
   assert.strictEqual(todayMissionMessages.length, 0);
 
+  const todayMissionSheetsEvents = [];
   const firstTodaySubmission = await handleTodayMissionMessageCreate({
     id: 'today_message_001',
     channelId: 'today_mission_channel_test',
     guildId: 'guild_today_test',
     content: '오늘 산책 인증합니다.',
-    attachments: { size: 2 },
+    attachments: {
+      size: 2,
+      values() {
+        return [
+          { url: 'https://cdn.discordapp.test/today-1.jpg' },
+          { url: 'https://cdn.discordapp.test/today-2.jpg' },
+        ][Symbol.iterator]();
+      },
+    },
     author: createUser('today_mission_user', '오늘미션사용자'),
     member: createMember('오늘 미션 사용자', false),
-  }, todayMissionClient);
+  }, todayMissionClient, {
+    googleSheetsLogger: {
+      logMissionSubmission(submission, mission) {
+        todayMissionSheetsEvents.push({ submission, mission });
+      },
+    },
+  });
   assert.strictEqual(firstTodaySubmission.ok, true);
   assert.strictEqual(firstTodaySubmission.submission.type, 'todayMission');
   assert.strictEqual(firstTodaySubmission.submission.rewardPoints, 33);
   assert.strictEqual(firstTodaySubmission.submission.attachmentCount, 2);
+  assert.strictEqual(todayMissionSheetsEvents.length, 1);
+  assert.strictEqual(todayMissionSheetsEvents[0].submission.id, firstTodaySubmission.submission.id);
+  assert.deepStrictEqual(todayMissionSheetsEvents[0].submission.attachmentUrls, [
+    'https://cdn.discordapp.test/today-1.jpg',
+    'https://cdn.discordapp.test/today-2.jpg',
+  ]);
   assert.strictEqual(todayMissionMessages.length, 1);
   assert.strictEqual(todayMissionMessages[0].embeds[0].data.title, '오늘의 미션 인증 후보');
   assert.match(

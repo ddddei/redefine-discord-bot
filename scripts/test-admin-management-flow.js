@@ -6,6 +6,8 @@ const path = require('path');
 const { listActiveShopItems } = require('../src/pointsStore');
 const { createPointsRepository } = require('../src/pointsRepository');
 
+process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
+
 const dataDir = path.join(__dirname, '..', 'data');
 
 function createTempRepository() {

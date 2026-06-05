@@ -14,6 +14,7 @@ const {
   refundRedemption,
   saveJsonFile,
 } = require('./pointsStore');
+const defaultGoogleSheetsLogger = require('./googleSheetsLogger');
 const { filterOperationalRecords } = require('./operationalRecords');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -179,11 +180,12 @@ function requireNonNegativeInteger(value, fieldName) {
   }
 }
 
-function createPointsRepository(paths = {}) {
+function createPointsRepository(paths = {}, options = {}) {
   const resolvedPaths = {
     ...DEFAULT_PATHS,
     ...paths,
   };
+  const googleSheetsLogger = options.googleSheetsLogger || defaultGoogleSheetsLogger;
 
   if (!paths.reactionApprovals && paths.submissions) {
     resolvedPaths.reactionApprovals = path.join(path.dirname(paths.submissions), 'reaction-approvals.local.json');
@@ -300,6 +302,38 @@ function createPointsRepository(paths = {}) {
     return transaction;
   }
 
+  function appendPointTransactionLog(transaction, context = {}) {
+    if (!transaction || !googleSheetsLogger) {
+      return;
+    }
+
+    try {
+      const append = googleSheetsLogger.logPointTransaction || googleSheetsLogger.appendPointTransaction;
+      if (typeof append !== 'function') return;
+      Promise.resolve(append.call(googleSheetsLogger, transaction, context)).catch((error) => {
+        console.warn('Google Sheets point transaction append failed:', error.message);
+      });
+    } catch (error) {
+      console.warn('Google Sheets point transaction append failed:', error.message);
+    }
+  }
+
+  function appendMissionSubmissionLog(submission, context = {}) {
+    if (!submission || !googleSheetsLogger) {
+      return;
+    }
+
+    try {
+      const append = googleSheetsLogger.logMissionSubmission || googleSheetsLogger.appendMissionSubmission;
+      if (typeof append !== 'function') return;
+      Promise.resolve(append.call(googleSheetsLogger, submission, context.mission || null, context)).catch((error) => {
+        console.warn('Google Sheets mission submission append failed:', error.message);
+      });
+    } catch (error) {
+      console.warn('Google Sheets mission submission append failed:', error.message);
+    }
+  }
+
   function adjustUserPoints(input) {
     const state = loadState();
     const pointsData = cloneJson(state.pointsData);
@@ -327,6 +361,10 @@ function createPointsRepository(paths = {}) {
     updateUserBalance(user, balanceAfter, input.user.displayName);
     const nextState = { ...state, pointsData };
     saveState(nextState);
+    appendPointTransactionLog(transaction, {
+      user,
+      sourceSurface: 'operator_command',
+    });
 
     return { user, transaction };
   }
@@ -385,6 +423,10 @@ function createPointsRepository(paths = {}) {
       : [];
     redemptionsData.redemptions.push(redemption);
     saveState({ pointsData, shopItemsData, redemptionsData });
+    appendPointTransactionLog(transaction, {
+      user,
+      sourceSurface: 'slash_command',
+    });
 
     return {
       ok: true,
@@ -458,6 +500,12 @@ function createPointsRepository(paths = {}) {
 
     redemptionsData.redemptions[index] = nextRedemption;
     saveState({ ...state, pointsData, redemptionsData });
+    if (refundTransaction) {
+      appendPointTransactionLog(refundTransaction, {
+        user: getUser(pointsData, refundTransaction.userId),
+        sourceSurface: 'operator_command',
+      });
+    }
 
     return { redemption: nextRedemption, refundTransaction };
   }
@@ -805,6 +853,10 @@ function createPointsRepository(paths = {}) {
     submissionsData.submissions.push(checkin);
     saveState({ ...state, pointsData });
     saveSubmissionsData(submissionsData);
+    appendPointTransactionLog(transaction, {
+      user,
+      sourceSurface: 'slash_command',
+    });
 
     return { ok: true, user, transaction, checkin, checkinDate };
   }
@@ -864,6 +916,10 @@ function createPointsRepository(paths = {}) {
       : [];
     submissionsData.submissions.push(submission);
     saveSubmissionsData(submissionsData);
+    appendMissionSubmissionLog(submission, {
+      mission,
+      sourceSurface: 'slash_command',
+    });
 
     return { ok: true, mission, submission };
   }
@@ -890,6 +946,7 @@ function createPointsRepository(paths = {}) {
       contentSummary: content.trim().slice(0, 500),
       attachment: null,
       attachmentCount,
+      attachmentUrls: Array.isArray(input.attachmentUrls) ? input.attachmentUrls.filter(Boolean) : [],
       status: 'pending',
       reviewedBy: null,
       createdAt: now,
@@ -917,6 +974,11 @@ function createPointsRepository(paths = {}) {
       : [];
     submissionsData.submissions.push(submission);
     saveSubmissionsData(submissionsData);
+    appendMissionSubmissionLog(submission, {
+      mission,
+      sourceSurface: 'today_mission_channel',
+      discordMessageUrl: submission.messageUrl,
+    });
 
     return { ok: true, mission, submission };
   }
@@ -1050,6 +1112,11 @@ function createPointsRepository(paths = {}) {
     submissionsData.submissions = submissions;
     saveState({ ...state, pointsData });
     saveSubmissionsData(submissionsData);
+    appendPointTransactionLog(transaction, {
+      user,
+      sourceSurface: submission.type === 'todayMission' ? 'today_mission_channel' : 'operator_command',
+      discordMessageUrl: submission.messageUrl || '',
+    });
 
     return { submission: approvedSubmission, transaction, mission };
   }
@@ -1141,6 +1208,11 @@ function createPointsRepository(paths = {}) {
     approvalsData.records.push(record);
     saveState({ ...state, pointsData });
     saveReactionApprovalData(approvalsData);
+    appendPointTransactionLog(transaction, {
+      user,
+      sourceSurface: 'reaction_approval',
+      discordMessageUrl: input.messageUrl || '',
+    });
 
     return { ok: true, record, transaction };
   }
