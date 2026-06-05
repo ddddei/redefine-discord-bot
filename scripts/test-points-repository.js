@@ -4,6 +4,8 @@ const os = require('os');
 const path = require('path');
 const { createPointsRepository } = require('../src/pointsRepository');
 
+process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
@@ -19,7 +21,14 @@ function main() {
     redemptions: path.join(tempDir, 'redemptions.json'),
     redemptionsFallback: path.join(dataDir, 'redemptions.example.json'),
   };
-  const repository = createPointsRepository(paths);
+  const sheetsEvents = [];
+  const repository = createPointsRepository(paths, {
+    googleSheetsLogger: {
+      logPointTransaction(transaction, context) {
+        sheetsEvents.push({ transaction, context });
+      },
+    },
+  });
   assert.ok(repository.listTransactions({ limit: 5 }).length > 0);
   assert.deepStrictEqual(repository.listOperationalTransactions({ limit: 5 }), []);
 
@@ -36,6 +45,9 @@ function main() {
   assert.strictEqual(redemptionResult.transaction.amount, -100);
   assert.strictEqual(redemptionResult.transaction.balanceAfter, 100);
   assert.strictEqual(redemptionResult.redemption.status, 'pending');
+  assert.strictEqual(sheetsEvents.length, 1);
+  assert.strictEqual(sheetsEvents[0].transaction.id, redemptionResult.transaction.id);
+  assert.strictEqual(sheetsEvents[0].context.sourceSurface, 'slash_command');
 
   let pointsData = readJson(paths.points);
   let redemptionsData = readJson(paths.redemptions);
@@ -66,6 +78,9 @@ function main() {
   });
   assert.strictEqual(adjusted.transaction.type, 'earn');
   assert.strictEqual(adjusted.transaction.balanceAfter, 75);
+  assert.ok(
+    sheetsEvents.some((event) => event.transaction.id === adjusted.transaction.id && event.context.sourceSurface === 'operator_command')
+  );
 
   const cancelled = repository.reviewRedemption({
     redemptionId: 'rd_example_cancelled',
@@ -75,6 +90,9 @@ function main() {
   });
   assert.strictEqual(cancelled.redemption.status, 'refunded');
   assert.strictEqual(cancelled.refundTransaction.amount, 100);
+  assert.ok(
+    sheetsEvents.some((event) => event.transaction.id === cancelled.refundTransaction.id && event.context.sourceSurface === 'operator_command')
+  );
 
   pointsData = readJson(paths.points);
   redemptionsData = readJson(paths.redemptions);

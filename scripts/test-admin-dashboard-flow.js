@@ -21,6 +21,8 @@ const {
   isAdminDashboardEnabled,
 } = require('../src/adminServer');
 
+process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
+
 function createRequest(authorization) {
   return {
     headers: authorization ? { authorization } : {},

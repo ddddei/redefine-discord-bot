@@ -6,6 +6,8 @@ const path = require('path');
 const { getUserPoints, loadJsonFile } = require('../src/pointsStore');
 const { CHECKIN_REWARD_POINTS, createPointsRepository } = require('../src/pointsRepository');
 
+process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
+
 const dataDir = path.join(__dirname, '..', 'data');
 
 function createTempRepository() {

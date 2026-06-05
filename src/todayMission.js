@@ -40,6 +40,16 @@ function hasAttachment(message) {
   return Boolean(message && message.attachments && typeof message.attachments.size === 'number' && message.attachments.size > 0);
 }
 
+function getAttachmentUrls(message) {
+  if (!message || !message.attachments || typeof message.attachments.values !== 'function') {
+    return [];
+  }
+
+  return Array.from(message.attachments.values())
+    .map((attachment) => attachment && attachment.url)
+    .filter(Boolean);
+}
+
 function shouldIgnoreTodayMissionMessage(message, client) {
   if (!message) return true;
   if (!isTodayMissionChannel(message.channelId)) return true;
@@ -74,7 +84,10 @@ async function handleTodayMissionMessageCreate(message, client, options = {}) {
       return { ok: false, reason: 'IGNORED_MESSAGE' };
     }
 
-    const repository = options.repository || createPointsRepository(options.paths);
+    const repository = options.repository || createPointsRepository(options.paths, {
+      googleSheetsLogger: options.googleSheetsLogger,
+    });
+    const attachmentUrls = getAttachmentUrls(message);
     const result = repository.createTodayMissionSubmission({
       user: {
         userId: message.author.id,
@@ -84,6 +97,7 @@ async function handleTodayMissionMessageCreate(message, client, options = {}) {
       attachmentCount: message.attachments && typeof message.attachments.size === 'number'
         ? message.attachments.size
         : 0,
+      attachmentUrls,
       channelId: message.channelId,
       guildId: message.guildId,
       messageId: message.id,

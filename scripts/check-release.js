@@ -54,6 +54,11 @@ const checks = [
     args: ['--check', 'src/pointsRepository.js'],
   },
   {
+    label: 'src/googleSheetsLogger.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/googleSheetsLogger.js'],
+  },
+  {
     label: 'src/reactionApproval.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/reactionApproval.js'],
@@ -102,6 +107,11 @@ const checks = [
     label: 'scripts/test-points-repository.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-points-repository.js'],
+  },
+  {
+    label: 'scripts/test-google-sheets-logger.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-google-sheets-logger.js'],
   },
   {
     label: 'scripts/test-point-activity-flow.js 문법 검사',
@@ -157,6 +167,11 @@ const checks = [
     label: 'pointsRepository smoke test',
     command: 'node',
     args: ['scripts/test-points-repository.js'],
+  },
+  {
+    label: 'googleSheetsLogger smoke test',
+    command: 'node',
+    args: ['scripts/test-google-sheets-logger.js'],
   },
   {
     label: 'point activity flow smoke test',
@@ -220,6 +235,10 @@ function runCheck(check) {
   console.log(`릴리즈 점검 시작: ${check.label}`);
 
   const result = spawnSync(check.command, check.args, {
+    env: {
+      ...process.env,
+      GOOGLE_SHEETS_LOGGING_ENABLED: 'false',
+    },
     stdio: 'inherit',
   });
 

@@ -149,7 +149,7 @@ Railway에서 Public Domain을 생성한 뒤 `https://Railway-도메인/admin`�
 
 운영 전 기본 미션과 상점 항목은 자동 생성되지 않습니다. 실제 운영 데이터는 `/미션관리`, `/상점관리`로 직접 등록하고, 기본 후보와 등록 순서는 [운영용 기본 미션/상점 설계](docs/operation-default-items-plan.md)와 [미션/상점 등록 가이드](docs/mission-shop-setup-guide.md)를 기준으로 확인합니다.
 
-초기 MVP는 읽기 전용입니다. 승인, 거절, 포인트 지급/차감, 미션/상점 수정은 계속 Discord의 `/교환관리`, `/인증관리`, `/포인트관리`, `/미션관리`, `/상점관리` 명령어에서 처리합니다. Google Sheets와 PostgreSQL 연동은 포함하지 않습니다.
+초기 MVP 대시보드는 읽기 전용입니다. 승인, 거절, 포인트 지급/차감, 미션/상점 수정은 계속 Discord의 `/교환관리`, `/인증관리`, `/포인트관리`, `/미션관리`, `/상점관리` 명령어에서 처리합니다. Google Sheets는 `GOOGLE_SHEETS_LOGGING_ENABLED=true`일 때 운영 확인용 append-only 보조 로그로만 사용하며, PostgreSQL 연동은 포함하지 않습니다.
 
 ## 검증 명령어
 

@@ -20,6 +20,8 @@ const {
 } = require('../src/embeds');
 const { createPointsRepository } = require('../src/pointsRepository');
 
+process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
+
 const dataDir = path.join(__dirname, '..', 'data');
 
 function createTempRepository() {
