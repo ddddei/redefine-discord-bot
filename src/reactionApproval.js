@@ -255,11 +255,11 @@ async function handleMissionReactionApproval(reaction, user, client, options = {
 
     const approved = result.record.status === 'approved';
     const participantDmText = approved
-      ? `확인됐어요. 여정 포인트 ${result.record.rewardPoints}P가 지급됐습니다.\n\`/포인트\`에서 현재 포인트를 확인할 수 있어요.`
-      : '운영진이 확인했어요. 이번에는 포인트 지급 대상은 아니에요.\n`/포인트`에서 현재 포인트를 확인할 수 있어요.';
+      ? `미션 인증이 승인됐어요 ✅\n${result.record.rewardPoints}P가 지급됐어요. \`/포인트\`에서 현재 포인트를 확인할 수 있어요.`
+      : '이번 인증은 반려됐어요.\n안내 내용을 확인한 뒤 다시 제출해주세요.';
     const publicReplyText = approved
-      ? `확인했어요. 여정 포인트 ${result.record.rewardPoints}P가 지급됐습니다.`
-      : '운영진이 확인했어요. 이번에는 포인트 지급 대상은 아니에요.';
+      ? `미션 인증이 승인됐어요 ✅ ${result.record.rewardPoints}P가 지급됐어요.`
+      : '이번 인증은 반려됐어요. 안내 내용을 확인한 뒤 다시 제출해주세요.';
     const notificationSettings = {
       dmUser: shouldDmReactionApprovalUser(),
       publicReply: shouldSendReactionApprovalPublicReply(),

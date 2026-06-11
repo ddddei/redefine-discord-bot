@@ -288,6 +288,8 @@ async function main() {
     assert.strictEqual(approveResult.record.status, 'approved');
     assert.strictEqual(approveReaction.message.replies.length, 0);
     assert.strictEqual(approveReaction.message.author.dms.length, 1);
+    assert.match(approveReaction.message.author.dms[0], /미션 인증이 승인됐어요/);
+    assert.match(approveReaction.message.author.dms[0], /20P가 지급됐어요/);
 
     const duplicateHandlerResult = await handleMissionReactionApproval(
       approveReaction,
@@ -335,6 +337,7 @@ async function main() {
     assert.strictEqual(rejectResult.ok, true);
     assert.strictEqual(rejectResult.record.status, 'rejected');
     assert.strictEqual(rejectReaction.message.replies.length, 1);
+    assert.match(rejectReaction.message.replies[0].content, /이번 인증은 반려됐어요/);
     assert.strictEqual(rejectReaction.message.author.dms.length, 0);
 
     process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'false';

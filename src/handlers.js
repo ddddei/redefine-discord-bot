@@ -273,14 +273,15 @@ async function sendSubmissionReviewDm(interaction, result) {
 
     const approved = result.submission.status === 'approved';
     const duplicateBlocked = result.submission.duplicateRewardBlocked === true;
+    const submissionLabel = result.submission.type === 'todayMission' ? '오늘의 미션 인증' : '미션 인증';
     await targetUser.send([
-      approved ? '미션 인증이 승인됐어요.' : '미션 인증이 반려됐어요.',
+      approved ? `${submissionLabel}이 승인됐어요 ✅` : '이번 인증은 반려됐어요.',
       result.mission
         ? `미션: ${result.mission.title || result.mission.id}`
         : `미션 ID: ${result.submission.missionId || '확인 필요'}`,
       result.transaction
-        ? `지급 포인트: ${formatPoints(result.transaction.amount)}`
-        : (duplicateBlocked ? '이미 오늘 지급이 완료되어 추가 포인트는 지급되지 않았어요.' : '포인트는 지급되지 않았어요.'),
+        ? `${formatPoints(result.transaction.amount)}가 지급됐어요.`
+        : (duplicateBlocked ? '인증은 확인됐지만, 오늘의 미션 포인트는 이미 지급되어 추가 지급은 없어요.' : '안내 내용을 확인한 뒤 다시 제출해주세요.'),
     ].join('\n'));
   } catch (error) {
     console.warn('미션 인증 검토 DM 전송 실패:', error.message);

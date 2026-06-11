@@ -231,8 +231,8 @@ async function main() {
   assert.match(approveButton.followUpPayload.content, /지급 포인트: 25P/);
   assert.strictEqual(approveButton.sentDmMessages.length, 1);
   assert.strictEqual(approveButton.sentDmMessages[0].userId, 'submission_button_user');
-  assert.match(approveButton.sentDmMessages[0].content, /미션 인증이 승인/);
-  assert.match(approveButton.sentDmMessages[0].content, /지급 포인트: 25P/);
+  assert.match(approveButton.sentDmMessages[0].content, /미션 인증이 승인됐어요/);
+  assert.match(approveButton.sentDmMessages[0].content, /25P가 지급됐어요/);
   assert.strictEqual(approveButton.sentLogMessages.length, 1);
   assert.strictEqual(approveButton.sentLogMessages[0].embeds[0].data.title, '미션 인증 버튼 승인');
   assert.match(
@@ -275,8 +275,8 @@ async function main() {
   assert.strictEqual(rejectButton.updatePayload.embeds[0].data.title, '미션 인증 반려 완료');
   assert.match(rejectButton.followUpPayload.content, /반려 완료/);
   assert.strictEqual(rejectButton.sentDmMessages.length, 1);
-  assert.match(rejectButton.sentDmMessages[0].content, /미션 인증이 반려/);
-  assert.match(rejectButton.sentDmMessages[0].content, /포인트는 지급되지 않았어요/);
+  assert.match(rejectButton.sentDmMessages[0].content, /이번 인증은 반려됐어요/);
+  assert.match(rejectButton.sentDmMessages[0].content, /안내 내용을 확인한 뒤 다시 제출해주세요/);
   assert.strictEqual(rejectButton.sentLogMessages.length, 1);
   assert.strictEqual(rejectButton.sentLogMessages[0].embeds[0].data.title, '미션 인증 버튼 반려');
 
@@ -323,6 +323,7 @@ async function main() {
   assert.strictEqual(todayMissionMessages.length, 0);
 
   const todayMissionSheetsEvents = [];
+  const firstTodayReplies = [];
   const firstTodaySubmission = await handleTodayMissionMessageCreate({
     id: 'today_message_001',
     channelId: 'today_mission_channel_test',
@@ -339,6 +340,9 @@ async function main() {
     },
     author: createUser('today_mission_user', '오늘미션사용자'),
     member: createMember('오늘 미션 사용자', false),
+    async reply(payload) {
+      firstTodayReplies.push(payload);
+    },
   }, todayMissionClient, {
     googleSheetsLogger: {
       logMissionSubmission(submission, mission) {
@@ -350,6 +354,9 @@ async function main() {
   assert.strictEqual(firstTodaySubmission.submission.type, 'todayMission');
   assert.strictEqual(firstTodaySubmission.submission.rewardPoints, 33);
   assert.strictEqual(firstTodaySubmission.submission.attachmentCount, 2);
+  assert.strictEqual(firstTodayReplies.length, 1);
+  assert.match(firstTodayReplies[0].content, /좋아요, 오늘의 미션 인증이 접수됐어요/);
+  assert.match(firstTodayReplies[0].content, /오늘의 미션 포인트는 하루 1회만 지급됩니다/);
   assert.strictEqual(todayMissionSheetsEvents.length, 1);
   assert.strictEqual(todayMissionSheetsEvents[0].submission.id, firstTodaySubmission.submission.id);
   assert.deepStrictEqual(todayMissionSheetsEvents[0].submission.attachmentUrls, [
@@ -378,7 +385,8 @@ async function main() {
   );
   await handleInteractionCreate(approveTodayButton);
   assert.match(approveTodayButton.followUpPayload.content, /지급 포인트: 33P/);
-  assert.match(approveTodayButton.sentDmMessages[0].content, /오늘의 미션/);
+  assert.match(approveTodayButton.sentDmMessages[0].content, /오늘의 미션 인증이 승인됐어요/);
+  assert.match(approveTodayButton.sentDmMessages[0].content, /33P가 지급됐어요/);
   assert.strictEqual(approveTodayButton.sentLogMessages[0].embeds[0].data.title, '미션 인증 버튼 승인');
   assert.match(
     approveTodayButton.sentLogMessages[0].embeds[0].data.fields.find((field) => field.name === '처리 결과').value,
@@ -408,7 +416,7 @@ async function main() {
     duplicateTodayButton.updatePayload.embeds[0].data.fields.find((field) => field.name === '처리 상태').value,
     /이미 오늘 지급 완료/
   );
-  assert.match(duplicateTodayButton.sentDmMessages[0].content, /이미 오늘 지급이 완료/);
+  assert.match(duplicateTodayButton.sentDmMessages[0].content, /이미 지급되어 추가 지급은 없어요/);
 
   const todayPointsData = readJson(path.join(tempDir, 'points.json'));
   assert.strictEqual(getUserPoints(todayPointsData, 'today_mission_user'), 33);
