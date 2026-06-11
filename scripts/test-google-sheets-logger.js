@@ -5,6 +5,7 @@ const path = require('path');
 const { createPointsRepository } = require('../src/pointsRepository');
 const {
   appendGoogleSheetsLog,
+  buildMissionReviewPayload,
   buildMissionSubmissionPayload,
   buildPointTransactionPayload,
 } = require('../src/googleSheetsLogger');
@@ -166,6 +167,62 @@ function testPayloadBuilders() {
   assert.strictEqual(pointPayload.payload.transaction_id, 'tx_1');
   assert.strictEqual(pointPayload.payload.display_name, '참여자');
   assert.strictEqual(pointPayload.payload.source_surface, 'today_mission_channel');
+
+  const approvedReviewPayload = buildMissionReviewPayload({
+    id: 'submission_1',
+    status: 'approved',
+    reviewedBy: 'operator_1',
+    reviewedAt: '2026-06-04T15:03:00.000Z',
+    rewardTransactionId: 'tx_1',
+    duplicateRewardBlocked: false,
+    note: '확인',
+    messageUrl: 'https://discord.com/channels/guild_1/channel_1/message_1',
+  }, {
+    reviewer: { userId: 'operator_1', displayName: '운영자' },
+    transaction: { id: 'tx_1', amount: 20 },
+  });
+
+  assert.strictEqual(approvedReviewPayload.tab, 'mission_reviews');
+  assert.strictEqual(approvedReviewPayload.payload.event_id, 'mission_reviews:review:submission_1');
+  assert.strictEqual(approvedReviewPayload.payload.review_id, 'review:submission_1');
+  assert.strictEqual(approvedReviewPayload.payload.submission_id, 'submission_1');
+  assert.strictEqual(approvedReviewPayload.payload.reviewed_date_kst, '2026-06-05');
+  assert.strictEqual(approvedReviewPayload.payload.action, 'approve');
+  assert.strictEqual(approvedReviewPayload.payload.reviewer_display_name, '운영자');
+  assert.strictEqual(approvedReviewPayload.payload.reward_transaction_id, 'tx_1');
+  assert.strictEqual(approvedReviewPayload.payload.reward_points, 20);
+  assert.strictEqual(approvedReviewPayload.payload.duplicate_reward_blocked, false);
+
+  const rejectedReviewPayload = buildMissionReviewPayload({
+    id: 'submission_2',
+    status: 'rejected',
+    reviewedBy: 'operator_1',
+    reviewedAt: '2026-06-04T15:04:00.000Z',
+    rewardTransactionId: null,
+    duplicateRewardBlocked: false,
+    note: '대상 아님',
+  }, {
+    reviewer: { userId: 'operator_1', displayName: '운영자' },
+  });
+
+  assert.strictEqual(rejectedReviewPayload.payload.action, 'reject');
+  assert.strictEqual(rejectedReviewPayload.payload.reward_transaction_id, '');
+  assert.strictEqual(rejectedReviewPayload.payload.reward_points, 0);
+
+  const duplicateReviewPayload = buildMissionReviewPayload({
+    id: 'submission_3',
+    status: 'approved',
+    reviewedBy: 'operator_1',
+    reviewedAt: '2026-06-04T15:05:00.000Z',
+    rewardTransactionId: null,
+    duplicateRewardBlocked: true,
+    note: '이미 오늘의 미션 포인트 지급 완료',
+  });
+
+  assert.strictEqual(duplicateReviewPayload.payload.action, 'duplicate_reward_blocked');
+  assert.strictEqual(duplicateReviewPayload.payload.duplicate_reward_blocked, true);
+  assert.strictEqual(duplicateReviewPayload.payload.reward_transaction_id, '');
+  assert.strictEqual(duplicateReviewPayload.payload.reward_points, 0);
 }
 
 function testRepositoryLogsAfterLocalSaves() {
@@ -181,6 +238,19 @@ function testRepositoryLogsAfterLocalSaves() {
         const pointsData = readJson(paths.points);
         assert.ok(pointsData.pointTransactions.some((item) => item.id === transaction.id));
         calls.push({ tab: 'point_transactions', id: transaction.id });
+      },
+      appendMissionReview(submission, context) {
+        const submissionsData = readJson(paths.submissions);
+        const savedSubmission = submissionsData.submissions.find((item) => item.id === submission.id);
+        assert.ok(savedSubmission);
+        assert.strictEqual(savedSubmission.status, submission.status);
+        calls.push({
+          tab: 'mission_reviews',
+          id: submission.id,
+          action: context.action,
+          duplicateRewardBlocked: submission.duplicateRewardBlocked === true,
+          transactionId: context.transaction ? context.transaction.id : null,
+        });
       },
     },
   });
@@ -226,16 +296,124 @@ function testRepositoryLogsAfterLocalSaves() {
 
   const approved = repository.approveSubmissionById(
     todaySubmission.submission.id,
-    { userId: 'operator_sheet' },
+    { userId: 'operator_sheet', displayName: 'Sheets 운영자' },
     '확인'
   );
   assert.strictEqual(approved.transaction.relatedType, 'todayMissionSubmission');
+
+  const duplicateTodaySubmission = repository.createTodayMissionSubmission({
+    user: {
+      userId: 'sheet_today_user',
+      displayName: 'Sheets 오늘 사용자',
+    },
+    content: '오늘의 미션 두 번째 사진',
+    attachmentCount: 1,
+    rewardPoints: 20,
+    todayMissionDate: '2030-05-01',
+    messageId: 'today_message_sheet_duplicate',
+    channelId: 'today_channel_sheet',
+    guildId: 'guild_sheet',
+  });
+  assert.strictEqual(duplicateTodaySubmission.ok, true);
+
+  const duplicateBlocked = repository.approveSubmissionById(
+    duplicateTodaySubmission.submission.id,
+    { userId: 'operator_sheet', displayName: 'Sheets 운영자' },
+    '중복 확인'
+  );
+  assert.strictEqual(duplicateBlocked.transaction, null);
+  assert.strictEqual(duplicateBlocked.submission.duplicateRewardBlocked, true);
+
+  const rejectSubmission = repository.createMissionSubmission({
+    user: {
+      userId: 'sheet_reject_user',
+      displayName: 'Sheets 반려 사용자',
+    },
+    missionId: 'mission_sheet_test',
+    content: '반려될 일반 미션 인증',
+  });
+  assert.strictEqual(rejectSubmission.ok, true);
+
+  const rejected = repository.rejectSubmissionById(
+    rejectSubmission.submission.id,
+    { userId: 'operator_sheet', displayName: 'Sheets 운영자' },
+    '대상 아님'
+  );
+  assert.strictEqual(rejected.transaction, null);
+  assert.strictEqual(rejected.submission.status, 'rejected');
 
   assert.deepStrictEqual(calls.map((call) => call.tab), [
     'mission_submissions',
     'mission_submissions',
     'point_transactions',
+    'mission_reviews',
+    'mission_submissions',
+    'mission_reviews',
+    'mission_submissions',
+    'mission_reviews',
   ]);
+  assert.deepStrictEqual(
+    calls.filter((call) => call.tab === 'mission_reviews').map((call) => ({
+      action: call.action,
+      duplicateRewardBlocked: call.duplicateRewardBlocked,
+      hasTransaction: Boolean(call.transactionId),
+    })),
+    [
+      { action: 'approve', duplicateRewardBlocked: false, hasTransaction: true },
+      { action: 'duplicate_reward_blocked', duplicateRewardBlocked: true, hasTransaction: false },
+      { action: 'reject', duplicateRewardBlocked: false, hasTransaction: false },
+    ]
+  );
+}
+
+function testMissionReviewFailuresDoNotBlockReviews() {
+  const { repository } = createTempRepository({
+    googleSheetsLogger: {
+      appendMissionSubmission() {},
+      appendPointTransaction() {},
+      appendMissionReview() {
+        throw new Error('sheet unavailable');
+      },
+    },
+  });
+
+  repository.saveMissionsData({
+    isExample: false,
+    description: 'test missions',
+    missions: [
+      {
+        id: 'mission_sheet_failure_test',
+        title: 'Sheets 실패 테스트 미션',
+        rewardPoints: 30,
+        status: 'active',
+        requiresSubmission: true,
+      },
+    ],
+  });
+
+  const missionSubmission = repository.createMissionSubmission({
+    user: {
+      userId: 'sheet_failure_user',
+      displayName: 'Sheets 실패 사용자',
+    },
+    missionId: 'mission_sheet_failure_test',
+    content: 'Sheets 실패와 무관하게 승인',
+  });
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const approved = repository.approveSubmissionById(
+      missionSubmission.submission.id,
+      { userId: 'operator_sheet', displayName: 'Sheets 운영자' },
+      '확인'
+    );
+
+    assert.strictEqual(approved.submission.status, 'approved');
+    assert.ok(approved.transaction);
+  } finally {
+    console.warn = originalWarn;
+  }
 }
 
 async function main() {
@@ -244,6 +422,7 @@ async function main() {
   await testFailuresDoNotThrow();
   testPayloadBuilders();
   testRepositoryLogsAfterLocalSaves();
+  testMissionReviewFailuresDoNotBlockReviews();
 
   console.log('googleSheetsLogger smoke test passed');
 }

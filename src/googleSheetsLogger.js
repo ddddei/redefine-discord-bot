@@ -124,6 +124,41 @@ function buildMissionSubmissionRecord(submission, context = {}) {
   };
 }
 
+function getMissionReviewAction(submission, context = {}) {
+  if (context.action) {
+    return context.action;
+  }
+
+  if (submission.duplicateRewardBlocked === true) {
+    return 'duplicate_reward_blocked';
+  }
+
+  return submission.status === 'rejected' ? 'reject' : 'approve';
+}
+
+function buildMissionReviewRecord(submission, context = {}) {
+  const transaction = context.transaction || null;
+  const reviewId = context.reviewId || `review:${submission.id}`;
+  const duplicateRewardBlocked = submission.duplicateRewardBlocked === true;
+
+  return {
+    event_id: `mission_reviews:${reviewId}`,
+    review_id: reviewId,
+    submission_id: submission.id,
+    reviewed_at: submission.reviewedAt || '',
+    reviewed_date_kst: getKoreanDateString(submission.reviewedAt),
+    action: getMissionReviewAction(submission, context),
+    reviewer_id: submission.reviewedBy || (context.reviewer && context.reviewer.userId) || '',
+    reviewer_display_name: (context.reviewer && context.reviewer.displayName) || '',
+    note: submission.note || '',
+    reward_transaction_id: submission.rewardTransactionId || (transaction && transaction.id) || '',
+    reward_points: transaction && typeof transaction.amount === 'number' ? transaction.amount : 0,
+    duplicate_reward_blocked: duplicateRewardBlocked,
+    discord_message_url: submission.messageUrl || context.discordMessageUrl || '',
+    appended_at: '',
+  };
+}
+
 function buildPointTransactionPayload(transaction, context = {}) {
   return {
     tab: 'point_transactions',
@@ -135,6 +170,13 @@ function buildMissionSubmissionPayload(submission, context = {}) {
   return {
     tab: 'mission_submissions',
     payload: buildMissionSubmissionRecord(submission, context),
+  };
+}
+
+function buildMissionReviewPayload(submission, context = {}) {
+  return {
+    tab: 'mission_reviews',
+    payload: buildMissionReviewRecord(submission, context),
   };
 }
 
@@ -215,6 +257,11 @@ function appendMissionSubmission(submission, context = {}) {
   return appendRecord(payload.tab, payload.payload, context);
 }
 
+function appendMissionReview(submission, context = {}) {
+  const payload = buildMissionReviewPayload(submission, context);
+  return appendRecord(payload.tab, payload.payload, context);
+}
+
 function appendGoogleSheetsLog(tab, payload, options = {}) {
   return appendRecord(tab, payload, options);
 }
@@ -227,17 +274,25 @@ function logMissionSubmission(submission, mission = null, context = {}) {
   return appendMissionSubmission(submission, { ...context, mission });
 }
 
+function logMissionReview(submission, context = {}) {
+  return appendMissionReview(submission, context);
+}
+
 module.exports = {
   appendGoogleSheetsLog,
+  appendMissionReview,
   appendMissionSubmission,
   appendPointTransaction,
   appendRecord,
+  buildMissionReviewRecord,
+  buildMissionReviewPayload,
   buildMissionSubmissionRecord,
   buildMissionSubmissionPayload,
   buildPointTransactionRecord,
   buildPointTransactionPayload,
   getConfig,
   getKoreanDateString,
+  logMissionReview,
   logMissionSubmission,
   logPointTransaction,
 };

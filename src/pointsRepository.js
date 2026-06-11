@@ -334,6 +334,22 @@ function createPointsRepository(paths = {}, options = {}) {
     }
   }
 
+  function appendMissionReviewLog(submission, context = {}) {
+    if (!submission || !googleSheetsLogger) {
+      return;
+    }
+
+    try {
+      const append = googleSheetsLogger.logMissionReview || googleSheetsLogger.appendMissionReview;
+      if (typeof append !== 'function') return;
+      Promise.resolve(append.call(googleSheetsLogger, submission, context)).catch((error) => {
+        console.warn('Google Sheets mission review append failed:', error.message);
+      });
+    } catch (error) {
+      console.warn('Google Sheets mission review append failed:', error.message);
+    }
+  }
+
   function adjustUserPoints(input) {
     const state = loadState();
     const pointsData = cloneJson(state.pointsData);
@@ -1043,6 +1059,12 @@ function createPointsRepository(paths = {}, options = {}) {
       submissions[index] = rejectedSubmission;
       submissionsData.submissions = submissions;
       saveSubmissionsData(submissionsData);
+      appendMissionReviewLog(rejectedSubmission, {
+        action: 'reject',
+        reviewer,
+        transaction: null,
+        discordMessageUrl: rejectedSubmission.messageUrl || '',
+      });
       return { submission: rejectedSubmission, transaction: null, mission: getSubmissionMission(submission) };
     }
 
@@ -1073,6 +1095,13 @@ function createPointsRepository(paths = {}, options = {}) {
       submissions[index] = duplicateBlockedSubmission;
       submissionsData.submissions = submissions;
       saveSubmissionsData(submissionsData);
+
+      appendMissionReviewLog(duplicateBlockedSubmission, {
+        action: 'duplicate_reward_blocked',
+        reviewer,
+        transaction: null,
+        discordMessageUrl: duplicateBlockedSubmission.messageUrl || '',
+      });
 
       return { submission: duplicateBlockedSubmission, transaction: null, mission };
     }
@@ -1116,6 +1145,12 @@ function createPointsRepository(paths = {}, options = {}) {
       user,
       sourceSurface: submission.type === 'todayMission' ? 'today_mission_channel' : 'operator_command',
       discordMessageUrl: submission.messageUrl || '',
+    });
+    appendMissionReviewLog(approvedSubmission, {
+      action: 'approve',
+      reviewer,
+      transaction,
+      discordMessageUrl: approvedSubmission.messageUrl || '',
     });
 
     return { submission: approvedSubmission, transaction, mission };
