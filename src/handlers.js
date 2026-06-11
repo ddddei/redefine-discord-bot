@@ -181,6 +181,34 @@ function createRedemptionConfirmRow(displayCode) {
   );
 }
 
+const PARTICIPANT_MENU_BUTTON_IDS = {
+  todayMission: 'participant_menu_today_mission',
+  points: 'participant_menu_points',
+  ranking: 'participant_menu_ranking',
+  help: 'participant_menu_help',
+};
+
+function createParticipantMenuButtonRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.todayMission)
+      .setLabel('🌱 오늘의 미션 보기')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.points)
+      .setLabel('💰 내 포인트 확인')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.ranking)
+      .setLabel('🏆 랭킹 확인')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.help)
+      .setLabel('❓ 이용 방법 보기')
+      .setStyle(ButtonStyle.Secondary)
+  );
+}
+
 function createRedemptionCancelConfirmRow(displayCode) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -502,10 +530,93 @@ function createNoticeEmbed(type) {
 
 async function handleGuideCommand(interaction) {
   await interaction.reply({
-    embeds: [createGuideHubEmbed()],
-    components: [createGuideHubSelectRow()],
+    embeds: [createGuideEmbed(
+      '📌 리디파인 이용 메뉴',
+      [
+        '필요한 내용을 버튼으로 바로 확인할 수 있어요.',
+        '내 포인트 같은 개인 정보는 본인에게만 보여요.',
+        '',
+        '더 자세한 안내가 필요하면 아래 선택 메뉴도 함께 사용할 수 있어요.',
+      ].join('\n')
+    )],
+    components: [createParticipantMenuButtonRow(), createGuideHubSelectRow()],
     ephemeral: true,
   });
+}
+
+function createPointBalanceEmbedForUser(userId) {
+  const { pointsData } = pointsRepository.loadState();
+  const user = getUser(pointsData, userId);
+  const currentPoints = getUserPoints(pointsData, userId);
+  const transactions = listPointTransactions(pointsData, userId, {
+    latestFirst: true,
+  });
+  const balanceCheck = user ? validateUserBalance(pointsData, userId) : null;
+
+  return createPointBalanceEmbed({
+    currentPoints,
+    transactions,
+    balanceCheck,
+  });
+}
+
+async function handleParticipantMenuButton(interaction) {
+  if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.todayMission) {
+    await interaction.reply({
+      embeds: [createGuideEmbed(
+        '오늘의 미션 보기',
+        [
+          '오늘의 미션 채널에 사진을 올리면 인증이 자동으로 접수돼요.',
+          '접수되면 원본 메시지에 확인 반응이 남고, 안내는 DM으로 보내드려요.',
+          '',
+          '운영자가 확인한 뒤 포인트가 지급돼요.',
+          '오늘의 미션 포인트는 하루 1회만 지급됩니다.',
+        ].join('\n')
+      )],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.points) {
+    await interaction.reply({
+      embeds: [createPointBalanceEmbedForUser(interaction.user.id)],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.ranking) {
+    await interaction.reply({
+      embeds: [createGuideEmbed(
+        '랭킹 확인',
+        [
+          '랭킹 기능은 준비 중입니다.',
+          '',
+          '포인트와 랭킹은 비교나 평가가 아니라 가볍게 즐기는 요소예요.',
+          '지금은 내 포인트를 먼저 확인해 주세요.',
+        ].join('\n')
+      )],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.help) {
+    await interaction.reply({
+      embeds: [createGuideEmbed(
+        '이용 방법 보기',
+        [
+          '1. 오늘의 미션 채널에 사진을 올리면 인증이 접수돼요.',
+          '2. 운영자가 확인하면 포인트가 지급돼요.',
+          '3. 오늘의 미션 포인트는 하루 1회만 지급돼요.',
+          '4. 이미 지급된 뒤에는 중복 지급 없이 확인만 될 수 있어요.',
+          '5. 반려된 경우 안내 내용을 확인한 뒤 다시 제출해주세요.',
+        ].join('\n')
+      )],
+      ephemeral: true,
+    });
+  }
 }
 
 async function handleGuideHubSelect(interaction) {
@@ -620,23 +731,8 @@ async function handleNoticeCommand(interaction) {
 
 async function handlePointCommand(interaction) {
   try {
-    const { pointsData } = pointsRepository.loadState();
-    const userId = interaction.user.id;
-    const user = getUser(pointsData, userId);
-    const currentPoints = getUserPoints(pointsData, userId);
-    const transactions = listPointTransactions(pointsData, userId, {
-      latestFirst: true,
-    });
-    const balanceCheck = user ? validateUserBalance(pointsData, userId) : null;
-
     await interaction.reply({
-      embeds: [
-        createPointBalanceEmbed({
-          currentPoints,
-          transactions,
-          balanceCheck,
-        }),
-      ],
+      embeds: [createPointBalanceEmbedForUser(interaction.user.id)],
       ephemeral: true,
     });
   } catch (error) {
@@ -1956,6 +2052,11 @@ async function handleInteractionCreate(interaction) {
       await handleRedemptionConfirmButton(interaction);
       return;
     }
+
+    if (Object.values(PARTICIPANT_MENU_BUTTON_IDS).includes(interaction.customId)) {
+      await handleParticipantMenuButton(interaction);
+      return;
+    }
   }
 
   if (interaction.isModalSubmit && interaction.isModalSubmit()) {
@@ -2081,6 +2182,7 @@ module.exports = {
   handleOperationStatusCommand,
   handleOperatorHubSelect,
   handleOperationExportCommand,
+  handleParticipantMenuButton,
   handlePointLogCommand,
   handlePointManageCommand,
   handlePointCommand,

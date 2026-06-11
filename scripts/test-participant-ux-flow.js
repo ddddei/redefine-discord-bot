@@ -123,6 +123,7 @@ function createButtonInteraction(customId, userId, displayName) {
     user: createUser(userId, displayName),
     member: createMember(displayName),
     updatePayload: null,
+    replyPayload: null,
     isChatInputCommand() {
       return false;
     },
@@ -137,6 +138,9 @@ function createButtonInteraction(customId, userId, displayName) {
     },
     async update(payload) {
       this.updatePayload = payload;
+    },
+    async reply(payload) {
+      this.replyPayload = payload;
     },
   };
 }
@@ -256,14 +260,25 @@ function main() {
       const guideCommand = createChatInputInteraction('안내', {}, 'ux_user_shop', '상점 UX 사용자');
       await handleInteractionCreate(guideCommand);
       assert.strictEqual(guideCommand.replyPayload.ephemeral, true);
-      assert.strictEqual(getEmbedTitle(guideCommand.replyPayload), '처음 오셨다면 여기서 시작해요');
-      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/안내/);
-      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/포인트/);
-      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/상점/);
-      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/미션/);
-      assert.match(guideCommand.replyPayload.embeds[0].data.description, /\/체크인/);
-      assert.strictEqual(guideCommand.replyPayload.components.length, 1);
-      const guideSelect = guideCommand.replyPayload.components[0].components[0].toJSON();
+      assert.strictEqual(getEmbedTitle(guideCommand.replyPayload), '📌 리디파인 이용 메뉴');
+      assert.match(guideCommand.replyPayload.embeds[0].data.description, /필요한 내용을 버튼으로 바로 확인/);
+      assert.match(guideCommand.replyPayload.embeds[0].data.description, /본인에게만 보여요/);
+      assert.strictEqual(guideCommand.replyPayload.components.length, 2);
+      const guideButtons = guideCommand.replyPayload.components[0].components.map((button) => button.toJSON());
+      assert.deepStrictEqual(
+        guideButtons.map((button) => button.custom_id),
+        [
+          'participant_menu_today_mission',
+          'participant_menu_points',
+          'participant_menu_ranking',
+          'participant_menu_help',
+        ]
+      );
+      assert.deepStrictEqual(
+        guideButtons.map((button) => button.label),
+        ['🌱 오늘의 미션 보기', '💰 내 포인트 확인', '🏆 랭킹 확인', '❓ 이용 방법 보기']
+      );
+      const guideSelect = guideCommand.replyPayload.components[1].components[0].toJSON();
       assert.strictEqual(guideSelect.custom_id, GUIDE_HUB_SELECT_ID);
       assert.strictEqual(guideSelect.placeholder, '궁금한 내용을 선택해 주세요');
       assert.deepStrictEqual(
@@ -274,6 +289,48 @@ function main() {
         guideSelect.options.map((option) => option.label),
         ['처음 왔어요', '오늘 뭐 하면 되나요?', '내 포인트', '상점/교환', '미션/인증', '문의하기']
       );
+
+      const todayMissionMenuButton = createButtonInteraction(
+        'participant_menu_today_mission',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(todayMissionMenuButton);
+      assert.strictEqual(todayMissionMenuButton.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(todayMissionMenuButton.replyPayload), '오늘의 미션 보기');
+      assert.match(todayMissionMenuButton.replyPayload.embeds[0].data.description, /사진을 올리면 인증이 자동으로 접수/);
+      assert.match(todayMissionMenuButton.replyPayload.embeds[0].data.description, /하루 1회만 지급/);
+
+      const pointMenuButton = createButtonInteraction(
+        'participant_menu_points',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(pointMenuButton);
+      assert.strictEqual(pointMenuButton.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(pointMenuButton.replyPayload), '내 여정 포인트');
+      assert.match(pointMenuButton.replyPayload.embeds[0].data.description, /현재 보유 여정 포인트: \*\*250P\*\*/);
+
+      const rankingMenuButton = createButtonInteraction(
+        'participant_menu_ranking',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(rankingMenuButton);
+      assert.strictEqual(rankingMenuButton.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(rankingMenuButton.replyPayload), '랭킹 확인');
+      assert.match(rankingMenuButton.replyPayload.embeds[0].data.description, /랭킹 기능은 준비 중입니다/);
+
+      const helpMenuButton = createButtonInteraction(
+        'participant_menu_help',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(helpMenuButton);
+      assert.strictEqual(helpMenuButton.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(helpMenuButton.replyPayload), '이용 방법 보기');
+      assert.match(helpMenuButton.replyPayload.embeds[0].data.description, /중복 지급/);
+      assert.match(helpMenuButton.replyPayload.embeds[0].data.description, /승인|반려/);
 
       const guideCases = [
         ['start', '처음 안내', /천천히 둘러봐도 괜찮아요/],
