@@ -2,6 +2,8 @@ const { sendMissionSubmissionReviewAlert } = require('./logging');
 const { createPointsRepository, getKoreanDateString } = require('./pointsRepository');
 
 const DEFAULT_DAILY_MISSION_REWARD_POINTS = 20;
+const TODAY_MISSION_RECEIPT_EMOJI = '🌱';
+const TODAY_MISSION_DM_FAILED_EMOJI = '⚠️';
 
 let warnedMissingTodayMissionChannel = false;
 
@@ -79,19 +81,50 @@ function getDisplayName(message) {
 }
 
 function buildTodayMissionReceiptText(rewardPoints) {
-  return `좋아요, 오늘의 미션 인증이 접수됐어요 🌱\n운영자가 확인한 뒤 ${rewardPoints}P가 지급돼요. 오늘의 미션 포인트는 하루 1회만 지급됩니다.`;
+  return `좋아요, 오늘의 미션 인증이 접수됐어요 🌱\n운영자가 확인한 뒤 ${rewardPoints}P가 지급돼요.\n오늘의 미션 포인트는 하루 1회만 지급됩니다.`;
 }
 
-async function sendTodayMissionReceipt(message, rewardPoints) {
-  if (!message || typeof message.reply !== 'function') {
+async function addTodayMissionReceiptReaction(message, emoji, failureLabel) {
+  if (!message || typeof message.react !== 'function') {
     return false;
   }
 
   try {
-    await message.reply({ content: buildTodayMissionReceiptText(rewardPoints) });
+    await message.react(emoji);
     return true;
   } catch (error) {
-    console.warn('오늘의 미션 접수 안내 전송 실패:', error.message);
+    console.warn(`${failureLabel}:`, error.message);
+    return false;
+  }
+}
+
+async function sendTodayMissionReceipt(message, rewardPoints) {
+  await addTodayMissionReceiptReaction(
+    message,
+    TODAY_MISSION_RECEIPT_EMOJI,
+    '오늘의 미션 접수 확인 반응 추가 실패'
+  );
+
+  if (!message || !message.author || typeof message.author.send !== 'function') {
+    console.warn('오늘의 미션 접수 안내 DM 전송 실패: DM 전송 함수를 사용할 수 없습니다.');
+    await addTodayMissionReceiptReaction(
+      message,
+      TODAY_MISSION_DM_FAILED_EMOJI,
+      '오늘의 미션 DM 실패 반응 추가 실패'
+    );
+    return false;
+  }
+
+  try {
+    await message.author.send(buildTodayMissionReceiptText(rewardPoints));
+    return true;
+  } catch (error) {
+    console.warn('오늘의 미션 접수 안내 DM 전송 실패:', error.message);
+    await addTodayMissionReceiptReaction(
+      message,
+      TODAY_MISSION_DM_FAILED_EMOJI,
+      '오늘의 미션 DM 실패 반응 추가 실패'
+    );
     return false;
   }
 }
@@ -138,6 +171,7 @@ async function handleTodayMissionMessageCreate(message, client, options = {}) {
 }
 
 module.exports = {
+  addTodayMissionReceiptReaction,
   buildTodayMissionReceiptText,
   getDailyMissionRewardPoints,
   handleTodayMissionMessageCreate,

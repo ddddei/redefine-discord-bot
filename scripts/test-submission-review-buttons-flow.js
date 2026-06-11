@@ -324,6 +324,8 @@ async function main() {
 
   const todayMissionSheetsEvents = [];
   const firstTodayReplies = [];
+  const firstTodayReactions = [];
+  const firstTodayDms = [];
   const firstTodaySubmission = await handleTodayMissionMessageCreate({
     id: 'today_message_001',
     channelId: 'today_mission_channel_test',
@@ -338,8 +340,16 @@ async function main() {
         ][Symbol.iterator]();
       },
     },
-    author: createUser('today_mission_user', '오늘미션사용자'),
+    author: {
+      ...createUser('today_mission_user', '오늘미션사용자'),
+      async send(content) {
+        firstTodayDms.push(content);
+      },
+    },
     member: createMember('오늘 미션 사용자', false),
+    async react(emoji) {
+      firstTodayReactions.push(emoji);
+    },
     async reply(payload) {
       firstTodayReplies.push(payload);
     },
@@ -354,9 +364,12 @@ async function main() {
   assert.strictEqual(firstTodaySubmission.submission.type, 'todayMission');
   assert.strictEqual(firstTodaySubmission.submission.rewardPoints, 33);
   assert.strictEqual(firstTodaySubmission.submission.attachmentCount, 2);
-  assert.strictEqual(firstTodayReplies.length, 1);
-  assert.match(firstTodayReplies[0].content, /좋아요, 오늘의 미션 인증이 접수됐어요/);
-  assert.match(firstTodayReplies[0].content, /오늘의 미션 포인트는 하루 1회만 지급됩니다/);
+  assert.deepStrictEqual(firstTodayReactions, ['🌱']);
+  assert.strictEqual(firstTodayReplies.length, 0);
+  assert.strictEqual(firstTodayDms.length, 1);
+  assert.match(firstTodayDms[0], /좋아요, 오늘의 미션 인증이 접수됐어요/);
+  assert.match(firstTodayDms[0], /운영자가 확인한 뒤 33P가 지급돼요/);
+  assert.match(firstTodayDms[0], /오늘의 미션 포인트는 하루 1회만 지급됩니다/);
   assert.strictEqual(todayMissionSheetsEvents.length, 1);
   assert.strictEqual(todayMissionSheetsEvents[0].submission.id, firstTodaySubmission.submission.id);
   assert.deepStrictEqual(todayMissionSheetsEvents[0].submission.attachmentUrls, [
@@ -399,8 +412,12 @@ async function main() {
     guildId: 'guild_today_test',
     content: '',
     attachments: { size: 1 },
-    author: createUser('today_mission_user', '오늘미션사용자'),
+    author: {
+      ...createUser('today_mission_user', '오늘미션사용자'),
+      async send() {},
+    },
     member: createMember('오늘 미션 사용자', false),
+    async react() {},
   }, todayMissionClient);
   assert.strictEqual(secondTodaySubmission.ok, true);
   assert.strictEqual(todayMissionMessages.length, 2);
@@ -417,6 +434,59 @@ async function main() {
     /이미 오늘 지급 완료/
   );
   assert.match(duplicateTodayButton.sentDmMessages[0].content, /이미 지급되어 추가 지급은 없어요/);
+
+  const dmFailureReactions = [];
+  const dmFailureReplies = [];
+  const warnMessages = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => warnMessages.push(args.join(' '));
+  let dmFailureSubmission;
+
+  try {
+    dmFailureSubmission = await handleTodayMissionMessageCreate({
+      id: 'today_message_dm_failure',
+      channelId: 'today_mission_channel_test',
+      guildId: 'guild_today_test',
+      content: 'DM 실패 테스트 인증입니다.',
+      attachments: { size: 1 },
+      author: {
+        ...createUser('today_mission_dm_failure_user', 'DM실패사용자'),
+        async send() {
+          throw new Error('DM blocked');
+        },
+      },
+      member: createMember('DM 실패 사용자', false),
+      async react(emoji) {
+        dmFailureReactions.push(emoji);
+      },
+      async reply(payload) {
+        dmFailureReplies.push(payload);
+      },
+    }, todayMissionClient, {
+      googleSheetsLogger: {
+        logMissionSubmission(submission, mission) {
+          todayMissionSheetsEvents.push({ submission, mission });
+        },
+      },
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.strictEqual(dmFailureSubmission.ok, true);
+  assert.deepStrictEqual(dmFailureReactions, ['🌱', '⚠️']);
+  assert.strictEqual(dmFailureReplies.length, 0);
+  assert.strictEqual(todayMissionMessages.length, 3);
+  assert.strictEqual(todayMissionSheetsEvents[todayMissionSheetsEvents.length - 1].submission.id, dmFailureSubmission.submission.id);
+  assert.ok(warnMessages.some((message) => /오늘의 미션 접수 안내 DM 전송 실패/.test(message)));
+
+  const rejectDmFailureButton = createButtonInteraction(
+    `operator_submission_reject:${dmFailureSubmission.submission.id}`,
+    todayMissionMessages[2],
+    true
+  );
+  await handleInteractionCreate(rejectDmFailureButton);
+  assert.match(rejectDmFailureButton.followUpPayload.content, /반려 완료/);
 
   const todayPointsData = readJson(path.join(tempDir, 'points.json'));
   assert.strictEqual(getUserPoints(todayPointsData, 'today_mission_user'), 33);
@@ -457,7 +527,7 @@ async function main() {
   await handleInteractionCreate(operationSummary);
   assert.strictEqual(operationSummary.replyPayload.ephemeral, true);
   assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 대기: 0건/);
-  assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 처리: 승인 3건 \/ 반려 1건/);
+  assert.match(operationSummary.replyPayload.embeds[0].data.description, /인증 처리: 승인 3건 \/ 반려 2건/);
 
   const pendingSubmissions = createOperationStatusInteraction('pendingSubmissions');
   await handleInteractionCreate(pendingSubmissions);
