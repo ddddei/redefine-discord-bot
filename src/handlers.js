@@ -193,7 +193,7 @@ function createParticipantMenuButtonRow() {
     new ButtonBuilder()
       .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.todayMission)
       .setLabel('🌱 오늘의 미션 보기')
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.points)
       .setLabel('💰 내 포인트 확인')
