@@ -1,4 +1,17 @@
 const SUCCESS_STATUSES = new Set(['appended', 'duplicate']);
+const KOREA_TIME_ZONE = 'Asia/Seoul';
+
+const KOREAN_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: KOREA_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+  hourCycle: 'h23',
+});
 
 function parseBoolean(value) {
   return String(value || '').toLowerCase() === 'true';
@@ -14,7 +27,26 @@ function getKoreanDateString(value) {
     return '';
   }
 
-  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+  return date.toLocaleDateString('en-CA', { timeZone: KOREA_TIME_ZONE });
+}
+
+function getKoreanDateTimeString(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const parts = Object.fromEntries(
+    KOREAN_DATE_TIME_FORMATTER.formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
 function getConfig(env = process.env) {
@@ -71,7 +103,7 @@ function buildPointTransactionRecord(transaction, context = {}) {
   return {
     event_id: `point_transaction:${transaction.id}`,
     transaction_id: transaction.id,
-    created_at: transaction.createdAt || '',
+    created_at: getKoreanDateTimeString(transaction.createdAt),
     created_date_kst: getKoreanDateString(transaction.createdAt),
     user_id: transaction.userId,
     display_name: (context.user && context.user.displayName) || context.displayName || transaction.displayName || '',
@@ -97,7 +129,7 @@ function buildMissionSubmissionRecord(submission, context = {}) {
   return {
     event_id: `mission_submissions:${submission.id}`,
     submission_id: submission.id,
-    submitted_at: submission.createdAt || '',
+    submitted_at: getKoreanDateTimeString(submission.createdAt),
     submitted_date_kst: getKoreanDateString(submission.createdAt),
     type: submission.type || '',
     mission_id: submission.missionId || '',
@@ -145,7 +177,7 @@ function buildMissionReviewRecord(submission, context = {}) {
     event_id: `mission_reviews:${reviewId}`,
     review_id: reviewId,
     submission_id: submission.id,
-    reviewed_at: submission.reviewedAt || '',
+    reviewed_at: getKoreanDateTimeString(submission.reviewedAt),
     reviewed_date_kst: getKoreanDateString(submission.reviewedAt),
     action: getMissionReviewAction(submission, context),
     reviewer_id: submission.reviewedBy || (context.reviewer && context.reviewer.userId) || '',
@@ -292,6 +324,7 @@ module.exports = {
   buildPointTransactionPayload,
   getConfig,
   getKoreanDateString,
+  getKoreanDateTimeString,
   logMissionReview,
   logMissionSubmission,
   logPointTransaction,

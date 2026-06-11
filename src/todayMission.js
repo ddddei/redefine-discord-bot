@@ -78,6 +78,24 @@ function getDisplayName(message) {
     || 'unknown';
 }
 
+function buildTodayMissionReceiptText(rewardPoints) {
+  return `좋아요, 오늘의 미션 인증이 접수됐어요 🌱\n운영자가 확인한 뒤 ${rewardPoints}P가 지급돼요. 오늘의 미션 포인트는 하루 1회만 지급됩니다.`;
+}
+
+async function sendTodayMissionReceipt(message, rewardPoints) {
+  if (!message || typeof message.reply !== 'function') {
+    return false;
+  }
+
+  try {
+    await message.reply({ content: buildTodayMissionReceiptText(rewardPoints) });
+    return true;
+  } catch (error) {
+    console.warn('오늘의 미션 접수 안내 전송 실패:', error.message);
+    return false;
+  }
+}
+
 async function handleTodayMissionMessageCreate(message, client, options = {}) {
   try {
     if (shouldIgnoreTodayMissionMessage(message, client)) {
@@ -111,6 +129,7 @@ async function handleTodayMissionMessageCreate(message, client, options = {}) {
     }
 
     await sendMissionSubmissionReviewAlert({ client: client || message.client }, result.submission, result.mission);
+    await sendTodayMissionReceipt(message, result.submission.rewardPoints || getDailyMissionRewardPoints());
     return result;
   } catch (error) {
     console.warn('오늘의 미션 자동 접수 처리 실패:', error.message);
@@ -119,8 +138,10 @@ async function handleTodayMissionMessageCreate(message, client, options = {}) {
 }
 
 module.exports = {
+  buildTodayMissionReceiptText,
   getDailyMissionRewardPoints,
   handleTodayMissionMessageCreate,
   isTodayMissionChannel,
+  sendTodayMissionReceipt,
   shouldIgnoreTodayMissionMessage,
 };

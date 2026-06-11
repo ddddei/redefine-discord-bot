@@ -8,6 +8,7 @@ const {
   buildMissionReviewPayload,
   buildMissionSubmissionPayload,
   buildPointTransactionPayload,
+  getKoreanDateTimeString,
 } = require('../src/googleSheetsLogger');
 
 function readJson(filePath) {
@@ -118,6 +119,9 @@ async function testFailuresDoNotThrow() {
 }
 
 function testPayloadBuilders() {
+  assert.strictEqual(getKoreanDateTimeString('2026-06-04T15:00:00.000Z'), '2026-06-05 00:00:00');
+  assert.strictEqual(getKoreanDateTimeString('invalid'), '');
+
   const missionPayload = buildMissionSubmissionPayload({
     id: 'submission_1',
     type: 'todayMission',
@@ -140,6 +144,8 @@ function testPayloadBuilders() {
 
   assert.strictEqual(missionPayload.tab, 'mission_submissions');
   assert.strictEqual(missionPayload.payload.submission_id, 'submission_1');
+  assert.strictEqual(missionPayload.payload.submitted_at, '2026-06-05 00:01:00');
+  assert.strictEqual(missionPayload.payload.submitted_date_kst, '2026-06-05');
   assert.strictEqual(missionPayload.payload.duplicate_key, 'todayMission:2026-06-05:user_1');
   assert.strictEqual(missionPayload.payload.attachment_urls, JSON.stringify(['https://cdn.test/a.jpg', 'https://cdn.test/b.jpg']));
   assert.strictEqual(missionPayload.payload.discord_message_url, 'https://discord.com/channels/guild_1/channel_1/message_1');
@@ -165,6 +171,8 @@ function testPayloadBuilders() {
   assert.strictEqual(pointPayload.tab, 'point_transactions');
   assert.strictEqual(pointPayload.payload.event_id, 'point_transaction:tx_1');
   assert.strictEqual(pointPayload.payload.transaction_id, 'tx_1');
+  assert.strictEqual(pointPayload.payload.created_at, '2026-06-05 00:02:00');
+  assert.strictEqual(pointPayload.payload.created_date_kst, '2026-06-05');
   assert.strictEqual(pointPayload.payload.display_name, '참여자');
   assert.strictEqual(pointPayload.payload.source_surface, 'today_mission_channel');
 
@@ -186,6 +194,7 @@ function testPayloadBuilders() {
   assert.strictEqual(approvedReviewPayload.payload.event_id, 'mission_reviews:review:submission_1');
   assert.strictEqual(approvedReviewPayload.payload.review_id, 'review:submission_1');
   assert.strictEqual(approvedReviewPayload.payload.submission_id, 'submission_1');
+  assert.strictEqual(approvedReviewPayload.payload.reviewed_at, '2026-06-05 00:03:00');
   assert.strictEqual(approvedReviewPayload.payload.reviewed_date_kst, '2026-06-05');
   assert.strictEqual(approvedReviewPayload.payload.action, 'approve');
   assert.strictEqual(approvedReviewPayload.payload.reviewer_display_name, '운영자');
