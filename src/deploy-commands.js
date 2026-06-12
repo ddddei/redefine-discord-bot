@@ -390,6 +390,7 @@ const commands = [
         .addChoices(
           { name: '일정안내', value: 'schedule' },
           { name: '봇사용안내', value: 'botGuide' },
+          { name: '미니게임허브', value: 'minigameHub' },
           { name: '참여리마인드', value: 'reminder' },
           { name: '문의안내', value: 'contact' },
           { name: '준비물', value: 'preparation' },

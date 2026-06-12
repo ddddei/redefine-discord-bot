@@ -48,6 +48,7 @@ DAILY_MISSION_ANNOUNCEMENT_ENABLED=false
 DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID=
 DAILY_MISSION_ANNOUNCEMENT_HOUR=9
 MISSION_SUBMISSION_CHANNEL_ID=
+MINIGAME_CHANNEL_ID=
 ACTIVITY_REVIEW_CHANNEL_ID=
 POINT_REDEEM_CHANNEL_ID=
 MISSION_REACTION_REWARD_POINTS=20
@@ -60,6 +61,8 @@ MISSION_REJECT_EMOJI=❌
 `DAILY_MISSION_ANNOUNCEMENT_ENABLED`가 `true`일 때만 오늘의 미션 자동 안내가 동작합니다. `DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID`가 있으면 해당 채널에 안내를 보내고, 비어 있으면 `TODAY_MISSION_CHANNEL_ID`에 보냅니다. `DAILY_MISSION_ANNOUNCEMENT_HOUR`는 Asia/Seoul 기준 발송 시각이며 비어 있거나 잘못된 값이면 9시를 사용합니다. 봇 안내 메시지가 삭제되면 MEE6에서 봇 메시지 예외 처리 또는 안내 채널 분리 필요.
 
 오늘의 미션 채널에서는 원본 사진에 `MISSION_APPROVE_EMOJI`, `MISSION_REJECT_EMOJI`를 눌러도 반응 승인 기능이 동작하지 않습니다. 오늘의 미션은 `ACTIVITY_REVIEW_CHANNEL_ID`에 올라오는 검토 카드 버튼으로만 승인/반려합니다.
+
+`MINIGAME_CHANNEL_ID`는 미니게임 버튼을 실행할 수 있는 전용 채널입니다. 설정되어 있으면 미니게임은 해당 채널에서만 처리되고, 다른 채널에서는 private/ephemeral 안내로 지정 채널 이용을 안내합니다. 비워 두면 기존처럼 채널 제한 없이 동작하지만, 실제 운영에서는 `#포인트로게임하기`처럼 운영진이 정한 전용 채널 ID를 설정하는 것을 권장합니다. 실제 채널 ID는 Railway Variables 또는 로컬 `.env`에만 저장하고 문서나 코드에 남기지 않습니다.
 
 ## 6. Google Sheets 보조 로그 환경변수
 

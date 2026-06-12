@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { ButtonStyle } = require('discord.js');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -33,11 +34,17 @@ function createMember(displayName) {
   };
 }
 
-function createChatInputInteraction(commandName, userId, displayName) {
+function createChatInputInteraction(commandName, userId, displayName, optionValues = {}, channelId = 'general_channel') {
   return {
     commandName,
+    channelId,
     user: createUser(userId, displayName),
     member: createMember(displayName),
+    options: {
+      getString(name) {
+        return Object.hasOwn(optionValues, name) ? optionValues[name] : null;
+      },
+    },
     replyPayload: null,
     isChatInputCommand() {
       return true;
@@ -57,9 +64,10 @@ function createChatInputInteraction(commandName, userId, displayName) {
   };
 }
 
-function createButtonInteraction(customId, userId, displayName) {
+function createButtonInteraction(customId, userId, displayName, channelId = 'minigame_channel') {
   return {
     customId,
+    channelId,
     user: createUser(userId, displayName),
     member: createMember(displayName),
     replyPayload: null,
@@ -95,6 +103,14 @@ function getButtonIds(payload) {
   });
 }
 
+function getButtons(payload) {
+  return payload.components.flatMap((row) => {
+    return row.components.map((component) => component.toJSON());
+  }).filter((component) => {
+    return component.custom_id && component.custom_id.startsWith('participant_');
+  });
+}
+
 function setupTempState() {
   const repoDir = path.resolve(__dirname, '..');
   const dataDir = path.join(repoDir, 'data');
@@ -126,6 +142,7 @@ function setupTempState() {
   process.env.REDEMPTIONS_DATA_PATH = paths.redemptions;
   process.env.MISSIONS_DATA_PATH = paths.missions;
   process.env.SUBMISSIONS_DATA_PATH = paths.submissions;
+  process.env.MINIGAME_CHANNEL_ID = 'minigame_channel';
   process.env.POINTS_DATA_FALLBACK = path.join(dataDir, 'points.example.json');
   process.env.SHOP_ITEMS_DATA_FALLBACK = path.join(dataDir, 'shop-items.example.json');
   process.env.REDEMPTIONS_DATA_FALLBACK = path.join(dataDir, 'redemptions.example.json');
@@ -135,6 +152,8 @@ function setupTempState() {
   resetModule('../src/pointsRepository');
   resetModule('../src/handlers');
   resetModule('../src/components');
+  resetModule('../src/minigames');
+  resetModule('../src/minigameInteractions');
 
   return { paths, tempDir };
 }
@@ -142,6 +161,7 @@ function setupTempState() {
 async function run() {
   const { paths, tempDir } = setupTempState();
   const { handleInteractionCreate } = require('../src/handlers');
+  const { RPS_CHOICES, createMinigameResult } = require('../src/minigames');
 
   const guideCommand = createChatInputInteraction('안내', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(guideCommand);
@@ -149,53 +169,144 @@ async function run() {
   assert.strictEqual(getEmbedTitle(guideCommand.replyPayload), '📌 리디파인 이용 메뉴');
   assert.ok(getButtonIds(guideCommand.replyPayload).includes('participant_menu_minigames'));
   assert.ok(getButtonIds(guideCommand.replyPayload).includes('participant_menu_today_mission'));
+  const guideButtons = getButtons(guideCommand.replyPayload);
+  assert.deepStrictEqual(
+    guideButtons.map((button) => [button.custom_id, button.style]),
+    [
+      ['participant_menu_today_mission', ButtonStyle.Primary],
+      ['participant_menu_points', ButtonStyle.Success],
+      ['participant_menu_ranking', ButtonStyle.Secondary],
+      ['participant_menu_minigames', ButtonStyle.Secondary],
+      ['participant_menu_help', ButtonStyle.Secondary],
+    ]
+  );
 
   const hubButton = createButtonInteraction('participant_menu_minigames', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(hubButton);
   assert.strictEqual(hubButton.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(hubButton.replyPayload), '미니게임 놀이터');
+  assert.strictEqual(getEmbedTitle(hubButton.replyPayload), '미니게임 채널 안내');
+  assert.match(hubButton.replyPayload.embeds[0].data.description, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
+  assert.match(hubButton.replyPayload.embeds[0].data.description, /<#minigame_channel>/);
+  assert.strictEqual(hubButton.replyPayload.components, undefined);
+
+  const noticeWrongChannel = createChatInputInteraction(
+    '공지',
+    'operator_user',
+    '운영자',
+    { 종류: 'minigameHub' },
+    'general_channel'
+  );
+  await handleInteractionCreate(noticeWrongChannel);
+  assert.strictEqual(noticeWrongChannel.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(noticeWrongChannel.replyPayload), '미니게임 채널 안내');
+
+  const noticeHub = createChatInputInteraction(
+    '공지',
+    'operator_user',
+    '운영자',
+    { 종류: 'minigameHub' },
+    'minigame_channel'
+  );
+  await handleInteractionCreate(noticeHub);
+  assert.strictEqual(noticeHub.replyPayload.ephemeral, false);
+  assert.strictEqual(getEmbedTitle(noticeHub.replyPayload), '미니게임 놀이터');
   assert.deepStrictEqual(
-    getButtonIds(hubButton.replyPayload),
+    getButtonIds(noticeHub.replyPayload),
     [
-      'participant_minigame_treasure',
-      'participant_minigame_rps:rock',
-      'participant_minigame_rps:scissors',
-      'participant_minigame_rps:paper',
+      'participant_minigame_card:1',
+      'participant_minigame_card:2',
+      'participant_minigame_card:3',
+      'participant_minigame_rps_start',
       'participant_minigame_dice',
+      'participant_minigame_number:1',
+      'participant_minigame_number:2',
+      'participant_minigame_number:3',
+      'participant_minigame_number:4',
+      'participant_minigame_number:5',
     ]
   );
 
-  const treasureButton = createButtonInteraction('participant_minigame_treasure', 'mini_user', '미니게임 사용자');
-  await handleInteractionCreate(treasureButton);
-  assert.strictEqual(treasureButton.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(treasureButton.replyPayload), '오늘의 보물상자');
-  assert.match(treasureButton.replyPayload.embeds[0].data.description, /포인트|보상|오늘/);
+  const blockedCard = createButtonInteraction('participant_minigame_card:1', 'mini_user', '미니게임 사용자', 'other_channel');
+  await handleInteractionCreate(blockedCard);
+  assert.strictEqual(blockedCard.replyPayload.ephemeral, true);
+  assert.match(blockedCard.replyPayload.content, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
+  assert.strictEqual(readJson(paths.points).pointTransactions.length, 0);
 
-  const duplicateTreasure = createButtonInteraction('participant_minigame_treasure', 'mini_user', '미니게임 사용자');
-  await handleInteractionCreate(duplicateTreasure);
-  assert.strictEqual(getEmbedTitle(duplicateTreasure.replyPayload), '오늘의 보물상자');
-  assert.match(duplicateTreasure.replyPayload.embeds[0].data.description, /이미 오늘 보상을 확인했어요|중복 지급되지 않아요/);
+  const cardButton = createButtonInteraction('participant_minigame_card:2', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(cardButton);
+  assert.strictEqual(cardButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(cardButton.replyPayload), '🎴 행운 카드 뒤집기');
+  assert.match(cardButton.replyPayload.embeds[0].data.description, /선택한 카드:/);
+  assert.match(cardButton.replyPayload.embeds[0].data.description, /카드 결과: (0P|3P|5P|10P)/);
 
-  const rpsButton = createButtonInteraction('participant_minigame_rps:rock', 'mini_user', '미니게임 사용자');
-  await handleInteractionCreate(rpsButton);
-  assert.strictEqual(rpsButton.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(rpsButton.replyPayload), '가위바위보');
-  assert.match(rpsButton.replyPayload.embeds[0].data.description, /내 선택: 바위/);
-  assert.match(rpsButton.replyPayload.embeds[0].data.description, /봇 선택:/);
+  const duplicateCard = createButtonInteraction('participant_minigame_card:3', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(duplicateCard);
+  assert.strictEqual(getEmbedTitle(duplicateCard.replyPayload), '🎴 행운 카드 뒤집기');
+  assert.match(duplicateCard.replyPayload.embeds[0].data.description, /이미 오늘 보상을 확인했어요|중복 지급되지 않아요/);
+
+  const rpsStart = createButtonInteraction('participant_minigame_rps_start', 'rps_draw_user', '가위바위보 사용자');
+  await handleInteractionCreate(rpsStart);
+  assert.strictEqual(rpsStart.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(rpsStart.replyPayload), '✊ 가위바위보');
+  assert.deepStrictEqual(
+    getButtonIds(rpsStart.replyPayload),
+    [
+      'participant_minigame_rps:scissors',
+      'participant_minigame_rps:rock',
+      'participant_minigame_rps:paper',
+    ]
+  );
+
+  const playDate = require('../src/pointsRepository').getKoreanDateString();
+  const drawChoice = Object.keys(RPS_CHOICES).find((choice) => {
+    const result = createMinigameResult({
+      gameId: 'rps',
+      choice,
+      userId: 'rps_draw_user',
+      dateString: playDate,
+    });
+    return result && result.isDraw;
+  });
+  assert.ok(drawChoice, 'expected at least one deterministic RPS draw choice');
+  const rpsDraw = createButtonInteraction(`participant_minigame_rps:${drawChoice}`, 'rps_draw_user', '가위바위보 사용자');
+  await handleInteractionCreate(rpsDraw);
+  assert.strictEqual(rpsDraw.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(rpsDraw.replyPayload), '✊ 가위바위보');
+  assert.match(rpsDraw.replyPayload.embeds[0].data.description, /무승부/);
+  assert.match(rpsDraw.replyPayload.embeds[0].data.description, /한 번 더 선택/);
+  assert.deepStrictEqual(
+    getButtonIds(rpsDraw.replyPayload),
+    [
+      'participant_minigame_rps:scissors',
+      'participant_minigame_rps:rock',
+      'participant_minigame_rps:paper',
+    ]
+  );
+  assert.ok(!readJson(paths.points).pointTransactions.some((transaction) => {
+    return transaction.userId === 'rps_draw_user' && transaction.relatedId.endsWith(':rps');
+  }));
 
   const diceButton = createButtonInteraction('participant_minigame_dice', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(diceButton);
   assert.strictEqual(diceButton.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(diceButton.replyPayload), '주사위 대결');
-  assert.match(diceButton.replyPayload.embeds[0].data.description, /내 주사위:/);
-  assert.match(diceButton.replyPayload.embeds[0].data.description, /봇 주사위:/);
+  assert.strictEqual(getEmbedTitle(diceButton.replyPayload), '🎲 주사위 대결');
+  assert.match(diceButton.replyPayload.embeds[0].data.description, /🎲 내 주사위:/);
+  assert.match(diceButton.replyPayload.embeds[0].data.description, /🎲 봇 주사위:/);
+  assert.match(diceButton.replyPayload.embeds[0].data.description, /지급 포인트:/);
 
-  const capTreasure = createButtonInteraction('participant_minigame_treasure', 'cap_user', '상한 테스트 사용자');
-  const capRps = createButtonInteraction('participant_minigame_rps:rock', 'cap_user', '상한 테스트 사용자');
+  const numberButton = createButtonInteraction('participant_minigame_number:3', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(numberButton);
+  assert.strictEqual(numberButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(numberButton.replyPayload), '🔢 숫자 맞히기');
+  assert.match(numberButton.replyPayload.embeds[0].data.description, /내 숫자: 3/);
+  assert.match(numberButton.replyPayload.embeds[0].data.description, /봇 숫자:/);
+
+  const capCard = createButtonInteraction('participant_minigame_card:1', 'cap_user', '상한 테스트 사용자');
   const capDice = createButtonInteraction('participant_minigame_dice', 'cap_user', '상한 테스트 사용자');
-  await handleInteractionCreate(capTreasure);
-  await handleInteractionCreate(capRps);
+  const capNumber = createButtonInteraction('participant_minigame_number:5', 'cap_user', '상한 테스트 사용자');
+  await handleInteractionCreate(capCard);
   await handleInteractionCreate(capDice);
+  await handleInteractionCreate(capNumber);
   const capData = readJson(paths.points);
   const capUser = capData.users.find((user) => user.userId === 'cap_user');
   const capEarned = capUser.totalPoints - 50;
