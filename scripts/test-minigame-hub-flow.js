@@ -111,6 +111,10 @@ function getButtons(payload) {
   });
 }
 
+function assertButtonIds(payload, expectedIds) {
+  assert.deepStrictEqual(getButtonIds(payload), expectedIds);
+}
+
 function setupTempState() {
   const repoDir = path.resolve(__dirname, '..');
   const dataDir = path.join(repoDir, 'data');
@@ -185,21 +189,16 @@ async function run() {
   await handleInteractionCreate(hubButton);
   assert.strictEqual(hubButton.replyPayload.ephemeral, true);
   assert.strictEqual(getEmbedTitle(hubButton.replyPayload), '미니게임 놀이터');
-  assert.deepStrictEqual(
-    getButtonIds(hubButton.replyPayload),
-    [
-      'participant_minigame_card:1',
-      'participant_minigame_card:2',
-      'participant_minigame_card:3',
-      'participant_minigame_rps_start',
-      'participant_minigame_dice',
-      'participant_minigame_number:1',
-      'participant_minigame_number:2',
-      'participant_minigame_number:3',
-      'participant_minigame_number:4',
-      'participant_minigame_number:5',
-    ]
-  );
+  assertButtonIds(hubButton.replyPayload, [
+    'participant_minigame_select:card',
+    'participant_minigame_select:rps',
+    'participant_minigame_select:dice',
+    'participant_minigame_select:number',
+    'participant_minigame_select:door',
+    'participant_minigame_select:memory',
+    'participant_minigame_select:initial',
+    'participant_minigame_select:explore',
+  ]);
 
   const outsideHubButton = createButtonInteraction(
     'participant_menu_minigames',
@@ -226,12 +225,21 @@ async function run() {
   assert.strictEqual(getEmbedTitle(noEnvHubButton.replyPayload), '미니게임 놀이터');
   process.env.MINIGAME_CHANNEL_ID = 'minigame_channel';
 
-  const blockedCard = createButtonInteraction('participant_minigame_card:1', 'mini_user', '미니게임 사용자', 'other_channel');
-  await handleInteractionCreate(blockedCard);
-  assert.strictEqual(blockedCard.replyPayload.ephemeral, true);
-  assert.match(blockedCard.replyPayload.content, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
+  const blockedSelect = createButtonInteraction('participant_minigame_select:card', 'mini_user', '미니게임 사용자', 'other_channel');
+  await handleInteractionCreate(blockedSelect);
+  assert.strictEqual(blockedSelect.replyPayload.ephemeral, true);
+  assert.match(blockedSelect.replyPayload.content, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
   assert.strictEqual(readJson(paths.points).pointTransactions.length, 0);
 
+  const cardSelect = createButtonInteraction('participant_minigame_select:card', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(cardSelect);
+  assert.strictEqual(cardSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(cardSelect.replyPayload), '🎴 행운 카드 뒤집기');
+  assertButtonIds(cardSelect.replyPayload, [
+    'participant_minigame_card:1',
+    'participant_minigame_card:2',
+    'participant_minigame_card:3',
+  ]);
   const cardButton = createButtonInteraction('participant_minigame_card:2', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(cardButton);
   assert.strictEqual(cardButton.replyPayload.ephemeral, true);
@@ -244,18 +252,15 @@ async function run() {
   assert.strictEqual(getEmbedTitle(duplicateCard.replyPayload), '🎴 행운 카드 뒤집기');
   assert.match(duplicateCard.replyPayload.embeds[0].data.description, /이미 오늘 보상을 확인했어요|중복 지급되지 않아요/);
 
-  const rpsStart = createButtonInteraction('participant_minigame_rps_start', 'rps_draw_user', '가위바위보 사용자');
-  await handleInteractionCreate(rpsStart);
-  assert.strictEqual(rpsStart.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(rpsStart.replyPayload), '✊ 가위바위보');
-  assert.deepStrictEqual(
-    getButtonIds(rpsStart.replyPayload),
-    [
-      'participant_minigame_rps:scissors',
-      'participant_minigame_rps:rock',
-      'participant_minigame_rps:paper',
-    ]
-  );
+  const rpsSelect = createButtonInteraction('participant_minigame_select:rps', 'rps_draw_user', '가위바위보 사용자');
+  await handleInteractionCreate(rpsSelect);
+  assert.strictEqual(rpsSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(rpsSelect.replyPayload), '✊ 가위바위보');
+  assertButtonIds(rpsSelect.replyPayload, [
+    'participant_minigame_rps:scissors',
+    'participant_minigame_rps:rock',
+    'participant_minigame_rps:paper',
+  ]);
 
   const playDate = require('../src/pointsRepository').getKoreanDateString();
   const drawChoice = Object.keys(RPS_CHOICES).find((choice) => {
@@ -274,18 +279,20 @@ async function run() {
   assert.strictEqual(getEmbedTitle(rpsDraw.replyPayload), '✊ 가위바위보');
   assert.match(rpsDraw.replyPayload.embeds[0].data.description, /무승부/);
   assert.match(rpsDraw.replyPayload.embeds[0].data.description, /한 번 더 선택/);
-  assert.deepStrictEqual(
-    getButtonIds(rpsDraw.replyPayload),
-    [
-      'participant_minigame_rps:scissors',
-      'participant_minigame_rps:rock',
-      'participant_minigame_rps:paper',
-    ]
-  );
+  assertButtonIds(rpsDraw.replyPayload, [
+    'participant_minigame_rps:scissors',
+    'participant_minigame_rps:rock',
+    'participant_minigame_rps:paper',
+  ]);
   assert.ok(!readJson(paths.points).pointTransactions.some((transaction) => {
     return transaction.userId === 'rps_draw_user' && transaction.relatedId.endsWith(':rps');
   }));
 
+  const diceSelect = createButtonInteraction('participant_minigame_select:dice', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(diceSelect);
+  assert.strictEqual(diceSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(diceSelect.replyPayload), '🎲 주사위 대결');
+  assertButtonIds(diceSelect.replyPayload, ['participant_minigame_dice']);
   const diceButton = createButtonInteraction('participant_minigame_dice', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(diceButton);
   assert.strictEqual(diceButton.replyPayload.ephemeral, true);
@@ -294,12 +301,79 @@ async function run() {
   assert.match(diceButton.replyPayload.embeds[0].data.description, /🎲 봇 주사위:/);
   assert.match(diceButton.replyPayload.embeds[0].data.description, /지급 포인트:/);
 
+  const numberSelect = createButtonInteraction('participant_minigame_select:number', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(numberSelect);
+  assert.strictEqual(numberSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(numberSelect.replyPayload), '🔢 숫자 맞히기');
+  assertButtonIds(numberSelect.replyPayload, [
+    'participant_minigame_number:1',
+    'participant_minigame_number:2',
+    'participant_minigame_number:3',
+    'participant_minigame_number:4',
+    'participant_minigame_number:5',
+  ]);
   const numberButton = createButtonInteraction('participant_minigame_number:3', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(numberButton);
   assert.strictEqual(numberButton.replyPayload.ephemeral, true);
   assert.strictEqual(getEmbedTitle(numberButton.replyPayload), '🔢 숫자 맞히기');
   assert.match(numberButton.replyPayload.embeds[0].data.description, /내 숫자: 3/);
   assert.match(numberButton.replyPayload.embeds[0].data.description, /봇 숫자:/);
+
+  const doorSelect = createButtonInteraction('participant_minigame_select:door', 'door_user', '문 선택 사용자');
+  await handleInteractionCreate(doorSelect);
+  assert.strictEqual(doorSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(doorSelect.replyPayload), '🚪 문 하나 고르기');
+  assertButtonIds(doorSelect.replyPayload, [
+    'participant_minigame_door:1',
+    'participant_minigame_door:2',
+    'participant_minigame_door:3',
+  ]);
+  const doorButton = createButtonInteraction('participant_minigame_door:2', 'door_user', '문 선택 사용자');
+  await handleInteractionCreate(doorButton);
+  assert.strictEqual(getEmbedTitle(doorButton.replyPayload), '🚪 문 하나 고르기');
+  assert.match(doorButton.replyPayload.embeds[0].data.description, /선택한 문: 2번/);
+
+  const memorySelect = createButtonInteraction('participant_minigame_select:memory', 'memory_user', '기억력 사용자');
+  await handleInteractionCreate(memorySelect);
+  assert.strictEqual(memorySelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(memorySelect.replyPayload), '🧠 이모지 기억력');
+  assertButtonIds(memorySelect.replyPayload, [
+    'participant_minigame_memory:1',
+    'participant_minigame_memory:2',
+    'participant_minigame_memory:3',
+  ]);
+  const memoryButton = createButtonInteraction('participant_minigame_memory:1', 'memory_user', '기억력 사용자');
+  await handleInteractionCreate(memoryButton);
+  assert.strictEqual(getEmbedTitle(memoryButton.replyPayload), '🧠 이모지 기억력');
+  assert.match(memoryButton.replyPayload.embeds[0].data.description, /선택한 패턴:/);
+
+  const initialSelect = createButtonInteraction('participant_minigame_select:initial', 'initial_user', '초성 사용자');
+  await handleInteractionCreate(initialSelect);
+  assert.strictEqual(initialSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(initialSelect.replyPayload), '🧩 초성 퀴즈');
+  assertButtonIds(initialSelect.replyPayload, [
+    'participant_minigame_initial:1',
+    'participant_minigame_initial:2',
+    'participant_minigame_initial:3',
+  ]);
+  const initialButton = createButtonInteraction('participant_minigame_initial:1', 'initial_user', '초성 사용자');
+  await handleInteractionCreate(initialButton);
+  assert.strictEqual(getEmbedTitle(initialButton.replyPayload), '🧩 초성 퀴즈');
+  assert.match(initialButton.replyPayload.embeds[0].data.description, /선택한 답:/);
+
+  const exploreSelect = createButtonInteraction('participant_minigame_select:explore', 'explore_user', '탐험 사용자');
+  await handleInteractionCreate(exploreSelect);
+  assert.strictEqual(exploreSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(exploreSelect.replyPayload), '🧭 리디파인 탐험');
+  assertButtonIds(exploreSelect.replyPayload, [
+    'participant_minigame_explore:forest',
+    'participant_minigame_explore:library',
+    'participant_minigame_explore:plaza',
+  ]);
+  const exploreButton = createButtonInteraction('participant_minigame_explore:library', 'explore_user', '탐험 사용자');
+  await handleInteractionCreate(exploreButton);
+  assert.strictEqual(getEmbedTitle(exploreButton.replyPayload), '🧭 리디파인 탐험');
+  assert.match(exploreButton.replyPayload.embeds[0].data.description, /선택한 장소: 도서관/);
 
   const capCard = createButtonInteraction('participant_minigame_card:1', 'cap_user', '상한 테스트 사용자');
   const capDice = createButtonInteraction('participant_minigame_dice', 'cap_user', '상한 테스트 사용자');
