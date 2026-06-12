@@ -271,12 +271,13 @@ function main() {
           'participant_menu_today_mission',
           'participant_menu_points',
           'participant_menu_ranking',
+          'participant_menu_minigames',
           'participant_menu_help',
         ]
       );
       assert.deepStrictEqual(
         guideButtons.map((button) => button.label),
-        ['🌱 오늘의 미션 보기', '💰 내 포인트 확인', '🏆 랭킹 확인', '❓ 이용 방법 보기']
+        ['🌱 오늘의 미션 보기', '💰 내 포인트 확인', '🏆 랭킹 확인', '🎮 미니게임', '❓ 이용 방법 보기']
       );
       const guideSelect = guideCommand.replyPayload.components[1].components[0].toJSON();
       assert.strictEqual(guideSelect.custom_id, GUIDE_HUB_SELECT_ID);
@@ -320,6 +321,26 @@ function main() {
       assert.strictEqual(rankingMenuButton.replyPayload.ephemeral, true);
       assert.strictEqual(getEmbedTitle(rankingMenuButton.replyPayload), '랭킹 확인');
       assert.match(rankingMenuButton.replyPayload.embeds[0].data.description, /랭킹 기능은 준비 중입니다/);
+
+      const minigameMenuButton = createButtonInteraction(
+        'participant_menu_minigames',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(minigameMenuButton);
+      assert.strictEqual(minigameMenuButton.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(minigameMenuButton.replyPayload), '미니게임 놀이터');
+      assert.match(minigameMenuButton.replyPayload.embeds[0].data.description, /포인트 베팅이나 차감은 없고/);
+      assert.deepStrictEqual(
+        minigameMenuButton.replyPayload.components[0].components.map((button) => button.toJSON().custom_id),
+        [
+          'participant_minigame_treasure',
+          'participant_minigame_rps:rock',
+          'participant_minigame_rps:scissors',
+          'participant_minigame_rps:paper',
+          'participant_minigame_dice',
+        ]
+      );
 
       const helpMenuButton = createButtonInteraction(
         'participant_menu_help',

@@ -34,6 +34,8 @@ const DEFAULT_PATHS = {
 };
 
 const CHECKIN_REWARD_POINTS = 10;
+const MINIGAME_DAILY_REWARD_CAP = 10;
+const MINIGAME_REWARD_RELATED_TYPE = 'minigameReward';
 const MISSION_STATUSES = new Set(['draft', 'active', 'paused', 'closed', 'archived']);
 const SHOP_ITEM_STATUSES = new Set(['active', 'paused', 'soldOut', 'hidden']);
 const SHOP_ITEM_TYPES = new Set(['youthCenterPoint', 'reward', 'goods', 'event']);
@@ -383,6 +385,88 @@ function createPointsRepository(paths = {}, options = {}) {
     });
 
     return { user, transaction };
+  }
+
+  function getMinigameRewardRelatedId(dateString, gameId) {
+    return `${dateString}:${gameId}`;
+  }
+
+  function listUserMinigameTransactions(pointsData, userId, dateString) {
+    const transactions = Array.isArray(pointsData.pointTransactions)
+      ? pointsData.pointTransactions
+      : [];
+    const relatedPrefix = `${dateString}:`;
+    return transactions.filter((transaction) => {
+      return transaction.userId === userId
+        && transaction.relatedType === MINIGAME_REWARD_RELATED_TYPE
+        && String(transaction.relatedId || '').startsWith(relatedPrefix);
+    });
+  }
+
+  function awardMinigameReward(input) {
+    const playDate = input.playDate || getKoreanDateString();
+    const relatedId = getMinigameRewardRelatedId(playDate, input.gameId);
+    const state = loadState();
+    const pointsData = cloneJson(state.pointsData);
+    const existingTransaction = (Array.isArray(pointsData.pointTransactions) ? pointsData.pointTransactions : [])
+      .find((transaction) => {
+        return transaction.userId === input.user.userId
+          && transaction.relatedType === MINIGAME_REWARD_RELATED_TYPE
+          && transaction.relatedId === relatedId;
+      });
+
+    if (existingTransaction) {
+      return {
+        ok: false,
+        reason: 'ALREADY_REWARDED',
+        playDate,
+        relatedId,
+        transaction: existingTransaction,
+      };
+    }
+
+    const user = ensureUser(pointsData, input.user);
+    const currentPoints = getUserPoints(pointsData, input.user.userId);
+    const dailyRewardTotal = listUserMinigameTransactions(pointsData, input.user.userId, playDate)
+      .reduce((sum, transaction) => sum + Math.max(0, transaction.amount || 0), 0);
+    const remainingDailyReward = Math.max(0, MINIGAME_DAILY_REWARD_CAP - dailyRewardTotal);
+    const requestedReward = Math.max(0, input.rewardPoints || 0);
+    const awardedPoints = Math.min(requestedReward, remainingDailyReward);
+    const balanceAfter = currentPoints + awardedPoints;
+    const transaction = addTransaction(pointsData, {
+      id: createOperationId('tx_minigame'),
+      userId: input.user.userId,
+      type: awardedPoints > 0 ? 'earn' : 'adjust',
+      amount: awardedPoints,
+      balanceAfter,
+      reason: input.reason || `미니게임 보상: ${input.gameTitle || input.gameId}`,
+      relatedType: MINIGAME_REWARD_RELATED_TYPE,
+      relatedId,
+      createdBy: input.user.userId,
+      note: input.note || null,
+    });
+
+    updateUserBalance(user, balanceAfter, input.user.displayName);
+    saveState({ ...state, pointsData });
+    appendPointTransactionLog(transaction, {
+      user,
+      sourceSurface: 'minigame_hub',
+      playDate,
+      gameId: input.gameId,
+    });
+
+    return {
+      ok: true,
+      user,
+      transaction,
+      playDate,
+      relatedId,
+      requestedReward,
+      awardedPoints,
+      dailyRewardTotal,
+      remainingDailyReward,
+      dailyRewardCap: MINIGAME_DAILY_REWARD_CAP,
+    };
   }
 
   function requestRedemption(input) {
@@ -1549,6 +1633,7 @@ function createPointsRepository(paths = {}, options = {}) {
 
   return {
     adjustUserPoints,
+    awardMinigameReward,
     approveSubmissionById,
     approveReactionMessage,
     createCheckin,
@@ -1609,6 +1694,8 @@ function createPointsRepository(paths = {}, options = {}) {
 module.exports = {
   CHECKIN_REWARD_POINTS,
   DEFAULT_PATHS,
+  MINIGAME_DAILY_REWARD_CAP,
+  MINIGAME_REWARD_RELATED_TYPE,
   createPointsRepository,
   getKoreanDateString,
 };
