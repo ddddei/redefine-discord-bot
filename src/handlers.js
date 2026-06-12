@@ -67,11 +67,19 @@ const {
   CHECKIN_REWARD_POINTS,
   createPointsRepository,
 } = require('./pointsRepository');
+const {
+  createMinigameButtonHandler,
+  createMinigameHubPayload,
+} = require('./minigameInteractions');
 const { buildOperationExportPayload, truncateForDiscord } = require('./exportUtils');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
 const pointsRepository = createPointsRepository();
+const handleMinigameButton = createMinigameButtonHandler({
+  pointsRepository,
+  getMemberDisplayName,
+});
 
 function getMemberDisplayName(user, member) {
   return member && member.displayName ? member.displayName : user.username;
@@ -189,6 +197,7 @@ const PARTICIPANT_MENU_BUTTON_IDS = {
   todayMission: 'participant_menu_today_mission',
   points: 'participant_menu_points',
   ranking: 'participant_menu_ranking',
+  minigames: 'participant_menu_minigames',
   help: 'participant_menu_help',
 };
 
@@ -205,6 +214,10 @@ function createParticipantMenuButtonRow() {
     new ButtonBuilder()
       .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.ranking)
       .setLabel('🏆 랭킹 확인')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.minigames)
+      .setLabel('🎮 미니게임')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.help)
@@ -785,6 +798,11 @@ async function handleParticipantMenuButton(interaction) {
       )],
       ephemeral: true,
     });
+    return;
+  }
+
+  if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.minigames) {
+    await interaction.reply(createMinigameHubPayload());
     return;
   }
 
@@ -2395,6 +2413,11 @@ async function handleInteractionCreate(interaction) {
       || interaction.customId.startsWith('participant_redeem_cancel_done:')
       || interaction.customId.startsWith('participant_redeem_cancel_back:')) {
       await handleRedemptionConfirmButton(interaction);
+      return;
+    }
+
+    if (interaction.customId.startsWith('participant_minigame_')) {
+      await handleMinigameButton(interaction);
       return;
     }
 

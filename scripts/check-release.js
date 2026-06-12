@@ -54,6 +54,16 @@ const checks = [
     args: ['--check', 'src/pointsRepository.js'],
   },
   {
+    label: 'src/minigames.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/minigames.js'],
+  },
+  {
+    label: 'src/minigameInteractions.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/minigameInteractions.js'],
+  },
+  {
     label: 'src/googleSheetsLogger.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/googleSheetsLogger.js'],
@@ -139,6 +149,11 @@ const checks = [
     args: ['--check', 'scripts/test-participant-ux-flow.js'],
   },
   {
+    label: 'scripts/test-minigame-hub-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-minigame-hub-flow.js'],
+  },
+  {
     label: 'scripts/test-reaction-approval-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-reaction-approval-flow.js'],
@@ -202,6 +217,11 @@ const checks = [
     label: 'participant UX flow smoke test',
     command: 'node',
     args: ['scripts/test-participant-ux-flow.js'],
+  },
+  {
+    label: 'minigame hub flow smoke test',
+    command: 'node',
+    args: ['scripts/test-minigame-hub-flow.js'],
   },
   {
     label: 'reaction approval flow smoke test',
