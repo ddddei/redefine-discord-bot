@@ -184,34 +184,9 @@ async function run() {
   const hubButton = createButtonInteraction('participant_menu_minigames', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(hubButton);
   assert.strictEqual(hubButton.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(hubButton.replyPayload), '미니게임 채널 안내');
-  assert.match(hubButton.replyPayload.embeds[0].data.description, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
-  assert.match(hubButton.replyPayload.embeds[0].data.description, /<#minigame_channel>/);
-  assert.strictEqual(hubButton.replyPayload.components, undefined);
-
-  const noticeWrongChannel = createChatInputInteraction(
-    '공지',
-    'operator_user',
-    '운영자',
-    { 종류: 'minigameHub' },
-    'general_channel'
-  );
-  await handleInteractionCreate(noticeWrongChannel);
-  assert.strictEqual(noticeWrongChannel.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(noticeWrongChannel.replyPayload), '미니게임 채널 안내');
-
-  const noticeHub = createChatInputInteraction(
-    '공지',
-    'operator_user',
-    '운영자',
-    { 종류: 'minigameHub' },
-    'minigame_channel'
-  );
-  await handleInteractionCreate(noticeHub);
-  assert.strictEqual(noticeHub.replyPayload.ephemeral, false);
-  assert.strictEqual(getEmbedTitle(noticeHub.replyPayload), '미니게임 놀이터');
+  assert.strictEqual(getEmbedTitle(hubButton.replyPayload), '미니게임 놀이터');
   assert.deepStrictEqual(
-    getButtonIds(noticeHub.replyPayload),
+    getButtonIds(hubButton.replyPayload),
     [
       'participant_minigame_card:1',
       'participant_minigame_card:2',
@@ -225,6 +200,31 @@ async function run() {
       'participant_minigame_number:5',
     ]
   );
+
+  const outsideHubButton = createButtonInteraction(
+    'participant_menu_minigames',
+    'mini_user',
+    '미니게임 사용자',
+    'general_channel'
+  );
+  await handleInteractionCreate(outsideHubButton);
+  assert.strictEqual(outsideHubButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(outsideHubButton.replyPayload), '미니게임 채널 안내');
+  assert.match(outsideHubButton.replyPayload.embeds[0].data.description, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
+  assert.match(outsideHubButton.replyPayload.embeds[0].data.description, /<#minigame_channel>/);
+  assert.strictEqual(outsideHubButton.replyPayload.components, undefined);
+
+  delete process.env.MINIGAME_CHANNEL_ID;
+  const noEnvHubButton = createButtonInteraction(
+    'participant_menu_minigames',
+    'mini_user',
+    '미니게임 사용자',
+    'general_channel'
+  );
+  await handleInteractionCreate(noEnvHubButton);
+  assert.strictEqual(noEnvHubButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(noEnvHubButton.replyPayload), '미니게임 놀이터');
+  process.env.MINIGAME_CHANNEL_ID = 'minigame_channel';
 
   const blockedCard = createButtonInteraction('participant_minigame_card:1', 'mini_user', '미니게임 사용자', 'other_channel');
   await handleInteractionCreate(blockedCard);

@@ -340,9 +340,9 @@ function main() {
       );
       await handleInteractionCreate(minigameMenuButton);
       assert.strictEqual(minigameMenuButton.replyPayload.ephemeral, true);
-      assert.strictEqual(getEmbedTitle(minigameMenuButton.replyPayload), '미니게임 채널 안내');
-      assert.match(minigameMenuButton.replyPayload.embeds[0].data.description, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
-      assert.strictEqual(minigameMenuButton.replyPayload.components, undefined);
+      assert.strictEqual(getEmbedTitle(minigameMenuButton.replyPayload), '미니게임 놀이터');
+      assert.match(minigameMenuButton.replyPayload.embeds[0].data.description, /포인트 베팅이나 차감은 없고/);
+      assert.ok(minigameMenuButton.replyPayload.components.length > 0);
 
       const helpMenuButton = createButtonInteraction(
         'participant_menu_help',

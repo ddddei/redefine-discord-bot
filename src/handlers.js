@@ -803,6 +803,11 @@ async function handleParticipantMenuButton(interaction) {
   }
 
   if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.minigames) {
+    if (!process.env.MINIGAME_CHANNEL_ID || interaction.channelId === process.env.MINIGAME_CHANNEL_ID) {
+      await interaction.reply(createMinigameHubPayload());
+      return;
+    }
+
     await interaction.reply(createMinigameChannelGuidePayload());
     return;
   }
@@ -927,16 +932,6 @@ async function handleQuestionCommand(interaction) {
 
 async function handleNoticeCommand(interaction) {
   const type = interaction.options.getString('종류');
-
-  if (type === 'minigameHub') {
-    if (process.env.MINIGAME_CHANNEL_ID && interaction.channelId !== process.env.MINIGAME_CHANNEL_ID) {
-      await interaction.reply(createMinigameChannelGuidePayload());
-      return;
-    }
-
-    await interaction.reply(createMinigameHubPayload({ ephemeral: false }));
-    return;
-  }
 
   await interaction.reply({
     embeds: [createNoticeEmbed(type)],
