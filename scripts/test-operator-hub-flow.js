@@ -59,6 +59,7 @@ function main() {
       'submissions',
       'points',
       'missions_shop',
+      'mission_management',
       'reaction_approvals',
       'exports',
       'checklist',
@@ -69,7 +70,7 @@ function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 8);
+  assert.strictEqual(menu.options.length, 9);
 
   const repository = createTempRepository();
   const emptySummary = repository.getOperationSummary();

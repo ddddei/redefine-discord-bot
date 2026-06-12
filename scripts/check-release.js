@@ -124,6 +124,11 @@ const checks = [
     args: ['--check', 'scripts/test-admin-management-flow.js'],
   },
   {
+    label: 'scripts/test-admin-mission-hub-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-admin-mission-hub-flow.js'],
+  },
+  {
     label: 'scripts/test-operation-export-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-operation-export-flow.js'],
@@ -182,6 +187,11 @@ const checks = [
     label: 'admin management flow smoke test',
     command: 'node',
     args: ['scripts/test-admin-management-flow.js'],
+  },
+  {
+    label: 'admin mission hub flow smoke test',
+    command: 'node',
+    args: ['scripts/test-admin-mission-hub-flow.js'],
   },
   {
     label: 'operation export flow smoke test',

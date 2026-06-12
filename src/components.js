@@ -1,7 +1,29 @@
-const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+} = require('discord.js');
+const crypto = require('crypto');
 
 const GUIDE_HUB_SELECT_ID = 'guide_hub_select';
 const OPERATOR_HUB_SELECT_ID = 'operator_hub_select';
+const OPERATOR_MISSION_HUB_SELECT_ID = 'admin_mission_hub_select';
+const OPERATOR_MISSION_HUB_BUTTON_IDS = {
+  create: 'admin_mission_hub:create',
+  editPrefix: 'admin_mission_hub:edit:',
+  togglePrefix: 'admin_mission_hub:toggle:',
+  closePrefix: 'admin_mission_hub:close:',
+  refresh: 'admin_mission_hub:refresh',
+};
+
+function createOperatorMissionHubToken(missionId) {
+  return `mh_${crypto
+    .createHash('sha1')
+    .update(String(missionId || ''))
+    .digest('hex')
+    .slice(0, 16)}`;
+}
 
 const GUIDE_HUB_OPTIONS = [
   {
@@ -63,6 +85,11 @@ const OPERATOR_HUB_OPTIONS = [
     description: '미션과 상점 항목 운영 상태',
   },
   {
+    label: '미션 관리 허브',
+    value: 'mission_management',
+    description: '미션 확인, 생성, 수정, 상태 변경',
+  },
+  {
     label: '반응 승인 기록',
     value: 'reaction_approvals',
     description: '미션 인증 채널 이모지 처리 기록',
@@ -103,11 +130,65 @@ function createOperatorHubSelectRow(selectedValue = null) {
   );
 }
 
+function createOperatorMissionHubRows(missions = [], selectedMissionId = null) {
+  const selectedMission = missions.find((mission) => mission.id === selectedMissionId) || missions[0] || null;
+  const selectedId = selectedMission ? selectedMission.id : '';
+  const rows = [];
+
+  if (missions.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(OPERATOR_MISSION_HUB_SELECT_ID)
+        .setPlaceholder('관리할 미션을 선택해 주세요')
+        .addOptions(missions.slice(0, 25).map((mission) => ({
+          label: String(mission.title || mission.id).slice(0, 100),
+          description: `상태 ${mission.status || 'unknown'} / ${mission.rewardPoints || 0}P`,
+          value: createOperatorMissionHubToken(mission.id),
+          default: mission.id === selectedId,
+        })))
+    ));
+  }
+
+  const isActive = selectedMission && selectedMission.status === 'active';
+  const selectedToken = selectedMission ? createOperatorMissionHubToken(selectedMission.id) : 'none';
+  rows.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.create)
+      .setLabel('새 미션')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_MISSION_HUB_BUTTON_IDS.editPrefix}${selectedToken}`)
+      .setLabel('수정')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!selectedMission),
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_MISSION_HUB_BUTTON_IDS.togglePrefix}${selectedToken}`)
+      .setLabel(isActive ? '비활성화' : '활성화')
+      .setStyle(isActive ? ButtonStyle.Secondary : ButtonStyle.Success)
+      .setDisabled(!selectedMission),
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_MISSION_HUB_BUTTON_IDS.closePrefix}${selectedToken}`)
+      .setLabel('종료')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(!selectedMission || selectedMission.status === 'closed'),
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.refresh)
+      .setLabel('새로고침')
+      .setStyle(ButtonStyle.Secondary)
+  ));
+
+  return rows;
+}
+
 module.exports = {
   GUIDE_HUB_OPTIONS,
   GUIDE_HUB_SELECT_ID,
+  OPERATOR_MISSION_HUB_BUTTON_IDS,
+  OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_HUB_OPTIONS,
   OPERATOR_HUB_SELECT_ID,
+  createOperatorMissionHubToken,
   createGuideHubSelectRow,
   createOperatorHubSelectRow,
+  createOperatorMissionHubRows,
 };

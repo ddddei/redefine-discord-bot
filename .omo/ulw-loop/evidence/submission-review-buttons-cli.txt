@@ -1,6 +1,0 @@
-인증 검토 알림 전송됨: channel=review_channel_test submission=submission_1780540557656_77f7h0
-미션 인증 버튼 처리 로그 전송됨: channel=review_channel_test submission=submission_1780540557656_77f7h0
-미션 인증 버튼 처리 로그 전송됨: channel=review_channel_test submission=submission_1780540557685_10cp1i
-submission review buttons flow smoke test passed
-
-exit=0
