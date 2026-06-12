@@ -19,7 +19,7 @@
 | [operator-command-guide.md](operator-command-guide.md) | 운영자 명령어 가이드 | 운영자가 포인트, 교환, 인증, 미션, 상점, 내보내기 명령어를 처리할 때 | 명령어별 사용 흐름, 주요 옵션, 확인 사항, 실수 방지 포인트 |
 | [operator-dashboard-guide.md](operator-dashboard-guide.md) | 운영자 허브 가이드 | `/운영현황`에서 운영 상태를 확인하고 다음 처리 명령어를 찾을 때 | 전체 요약, 교환/인증 대기, 포인트 로그, 미션/상점, 반응 승인, 백업 체크리스트 |
 | [admin-mission-management-hub.md](admin-mission-management-hub.md) | 관리자 미션 관리 허브 가이드 | Discord 안에서 미션을 확인, 생성, 수정, 상태 변경할 때 | `/운영현황` 미션 관리 허브, 버튼과 modal 사용법, 보류 기능, QA 체크리스트 |
-| [minigame-hub-guide.md](minigame-hub-guide.md) | 미니게임 허브 운영 가이드 | `/안내`에서 진입하는 버튼형 미니게임과 포인트 보상 제한을 확인할 때 | 오늘의 보물상자, 가위바위보, 주사위 대결, 하루 보상 상한, 중복 지급 차단, Discord QA 항목 |
+| [minigame-hub-guide.md](minigame-hub-guide.md) | 미니게임 허브 운영 가이드 | 지정 미니게임 채널과 버튼형 미니게임 포인트 보상 제한을 확인할 때 | `MINIGAME_CHANNEL_ID`, 행운 카드 뒤집기, 가위바위보, 주사위 대결, 숫자 맞히기, 하루 보상 상한, 중복 지급 차단 |
 | [google-sheets-integration-plan.md](google-sheets-integration-plan.md) | Google Sheets 운영 데이터 연동 설계안 | local JSON 운영 데이터 유실 위험을 줄이고 Sheets 보조 로그 저장소를 검토할 때 | append-only 포인트/인증 로그, 탭 구조, Apps Script 방식, fallback, DB 전환 고려사항 |
 | [mission-template-guide.md](mission-template-guide.md) | 미션 템플릿 운영 가이드 | 매일/오늘의 미션 템플릿 예시 구조와 개인정보 주의사항을 확인할 때 | `data/mission-templates.example.json`, 반복 미션 유형, 하루 1회 지급 제한, 실제 ID 금지 원칙 |
 | [participant-command-guide.md](participant-command-guide.md) | 참여자 명령어 가이드 | 참여자 안내문이나 운영진 응대 문구를 정리할 때 | 참여자 명령어 목적, 공개 범위, 안내 톤, 교환/인증 주의사항 |

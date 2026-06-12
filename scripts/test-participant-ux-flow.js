@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { ButtonStyle } = require('discord.js');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -279,6 +280,16 @@ function main() {
         guideButtons.map((button) => button.label),
         ['🌱 오늘의 미션 보기', '💰 내 포인트 확인', '🏆 랭킹 확인', '🎮 미니게임', '❓ 이용 방법 보기']
       );
+      assert.deepStrictEqual(
+        guideButtons.map((button) => button.style),
+        [
+          ButtonStyle.Primary,
+          ButtonStyle.Success,
+          ButtonStyle.Secondary,
+          ButtonStyle.Secondary,
+          ButtonStyle.Secondary,
+        ]
+      );
       const guideSelect = guideCommand.replyPayload.components[1].components[0].toJSON();
       assert.strictEqual(guideSelect.custom_id, GUIDE_HUB_SELECT_ID);
       assert.strictEqual(guideSelect.placeholder, '궁금한 내용을 선택해 주세요');
@@ -329,18 +340,9 @@ function main() {
       );
       await handleInteractionCreate(minigameMenuButton);
       assert.strictEqual(minigameMenuButton.replyPayload.ephemeral, true);
-      assert.strictEqual(getEmbedTitle(minigameMenuButton.replyPayload), '미니게임 놀이터');
-      assert.match(minigameMenuButton.replyPayload.embeds[0].data.description, /포인트 베팅이나 차감은 없고/);
-      assert.deepStrictEqual(
-        minigameMenuButton.replyPayload.components[0].components.map((button) => button.toJSON().custom_id),
-        [
-          'participant_minigame_treasure',
-          'participant_minigame_rps:rock',
-          'participant_minigame_rps:scissors',
-          'participant_minigame_rps:paper',
-          'participant_minigame_dice',
-        ]
-      );
+      assert.strictEqual(getEmbedTitle(minigameMenuButton.replyPayload), '미니게임 채널 안내');
+      assert.match(minigameMenuButton.replyPayload.embeds[0].data.description, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
+      assert.strictEqual(minigameMenuButton.replyPayload.components, undefined);
 
       const helpMenuButton = createButtonInteraction(
         'participant_menu_help',

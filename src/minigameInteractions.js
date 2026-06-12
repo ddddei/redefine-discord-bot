@@ -19,30 +19,73 @@ function createMinigameHubRows() {
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId('participant_minigame_treasure')
-        .setLabel('오늘의 보물상자')
+        .setCustomId('participant_minigame_card:1')
+        .setLabel('🎴 1번 카드')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('participant_minigame_rps:rock')
-        .setLabel('바위')
-        .setStyle(ButtonStyle.Secondary),
+        .setCustomId('participant_minigame_card:2')
+        .setLabel('🎴 2번 카드')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('participant_minigame_rps:scissors')
-        .setLabel('가위')
-        .setStyle(ButtonStyle.Secondary),
+        .setCustomId('participant_minigame_card:3')
+        .setLabel('🎴 3번 카드')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('participant_minigame_rps:paper')
-        .setLabel('보')
+        .setCustomId('participant_minigame_rps_start')
+        .setLabel('✊ 가위바위보 시작')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('participant_minigame_dice')
-        .setLabel('주사위 대결')
+        .setLabel('🎲 주사위 굴리기')
+        .setStyle(ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_number:1')
+        .setLabel('🔢 1')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_number:2')
+        .setLabel('🔢 2')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_number:3')
+        .setLabel('🔢 3')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_number:4')
+        .setLabel('🔢 4')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_number:5')
+        .setLabel('🔢 5')
         .setStyle(ButtonStyle.Secondary)
     ),
   ];
 }
 
-function createMinigameHubPayload() {
+function createRpsChoiceRows() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_rps:scissors')
+        .setLabel(RPS_CHOICES.scissors.label)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_rps:rock')
+        .setLabel(RPS_CHOICES.rock.label)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('participant_minigame_rps:paper')
+        .setLabel(RPS_CHOICES.paper.label)
+        .setStyle(ButtonStyle.Secondary)
+    ),
+  ];
+}
+
+function createMinigameHubPayload(options = {}) {
+  const ephemeral = options.ephemeral !== false;
+
   return {
     embeds: [createGuideEmbed(
       '미니게임 놀이터',
@@ -52,25 +95,64 @@ function createMinigameHubPayload() {
         '게임별 보상은 하루 한 번만 확인돼요.',
         `하루 미니게임 보상 합계는 최대 ${formatPoints(MINIGAME_DAILY_REWARD_CAP)}까지예요.`,
         '',
-        `- ${MINIGAMES.treasure.title}: ${MINIGAMES.treasure.description}`,
+        `- ${MINIGAMES.card.title}: ${MINIGAMES.card.description}`,
         `- ${MINIGAMES.rps.title}: ${MINIGAMES.rps.description}`,
         `- ${MINIGAMES.dice.title}: ${MINIGAMES.dice.description}`,
+        `- ${MINIGAMES.number.title}: ${MINIGAMES.number.description}`,
         '',
         '포인트 베팅이나 차감은 없고, 결과와 지급 여부는 본인에게만 보여요.',
       ].join('\n')
     )],
     components: createMinigameHubRows(),
+    ephemeral,
+  };
+}
+
+function createMinigameChannelGuidePayload() {
+  const channelId = process.env.MINIGAME_CHANNEL_ID;
+  const channelText = channelId ? `<#${channelId}>` : '운영진이 안내한 미니게임 채널';
+
+  return {
+    embeds: [createGuideEmbed(
+      '미니게임 채널 안내',
+      [
+        '미니게임은 지정된 미니게임 채널에서 이용해 주세요.',
+        '',
+        `이용 채널: ${channelText}`,
+        '',
+        '해당 채널에 고정된 미니게임 안내 또는 운영진 안내를 기준으로 참여해 주세요.',
+      ].join('\n')
+    )],
     ephemeral: true,
   };
 }
 
+function isMinigameChannelAllowed(interaction) {
+  const minigameChannelId = process.env.MINIGAME_CHANNEL_ID;
+  return !minigameChannelId || interaction.channelId === minigameChannelId;
+}
+
 function getMinigameInputFromCustomId(customId) {
-  if (customId === 'participant_minigame_treasure') {
-    return { gameId: MINIGAMES.treasure.id };
+  if (customId.startsWith('participant_minigame_card:')) {
+    return {
+      gameId: MINIGAMES.card.id,
+      cardIndex: Number.parseInt(customId.split(':')[1], 10),
+    };
   }
 
   if (customId === 'participant_minigame_dice') {
     return { gameId: MINIGAMES.dice.id };
+  }
+
+  if (customId.startsWith('participant_minigame_number:')) {
+    return {
+      gameId: MINIGAMES.number.id,
+      numberChoice: Number.parseInt(customId.split(':')[1], 10),
+    };
+  }
+
+  if (customId === 'participant_minigame_rps_start') {
+    return { gameId: MINIGAMES.rps.id, action: 'start' };
   }
 
   if (customId.startsWith('participant_minigame_rps:')) {
@@ -82,6 +164,22 @@ function getMinigameInputFromCustomId(customId) {
   }
 
   return null;
+}
+
+function createRpsChoicePayload(descriptionLines = []) {
+  return {
+    embeds: [createGuideEmbed(
+      MINIGAMES.rps.title,
+      [
+        ...descriptionLines,
+        ...(descriptionLines.length > 0 ? [''] : []),
+        '가위, 바위, 보 중 하나를 선택해 주세요.',
+        '비기면 보상이나 실패 처리 없이 다시 선택할 수 있어요.',
+      ].join('\n')
+    )],
+    components: createRpsChoiceRows(),
+    ephemeral: true,
+  };
 }
 
 function createMinigameResultDescription(result, awardResult) {
@@ -120,11 +218,24 @@ function createMinigameButtonHandler({ pointsRepository, getMemberDisplayName })
   return async function handleMinigameButton(interaction) {
     try {
       const minigameInput = getMinigameInputFromCustomId(interaction.customId);
+      if (!isMinigameChannelAllowed(interaction)) {
+        await interaction.reply({
+          content: '미니게임은 지정된 미니게임 채널에서 이용해 주세요.',
+          ephemeral: true,
+        });
+        return;
+      }
+
       if (!minigameInput) {
         await interaction.reply({
           content: '미니게임 버튼을 확인하지 못했어요. `/안내`에서 다시 열어 주세요.',
           ephemeral: true,
         });
+        return;
+      }
+
+      if (minigameInput.action === 'start') {
+        await interaction.reply(createRpsChoicePayload());
         return;
       }
 
@@ -140,6 +251,11 @@ function createMinigameButtonHandler({ pointsRepository, getMemberDisplayName })
           content: '미니게임 결과를 만들지 못했어요. 운영진에게 알려주세요.',
           ephemeral: true,
         });
+        return;
+      }
+
+      if (result.shouldAward === false) {
+        await interaction.reply(createRpsChoicePayload(result.lines));
         return;
       }
 
@@ -175,5 +291,6 @@ function createMinigameButtonHandler({ pointsRepository, getMemberDisplayName })
 
 module.exports = {
   createMinigameButtonHandler,
+  createMinigameChannelGuidePayload,
   createMinigameHubPayload,
 };
