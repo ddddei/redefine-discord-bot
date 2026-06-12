@@ -54,6 +54,26 @@ const checks = [
     args: ['--check', 'src/pointsRepository.js'],
   },
   {
+    label: 'src/minigameData.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/minigameData.js'],
+  },
+  {
+    label: 'src/minigameResults.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/minigameResults.js'],
+  },
+  {
+    label: 'src/minigameRows.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/minigameRows.js'],
+  },
+  {
+    label: 'src/minigamePayloads.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/minigamePayloads.js'],
+  },
+  {
     label: 'src/minigames.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/minigames.js'],
