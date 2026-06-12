@@ -36,8 +36,12 @@ const {
 } = require('./embeds');
 const {
   GUIDE_HUB_SELECT_ID,
+  OPERATOR_MISSION_HUB_BUTTON_IDS,
+  OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_HUB_SELECT_ID,
   createGuideHubSelectRow,
+  createOperatorMissionHubToken,
+  createOperatorMissionHubRows,
   createOperatorHubSelectRow,
 } = require('./components');
 const {
@@ -489,6 +493,188 @@ function createAdminMissionListEmbed(missions) {
       footer: OPERATOR_CHECK_FOOTER,
     }
   );
+}
+
+function getMissionHubSelection(missions, selectedMissionId = null) {
+  if (!Array.isArray(missions) || missions.length === 0) {
+    return null;
+  }
+
+  return missions.find((mission) => mission.id === selectedMissionId) || missions[0];
+}
+
+function formatMissionParticipantPreview(mission) {
+  if (!mission) {
+    return [
+      '아직 미리볼 미션이 없어요.',
+      '새 미션을 만든 뒤 참여자 `/미션` 안내문을 확인할 수 있어요.',
+    ].join('\n');
+  }
+
+  return [
+    `**${mission.title || '제목 없음'}**`,
+    truncateText(mission.description || '설명 없음', 700, '설명 없음'),
+    '',
+    `지급 포인트: ${formatPoints(mission.rewardPoints || 0)}`,
+    mission.requiresSubmission === false
+      ? '인증 제출 없이 운영 기준에 따라 처리되는 미션입니다.'
+      : '참여자는 `/미션` 또는 `/인증` 흐름으로 인증 내용을 제출합니다.',
+  ].join('\n');
+}
+
+function createAdminMissionHubEmbed(missions, selectedMissionId = null) {
+  const selectedMission = getMissionHubSelection(missions, selectedMissionId);
+  const missionLines = missions.length > 0
+    ? missions.slice(0, 8).map((mission) => {
+      const marker = selectedMission && mission.id === selectedMission.id ? '>' : '-';
+      return `${marker} \`${mission.id}\` ${truncateText(mission.title || '제목 없음', 60, '제목 없음')} / ${mission.status || 'unknown'} / ${formatPoints(mission.rewardPoints || 0)}`;
+    })
+    : ['등록된 미션이 없습니다.'];
+  const selectedLines = selectedMission
+    ? [
+      `선택 미션: \`${selectedMission.id}\``,
+      `상태: ${selectedMission.status || 'unknown'} / 지급: ${formatPoints(selectedMission.rewardPoints || 0)}`,
+      `인증 필요: ${selectedMission.requiresSubmission === false ? '아니오' : '예'}`,
+      `날짜: ${selectedMission.activeDate || '미지정'}`,
+    ]
+    : ['선택된 미션이 없습니다.'];
+
+  return createGuideEmbed(
+    '미션 관리 허브',
+    [
+      '운영진 전용 미션 관리 화면입니다.',
+      '아래에서 현재 미션을 확인하고 버튼으로 생성, 수정, 상태 변경을 진행할 수 있어요.',
+      '',
+      '현재 미션',
+      ...missionLines,
+      '',
+      ...selectedLines,
+      '',
+      '참여자 안내문 미리보기',
+      formatMissionParticipantPreview(selectedMission),
+      '',
+      'active 상태의 미션만 참여자 `/미션`에 노출됩니다.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function createMissionHubPayload(selectedMissionId = null) {
+  const missions = pointsRepository.listMissionsForAdmin({ limit: 25 });
+  const selectedMission = getMissionHubSelection(missions, selectedMissionId);
+
+  return {
+    embeds: [createAdminMissionHubEmbed(missions, selectedMission ? selectedMission.id : null)],
+    components: [
+      createOperatorHubSelectRow('mission_management'),
+      ...createOperatorMissionHubRows(missions, selectedMission ? selectedMission.id : null),
+    ],
+  };
+}
+
+function resolveMissionHubToken(token) {
+  const missions = pointsRepository.listMissionsForAdmin({ limit: 200 });
+  return missions.find((mission) => createOperatorMissionHubToken(mission.id) === token) || null;
+}
+
+function getMissionHubTokenFromCustomId(customId) {
+  const parts = String(customId || '').split(':');
+  const token = parts.slice(2).join(':');
+  return token && token !== 'none' ? token : '';
+}
+
+function getMissionHubStatusInput(value, fallbackStatus = 'draft') {
+  const normalized = String(value || fallbackStatus || 'draft').trim();
+  const aliases = {
+    활성: 'active',
+    비활성: 'paused',
+    일시중지: 'paused',
+    종료: 'closed',
+    초안: 'draft',
+  };
+  const status = aliases[normalized] || normalized;
+
+  if (!['draft', 'active', 'paused', 'closed', 'archived'].includes(status)) {
+    throw new Error('상태는 draft, active, paused, closed, archived 중 하나로 입력해 주세요.');
+  }
+
+  return status;
+}
+
+function createMissionHubModal(action, mission = null) {
+  const isUpdate = action === 'update';
+  const customId = isUpdate
+    ? `admin_mission_hub_modal:update:${createOperatorMissionHubToken(mission.id)}`
+    : 'admin_mission_hub_modal:create';
+
+  return new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(isUpdate ? '미션 수정' : '새 미션 만들기')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('title')
+          .setLabel('미션 제목')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100)
+          .setValue(mission && mission.title ? truncateText(mission.title, 100, '') : '')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('description')
+          .setLabel('미션 설명/안내 문구')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+          .setMaxLength(1000)
+          .setValue(mission && mission.description ? truncateText(mission.description, 1000, '') : '')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('rewardPoints')
+          .setLabel('지급 포인트')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(8)
+          .setValue(mission && mission.rewardPoints ? String(mission.rewardPoints) : '')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('status')
+          .setLabel('상태')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(20)
+          .setPlaceholder('draft, active, paused, closed')
+          .setValue(mission && mission.status ? mission.status : 'draft')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('note')
+          .setLabel('운영 메모')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(false)
+          .setMaxLength(500)
+          .setValue(mission && mission.note ? truncateText(mission.note, 500, '') : '')
+      )
+    );
+}
+
+function getMissionHubModalInput(interaction, fallbackStatus = 'draft') {
+  const rewardPoints = Number.parseInt(interaction.fields.getTextInputValue('rewardPoints'), 10);
+  if (!Number.isInteger(rewardPoints) || rewardPoints <= 0) {
+    throw new Error('지급 포인트는 0보다 큰 정수로 입력해 주세요.');
+  }
+
+  return {
+    title: interaction.fields.getTextInputValue('title'),
+    description: interaction.fields.getTextInputValue('description'),
+    rewardPoints,
+    status: getMissionHubStatusInput(interaction.fields.getTextInputValue('status'), fallbackStatus),
+    note: interaction.fields.getTextInputValue('note') || null,
+  };
 }
 
 function createAdminShopListEmbed(items) {
@@ -1542,6 +1728,10 @@ function getOperatorHubEmbed(value, limit = 10) {
     return buildOperatorMissionsShopEmbed(pointsRepository.getOperationSummary());
   }
 
+  if (value === 'mission_management') {
+    return createAdminMissionHubEmbed(pointsRepository.listMissionsForAdmin({ limit: 25 }));
+  }
+
   if (value === 'reaction_approvals') {
     return buildOperatorReactionApprovalsEmbed(pointsRepository.listRecentReactionApprovals(limit));
   }
@@ -1568,11 +1758,12 @@ async function handleOperatorHubSelect(interaction) {
 
   try {
     const selectedValue = interaction.values && interaction.values[0] ? interaction.values[0] : 'overview';
-    const embed = getOperatorHubEmbed(selectedValue, 10);
-    const payload = {
-      embeds: [embed],
-      components: [createOperatorHubSelectRow(selectedValue)],
-    };
+    const payload = selectedValue === 'mission_management'
+      ? createMissionHubPayload()
+      : {
+        embeds: [getOperatorHubEmbed(selectedValue, 10)],
+        components: [createOperatorHubSelectRow(selectedValue)],
+      };
 
     if (typeof interaction.update === 'function') {
       await interaction.update(payload);
@@ -1587,6 +1778,150 @@ async function handleOperatorHubSelect(interaction) {
     console.error('운영 허브 메뉴 조회 실패:', error.message);
     await interaction.reply({
       content: `운영 허브 메뉴를 불러오지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleMissionHubSelect(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const selectedMissionId = interaction.values && interaction.values[0] ? interaction.values[0] : null;
+    const selectedMission = selectedMissionId ? resolveMissionHubToken(selectedMissionId) : null;
+    await interaction.update(createMissionHubPayload(selectedMission ? selectedMission.id : null));
+  } catch (error) {
+    console.error('미션 관리 허브 선택 실패:', error.message);
+    await interaction.reply({
+      content: `미션 관리 허브를 불러오지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleMissionHubButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.create) {
+      await interaction.showModal(createMissionHubModal('create'));
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refresh) {
+      await interaction.update(createMissionHubPayload());
+      return;
+    }
+
+    const missionToken = getMissionHubTokenFromCustomId(interaction.customId);
+    const mission = missionToken ? resolveMissionHubToken(missionToken) : null;
+    if (!mission) {
+      await interaction.reply({
+        content: '대상 미션을 찾지 못했어요. 허브를 새로고침한 뒤 다시 선택해 주세요.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (interaction.customId.startsWith(OPERATOR_MISSION_HUB_BUTTON_IDS.editPrefix)) {
+      await interaction.showModal(createMissionHubModal('update', mission));
+      return;
+    }
+
+    if (interaction.customId.startsWith(OPERATOR_MISSION_HUB_BUTTON_IDS.togglePrefix)) {
+      const nextStatus = mission.status === 'active' ? 'paused' : 'active';
+      const updatedMission = pointsRepository.setMissionStatus(mission.id, nextStatus);
+      await interaction.update(createMissionHubPayload(updatedMission.id));
+      await sendEphemeralAfterUpdate(interaction, {
+        content: `${updatedMission.title || updatedMission.id} 상태를 ${updatedMission.status}로 변경했어요.`,
+      });
+      return;
+    }
+
+    if (interaction.customId.startsWith(OPERATOR_MISSION_HUB_BUTTON_IDS.closePrefix)) {
+      const updatedMission = pointsRepository.setMissionStatus(mission.id, 'closed');
+      await interaction.update(createMissionHubPayload(updatedMission.id));
+      await sendEphemeralAfterUpdate(interaction, {
+        content: `${updatedMission.title || updatedMission.id} 미션을 종료 상태로 변경했어요.`,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      content: '지원하지 않는 미션 관리 허브 버튼이에요. 허브를 새로고침한 뒤 다시 시도해 주세요.',
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('미션 관리 허브 버튼 처리 실패:', error.message);
+    await interaction.reply({
+      content: `미션 관리 허브 작업을 완료하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleMissionHubModal(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const parts = interaction.customId.split(':');
+    const action = parts[1];
+    const missionToken = parts.slice(2).join(':');
+    let mission;
+
+    if (action === 'create') {
+      mission = pointsRepository.createMission({
+        ...getMissionHubModalInput(interaction, 'draft'),
+        requiresSubmission: true,
+      });
+    } else if (action === 'update') {
+      const currentMission = resolveMissionHubToken(missionToken);
+      if (!currentMission) {
+        throw new Error('수정할 미션을 찾을 수 없습니다.');
+      }
+      mission = pointsRepository.updateMission(
+        currentMission.id,
+        getMissionHubModalInput(interaction, currentMission.status || 'draft')
+      );
+    } else {
+      throw new Error('지원하지 않는 미션 허브 작업입니다.');
+    }
+
+    await interaction.reply({
+      embeds: [createMissionAdminResultEmbed(action === 'create' ? '미션 생성 완료' : '미션 수정 완료', mission, [
+        '',
+        mission.status === 'active'
+          ? '이 미션은 참여자 `/미션`에 노출됩니다.'
+          : 'active 상태가 아니므로 참여자 `/미션`에는 노출되지 않습니다.',
+      ])],
+      components: [
+        createOperatorHubSelectRow('mission_management'),
+        ...createOperatorMissionHubRows(pointsRepository.listMissionsForAdmin({ limit: 25 }), mission.id),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('미션 관리 허브 모달 처리 실패:', error.message);
+    await interaction.reply({
+      content: `미션 저장을 완료하지 못했어요. ${error.message}`,
       ephemeral: true,
     });
   }
@@ -2028,6 +2363,11 @@ async function handleInteractionCreate(interaction) {
       return;
     }
 
+    if (interaction.customId === OPERATOR_MISSION_HUB_SELECT_ID) {
+      await handleMissionHubSelect(interaction);
+      return;
+    }
+
     if (interaction.customId === 'participant_shop_select') {
       await handleShopSelect(interaction);
       return;
@@ -2040,6 +2380,11 @@ async function handleInteractionCreate(interaction) {
   }
 
   if (interaction.isButton && interaction.isButton()) {
+    if (interaction.customId.startsWith('admin_mission_hub:')) {
+      await handleMissionHubButton(interaction);
+      return;
+    }
+
     if (getSubmissionReviewButtonAction(interaction.customId)) {
       await handleSubmissionReviewButton(interaction);
       return;
@@ -2060,6 +2405,11 @@ async function handleInteractionCreate(interaction) {
   }
 
   if (interaction.isModalSubmit && interaction.isModalSubmit()) {
+    if (interaction.customId.startsWith('admin_mission_hub_modal:')) {
+      await handleMissionHubModal(interaction);
+      return;
+    }
+
     if (interaction.customId.startsWith('participant_mission_submit:')) {
       await handleMissionSubmissionModal(interaction);
       return;
@@ -2164,16 +2514,21 @@ async function handleInteractionCreate(interaction) {
 }
 
 module.exports = {
+  createAdminMissionHubEmbed,
   createNoticeEmbed,
   createOperationSummaryEmbed,
   createPendingRedemptionsEmbed,
   createPendingSubmissionsEmbed,
+  createMissionHubPayload,
   getOperatorHubEmbed,
   handleChannelGuideCommand,
   handleCheckinCommand,
   handleGuideCommand,
   handleGuideHubSelect,
   handleInteractionCreate,
+  handleMissionHubButton,
+  handleMissionHubModal,
+  handleMissionHubSelect,
   handleMissionManageCommand,
   handleMissionCommand,
   handleMissionSelect,
