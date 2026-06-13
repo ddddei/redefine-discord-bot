@@ -34,7 +34,8 @@ const DEFAULT_PATHS = {
 };
 
 const CHECKIN_REWARD_POINTS = 10;
-const MINIGAME_DAILY_REWARD_CAP = 10;
+const MINIGAME_DAILY_PLAY_LIMIT = 4;
+const MINIGAME_DAILY_REWARD_CAP = 40;
 const MINIGAME_REWARD_RELATED_TYPE = 'minigameReward';
 const MISSION_STATUSES = new Set(['draft', 'active', 'paused', 'closed', 'archived']);
 const SHOP_ITEM_STATUSES = new Set(['active', 'paused', 'soldOut', 'hidden']);
@@ -416,22 +417,49 @@ function createPointsRepository(paths = {}, options = {}) {
       });
 
     if (existingTransaction) {
+      const dailyTransactions = listUserMinigameTransactions(pointsData, input.user.userId, playDate);
+      const dailyRewardTotal = dailyTransactions
+        .reduce((sum, transaction) => sum + Math.max(0, transaction.amount || 0), 0);
       return {
         ok: false,
         reason: 'ALREADY_REWARDED',
         playDate,
         relatedId,
         transaction: existingTransaction,
+        dailyPlayCount: dailyTransactions.length,
+        dailyPlayLimit: MINIGAME_DAILY_PLAY_LIMIT,
+        dailyRewardTotal,
+        remainingDailyReward: Math.max(0, MINIGAME_DAILY_REWARD_CAP - dailyRewardTotal),
+        remainingDailyRewardAfterAward: Math.max(0, MINIGAME_DAILY_REWARD_CAP - dailyRewardTotal),
+        dailyRewardCap: MINIGAME_DAILY_REWARD_CAP,
+      };
+    }
+
+    const dailyTransactions = listUserMinigameTransactions(pointsData, input.user.userId, playDate);
+    const dailyRewardTotal = dailyTransactions
+      .reduce((sum, transaction) => sum + Math.max(0, transaction.amount || 0), 0);
+
+    if (dailyTransactions.length >= MINIGAME_DAILY_PLAY_LIMIT) {
+      return {
+        ok: false,
+        reason: 'DAILY_PLAY_LIMIT_REACHED',
+        playDate,
+        relatedId,
+        dailyPlayCount: dailyTransactions.length,
+        dailyPlayLimit: MINIGAME_DAILY_PLAY_LIMIT,
+        dailyRewardTotal,
+        remainingDailyReward: Math.max(0, MINIGAME_DAILY_REWARD_CAP - dailyRewardTotal),
+        remainingDailyRewardAfterAward: Math.max(0, MINIGAME_DAILY_REWARD_CAP - dailyRewardTotal),
+        dailyRewardCap: MINIGAME_DAILY_REWARD_CAP,
       };
     }
 
     const user = ensureUser(pointsData, input.user);
     const currentPoints = getUserPoints(pointsData, input.user.userId);
-    const dailyRewardTotal = listUserMinigameTransactions(pointsData, input.user.userId, playDate)
-      .reduce((sum, transaction) => sum + Math.max(0, transaction.amount || 0), 0);
     const remainingDailyReward = Math.max(0, MINIGAME_DAILY_REWARD_CAP - dailyRewardTotal);
     const requestedReward = Math.max(0, input.rewardPoints || 0);
     const awardedPoints = Math.min(requestedReward, remainingDailyReward);
+    const remainingDailyRewardAfterAward = Math.max(0, remainingDailyReward - awardedPoints);
     const balanceAfter = currentPoints + awardedPoints;
     const transaction = addTransaction(pointsData, {
       id: createOperationId('tx_minigame'),
@@ -465,6 +493,10 @@ function createPointsRepository(paths = {}, options = {}) {
       awardedPoints,
       dailyRewardTotal,
       remainingDailyReward,
+      remainingDailyRewardAfterAward,
+      dailyPlayCount: dailyTransactions.length,
+      dailyPlayCountAfterAward: dailyTransactions.length + 1,
+      dailyPlayLimit: MINIGAME_DAILY_PLAY_LIMIT,
       dailyRewardCap: MINIGAME_DAILY_REWARD_CAP,
     };
   }
@@ -1694,6 +1726,7 @@ function createPointsRepository(paths = {}, options = {}) {
 module.exports = {
   CHECKIN_REWARD_POINTS,
   DEFAULT_PATHS,
+  MINIGAME_DAILY_PLAY_LIMIT,
   MINIGAME_DAILY_REWARD_CAP,
   MINIGAME_REWARD_RELATED_TYPE,
   createPointsRepository,

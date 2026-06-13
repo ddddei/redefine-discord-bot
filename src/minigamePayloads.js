@@ -4,11 +4,14 @@ const {
 } = require('./embeds');
 const {
   MINIGAMES,
-  MINIGAME_DAILY_REWARD_CAP,
   createInitialDetail,
   createMemoryDetail,
 } = require('./minigames');
-const { getKoreanDateString } = require('./pointsRepository');
+const {
+  MINIGAME_DAILY_PLAY_LIMIT,
+  MINIGAME_DAILY_REWARD_CAP,
+  getKoreanDateString,
+} = require('./pointsRepository');
 const {
   createCardChoiceRows,
   createDiceChoiceRows,
@@ -32,6 +35,7 @@ function createMinigameHubPayload(options = {}) {
         '먼저 게임을 고른 뒤, 다음 화면에서 선택지를 눌러 주세요.',
         '',
         '게임별 보상은 하루 한 번만 확인돼요.',
+        `하루 미니게임 확정 결과는 최대 ${MINIGAME_DAILY_PLAY_LIMIT}회까지예요.`,
         `하루 미니게임 보상 합계는 최대 ${formatPoints(MINIGAME_DAILY_REWARD_CAP)}까지예요.`,
         '',
         ...Object.values(MINIGAMES).map((game) => `- ${game.title}: ${game.description}`),
