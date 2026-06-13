@@ -54,6 +54,7 @@ POINT_REDEEM_CHANNEL_ID=
 MISSION_REACTION_REWARD_POINTS=20
 MISSION_APPROVE_EMOJI=✅
 MISSION_REJECT_EMOJI=❌
+SAFETY_ALERT_CHANNEL_ID=
 ```
 
 `TODAY_MISSION_CHANNEL_ID`는 참여자가 글이나 첨부파일을 올리면 오늘의 미션 인증 후보로 자동 접수되는 채널입니다. 접수 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`로 전송되고, 같은 사용자에게 같은 날짜의 오늘의 미션 포인트는 1회만 지급됩니다. `DAILY_MISSION_REWARD_POINTS`는 오늘의 미션 승인 시 기본 지급 포인트이며 비어 있거나 잘못된 값이면 20P를 사용합니다.
@@ -63,6 +64,21 @@ MISSION_REJECT_EMOJI=❌
 오늘의 미션 채널에서는 원본 사진에 `MISSION_APPROVE_EMOJI`, `MISSION_REJECT_EMOJI`를 눌러도 반응 승인 기능이 동작하지 않습니다. 오늘의 미션은 `ACTIVITY_REVIEW_CHANNEL_ID`에 올라오는 검토 카드 버튼으로만 승인/반려합니다.
 
 `MINIGAME_CHANNEL_ID`는 미니게임 버튼을 실행할 수 있는 전용 채널입니다. 설정되어 있으면 미니게임은 해당 채널에서만 처리되고, 다른 채널에서는 private/ephemeral 안내로 지정 채널 이용을 안내합니다. 비워 두면 기존처럼 채널 제한 없이 동작하지만, 실제 운영에서는 `#포인트로게임하기`처럼 운영진이 정한 전용 채널 ID를 설정하는 것을 권장합니다. 실제 채널 ID는 Railway Variables 또는 로컬 `.env`에만 저장하고 문서나 코드에 남기지 않습니다.
+
+운영 환경 점검 기준:
+
+| 환경변수 | 기준 | 용도 |
+| --- | --- | --- |
+| `LOG_CHANNEL_ID` | 권장 | 기본 운영 로그와 fallback 알림 |
+| `POINT_REDEEM_CHANNEL_ID` | 권장 | 교환 신청 및 처리 알림 |
+| `ACTIVITY_REVIEW_CHANNEL_ID` | 권장 | 미션 인증 검토 카드와 승인/반려 흐름 |
+| `TODAY_MISSION_CHANNEL_ID` | 권장 | 오늘의 미션/인증 업로드 채널 |
+| `MINIGAME_CHANNEL_ID` | 권장 | 미니게임 전용 채널 제한 |
+| `MISSION_SUBMISSION_CHANNEL_ID` | 선택 | 별도 인증 채널을 운영할 때 |
+| `DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID` | 선택 | 별도 안내 채널을 운영할 때 |
+| `SAFETY_ALERT_CHANNEL_ID` | 선택 | 민감 질문 알림을 기본 로그와 분리할 때 |
+
+`/운영현황`의 `환경 설정 점검`에서는 각 채널 환경변수의 설정 여부, 채널 ID, Discord 채널 조회 여부, 봇 접근 권한, 메시지 전송 권한을 확인합니다. 선택 항목이 미설정인 것은 오류가 아니라 현재 운영 방식 안내입니다.
 
 ## 6. Google Sheets 보조 로그 환경변수
 
@@ -75,6 +91,8 @@ GOOGLE_SHEETS_WEB_APP_SECRET=
 ```
 
 `GOOGLE_SHEETS_LOGGING_ENABLED`가 `true`이고 Web App URL과 secret이 모두 있을 때만 포인트 거래와 미션 제출 접수 로그 append를 시도합니다. 실패해도 Discord의 기존 포인트 지급, 인증 접수, 승인/반려 흐름은 계속 진행됩니다. 실제 Web App URL과 secret은 문서, 코드, `.env.example`에 남기지 않습니다.
+
+`/운영현황`의 `환경 설정 점검`에서는 `GOOGLE_SHEETS_LOGGING_ENABLED`가 `true`인지와 `GOOGLE_SHEETS_WEB_APP_URL`이 설정됐는지만 보여줍니다. 실제 Web App URL 전체값, secret, token은 표시하지 않습니다.
 
 알림 채널 권장 구조:
 

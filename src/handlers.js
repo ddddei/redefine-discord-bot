@@ -13,6 +13,7 @@ const {
 const {
   OPERATOR_CHECK_FOOTER,
   buildOperatorChecklistEmbed,
+  buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
   buildOperatorMissionsShopEmbed,
@@ -82,6 +83,57 @@ const handleMinigameButton = createMinigameButtonHandler({
   getMemberDisplayName,
 });
 
+const OPERATOR_ENV_CHANNEL_CHECKS = [
+  {
+    envName: 'LOG_CHANNEL_ID',
+    label: '기본 운영 로그',
+    requirementLabel: '권장',
+    required: true,
+  },
+  {
+    envName: 'POINT_REDEEM_CHANNEL_ID',
+    label: '교환 신청 알림',
+    requirementLabel: '권장',
+    required: true,
+  },
+  {
+    envName: 'ACTIVITY_REVIEW_CHANNEL_ID',
+    label: '미션 인증 검토',
+    requirementLabel: '권장',
+    required: true,
+  },
+  {
+    envName: 'TODAY_MISSION_CHANNEL_ID',
+    label: '오늘의 미션/인증 업로드',
+    requirementLabel: '권장',
+    required: true,
+  },
+  {
+    envName: 'MINIGAME_CHANNEL_ID',
+    label: '미니게임 전용 채널',
+    requirementLabel: '권장',
+    required: true,
+  },
+  {
+    envName: 'DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID',
+    label: '별도 오늘의 미션 안내',
+    requirementLabel: '선택',
+    required: false,
+  },
+  {
+    envName: 'MISSION_SUBMISSION_CHANNEL_ID',
+    label: '별도 인증 채널',
+    requirementLabel: '선택',
+    required: false,
+  },
+  {
+    envName: 'SAFETY_ALERT_CHANNEL_ID',
+    label: '민감 질문 알림 분리',
+    requirementLabel: '선택',
+    required: false,
+  },
+];
+
 function getMemberDisplayName(user, member) {
   return member && member.displayName ? member.displayName : user.username;
 }
@@ -94,6 +146,103 @@ function memberHasPermission(member, permission) {
 function isOperator(interaction) {
   return memberHasPermission(interaction.member, PermissionFlagsBits.ManageMessages)
     || memberHasPermission(interaction.member, PermissionFlagsBits.Administrator);
+}
+
+function getConfiguredEnvValue(envName) {
+  const value = process.env[envName];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isGoogleSheetsLoggingEnabled() {
+  return String(process.env.GOOGLE_SHEETS_LOGGING_ENABLED || '').trim().toLowerCase() === 'true';
+}
+
+function getChannelPermissions(channel, clientUser) {
+  if (!channel || typeof channel.permissionsFor !== 'function' || !clientUser) {
+    return null;
+  }
+
+  try {
+    return channel.permissionsFor(clientUser);
+  } catch (error) {
+    return null;
+  }
+}
+
+function channelPermissionHas(permissions, permission) {
+  return Boolean(permissions && typeof permissions.has === 'function' && permissions.has(permission));
+}
+
+async function resolveConfiguredChannel(interaction, channelId) {
+  const cachedChannel = interaction.client
+    && interaction.client.channels
+    && interaction.client.channels.cache
+    && typeof interaction.client.channels.cache.get === 'function'
+    ? interaction.client.channels.cache.get(channelId)
+    : null;
+
+  if (cachedChannel) {
+    return cachedChannel;
+  }
+
+  if (!interaction.client || !interaction.client.channels || typeof interaction.client.channels.fetch !== 'function') {
+    return null;
+  }
+
+  try {
+    return await interaction.client.channels.fetch(channelId);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function inspectChannelEnvironment(interaction, definition) {
+  const channelId = getConfiguredEnvValue(definition.envName);
+  const baseCheck = {
+    ...definition,
+    configured: Boolean(channelId),
+    channelId: channelId || null,
+    found: null,
+    accessible: null,
+    canSendMessages: null,
+  };
+
+  if (!channelId) {
+    return baseCheck;
+  }
+
+  const channel = await resolveConfiguredChannel(interaction, channelId);
+  if (!channel) {
+    return {
+      ...baseCheck,
+      found: false,
+      accessible: false,
+      canSendMessages: false,
+    };
+  }
+
+  const permissions = getChannelPermissions(channel, interaction.client && interaction.client.user);
+  return {
+    ...baseCheck,
+    found: true,
+    accessible: channelPermissionHas(permissions, PermissionFlagsBits.ViewChannel),
+    canSendMessages: channelPermissionHas(permissions, PermissionFlagsBits.SendMessages),
+  };
+}
+
+async function createOperatorEnvironmentCheck(interaction) {
+  const channelChecks = [];
+  for (const definition of OPERATOR_ENV_CHANNEL_CHECKS) {
+    channelChecks.push(await inspectChannelEnvironment(interaction, definition));
+  }
+
+  return {
+    channelChecks,
+    googleSheetsCheck: {
+      loggingEnabled: isGoogleSheetsLoggingEnabled(),
+      webAppUrlConfigured: Boolean(getConfiguredEnvValue('GOOGLE_SHEETS_WEB_APP_URL')),
+    },
+  };
 }
 
 function createInsufficientPointsDescription({ currentPoints = 0, requiredPoints = 0 } = {}) {
@@ -1760,6 +1909,10 @@ function getOperatorHubEmbed(value, limit = 10) {
     return buildOperatorReactionApprovalsEmbed(pointsRepository.listRecentReactionApprovals(limit));
   }
 
+  if (value === 'environment_check') {
+    return buildOperatorEnvironmentCheckEmbed();
+  }
+
   if (value === 'exports') {
     return buildOperatorExportGuideEmbed();
   }
@@ -1782,12 +1935,21 @@ async function handleOperatorHubSelect(interaction) {
 
   try {
     const selectedValue = interaction.values && interaction.values[0] ? interaction.values[0] : 'overview';
-    const payload = selectedValue === 'mission_management'
-      ? createMissionHubPayload()
-      : {
+    let payload;
+
+    if (selectedValue === 'mission_management') {
+      payload = createMissionHubPayload();
+    } else if (selectedValue === 'environment_check') {
+      payload = {
+        embeds: [buildOperatorEnvironmentCheckEmbed(await createOperatorEnvironmentCheck(interaction))],
+        components: [createOperatorHubSelectRow(selectedValue)],
+      };
+    } else {
+      payload = {
         embeds: [getOperatorHubEmbed(selectedValue, 10)],
         components: [createOperatorHubSelectRow(selectedValue)],
       };
+    }
 
     if (typeof interaction.update === 'function') {
       await interaction.update(payload);
