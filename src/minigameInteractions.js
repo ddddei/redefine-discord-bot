@@ -97,6 +97,19 @@ function createMinigameResultDescription(result, awardResult) {
       '이미 오늘 보상을 확인했어요.',
       '같은 게임 보상은 같은 날짜에 중복 지급되지 않아요.',
       `오늘 기록된 보상: ${formatPoints(awardResult.transaction.amount)}`,
+      `오늘 남은 미니게임 보상 한도: ${formatPoints(awardResult.remainingDailyRewardAfterAward || 0)}`,
+    ].join('\n');
+  }
+
+  if (!awardResult.ok && awardResult.reason === 'DAILY_PLAY_LIMIT_REACHED') {
+    return [
+      ...result.lines,
+      '',
+      '오늘 참여 가능한 미니게임 횟수를 모두 사용했어요.',
+      `오늘 미니게임 참여: ${awardResult.dailyPlayCount}/${awardResult.dailyPlayLimit}회`,
+      `오늘 남은 미니게임 보상 한도: ${formatPoints(awardResult.remainingDailyRewardAfterAward || 0)}`,
+      '',
+      '내일 다시 참여해 주세요.',
     ].join('\n');
   }
 
@@ -115,6 +128,8 @@ function createMinigameResultDescription(result, awardResult) {
     `지급 포인트: ${formatPoints(awardedPoints)}`,
     `현재 보유 포인트: ${formatPoints(awardResult.transaction.balanceAfter)}`,
     `오늘 미니게임 보상 한도: ${formatPoints(awardResult.dailyRewardCap)}`,
+    `오늘 남은 미니게임 보상 한도: ${formatPoints(awardResult.remainingDailyRewardAfterAward || 0)}`,
+    `오늘 미니게임 참여: ${awardResult.dailyPlayCountAfterAward}/${awardResult.dailyPlayLimit}회`,
     ...capLines,
     '',
     '포인트 차감이나 베팅은 없어요.',

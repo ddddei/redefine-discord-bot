@@ -111,8 +111,25 @@ function getButtons(payload) {
   });
 }
 
+function getRows(payload) {
+  return payload.components.map((row) => {
+    return row.components.map((component) => component.toJSON());
+  });
+}
+
 function assertButtonIds(payload, expectedIds) {
   assert.deepStrictEqual(getButtonIds(payload), expectedIds);
+}
+
+function assertMaxButtonsPerRow(payload, maxButtons = 3) {
+  assert.ok(getRows(payload).every((row) => row.length <= maxButtons));
+}
+
+function assertButtonStyles(payload, expectedStylesById) {
+  const buttonsById = new Map(getButtons(payload).map((button) => [button.custom_id, button]));
+  Object.entries(expectedStylesById).forEach(([customId, expectedStyle]) => {
+    assert.strictEqual(buttonsById.get(customId).style, expectedStyle, `${customId} button style`);
+  });
 }
 
 function setupTempState() {
@@ -199,6 +216,13 @@ async function run() {
     'participant_minigame_select:initial',
     'participant_minigame_select:explore',
   ]);
+  assertMaxButtonsPerRow(hubButton.replyPayload);
+  assert.ok(getButtonIds(hubButton.replyPayload).every((customId) => {
+    return customId.startsWith('participant_minigame_select:');
+  }));
+  assert.ok(getButtons(hubButton.replyPayload).every((button) => button.style === ButtonStyle.Primary));
+  assert.match(hubButton.replyPayload.embeds[0].data.description, /최대 4회/);
+  assert.match(hubButton.replyPayload.embeds[0].data.description, /최대 40P/);
 
   const outsideHubButton = createButtonInteraction(
     'participant_menu_minigames',
@@ -240,12 +264,15 @@ async function run() {
     'participant_minigame_card:2',
     'participant_minigame_card:3',
   ]);
+  assertMaxButtonsPerRow(cardSelect.replyPayload);
+  assert.ok(getButtons(cardSelect.replyPayload).every((button) => button.style === ButtonStyle.Secondary));
   const cardButton = createButtonInteraction('participant_minigame_card:2', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(cardButton);
   assert.strictEqual(cardButton.replyPayload.ephemeral, true);
   assert.strictEqual(getEmbedTitle(cardButton.replyPayload), '🎴 행운 카드 뒤집기');
   assert.match(cardButton.replyPayload.embeds[0].data.description, /선택한 카드:/);
   assert.match(cardButton.replyPayload.embeds[0].data.description, /카드 결과: (0P|3P|5P|10P)/);
+  assert.match(cardButton.replyPayload.embeds[0].data.description, /오늘 남은 미니게임 보상 한도: \d+P/);
 
   const duplicateCard = createButtonInteraction('participant_minigame_card:3', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(duplicateCard);
@@ -261,6 +288,8 @@ async function run() {
     'participant_minigame_rps:rock',
     'participant_minigame_rps:paper',
   ]);
+  assertMaxButtonsPerRow(rpsSelect.replyPayload);
+  assert.ok(getButtons(rpsSelect.replyPayload).every((button) => button.style === ButtonStyle.Secondary));
 
   const playDate = require('../src/pointsRepository').getKoreanDateString();
   const drawChoice = Object.keys(RPS_CHOICES).find((choice) => {
@@ -293,6 +322,9 @@ async function run() {
   assert.strictEqual(diceSelect.replyPayload.ephemeral, true);
   assert.strictEqual(getEmbedTitle(diceSelect.replyPayload), '🎲 주사위 대결');
   assertButtonIds(diceSelect.replyPayload, ['participant_minigame_dice']);
+  assertButtonStyles(diceSelect.replyPayload, {
+    participant_minigame_dice: ButtonStyle.Success,
+  });
   const diceButton = createButtonInteraction('participant_minigame_dice', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(diceButton);
   assert.strictEqual(diceButton.replyPayload.ephemeral, true);
@@ -312,6 +344,8 @@ async function run() {
     'participant_minigame_number:4',
     'participant_minigame_number:5',
   ]);
+  assertMaxButtonsPerRow(numberSelect.replyPayload);
+  assert.ok(getButtons(numberSelect.replyPayload).every((button) => button.style === ButtonStyle.Secondary));
   const numberButton = createButtonInteraction('participant_minigame_number:3', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(numberButton);
   assert.strictEqual(numberButton.replyPayload.ephemeral, true);
@@ -384,9 +418,66 @@ async function run() {
   const capData = readJson(paths.points);
   const capUser = capData.users.find((user) => user.userId === 'cap_user');
   const capEarned = capUser.totalPoints - 50;
-  assert.ok(capEarned <= 10, `daily minigame cap exceeded: ${capEarned}`);
+  assert.ok(capEarned <= 40, `daily minigame cap exceeded: ${capEarned}`);
   assert.ok(capData.pointTransactions.every((transaction) => transaction.amount >= 0));
   assert.ok(capData.pointTransactions.every((transaction) => transaction.relatedType === 'minigameReward'));
+
+  const repo = require('../src/pointsRepository').createPointsRepository();
+  const highRewardUser = { userId: 'high_reward_user', displayName: '상한 사용자' };
+  const highRewardGames = [
+    ['bonus_a', 15],
+    ['bonus_b', 15],
+    ['bonus_c', 15],
+    ['bonus_d', 15],
+  ];
+  const highRewardResults = highRewardGames.map(([gameId, rewardPoints]) => {
+    return repo.awardMinigameReward({
+      user: highRewardUser,
+      gameId,
+      gameTitle: gameId,
+      playDate,
+      rewardPoints,
+      reason: `미니게임 보상: ${gameId}`,
+    });
+  });
+  assert.deepStrictEqual(highRewardResults.map((result) => result.awardedPoints), [15, 15, 10, 0]);
+  assert.strictEqual(highRewardResults[2].remainingDailyRewardAfterAward, 0);
+  assert.strictEqual(highRewardResults[3].remainingDailyRewardAfterAward, 0);
+  assert.strictEqual(readJson(paths.points).users.find((user) => user.userId === 'high_reward_user').totalPoints, 40);
+
+  const playLimitUser = { userId: 'play_limit_user', displayName: '횟수 제한 사용자' };
+  ['card', 'dice', 'number', 'door'].forEach((gameId) => {
+    const result = repo.awardMinigameReward({
+      user: playLimitUser,
+      gameId,
+      gameTitle: gameId,
+      playDate,
+      rewardPoints: gameId === 'card' ? 0 : 1,
+      reason: `미니게임 보상: ${gameId}`,
+    });
+    assert.strictEqual(result.ok, true);
+  });
+  const fifthPlay = createButtonInteraction('participant_minigame_explore:library', 'play_limit_user', '횟수 제한 사용자');
+  await handleInteractionCreate(fifthPlay);
+  assert.strictEqual(fifthPlay.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(fifthPlay.replyPayload), '🧭 리디파인 탐험');
+  assert.match(fifthPlay.replyPayload.embeds[0].data.description, /오늘 참여 가능한 미니게임 횟수를 모두 사용했어요/);
+  assert.strictEqual(
+    readJson(paths.points).pointTransactions.filter((transaction) => transaction.userId === 'play_limit_user').length,
+    4
+  );
+
+  const zeroPointUser = 'zero_point_count_user';
+  const zeroPointPlay = repo.awardMinigameReward({
+    user: { userId: zeroPointUser, displayName: '0P 사용자' },
+    gameId: 'zero_a',
+    gameTitle: '0P 게임',
+    playDate,
+    rewardPoints: 0,
+    reason: '미니게임 보상: 0P 게임',
+  });
+  assert.strictEqual(zeroPointPlay.ok, true);
+  assert.strictEqual(zeroPointPlay.dailyPlayCountAfterAward, 1);
 
   fs.rmSync(tempDir, { recursive: true, force: true });
   console.log('minigame hub flow smoke test passed');

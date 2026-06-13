@@ -9,15 +9,17 @@ function createMinigameHubRows() {
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('participant_minigame_select:card').setLabel('🎴 행운 카드 뒤집기').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('participant_minigame_select:rps').setLabel('✊ 가위바위보').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('participant_minigame_select:dice').setLabel('🎲 주사위 대결').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('participant_minigame_select:number').setLabel('🔢 숫자 맞히기').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('participant_minigame_select:door').setLabel('🚪 문 하나 고르기').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('participant_minigame_select:rps').setLabel('✊ 가위바위보').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('participant_minigame_select:dice').setLabel('🎲 주사위 대결').setStyle(ButtonStyle.Primary)
     ),
     new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('participant_minigame_select:number').setLabel('🔢 숫자 맞히기').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('participant_minigame_select:door').setLabel('🚪 문 하나 고르기').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('participant_minigame_select:memory').setLabel('🧠 이모지 기억력').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('participant_minigame_select:initial').setLabel('🧩 초성 퀴즈').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('participant_minigame_select:explore').setLabel('🧭 리디파인 탐험').setStyle(ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('participant_minigame_select:initial').setLabel('🧩 초성 퀴즈').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('participant_minigame_select:explore').setLabel('🧭 리디파인 탐험').setStyle(ButtonStyle.Primary)
     ),
   ];
 }
@@ -25,9 +27,9 @@ function createMinigameHubRows() {
 function createCardChoiceRows() {
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('participant_minigame_card:1').setLabel('1번 카드').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('participant_minigame_card:2').setLabel('2번 카드').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('participant_minigame_card:3').setLabel('3번 카드').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('participant_minigame_card:1').setLabel('1번 카드').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('participant_minigame_card:2').setLabel('2번 카드').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('participant_minigame_card:3').setLabel('3번 카드').setStyle(ButtonStyle.Secondary)
     ),
   ];
 }
@@ -45,20 +47,25 @@ function createRpsChoiceRows() {
 function createDiceChoiceRows() {
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('participant_minigame_dice').setLabel('🎲 주사위 굴리기').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('participant_minigame_dice').setLabel('🎲 주사위 굴리기').setStyle(ButtonStyle.Success)
     ),
   ];
 }
 
 function createNumberChoiceRows() {
+  const buttons = [1, 2, 3, 4, 5].map((number) => {
+    return new ButtonBuilder()
+      .setCustomId(`participant_minigame_number:${number}`)
+      .setLabel(String(number))
+      .setStyle(ButtonStyle.Secondary);
+  });
+
   return [
     new ActionRowBuilder().addComponents(
-      ...[1, 2, 3, 4, 5].map((number) => {
-        return new ButtonBuilder()
-          .setCustomId(`participant_minigame_number:${number}`)
-          .setLabel(String(number))
-          .setStyle(ButtonStyle.Secondary);
-      })
+      ...buttons.slice(0, 3)
+    ),
+    new ActionRowBuilder().addComponents(
+      ...buttons.slice(3)
     ),
   ];
 }
