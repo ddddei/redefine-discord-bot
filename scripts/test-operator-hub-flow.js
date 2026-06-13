@@ -10,6 +10,7 @@ const {
 } = require('../src/components');
 const {
   buildOperatorChecklistEmbed,
+  buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
   buildOperatorMissionsShopEmbed,
@@ -18,6 +19,9 @@ const {
   buildOperatorRedemptionsEmbed,
   buildOperatorSubmissionsEmbed,
 } = require('../src/embeds');
+const {
+  handleOperatorHubSelect,
+} = require('../src/handlers');
 const { createPointsRepository } = require('../src/pointsRepository');
 
 process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
@@ -49,7 +53,16 @@ function getEmbedDescription(embed) {
   return (embed.data && embed.data.description) || '';
 }
 
-function main() {
+function restoreEnv(name, value) {
+  if (typeof value === 'undefined') {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
+async function main() {
   assert.strictEqual(OPERATOR_HUB_SELECT_ID, 'operator_hub_select');
   assert.deepStrictEqual(
     OPERATOR_HUB_OPTIONS.map((option) => option.value),
@@ -61,6 +74,7 @@ function main() {
       'missions_shop',
       'mission_management',
       'reaction_approvals',
+      'environment_check',
       'exports',
       'checklist',
     ]
@@ -70,7 +84,9 @@ function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 9);
+  assert.strictEqual(menu.options.length, 10);
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'environment_check'
+    && /환경|채널/.test(option.label)));
 
   const repository = createTempRepository();
   const emptySummary = repository.getOperationSummary();
@@ -183,10 +199,108 @@ function main() {
   assert.strictEqual(getEmbedTitle(reactions), '반응 승인 기록');
   assert.match(getEmbedDescription(reactions), /반응 승인 사용자/);
 
+  const envCheck = buildOperatorEnvironmentCheckEmbed({
+    channelChecks: [
+      {
+        envName: 'LOG_CHANNEL_ID',
+        label: '기본 운영 로그',
+        requirementLabel: '권장',
+        required: true,
+        configured: true,
+        channelId: 'operator_log_channel',
+        found: true,
+        accessible: true,
+        canSendMessages: true,
+      },
+      {
+        envName: 'MISSION_SUBMISSION_CHANNEL_ID',
+        label: '별도 인증 채널',
+        requirementLabel: '선택',
+        required: false,
+        configured: false,
+        channelId: null,
+        found: false,
+        accessible: false,
+        canSendMessages: false,
+      },
+    ],
+    googleSheetsCheck: {
+      loggingEnabled: true,
+      webAppUrlConfigured: true,
+    },
+  });
+  const envCheckDescription = getEmbedDescription(envCheck);
+  assert.strictEqual(getEmbedTitle(envCheck), '환경 설정 점검');
+  assert.match(envCheckDescription, /LOG_CHANNEL_ID/);
+  assert.match(envCheckDescription, /권장/);
+  assert.match(envCheckDescription, /MISSION_SUBMISSION_CHANNEL_ID/);
+  assert.match(envCheckDescription, /선택/);
+  assert.match(envCheckDescription, /미설정.*선택 항목/);
+  assert.match(envCheckDescription, /GOOGLE_SHEETS_LOGGING_ENABLED.*true/);
+  assert.match(envCheckDescription, /GOOGLE_SHEETS_WEB_APP_URL.*설정됨/);
+  assert.doesNotMatch(envCheckDescription, /https:\/\/script\.google\.com/);
+  assert.doesNotMatch(envCheckDescription, /secret/i);
+  assert.doesNotMatch(envCheckDescription, /token/i);
+
+  const originalEnv = {
+    logChannelId: process.env.LOG_CHANNEL_ID,
+    sheetsEnabled: process.env.GOOGLE_SHEETS_LOGGING_ENABLED,
+    sheetsUrl: process.env.GOOGLE_SHEETS_WEB_APP_URL,
+  };
+  process.env.LOG_CHANNEL_ID = 'operator_log_channel';
+  process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'true';
+  process.env.GOOGLE_SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/operator-secret-url/exec';
+  try {
+    let replyPayload = null;
+    await handleOperatorHubSelect({
+      customId: OPERATOR_HUB_SELECT_ID,
+      values: ['environment_check'],
+      member: {
+        permissions: {
+          has: () => true,
+        },
+      },
+      client: {
+        user: { id: 'bot_user' },
+        channels: {
+          cache: {
+            get: (channelId) => channelId === 'operator_log_channel'
+              ? {
+                id: 'operator_log_channel',
+                permissionsFor: () => ({
+                  has: () => true,
+                }),
+              }
+              : null,
+          },
+          fetch: async () => null,
+        },
+      },
+      reply: async (payload) => {
+        replyPayload = payload;
+      },
+    });
+    assert.ok(replyPayload);
+    assert.strictEqual(replyPayload.ephemeral, true);
+    assert.strictEqual(getEmbedTitle(replyPayload.embeds[0]), '환경 설정 점검');
+    const selectEnvDescription = getEmbedDescription(replyPayload.embeds[0]);
+    assert.match(selectEnvDescription, /LOG_CHANNEL_ID/);
+    assert.match(selectEnvDescription, /GOOGLE_SHEETS_WEB_APP_URL.*설정됨/);
+    assert.doesNotMatch(selectEnvDescription, /script\.google\.com/);
+    assert.doesNotMatch(selectEnvDescription, /operator-secret-url/);
+  } finally {
+    restoreEnv('LOG_CHANNEL_ID', originalEnv.logChannelId);
+    restoreEnv('GOOGLE_SHEETS_LOGGING_ENABLED', originalEnv.sheetsEnabled);
+    restoreEnv('GOOGLE_SHEETS_WEB_APP_URL', originalEnv.sheetsUrl);
+  }
+
   assert.match(getEmbedDescription(buildOperatorExportGuideEmbed()), /\/운영내보내기 종류:전체 형식:JSON/);
   assert.match(getEmbedDescription(buildOperatorChecklistEmbed()), /docs\/operator-dashboard-guide\.md/);
 
   console.log('operator hub flow smoke test passed');
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

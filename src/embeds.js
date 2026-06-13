@@ -487,6 +487,54 @@ function buildOperatorReactionApprovalsEmbed(records = []) {
   );
 }
 
+function formatCheckBoolean(value, trueLabel = '가능', falseLabel = '불가') {
+  if (value === null || typeof value === 'undefined') {
+    return '확인 안 됨';
+  }
+
+  return value ? trueLabel : falseLabel;
+}
+
+function formatChannelCheckLine(check) {
+  const configuredLabel = check.configured ? '설정됨' : '미설정';
+  const channelId = check.channelId ? `\`${truncateText(check.channelId, 64, '채널 ID')}\`` : '없음';
+  const missingOptionalNote = !check.configured && !check.required
+    ? ' / 선택 항목이라 오류는 아니에요'
+    : '';
+
+  return [
+    `- ${check.envName} (${check.requirementLabel})`,
+    `  용도: ${check.label || '운영 채널'}`,
+    `  설정: ${configuredLabel}${missingOptionalNote} / 채널 ID: ${channelId}`,
+    `  Discord 채널: ${formatCheckBoolean(check.found, '찾음', '못 찾음')} / 접근: ${formatCheckBoolean(check.accessible)} / 메시지 전송: ${formatCheckBoolean(check.canSendMessages)}`,
+  ].join('\n');
+}
+
+function buildOperatorEnvironmentCheckEmbed({ channelChecks = [], googleSheetsCheck = {} } = {}) {
+  const channelLines = channelChecks.length > 0
+    ? channelChecks.map(formatChannelCheckLine)
+    : ['- 점검할 채널 환경변수 목록을 불러오지 못했어요.'];
+  const sheetsEnabled = googleSheetsCheck.loggingEnabled ? 'true' : 'false';
+  const webAppUrlConfigured = googleSheetsCheck.webAppUrlConfigured ? '설정됨' : '미설정';
+
+  return createGuideEmbed(
+    '환경 설정 점검',
+    [
+      'Discord 채널 환경변수',
+      ...channelLines,
+      '',
+      'Google Sheets 보조 로그',
+      `- GOOGLE_SHEETS_LOGGING_ENABLED: ${sheetsEnabled}`,
+      `- GOOGLE_SHEETS_WEB_APP_URL: ${webAppUrlConfigured}`,
+      '',
+      '민감한 전체값은 이 화면에 표시하지 않습니다.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
 function buildOperatorExportGuideEmbed() {
   return createGuideEmbed(
     '내보내기 안내',
@@ -646,6 +694,7 @@ function createChannelGuideEmbed(options = {}) {
 module.exports = {
   OPERATOR_CHECK_FOOTER,
   buildOperatorChecklistEmbed,
+  buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
   buildOperatorMissionsShopEmbed,

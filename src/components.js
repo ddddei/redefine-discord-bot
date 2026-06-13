@@ -95,6 +95,11 @@ const OPERATOR_HUB_OPTIONS = [
     description: '미션 인증 채널 이모지 처리 기록',
   },
   {
+    label: '환경 설정 점검',
+    value: 'environment_check',
+    description: '주요 환경변수와 Discord 채널 권한 확인',
+  },
+  {
     label: '내보내기 안내',
     value: 'exports',
     description: '운영 데이터 백업 명령어 안내',
