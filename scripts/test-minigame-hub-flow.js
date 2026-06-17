@@ -215,14 +215,34 @@ async function run() {
     'participant_minigame_select:memory',
     'participant_minigame_select:initial',
     'participant_minigame_select:explore',
+    'participant_minigame_today_record',
+    'participant_minigame_today_ranking',
   ]);
   assertMaxButtonsPerRow(hubButton.replyPayload);
-  assert.ok(getButtonIds(hubButton.replyPayload).every((customId) => {
+  assertButtonStyles(hubButton.replyPayload, {
+    'participant_minigame_today_record': ButtonStyle.Secondary,
+    'participant_minigame_today_ranking': ButtonStyle.Secondary,
+  });
+  assert.ok(getButtonIds(hubButton.replyPayload).slice(0, 8).every((customId) => {
     return customId.startsWith('participant_minigame_select:');
   }));
-  assert.ok(getButtons(hubButton.replyPayload).every((button) => button.style === ButtonStyle.Primary));
+  assert.ok(getButtons(hubButton.replyPayload).slice(0, 8).every((button) => button.style === ButtonStyle.Primary));
   assert.match(hubButton.replyPayload.embeds[0].data.description, /최대 4회/);
   assert.match(hubButton.replyPayload.embeds[0].data.description, /최대 40P/);
+
+  const emptyRecordButton = createButtonInteraction('participant_minigame_today_record', 'empty_user', '기록 없는 사용자');
+  await handleInteractionCreate(emptyRecordButton);
+  assert.strictEqual(emptyRecordButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(emptyRecordButton.replyPayload), '📊 오늘의 미니게임 기록');
+  assert.match(emptyRecordButton.replyPayload.embeds[0].data.description, /아직 오늘 플레이한 미니게임이 없어요/);
+  assert.match(emptyRecordButton.replyPayload.embeds[0].data.description, /오늘 미니게임 참여 횟수: 0\/4/);
+  assert.match(emptyRecordButton.replyPayload.embeds[0].data.description, /오늘 미니게임 획득 포인트: 0\/40P/);
+
+  const emptyRankingButton = createButtonInteraction('participant_minigame_today_ranking', 'empty_user', '기록 없는 사용자');
+  await handleInteractionCreate(emptyRankingButton);
+  assert.strictEqual(emptyRankingButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(emptyRankingButton.replyPayload), '🏆 오늘의 미니게임 랭킹');
+  assert.match(emptyRankingButton.replyPayload.embeds[0].data.description, /아직 오늘의 랭킹 데이터가 없어요/);
 
   const outsideHubButton = createButtonInteraction(
     'participant_menu_minigames',
@@ -254,6 +274,11 @@ async function run() {
   assert.strictEqual(blockedSelect.replyPayload.ephemeral, true);
   assert.match(blockedSelect.replyPayload.content, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
   assert.strictEqual(readJson(paths.points).pointTransactions.length, 0);
+
+  const blockedRecord = createButtonInteraction('participant_minigame_today_record', 'mini_user', '미니게임 사용자', 'other_channel');
+  await handleInteractionCreate(blockedRecord);
+  assert.strictEqual(blockedRecord.replyPayload.ephemeral, true);
+  assert.match(blockedRecord.replyPayload.content, /미니게임은 지정된 미니게임 채널에서 이용해 주세요/);
 
   const cardSelect = createButtonInteraction('participant_minigame_select:card', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(cardSelect);
@@ -352,6 +377,20 @@ async function run() {
   assert.strictEqual(getEmbedTitle(numberButton.replyPayload), '🔢 숫자 맞히기');
   assert.match(numberButton.replyPayload.embeds[0].data.description, /내 숫자: 3/);
   assert.match(numberButton.replyPayload.embeds[0].data.description, /봇 숫자:/);
+
+  const populatedRecordButton = createButtonInteraction('participant_minigame_today_record', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(populatedRecordButton);
+  assert.strictEqual(populatedRecordButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(populatedRecordButton.replyPayload), '📊 오늘의 미니게임 기록');
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /오늘 미니게임 참여 횟수: 3\/4/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /오늘 미니게임 획득 포인트: \d+\/40P/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /남은 참여 횟수: 1회/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /남은 획득 가능 포인트: \d+P/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /오늘 플레이한 게임/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /행운 카드 뒤집기/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /주사위 대결/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /숫자 맞히기/);
+  assert.match(populatedRecordButton.replyPayload.embeds[0].data.description, /최근 결과/);
 
   const doorSelect = createButtonInteraction('participant_minigame_select:door', 'door_user', '문 선택 사용자');
   await handleInteractionCreate(doorSelect);
@@ -478,6 +517,16 @@ async function run() {
   });
   assert.strictEqual(zeroPointPlay.ok, true);
   assert.strictEqual(zeroPointPlay.dailyPlayCountAfterAward, 1);
+
+  const rankingButton = createButtonInteraction('participant_minigame_today_ranking', 'mini_user', '미니게임 사용자');
+  await handleInteractionCreate(rankingButton);
+  assert.strictEqual(rankingButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(rankingButton.replyPayload), '🏆 오늘의 미니게임 랭킹');
+  assert.match(rankingButton.replyPayload.embeds[0].data.description, /재미용 기록/);
+  assert.match(rankingButton.replyPayload.embeds[0].data.description, /상한 사용자/);
+  assert.match(rankingButton.replyPayload.embeds[0].data.description, /40P/);
+  assert.match(rankingButton.replyPayload.embeds[0].data.description, /미니게임 사용자/);
+  assert.match(rankingButton.replyPayload.embeds[0].data.description, /상위 5명/);
 
   fs.rmSync(tempDir, { recursive: true, force: true });
   console.log('minigame hub flow smoke test passed');

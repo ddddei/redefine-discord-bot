@@ -21,6 +21,10 @@ function createMinigameHubRows() {
       new ButtonBuilder().setCustomId('participant_minigame_select:initial').setLabel('🧩 초성 퀴즈').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('participant_minigame_select:explore').setLabel('🧭 리디파인 탐험').setStyle(ButtonStyle.Primary)
     ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('participant_minigame_today_record').setLabel('📊 오늘의 기록').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('participant_minigame_today_ranking').setLabel('🏆 오늘의 랭킹').setStyle(ButtonStyle.Secondary)
+    ),
   ];
 }
 

@@ -12,6 +12,8 @@ const {
   createMinigameDetailPayload,
   createMinigameHubPayload,
   createRpsChoicePayload,
+  createTodayMinigameRankingPayload,
+  createTodayMinigameRecordPayload,
 } = require('./minigamePayloads');
 const { getKoreanDateString } = require('./pointsRepository');
 
@@ -152,6 +154,20 @@ function createMinigameButtonHandler({ pointsRepository, getMemberDisplayName })
           content: '미니게임은 지정된 미니게임 채널에서 이용해 주세요.',
           ephemeral: true,
         });
+        return;
+      }
+
+      if (interaction.customId === 'participant_minigame_today_record') {
+        await interaction.reply(createTodayMinigameRecordPayload(
+          pointsRepository.getTodayMinigameRecord(interaction.user.id)
+        ));
+        return;
+      }
+
+      if (interaction.customId === 'participant_minigame_today_ranking') {
+        await interaction.reply(createTodayMinigameRankingPayload(
+          pointsRepository.listTodayMinigameRanking()
+        ));
         return;
       }
 
