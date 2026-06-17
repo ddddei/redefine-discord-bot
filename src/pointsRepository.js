@@ -16,6 +16,7 @@ const {
 } = require('./pointsStore');
 const defaultGoogleSheetsLogger = require('./googleSheetsLogger');
 const { filterOperationalRecords } = require('./operationalRecords');
+const { MINIGAMES } = require('./minigameData');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 
@@ -392,16 +393,104 @@ function createPointsRepository(paths = {}, options = {}) {
     return `${dateString}:${gameId}`;
   }
 
-  function listUserMinigameTransactions(pointsData, userId, dateString) {
+  function getMinigameGameIdFromRelatedId(relatedId) {
+    const parts = String(relatedId || '').split(':');
+    return parts.length >= 2 ? parts.slice(1).join(':') : '';
+  }
+
+  function getMinigameGameTitle(transaction) {
+    const gameId = getMinigameGameIdFromRelatedId(transaction.relatedId);
+    if (MINIGAMES[gameId]) {
+      return MINIGAMES[gameId].title;
+    }
+
+    const reason = String(transaction.reason || '');
+    return reason.replace(/^미니게임 보상:\s*/, '').trim() || gameId || '미니게임';
+  }
+
+  function listMinigameTransactionsByDate(pointsData, dateString) {
     const transactions = Array.isArray(pointsData.pointTransactions)
       ? pointsData.pointTransactions
       : [];
     const relatedPrefix = `${dateString}:`;
     return transactions.filter((transaction) => {
-      return transaction.userId === userId
-        && transaction.relatedType === MINIGAME_REWARD_RELATED_TYPE
+      return transaction.relatedType === MINIGAME_REWARD_RELATED_TYPE
         && String(transaction.relatedId || '').startsWith(relatedPrefix);
     });
+  }
+
+  function listUserMinigameTransactions(pointsData, userId, dateString) {
+    return listMinigameTransactionsByDate(pointsData, dateString).filter((transaction) => {
+      return transaction.userId === userId;
+    });
+  }
+
+  function createMinigameTransactionView(transaction) {
+    return {
+      id: transaction.id,
+      userId: transaction.userId,
+      amount: Math.max(0, transaction.amount || 0),
+      gameId: getMinigameGameIdFromRelatedId(transaction.relatedId),
+      gameTitle: getMinigameGameTitle(transaction),
+      reason: transaction.reason,
+      note: transaction.note || null,
+      createdAt: transaction.createdAt,
+    };
+  }
+
+  function getTodayMinigameRecord(userId, dateString = getKoreanDateString()) {
+    const state = loadState();
+    const dailyTransactions = listUserMinigameTransactions(state.pointsData, userId, dateString)
+      .map(createMinigameTransactionView)
+      .sort((left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime());
+    const earnedPoints = dailyTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const playedGames = dailyTransactions.map((transaction) => transaction.gameTitle);
+
+    return {
+      dateString,
+      playCount: dailyTransactions.length,
+      playLimit: MINIGAME_DAILY_PLAY_LIMIT,
+      earnedPoints,
+      rewardCap: MINIGAME_DAILY_REWARD_CAP,
+      remainingPlays: Math.max(0, MINIGAME_DAILY_PLAY_LIMIT - dailyTransactions.length),
+      remainingRewardPoints: Math.max(0, MINIGAME_DAILY_REWARD_CAP - earnedPoints),
+      playedGames,
+      recentResult: dailyTransactions[0] || null,
+      transactions: dailyTransactions,
+    };
+  }
+
+  function listTodayMinigameRanking(dateString = getKoreanDateString(), limit = 5) {
+    const state = loadState();
+    const users = Array.isArray(state.pointsData.users) ? state.pointsData.users : [];
+    const usersById = new Map(users.map((user) => [user.userId, user]));
+    const rankingByUserId = new Map();
+
+    listMinigameTransactionsByDate(state.pointsData, dateString).forEach((transaction) => {
+      const current = rankingByUserId.get(transaction.userId) || {
+        userId: transaction.userId,
+        displayName: usersById.get(transaction.userId)?.displayName || transaction.userId,
+        earnedPoints: 0,
+        playCount: 0,
+      };
+      current.earnedPoints += Math.max(0, transaction.amount || 0);
+      current.playCount += 1;
+      rankingByUserId.set(transaction.userId, current);
+    });
+
+    return Array.from(rankingByUserId.values())
+      .sort((left, right) => {
+        if (right.earnedPoints !== left.earnedPoints) {
+          return right.earnedPoints - left.earnedPoints;
+        }
+
+        if (right.playCount !== left.playCount) {
+          return right.playCount - left.playCount;
+        }
+
+        return left.displayName.localeCompare(right.displayName, 'ko');
+      })
+      .slice(0, Math.max(1, limit));
   }
 
   function awardMinigameReward(input) {
@@ -1684,6 +1773,7 @@ function createPointsRepository(paths = {}, options = {}) {
     getOperationSummary,
     getPointsExportData,
     getRedemptionsExportData,
+    getTodayMinigameRecord,
     getShopItemsExportData,
     getSubmissionsExportData,
     getSummaryExportData,
@@ -1694,6 +1784,7 @@ function createPointsRepository(paths = {}, options = {}) {
     hasReactionMessageBeenReviewed,
     listMissionsForAdmin,
     listOperationalTransactions,
+    listTodayMinigameRanking,
     listTransactions,
     listActiveMissions,
     listActiveShopItemsWithCodes,
