@@ -21,7 +21,7 @@
 | [admin-mission-management-hub.md](admin-mission-management-hub.md) | 관리자 미션 관리 허브 가이드 | Discord 안에서 미션을 확인, 생성, 수정, 상태 변경할 때 | `/운영현황` 미션 관리 허브, 버튼과 modal 사용법, 보류 기능, QA 체크리스트 |
 | [minigame-hub-guide.md](minigame-hub-guide.md) | 미니게임 허브 운영 가이드 | 지정 미니게임 채널과 버튼형 미니게임 포인트 보상 제한을 확인할 때 | `MINIGAME_CHANNEL_ID`, 2단계 미니게임 허브, 행운 카드, 가위바위보, 주사위, 숫자, 문 선택, 이모지 기억력, 초성 퀴즈, 리디파인 탐험, 하루 보상 상한, 중복 지급 차단 |
 | [google-sheets-integration-plan.md](google-sheets-integration-plan.md) | Google Sheets 운영 데이터 연동 설계안 | local JSON 운영 데이터 유실 위험을 줄이고 Sheets 보조 로그 저장소를 검토할 때 | append-only 포인트/인증 로그, 탭 구조, Apps Script 방식, fallback, DB 전환 고려사항 |
-| [mission-template-guide.md](mission-template-guide.md) | 미션 템플릿 운영 가이드 | 매일/오늘의 미션 템플릿 예시 구조와 개인정보 주의사항을 확인할 때 | `data/mission-templates.example.json`, 반복 미션 유형, 하루 1회 지급 제한, 실제 ID 금지 원칙 |
+| [mission-template-guide.md](mission-template-guide.md) | 미션 템플릿 운영 가이드 | `/운영현황` 미션 관리 허브에서 템플릿과 요일별 오늘의 미션을 운영할 때 | 템플릿 개념, 요일별 추천, 오늘의 미션 적용, 자동 게시 보류, 운영자 QA |
 | [participant-command-guide.md](participant-command-guide.md) | 참여자 명령어 가이드 | 참여자 안내문이나 운영진 응대 문구를 정리할 때 | 참여자 명령어 목적, 공개 범위, 안내 톤, 교환/인증 주의사항 |
 | [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md) | 실제 운영 전 QA 체크리스트 | 실제 참여자 입장 전 운영 환경과 명령어 흐름을 점검할 때 | 환경변수, Discord 권한, 참여자/운영자 명령어, 포인트/인증 흐름, 백업, 배포 확인 |
 | [prelaunch-automation-audit.md](prelaunch-automation-audit.md) | 운영 전 자동 점검 리포트 | 참여자 입장 전 자동화에 맡길 작업과 수동 확인 작업을 구분할 때 | 구현 기능 요약, 운영 문서 현황, 남은 작업, 자동화 적합/위험 작업, 다음 개발 후보 |

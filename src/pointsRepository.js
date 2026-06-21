@@ -29,6 +29,8 @@ const DEFAULT_PATHS = {
   redemptionsFallback: path.join(DATA_DIR, 'redemptions.example.json'),
   missions: process.env.MISSIONS_DATA_PATH || path.join(DATA_DIR, 'missions.local.json'),
   missionsFallback: path.join(DATA_DIR, 'missions.example.json'),
+  missionTemplates: process.env.MISSION_TEMPLATES_DATA_PATH || path.join(DATA_DIR, 'mission-templates.local.json'),
+  missionTemplatesFallback: path.join(DATA_DIR, 'mission-templates.example.json'),
   submissions: process.env.SUBMISSIONS_DATA_PATH || path.join(DATA_DIR, 'submissions.local.json'),
   submissionsFallback: path.join(DATA_DIR, 'submissions.example.json'),
   reactionApprovals: process.env.REACTION_APPROVALS_DATA_PATH || path.join(DATA_DIR, 'reaction-approvals.local.json'),
@@ -60,6 +62,12 @@ function getKoreanDateString(date = new Date()) {
   const day = String(kstDate.getUTCDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getKoreanWeekday(date = new Date()) {
+  const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return weekdays[kstDate.getUTCDay()];
 }
 
 function loadWithFallback(primaryPath, fallbackPath) {
@@ -221,6 +229,21 @@ function createPointsRepository(paths = {}, options = {}) {
 
   function saveMissionsData(missionsData) {
     saveJsonFile(resolvedPaths.missions, missionsData);
+  }
+
+  function getMissionTemplatesData() {
+    const data = loadOptionalWithFallback(
+      resolvedPaths.missionTemplates,
+      resolvedPaths.missionTemplatesFallback,
+      'missionTemplates'
+    );
+
+    return {
+      ...data,
+      isExample: data.isExample === true,
+      missionTemplates: Array.isArray(data.missionTemplates) ? data.missionTemplates : [],
+      weekdayRecommendations: Array.isArray(data.weekdayRecommendations) ? data.weekdayRecommendations : [],
+    };
   }
 
   function getSubmissionsData() {
@@ -768,6 +791,66 @@ function createPointsRepository(paths = {}, options = {}) {
     return sorted.slice(0, options.limit || 10);
   }
 
+  function normalizeMissionTemplate(template) {
+    const rewardPoints = Number.isInteger(template.rewardPoints)
+      ? template.rewardPoints
+      : template.defaultRewardPoints;
+
+    return {
+      id: String(template.id || '').trim(),
+      title: template.title || '제목 없음',
+      description: template.description || '설명 없음',
+      rewardPoints,
+      requiresSubmission: template.requiresSubmission !== false,
+      category: template.category || template.type || 'daily',
+      type: template.type || template.category || 'daily',
+      recommendedDay: template.recommendedDay || template.weekday || null,
+      weekday: template.weekday || template.recommendedDay || null,
+      status: template.status || 'draft',
+      note: template.note || template.operatorNote || null,
+    };
+  }
+
+  function listMissionTemplates(options = {}) {
+    const data = getMissionTemplatesData();
+    const templates = data.missionTemplates
+      .map(normalizeMissionTemplate)
+      .filter((template) => template.id && template.status !== 'archived')
+      .map((template) => ({
+        ...template,
+        isExample: data.isExample === true,
+      }));
+    return templates.slice(0, options.limit || 25);
+  }
+
+  function listWeekdayMissionRecommendations() {
+    const data = getMissionTemplatesData();
+    const templatesById = new Map(listMissionTemplates({ limit: 200 })
+      .map((template) => [template.id, template]));
+    return data.weekdayRecommendations.map((recommendation) => {
+      const template = templatesById.get(recommendation.templateId) || null;
+      return {
+        weekday: recommendation.weekday,
+        label: recommendation.label || recommendation.weekday,
+        templateId: recommendation.templateId,
+        title: recommendation.title || (template ? template.title : '추천 미션 없음'),
+        note: recommendation.note || (template ? template.note : null),
+        template,
+      };
+    });
+  }
+
+  function getTodayMissionRecommendation(date = new Date()) {
+    const weekday = getKoreanWeekday(date);
+    return listWeekdayMissionRecommendations()
+      .find((recommendation) => recommendation.weekday === weekday) || null;
+  }
+
+  function findMissionTemplate(templateId) {
+    return listMissionTemplates({ limit: 200 })
+      .find((template) => template.id === templateId) || null;
+  }
+
   function findMission(missionId) {
     const missionsData = getMissionsData();
     const missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
@@ -804,6 +887,12 @@ function createPointsRepository(paths = {}, options = {}) {
       note: input.note || null,
     };
 
+    if (input.category) mission.category = input.category;
+    if (input.type) mission.type = input.type;
+    if (input.sourceTemplateId) mission.sourceTemplateId = input.sourceTemplateId;
+    if (input.sourceTemplateTitle) mission.sourceTemplateTitle = input.sourceTemplateTitle;
+    if (input.recommendedDay) mission.recommendedDay = input.recommendedDay;
+
     if (!MISSION_STATUSES.has(mission.status)) {
       throw new Error('지원하지 않는 미션 상태입니다.');
     }
@@ -811,6 +900,49 @@ function createPointsRepository(paths = {}, options = {}) {
     missionsData.missions.push(mission);
     saveMissionsData(missionsData);
     return mission;
+  }
+
+  function createMissionFromTemplateForToday(templateId, options = {}) {
+    const template = findMissionTemplate(templateId);
+    if (!template) {
+      return { ok: false, reason: 'TEMPLATE_NOT_FOUND' };
+    }
+    if (template.isExample) {
+      return { ok: false, reason: 'EXAMPLE_TEMPLATE' };
+    }
+
+    const activeDate = options.activeDate || getKoreanDateString();
+    const missionsData = getMissionsData();
+    const missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
+    const existingActiveMission = missions.find((mission) => {
+      return mission.status === 'active' && mission.activeDate === activeDate;
+    });
+
+    if (existingActiveMission) {
+      return {
+        ok: false,
+        reason: 'TODAY_MISSION_EXISTS',
+        mission: existingActiveMission,
+        template,
+      };
+    }
+
+    const mission = createMission({
+      title: template.title,
+      description: template.description,
+      rewardPoints: template.rewardPoints,
+      requiresSubmission: template.requiresSubmission,
+      activeDate,
+      status: 'active',
+      note: template.note,
+      category: template.category,
+      type: template.type,
+      sourceTemplateId: template.id,
+      sourceTemplateTitle: template.title,
+      recommendedDay: template.recommendedDay,
+    });
+
+    return { ok: true, mission, template };
   }
 
   function updateMission(missionId, updates) {
@@ -1759,6 +1891,7 @@ function createPointsRepository(paths = {}, options = {}) {
     approveReactionMessage,
     createCheckin,
     createMission,
+    createMissionFromTemplateForToday,
     createMissionSubmission,
     createTodayMissionSubmission,
     createShopItem,
@@ -1770,6 +1903,7 @@ function createPointsRepository(paths = {}, options = {}) {
     getExportData,
     getMissionsData,
     getMissionsExportData,
+    getMissionTemplatesData,
     getOperationSummary,
     getPointsExportData,
     getRedemptionsExportData,
@@ -1778,11 +1912,13 @@ function createPointsRepository(paths = {}, options = {}) {
     getSubmissionsExportData,
     getSummaryExportData,
     getSubmissionsData,
+    getTodayMissionRecommendation,
     getReactionApprovalData,
     hasCheckedInToday,
     hasPaidTodayMissionReward,
     hasReactionMessageBeenReviewed,
     listMissionsForAdmin,
+    listMissionTemplates,
     listOperationalTransactions,
     listTodayMinigameRanking,
     listTransactions,
@@ -1795,6 +1931,7 @@ function createPointsRepository(paths = {}, options = {}) {
     listRecentReactionApprovals,
     listShopItemsForAdmin,
     listTodayCheckins,
+    listWeekdayMissionRecommendations,
     loadState,
     requestRedemption,
     rejectSubmissionById,
@@ -1822,4 +1959,5 @@ module.exports = {
   MINIGAME_REWARD_RELATED_TYPE,
   createPointsRepository,
   getKoreanDateString,
+  getKoreanWeekday,
 };

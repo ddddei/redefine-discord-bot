@@ -19,8 +19,64 @@ function setupEnvironment() {
   process.env.SHOP_ITEMS_DATA_PATH = path.join(tempDir, 'shop-items.json');
   process.env.REDEMPTIONS_DATA_PATH = path.join(tempDir, 'redemptions.json');
   process.env.MISSIONS_DATA_PATH = path.join(tempDir, 'missions.json');
+  process.env.MISSION_TEMPLATES_DATA_PATH = path.join(tempDir, 'mission-templates.json');
   process.env.SUBMISSIONS_DATA_PATH = path.join(tempDir, 'submissions.json');
   process.env.REACTION_APPROVALS_DATA_PATH = path.join(tempDir, 'reaction-approvals.json');
+
+  fs.writeFileSync(process.env.MISSION_TEMPLATES_DATA_PATH, JSON.stringify({
+    isExample: false,
+    missionTemplates: [
+      {
+        id: 'template_monday_checkin',
+        title: '월요일 가벼운 체크인',
+        description: '이번 주를 시작하며 오늘의 컨디션과 해보고 싶은 작은 참여를 한 줄로 남겨 주세요.',
+        rewardPoints: 15,
+        requiresSubmission: true,
+        category: 'checkin',
+        recommendedDay: 'monday',
+        status: 'active',
+        note: '월요일 기본 추천',
+      },
+      {
+        id: 'template_tuesday_photo',
+        title: '화요일 사진 기록',
+        description: '오늘 기억하고 싶은 장면을 사진으로 남겨 주세요. 얼굴이나 위치 정보는 가려도 괜찮아요.',
+        rewardPoints: 20,
+        requiresSubmission: true,
+        category: 'photo',
+        recommendedDay: 'tuesday',
+        status: 'active',
+        note: '사진 인증 추천',
+      },
+      {
+        id: 'template_'.padEnd(130, 'x'),
+        title: '긴 ID 템플릿',
+        description: '컴포넌트 value와 custom id 제한을 확인하는 템플릿입니다.',
+        rewardPoints: 10,
+        requiresSubmission: true,
+        category: 'edge',
+        recommendedDay: 'wednesday',
+        status: 'active',
+        note: 'long id smoke test',
+      },
+    ],
+    weekdayRecommendations: [
+      {
+        weekday: 'monday',
+        label: '월요일',
+        templateId: 'template_monday_checkin',
+        title: '가벼운 체크인',
+        note: '한 주 시작용 기본 미션',
+      },
+      {
+        weekday: 'tuesday',
+        label: '화요일',
+        templateId: 'template_tuesday_photo',
+        title: '사진 인증',
+        note: '사진 기록형 미션',
+      },
+    ],
+  }, null, 2));
 
   return tempDir;
 }
@@ -92,6 +148,17 @@ function createMissionSelectInteraction(missionId, isOperator = true) {
   };
 }
 
+function createMissionTemplateSelectInteraction(templateId, isOperator = true) {
+  return {
+    ...createBaseInteraction(isOperator),
+    customId: 'admin_mission_template_select',
+    values: [templateId],
+    isStringSelectMenu() {
+      return true;
+    },
+  };
+}
+
 function createButtonInteraction(customId, isOperator = true) {
   return {
     ...createBaseInteraction(isOperator),
@@ -121,6 +188,26 @@ function getEmbedTitle(payload) {
   return payload.embeds[0].data.title;
 }
 
+function findComponentByCustomId(payload, customId) {
+  for (const row of payload.components) {
+    for (const component of row.components) {
+      if (component.data && component.data.custom_id === customId) {
+        return component;
+      }
+    }
+  }
+
+  return null;
+}
+
+function getComponentCustomIds(payload) {
+  return payload.components.flatMap((row) => {
+    return row.components
+      .map((component) => component.data && component.data.custom_id)
+      .filter(Boolean);
+  });
+}
+
 async function main() {
   setupEnvironment();
 
@@ -128,7 +215,11 @@ async function main() {
   resetModule('../src/components');
   resetModule('../src/handlers');
 
-  const { OPERATOR_HUB_OPTIONS, createOperatorMissionHubToken } = require('../src/components');
+  const {
+    OPERATOR_HUB_OPTIONS,
+    createOperatorMissionHubToken,
+    createOperatorMissionTemplateToken,
+  } = require('../src/components');
   const { createPointsRepository } = require('../src/pointsRepository');
   const {
     createMissionHubPayload,
@@ -138,6 +229,11 @@ async function main() {
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'mission_management'));
 
   const repository = createPointsRepository();
+  const templates = repository.listMissionTemplates();
+  assert.ok(templates.some((template) => template.id === 'template_monday_checkin'));
+  assert.ok(repository.listWeekdayMissionRecommendations()
+    .some((recommendation) => recommendation.weekday === 'monday'));
+
   const seededMission = repository.createMission({
     title: '허브 기존 미션',
     description: '허브에서 선택해 수정할 기존 미션입니다.',
@@ -149,26 +245,203 @@ async function main() {
 
   const payload = createMissionHubPayload(seededMission.id);
   assert.strictEqual(getEmbedTitle(payload), '미션 관리 허브');
-  assert.strictEqual(payload.components[0].components[0].data.custom_id, 'operator_hub_select');
-  assert.strictEqual(payload.components[1].components[0].data.custom_id, 'admin_mission_hub_select');
+  assert.ok(findComponentByCustomId(payload, 'operator_hub_select'));
+  assert.ok(findComponentByCustomId(payload, 'admin_mission_hub_select'));
+  assert.ok(findComponentByCustomId(payload, 'admin_mission_template_select'));
+  const customIds = getComponentCustomIds(payload);
+  assert.strictEqual(new Set(customIds).size, customIds.length);
   payload.components.forEach((row) => row.toJSON());
   assert.match(payload.embeds[0].data.description, /참여자 안내문 미리보기/);
   assert.match(payload.embeds[0].data.description, /active 상태의 미션만 참여자/);
+  assert.match(payload.embeds[0].data.description, /미션 템플릿/);
+  assert.match(payload.embeds[0].data.description, /요일별 추천/);
+  assert.match(payload.embeds[0].data.description, /오늘의 추천/);
 
   const hubSelect = createHubSelectInteraction('mission_management');
   await handleInteractionCreate(hubSelect);
   assert.strictEqual(getEmbedTitle(hubSelect.updatePayload), '미션 관리 허브');
-  assert.strictEqual(hubSelect.updatePayload.components.length, 3);
+  assert.strictEqual(hubSelect.updatePayload.components.length, 5);
 
   const missionSelect = createMissionSelectInteraction(seededToken);
   await handleInteractionCreate(missionSelect);
   assert.strictEqual(getEmbedTitle(missionSelect.updatePayload), '미션 관리 허브');
   assert.match(missionSelect.updatePayload.embeds[0].data.description, new RegExp(seededMission.id));
 
+  const templateSelect = createMissionTemplateSelectInteraction(createOperatorMissionTemplateToken('template_monday_checkin'));
+  await handleInteractionCreate(templateSelect);
+  assert.strictEqual(getEmbedTitle(templateSelect.updatePayload), '미션 관리 허브');
+  assert.match(templateSelect.updatePayload.embeds[0].data.description, /월요일 가벼운 체크인/);
+
+  const applyTemplateButton = createButtonInteraction(`admin_mission_hub:apply_template:${createOperatorMissionTemplateToken('template_monday_checkin')}`);
+  await handleInteractionCreate(applyTemplateButton);
+  assert.strictEqual(getEmbedTitle(applyTemplateButton.updatePayload), '미션 관리 허브');
+  assert.match(applyTemplateButton.followUpPayload.content, /오늘의 미션으로 적용/);
+
+  const templateMission = repository.listMissionsForAdmin({ limit: 20 })
+    .find((mission) => mission.sourceTemplateId === 'template_monday_checkin');
+  assert.ok(templateMission);
+  assert.strictEqual(templateMission.title, '월요일 가벼운 체크인');
+  assert.strictEqual(templateMission.status, 'active');
+  assert.strictEqual(templateMission.rewardPoints, 15);
+  assert.strictEqual(templateMission.requiresSubmission, true);
+  assert.strictEqual(templateMission.category, 'checkin');
+  assert.strictEqual(templateMission.sourceTemplateId, 'template_monday_checkin');
+  assert.match(templateMission.activeDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(repository.listActiveMissions().some((mission) => mission.id === templateMission.id));
+
+  const duplicateApplyButton = createButtonInteraction(`admin_mission_hub:apply_template:${createOperatorMissionTemplateToken('template_tuesday_photo')}`);
+  await handleInteractionCreate(duplicateApplyButton);
+  assert.match(duplicateApplyButton.followUpPayload.content, /이미 오늘의 active 미션/);
+  assert.strictEqual(
+    repository.listMissionsForAdmin({ limit: 50 }).filter((mission) => mission.activeDate === templateMission.activeDate && mission.status === 'active').length,
+    1
+  );
+
+  const submissionResult = repository.createMissionSubmission({
+    missionId: templateMission.id,
+    user: {
+      userId: 'mission_template_submitter',
+      displayName: '템플릿 제출자',
+    },
+    content: '오늘 미션 제출 구조 확인',
+  });
+  assert.strictEqual(submissionResult.ok, true);
+  assert.strictEqual(submissionResult.mission.id, templateMission.id);
+  assert.strictEqual(submissionResult.submission.type, 'mission');
+  assert.strictEqual(submissionResult.submission.status, 'pending');
+
+  const longTemplateToken = createOperatorMissionTemplateToken('template_'.padEnd(130, 'x'));
+  const longTemplatePayload = createMissionHubPayload(null, 'template_'.padEnd(130, 'x'));
+  longTemplatePayload.components.forEach((row) => row.toJSON());
+  const longTemplateSelect = findComponentByCustomId(longTemplatePayload, 'admin_mission_template_select');
+  assert.ok(longTemplateSelect.options.some((option) => option.data.value === longTemplateToken));
+  const longApplyButton = getComponentCustomIds(longTemplatePayload)
+    .find((customId) => customId.startsWith('admin_mission_hub:apply_template:'));
+  assert.ok(longApplyButton.length <= 100);
+
+  const farBackMission = repository.createMission({
+    title: '오래된 오늘 active 미션',
+    description: '200개 초과 상태에서도 중복 적용을 막아야 합니다.',
+    rewardPoints: 10,
+    requiresSubmission: true,
+    activeDate: '2099-05-05',
+    status: 'active',
+  });
+  for (let index = 0; index < 205; index += 1) {
+    repository.createMission({
+      title: `정렬 앞쪽 채움 미션 ${index}`,
+      description: '중복 검사 범위 회귀 테스트용 미션입니다.',
+      rewardPoints: 1,
+      requiresSubmission: true,
+      activeDate: `2099-06-${String((index % 28) + 1).padStart(2, '0')}`,
+      status: 'draft',
+    });
+  }
+  const duplicateBeyondLimit = repository.createMissionFromTemplateForToday('template_tuesday_photo', {
+    activeDate: '2099-05-05',
+  });
+  assert.strictEqual(duplicateBeyondLimit.ok, false);
+  assert.strictEqual(duplicateBeyondLimit.reason, 'TODAY_MISSION_EXISTS');
+  assert.strictEqual(duplicateBeyondLimit.mission.id, farBackMission.id);
+
+  const exampleTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-mission-template-example-'));
+  const exampleRepository = createPointsRepository({
+    missions: path.join(exampleTempDir, 'example-missions.json'),
+    missionTemplates: path.join(exampleTempDir, 'missing-mission-templates.json'),
+  });
+  assert.ok(exampleRepository.listMissionTemplates().some((template) => template.isExample === true));
+  const exampleApply = exampleRepository.createMissionFromTemplateForToday('template_monday_checkin_example');
+  assert.strictEqual(exampleApply.ok, false);
+  assert.strictEqual(exampleApply.reason, 'EXAMPLE_TEMPLATE');
+  assert.strictEqual(exampleRepository.listMissionsForAdmin({ limit: 10 }).length, 0);
+
+  const primaryExampleTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-mission-template-primary-example-'));
+  const primaryExampleTemplatePath = path.join(primaryExampleTempDir, 'primary-example-templates.json');
+  fs.writeFileSync(primaryExampleTemplatePath, JSON.stringify({
+    isExample: true,
+    missionTemplates: [{
+      id: 'template_primary_example',
+      title: '기본 경로 예시 템플릿',
+      description: '기본 경로여도 isExample이면 적용하면 안 됩니다.',
+      rewardPoints: 10,
+      requiresSubmission: true,
+      category: 'example',
+      recommendedDay: 'monday',
+      status: 'active',
+      note: 'primary example guard',
+    }],
+    weekdayRecommendations: [],
+  }, null, 2));
+  const primaryExampleRepository = createPointsRepository({
+    missions: path.join(primaryExampleTempDir, 'primary-example-missions.json'),
+    missionTemplates: primaryExampleTemplatePath,
+  });
+  const primaryExampleApply = primaryExampleRepository.createMissionFromTemplateForToday('template_primary_example');
+  assert.strictEqual(primaryExampleApply.ok, false);
+  assert.strictEqual(primaryExampleApply.reason, 'EXAMPLE_TEMPLATE');
+  assert.strictEqual(primaryExampleRepository.listMissionsForAdmin({ limit: 10 }).length, 0);
+
+  const manyTemplatesTempDir = setupEnvironment();
+  const manyTemplates = [];
+  for (let index = 0; index < 26; index += 1) {
+    manyTemplates.push({
+      id: `template_many_${index}`,
+      title: `앞쪽 템플릿 ${index}`,
+      description: '추천 템플릿 앞에 있는 템플릿입니다.',
+      rewardPoints: 1,
+      requiresSubmission: true,
+      category: 'filler',
+      recommendedDay: 'sunday',
+      status: 'active',
+      note: 'filler',
+    });
+  }
+  manyTemplates.push({
+    id: 'template_today_recommended_after_25',
+    title: '25개 뒤 오늘 추천 템플릿',
+    description: '선택 목록 첫 페이지 밖에 있어도 오늘 추천이면 적용 버튼 대상이어야 합니다.',
+    rewardPoints: 30,
+    requiresSubmission: true,
+    category: 'recommended',
+    recommendedDay: 'monday',
+    status: 'active',
+    note: 'after 25',
+  });
+  fs.writeFileSync(process.env.MISSION_TEMPLATES_DATA_PATH, JSON.stringify({
+    isExample: false,
+    missionTemplates: manyTemplates,
+    weekdayRecommendations: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].map((weekday) => ({
+      weekday,
+      label: '월요일',
+      templateId: 'template_today_recommended_after_25',
+      title: '25개 뒤 추천',
+      note: '첫 페이지 밖 추천',
+    })),
+  }, null, 2));
+  resetModule('../src/pointsRepository');
+  resetModule('../src/components');
+  resetModule('../src/handlers');
+  const manyTemplateComponents = require('../src/components');
+  const manyTemplateHandlers = require('../src/handlers');
+  const manyTemplatePayload = manyTemplateHandlers.createMissionHubPayload(null);
+  const manyTemplateApplyButton = getComponentCustomIds(manyTemplatePayload)
+    .find((customId) => customId.startsWith('admin_mission_hub:apply_template:'));
+  assert.ok(manyTemplateApplyButton.endsWith(manyTemplateComponents.createOperatorMissionTemplateToken('template_today_recommended_after_25')));
+
   const nonOperatorCreate = createButtonInteraction('admin_mission_hub:create', false);
   await handleInteractionCreate(nonOperatorCreate);
   assert.strictEqual(nonOperatorCreate.replyPayload.ephemeral, true);
   assert.match(nonOperatorCreate.replyPayload.content, /운영진 권한/);
+
+  const nonOperatorTemplateSelect = createMissionTemplateSelectInteraction(createOperatorMissionTemplateToken('template_monday_checkin'), false);
+  await handleInteractionCreate(nonOperatorTemplateSelect);
+  assert.strictEqual(nonOperatorTemplateSelect.replyPayload.ephemeral, true);
+  assert.match(nonOperatorTemplateSelect.replyPayload.content, /운영진 권한/);
+
+  const nonOperatorApplyTemplate = createButtonInteraction(`admin_mission_hub:apply_template:${createOperatorMissionTemplateToken('template_monday_checkin')}`, false);
+  await handleInteractionCreate(nonOperatorApplyTemplate);
+  assert.strictEqual(nonOperatorApplyTemplate.replyPayload.ephemeral, true);
+  assert.match(nonOperatorApplyTemplate.replyPayload.content, /운영진 권한/);
 
   const nonOperatorModal = createModalInteraction('admin_mission_hub_modal:create', {
     title: '비운영자 생성 시도',
