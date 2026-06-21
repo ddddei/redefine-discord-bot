@@ -729,6 +729,44 @@ function formatTodayMissionRecommendation(recommendation) {
   ].join('\n');
 }
 
+function buildTodayMissionNoticeEmbed(mission) {
+  return createGuideEmbed(
+    '오늘의 미션',
+    [
+      `**${mission.title || '오늘의 미션'}**`,
+      truncateText(mission.description || '오늘 편하게 참여할 수 있는 작은 미션입니다.', 700, '오늘 편하게 참여할 수 있는 작은 미션입니다.'),
+      '',
+      '오늘 할 일',
+      '가능한 만큼 해보고, 글이나 사진으로 짧게 남겨 주세요.',
+      '',
+      '인증 방법',
+      mission.requiresSubmission === false
+        ? '#오늘의-미션 채널 안내를 확인하고 운영 기준에 맞게 참여해 주세요.'
+        : '#오늘의-미션 채널에 글, 사진, 영상 중 편한 방식으로 인증을 올려 주세요.',
+      '',
+      `지급 포인트: ${formatPoints(mission.rewardPoints || 0)}`,
+      '주의사항',
+      '- 오늘의 미션 포인트는 하루 1회만 지급됩니다.',
+      '- 운영자 확인 후 지급됩니다.',
+      '- 얼굴, 주소, 연락처처럼 민감한 정보는 가려도 괜찮아요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildTodayMissionNoticePayload(mission) {
+  return {
+    embeds: [buildTodayMissionNoticeEmbed(mission)],
+    allowedMentions: { parse: [] },
+  };
+}
+
+function getTodayMissionNoticeMission() {
+  return pointsRepository.findTodayActiveMission();
+}
+
 function createAdminMissionHubEmbed(missions, selectedMissionId = null, templates = [], selectedTemplateId = null, recommendations = [], todayRecommendation = null) {
   const selectedMission = getMissionHubSelection(missions, selectedMissionId);
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId)
@@ -789,6 +827,102 @@ function createAdminMissionHubEmbed(missions, selectedMissionId = null, template
       footer: OPERATOR_CHECK_FOOTER,
     }
   );
+}
+
+async function handleTodayMissionNoticePreview(interaction) {
+  const mission = getTodayMissionNoticeMission();
+  if (!mission) {
+    await interaction.reply({
+      content: '오늘 게시할 active 미션이 없어요. 템플릿을 오늘의 미션으로 적용하거나 미션을 active 상태로 만든 뒤 다시 확인해 주세요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    embeds: [createGuideEmbed(
+      '오늘의 미션 공지 미리보기',
+      buildTodayMissionNoticeEmbed(mission).data.description,
+      {
+        footer: OPERATOR_CHECK_FOOTER,
+      }
+    )],
+    ephemeral: true,
+  });
+}
+
+async function handleTodayMissionNoticePublish(interaction) {
+  const mission = getTodayMissionNoticeMission();
+  if (!mission) {
+    await interaction.reply({
+      content: '오늘 게시할 active 미션이 없어요. 템플릿을 오늘의 미션으로 적용하거나 미션을 active 상태로 만든 뒤 다시 시도해 주세요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (pointsRepository.hasTodayMissionNoticeBeenPublished()) {
+    await interaction.reply({
+      content: '이미 오늘의 미션을 게시했어요. 중복 게시하지 않았습니다.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const channelId = getConfiguredEnvValue('TODAY_MISSION_CHANNEL_ID');
+  if (!channelId) {
+    await interaction.reply({
+      content: 'TODAY_MISSION_CHANNEL_ID가 설정되지 않아 오늘의 미션을 게시할 수 없어요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const channel = await resolveConfiguredChannel(interaction, channelId);
+  if (!channel || typeof channel.send !== 'function') {
+    await interaction.reply({
+      content: '오늘의 미션 채널을 찾지 못했거나 메시지를 보낼 수 없어요. 채널 ID와 봇 권한을 확인해 주세요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const reservation = pointsRepository.reserveTodayMissionNoticePublication({
+    missionId: mission.id,
+    missionTitle: mission.title || null,
+    channelId,
+    publishedBy: interaction.user && interaction.user.id ? interaction.user.id : null,
+  });
+
+  if (!reservation.ok && reservation.reason === 'ALREADY_RESERVED') {
+    await interaction.reply({
+      content: '이미 오늘의 미션을 게시했어요. 중복 게시하지 않았습니다.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  let message;
+  try {
+    message = await channel.send(buildTodayMissionNoticePayload(mission));
+  } catch (error) {
+    pointsRepository.failTodayMissionNoticePublication(reservation.record.id, error.message);
+    await interaction.reply({
+      content: `오늘의 미션 게시에 실패했어요. ${error.message}`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  pointsRepository.completeTodayMissionNoticePublication(reservation.record.id, {
+    messageId: message && message.id ? message.id : null,
+    messageUrl: message && message.url ? message.url : null,
+  });
+
+  await interaction.reply({
+    content: '오늘의 미션을 게시했어요.',
+    ephemeral: true,
+  });
 }
 
 function createMissionHubPayload(selectedMissionId = null, selectedTemplateId = null) {
@@ -2131,6 +2265,16 @@ async function handleMissionHubButton(interaction) {
     if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refresh
       || interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refreshTemplates) {
       await interaction.update(createMissionHubPayload());
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.previewTodayNotice) {
+      await handleTodayMissionNoticePreview(interaction);
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.publishTodayNotice) {
+      await handleTodayMissionNoticePublish(interaction);
       return;
     }
 
