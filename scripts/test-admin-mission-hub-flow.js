@@ -95,6 +95,21 @@ function createBaseInteraction(isOperator = true) {
       username: isOperator ? '허브 운영자' : '일반 참여자',
     },
     member: createMember(isOperator),
+    client: {
+      user: {
+        id: 'bot_user',
+      },
+      channels: {
+        cache: {
+          get() {
+            return null;
+          },
+        },
+        async fetch() {
+          return null;
+        },
+      },
+    },
     replyPayload: null,
     updatePayload: null,
     followUpPayload: null,
@@ -124,6 +139,81 @@ function createBaseInteraction(isOperator = true) {
       this.shownModal = modal;
     },
   };
+}
+
+function createSendableChannel(sentMessages) {
+  return {
+    id: 'today_mission_channel_test',
+    async send(payload) {
+      sentMessages.push(payload);
+      return {
+        id: `today_mission_notice_${sentMessages.length}`,
+        url: `https://discord.test/channels/test/today_mission_notice_${sentMessages.length}`,
+      };
+    },
+  };
+}
+
+function attachTodayMissionChannel(interaction, sentMessages) {
+  const channel = createSendableChannel(sentMessages);
+  interaction.client = {
+    user: {
+      id: 'bot_user',
+    },
+    channels: {
+      cache: {
+        get(channelId) {
+          return channelId === channel.id ? channel : null;
+        },
+      },
+      async fetch(channelId) {
+        return channelId === channel.id ? channel : null;
+      },
+    },
+  };
+  return interaction;
+}
+
+function createDeferredSendChannel(sentMessages) {
+  let releaseSend;
+  const sendStarted = new Promise((resolve) => {
+    releaseSend = resolve;
+  });
+  const channel = {
+    id: 'today_mission_channel_test',
+    async send(payload) {
+      sentMessages.push(payload);
+      await sendStarted;
+      return {
+        id: `today_mission_notice_${sentMessages.length}`,
+        url: `https://discord.test/channels/test/today_mission_notice_${sentMessages.length}`,
+      };
+    },
+  };
+
+  return {
+    channel,
+    releaseSend,
+  };
+}
+
+function attachDeferredTodayMissionChannel(interaction, channel) {
+  interaction.client = {
+    user: {
+      id: 'bot_user',
+    },
+    channels: {
+      cache: {
+        get(channelId) {
+          return channelId === channel.id ? channel : null;
+        },
+      },
+      async fetch(channelId) {
+        return channelId === channel.id ? channel : null;
+      },
+    },
+  };
+  return interaction;
 }
 
 function createHubSelectInteraction(value, isOperator = true) {
@@ -210,6 +300,7 @@ function getComponentCustomIds(payload) {
 
 async function main() {
   setupEnvironment();
+  const previousTodayMissionChannelId = process.env.TODAY_MISSION_CHANNEL_ID;
 
   resetModule('../src/pointsRepository');
   resetModule('../src/components');
@@ -256,6 +347,8 @@ async function main() {
   assert.match(payload.embeds[0].data.description, /미션 템플릿/);
   assert.match(payload.embeds[0].data.description, /요일별 추천/);
   assert.match(payload.embeds[0].data.description, /오늘의 추천/);
+  assert.ok(findComponentByCustomId(payload, 'admin_mission_hub:preview_today_notice'));
+  assert.ok(findComponentByCustomId(payload, 'admin_mission_hub:publish_today_notice'));
 
   const hubSelect = createHubSelectInteraction('mission_management');
   await handleInteractionCreate(hubSelect);
@@ -309,6 +402,120 @@ async function main() {
   assert.strictEqual(submissionResult.mission.id, templateMission.id);
   assert.strictEqual(submissionResult.submission.type, 'mission');
   assert.strictEqual(submissionResult.submission.status, 'pending');
+
+  const emptyTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-mission-empty-preview-'));
+  process.env.MISSIONS_DATA_PATH = path.join(emptyTempDir, 'empty-missions.json');
+  process.env.MISSION_TEMPLATES_DATA_PATH = path.join(emptyTempDir, 'empty-templates.json');
+  fs.writeFileSync(process.env.MISSION_TEMPLATES_DATA_PATH, JSON.stringify({
+    isExample: false,
+    missionTemplates: [],
+    weekdayRecommendations: [],
+  }, null, 2));
+  resetModule('../src/pointsRepository');
+  resetModule('../src/components');
+  resetModule('../src/handlers');
+  const emptyHandlers = require('../src/handlers');
+  const emptyPreviewButton = createButtonInteraction('admin_mission_hub:preview_today_notice');
+  await emptyHandlers.handleInteractionCreate(emptyPreviewButton);
+  assert.strictEqual(emptyPreviewButton.replyPayload.ephemeral, true);
+  assert.match(emptyPreviewButton.replyPayload.content, /오늘 게시할 active 미션이 없어요/);
+
+  setupEnvironment();
+  resetModule('../src/pointsRepository');
+  resetModule('../src/components');
+  resetModule('../src/handlers');
+  const publishComponents = require('../src/components');
+  const publishHandlers = require('../src/handlers');
+  const publishRepository = require('../src/pointsRepository').createPointsRepository();
+  const publishResult = publishRepository.createMissionFromTemplateForToday('template_monday_checkin');
+  assert.strictEqual(publishResult.ok, true);
+
+  const previewNoticeButton = createButtonInteraction('admin_mission_hub:preview_today_notice');
+  await publishHandlers.handleInteractionCreate(previewNoticeButton);
+  assert.strictEqual(previewNoticeButton.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(previewNoticeButton.replyPayload), '오늘의 미션 공지 미리보기');
+  assert.match(previewNoticeButton.replyPayload.embeds[0].data.description, /월요일 가벼운 체크인/);
+  assert.match(previewNoticeButton.replyPayload.embeds[0].data.description, /15P/);
+  assert.match(previewNoticeButton.replyPayload.embeds[0].data.description, /#오늘의-미션/);
+  assert.match(previewNoticeButton.replyPayload.embeds[0].data.description, /운영자 확인 후 지급/);
+
+  delete process.env.TODAY_MISSION_CHANNEL_ID;
+  const missingChannelPublish = createButtonInteraction('admin_mission_hub:publish_today_notice');
+  await publishHandlers.handleInteractionCreate(missingChannelPublish);
+  assert.strictEqual(missingChannelPublish.replyPayload.ephemeral, true);
+  assert.match(missingChannelPublish.replyPayload.content, /TODAY_MISSION_CHANNEL_ID/);
+
+  process.env.TODAY_MISSION_CHANNEL_ID = 'today_mission_channel_test';
+  const sentMessages = [];
+  const publishButton = attachTodayMissionChannel(
+    createButtonInteraction('admin_mission_hub:publish_today_notice'),
+    sentMessages
+  );
+  await publishHandlers.handleInteractionCreate(publishButton);
+  assert.strictEqual(publishButton.replyPayload.ephemeral, true);
+  assert.match(publishButton.replyPayload.content, /오늘의 미션을 게시했어요/);
+  assert.strictEqual(sentMessages.length, 1);
+  assert.match(sentMessages[0].embeds[0].data.description, /월요일 가벼운 체크인/);
+  assert.match(sentMessages[0].embeds[0].data.description, /하루 1회/);
+  assert.match(sentMessages[0].embeds[0].data.description, /운영자 확인 후 지급/);
+  assert.strictEqual(publishRepository.findMission(publishResult.mission.id).status, 'active');
+  assert.strictEqual(publishRepository.findMission(publishResult.mission.id).rewardPoints, 15);
+  assert.ok(publishRepository.hasTodayMissionNoticeBeenPublished());
+
+  const duplicatePublishButton = attachTodayMissionChannel(
+    createButtonInteraction('admin_mission_hub:publish_today_notice'),
+    sentMessages
+  );
+  await publishHandlers.handleInteractionCreate(duplicatePublishButton);
+  assert.strictEqual(duplicatePublishButton.replyPayload.ephemeral, true);
+  assert.match(duplicatePublishButton.replyPayload.content, /이미 오늘의 미션을 게시했어요/);
+  assert.strictEqual(sentMessages.length, 1);
+
+  setupEnvironment();
+  process.env.TODAY_MISSION_CHANNEL_ID = 'today_mission_channel_test';
+  resetModule('../src/pointsRepository');
+  resetModule('../src/components');
+  resetModule('../src/handlers');
+  const concurrentHandlers = require('../src/handlers');
+  const concurrentRepository = require('../src/pointsRepository').createPointsRepository();
+  const concurrentMission = concurrentRepository.createMissionFromTemplateForToday('template_monday_checkin');
+  assert.strictEqual(concurrentMission.ok, true);
+  const concurrentMessages = [];
+  const deferredChannel = createDeferredSendChannel(concurrentMessages);
+  const firstConcurrentPublish = attachDeferredTodayMissionChannel(
+    createButtonInteraction('admin_mission_hub:publish_today_notice'),
+    deferredChannel.channel
+  );
+  const secondConcurrentPublish = attachDeferredTodayMissionChannel(
+    createButtonInteraction('admin_mission_hub:publish_today_notice'),
+    deferredChannel.channel
+  );
+  const firstPublishPromise = concurrentHandlers.handleInteractionCreate(firstConcurrentPublish);
+  const secondPublishPromise = concurrentHandlers.handleInteractionCreate(secondConcurrentPublish);
+  deferredChannel.releaseSend();
+  await Promise.all([firstPublishPromise, secondPublishPromise]);
+  assert.strictEqual(concurrentMessages.length, 1);
+  assert.ok([
+    firstConcurrentPublish.replyPayload.content,
+    secondConcurrentPublish.replyPayload.content,
+  ].some((content) => /이미 오늘의 미션을 게시했어요/.test(content)));
+  assert.ok(concurrentRepository.hasTodayMissionNoticeBeenPublished());
+
+  const nonOperatorPreview = createButtonInteraction('admin_mission_hub:preview_today_notice', false);
+  await publishHandlers.handleInteractionCreate(nonOperatorPreview);
+  assert.strictEqual(nonOperatorPreview.replyPayload.ephemeral, true);
+  assert.match(nonOperatorPreview.replyPayload.content, /운영진 권한/);
+
+  if (previousTodayMissionChannelId === undefined) {
+    delete process.env.TODAY_MISSION_CHANNEL_ID;
+  } else {
+    process.env.TODAY_MISSION_CHANNEL_ID = previousTodayMissionChannelId;
+  }
+  setupEnvironment();
+  resetModule('../src/pointsRepository');
+  resetModule('../src/components');
+  resetModule('../src/handlers');
+  assert.strictEqual(typeof publishComponents.createOperatorMissionTemplateToken, 'function');
 
   const longTemplateToken = createOperatorMissionTemplateToken('template_'.padEnd(130, 'x'));
   const longTemplatePayload = createMissionHubPayload(null, 'template_'.padEnd(130, 'x'));

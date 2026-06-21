@@ -857,6 +857,104 @@ function createPointsRepository(paths = {}, options = {}) {
     return missions.find((mission) => mission.id === missionId) || null;
   }
 
+  function findTodayActiveMission(dateString = getKoreanDateString()) {
+    const missionsData = getMissionsData();
+    const missions = Array.isArray(missionsData.missions) ? missionsData.missions : [];
+    const candidates = missions.filter((mission) => {
+      return mission.status === 'active' && mission.activeDate === dateString;
+    });
+    return sortNewestFirst(candidates, ['updatedAt', 'createdAt', 'activeDate', 'startAt'])[0] || null;
+  }
+
+  function getTodayMissionNoticeRecords() {
+    const missionsData = getMissionsData();
+    return Array.isArray(missionsData.todayMissionNotices) ? missionsData.todayMissionNotices : [];
+  }
+
+  function findTodayMissionNotice(dateString = getKoreanDateString()) {
+    return getTodayMissionNoticeRecords()
+      .find((record) => record.date === dateString && ['publishing', 'published'].includes(record.status)) || null;
+  }
+
+  function hasTodayMissionNoticeBeenPublished(dateString = getKoreanDateString()) {
+    return Boolean(findTodayMissionNotice(dateString));
+  }
+
+  function reserveTodayMissionNoticePublication(input) {
+    requireTrimmedString(input && input.missionId, 'missionId');
+    requireTrimmedString(input && input.channelId, 'channelId');
+
+    const missionsData = cloneJson(getMissionsData());
+    missionsData.todayMissionNotices = Array.isArray(missionsData.todayMissionNotices)
+      ? missionsData.todayMissionNotices
+      : [];
+
+    const dateString = input.date || getKoreanDateString();
+    const existingNotice = missionsData.todayMissionNotices
+      .find((record) => record.date === dateString && ['publishing', 'published'].includes(record.status));
+    if (existingNotice) {
+      return { ok: false, reason: 'ALREADY_RESERVED', record: existingNotice };
+    }
+
+    const record = {
+      id: createOperationId('today_notice'),
+      date: dateString,
+      missionId: input.missionId,
+      missionTitle: input.missionTitle || null,
+      channelId: input.channelId,
+      messageId: null,
+      messageUrl: null,
+      status: 'publishing',
+      publishedBy: input.publishedBy || null,
+      reservedAt: createTimestamp(),
+      publishedAt: null,
+      failedAt: null,
+      failureReason: null,
+    };
+    missionsData.todayMissionNotices.push(record);
+    saveMissionsData(missionsData);
+    return { ok: true, record };
+  }
+
+  function updateTodayMissionNoticeRecord(recordId, updates) {
+    requireTrimmedString(recordId, 'recordId');
+    const missionsData = cloneJson(getMissionsData());
+    const records = Array.isArray(missionsData.todayMissionNotices) ? missionsData.todayMissionNotices : [];
+    const index = records.findIndex((record) => record.id === recordId);
+
+    if (index === -1) {
+      throw new Error('오늘의 미션 게시 기록을 찾을 수 없습니다.');
+    }
+
+    const record = {
+      ...records[index],
+      ...updates,
+    };
+    records[index] = record;
+    missionsData.todayMissionNotices = records;
+    saveMissionsData(missionsData);
+    return record;
+  }
+
+  function completeTodayMissionNoticePublication(recordId, input = {}) {
+    return updateTodayMissionNoticeRecord(recordId, {
+      messageId: input.messageId || null,
+      messageUrl: input.messageUrl || null,
+      status: 'published',
+      publishedAt: createTimestamp(),
+      failedAt: null,
+      failureReason: null,
+    });
+  }
+
+  function failTodayMissionNoticePublication(recordId, reason) {
+    return updateTodayMissionNoticeRecord(recordId, {
+      status: 'failed',
+      failedAt: createTimestamp(),
+      failureReason: reason || 'send_failed',
+    });
+  }
+
   function createMission(input) {
     const title = requireTrimmedString(input.title, '제목');
     const description = requireTrimmedString(input.description, '설명');
@@ -1895,7 +1993,11 @@ function createPointsRepository(paths = {}, options = {}) {
     createMissionSubmission,
     createTodayMissionSubmission,
     createShopItem,
+    completeTodayMissionNoticePublication,
+    failTodayMissionNoticePublication,
     findMission,
+    findTodayActiveMission,
+    findTodayMissionNotice,
     findShopItem,
     findReactionApprovalByMessageId,
     findSubmission,
@@ -1917,6 +2019,7 @@ function createPointsRepository(paths = {}, options = {}) {
     hasCheckedInToday,
     hasPaidTodayMissionReward,
     hasReactionMessageBeenReviewed,
+    hasTodayMissionNoticeBeenPublished,
     listMissionsForAdmin,
     listMissionTemplates,
     listOperationalTransactions,
@@ -1936,6 +2039,7 @@ function createPointsRepository(paths = {}, options = {}) {
     requestRedemption,
     rejectSubmissionById,
     rejectReactionMessage,
+    reserveTodayMissionNoticePublication,
     reviewSubmissionById,
     reviewRedemption,
     resolveActiveMission,

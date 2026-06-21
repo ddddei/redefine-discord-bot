@@ -16,6 +16,8 @@ const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   togglePrefix: 'admin_mission_hub:toggle:',
   closePrefix: 'admin_mission_hub:close:',
   applyTemplatePrefix: 'admin_mission_hub:apply_template:',
+  previewTodayNotice: 'admin_mission_hub:preview_today_notice',
+  publishTodayNotice: 'admin_mission_hub:publish_today_notice',
   refresh: 'admin_mission_hub:refresh',
   refreshTemplates: 'admin_mission_hub:refresh_templates',
 };
@@ -221,6 +223,14 @@ function createOperatorMissionTemplateRows(templates = [], selectedTemplateId = 
       .setLabel('템플릿을 오늘의 미션으로 적용')
       .setStyle(ButtonStyle.Success)
       .setDisabled(!selectedTemplate),
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.previewTodayNotice)
+      .setLabel('공지 미리보기')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.publishTodayNotice)
+      .setLabel('오늘의 미션 게시')
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.refresh)
       .setLabel('새로고침')
