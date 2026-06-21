@@ -9,18 +9,29 @@ const crypto = require('crypto');
 const GUIDE_HUB_SELECT_ID = 'guide_hub_select';
 const OPERATOR_HUB_SELECT_ID = 'operator_hub_select';
 const OPERATOR_MISSION_HUB_SELECT_ID = 'admin_mission_hub_select';
+const OPERATOR_MISSION_TEMPLATE_SELECT_ID = 'admin_mission_template_select';
 const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   create: 'admin_mission_hub:create',
   editPrefix: 'admin_mission_hub:edit:',
   togglePrefix: 'admin_mission_hub:toggle:',
   closePrefix: 'admin_mission_hub:close:',
+  applyTemplatePrefix: 'admin_mission_hub:apply_template:',
   refresh: 'admin_mission_hub:refresh',
+  refreshTemplates: 'admin_mission_hub:refresh_templates',
 };
 
 function createOperatorMissionHubToken(missionId) {
   return `mh_${crypto
     .createHash('sha1')
     .update(String(missionId || ''))
+    .digest('hex')
+    .slice(0, 16)}`;
+}
+
+function createOperatorMissionTemplateToken(templateId) {
+  return `mt_${crypto
+    .createHash('sha1')
+    .update(String(templateId || ''))
     .digest('hex')
     .slice(0, 16)}`;
 }
@@ -177,6 +188,40 @@ function createOperatorMissionHubRows(missions = [], selectedMissionId = null) {
       .setStyle(ButtonStyle.Danger)
       .setDisabled(!selectedMission || selectedMission.status === 'closed'),
     new ButtonBuilder()
+      .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.refreshTemplates)
+      .setLabel('새로고침')
+      .setStyle(ButtonStyle.Secondary)
+  ));
+
+  return rows;
+}
+
+function createOperatorMissionTemplateRows(templates = [], selectedTemplateId = null) {
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) || templates[0] || null;
+  const rows = [];
+
+  if (templates.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(OPERATOR_MISSION_TEMPLATE_SELECT_ID)
+        .setPlaceholder('오늘의 미션으로 적용할 템플릿을 선택해 주세요')
+        .addOptions(templates.slice(0, 25).map((template) => ({
+          label: String(template.title || template.id).slice(0, 100),
+          description: `${template.recommendedDay || '요일 미지정'} / ${template.rewardPoints || 0}P`,
+          value: createOperatorMissionTemplateToken(template.id),
+          default: selectedTemplate ? template.id === selectedTemplate.id : false,
+        })))
+    ));
+  }
+
+  const selectedTemplateIdValue = selectedTemplate ? createOperatorMissionTemplateToken(selectedTemplate.id) : 'none';
+  rows.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_MISSION_HUB_BUTTON_IDS.applyTemplatePrefix}${selectedTemplateIdValue}`)
+      .setLabel('템플릿을 오늘의 미션으로 적용')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(!selectedTemplate),
+    new ButtonBuilder()
       .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.refresh)
       .setLabel('새로고침')
       .setStyle(ButtonStyle.Secondary)
@@ -190,10 +235,13 @@ module.exports = {
   GUIDE_HUB_SELECT_ID,
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
+  OPERATOR_MISSION_TEMPLATE_SELECT_ID,
   OPERATOR_HUB_OPTIONS,
   OPERATOR_HUB_SELECT_ID,
   createOperatorMissionHubToken,
+  createOperatorMissionTemplateToken,
   createGuideHubSelectRow,
   createOperatorHubSelectRow,
   createOperatorMissionHubRows,
+  createOperatorMissionTemplateRows,
 };

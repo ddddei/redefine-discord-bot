@@ -39,10 +39,13 @@ const {
   GUIDE_HUB_SELECT_ID,
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
+  OPERATOR_MISSION_TEMPLATE_SELECT_ID,
   OPERATOR_HUB_SELECT_ID,
   createGuideHubSelectRow,
   createOperatorMissionHubToken,
+  createOperatorMissionTemplateToken,
   createOperatorMissionHubRows,
+  createOperatorMissionTemplateRows,
   createOperatorHubSelectRow,
 } = require('./components');
 const {
@@ -685,8 +688,53 @@ function formatMissionParticipantPreview(mission) {
   ].join('\n');
 }
 
-function createAdminMissionHubEmbed(missions, selectedMissionId = null) {
+function formatMissionTemplateLine(template, selectedTemplateId = null) {
+  const marker = template.id === selectedTemplateId ? '>' : '-';
+  return `${marker} \`${template.id}\` ${truncateText(template.title || '제목 없음', 48, '제목 없음')} / ${template.recommendedDay || '요일 미지정'} / ${formatPoints(template.rewardPoints || 0)}`;
+}
+
+function formatMissionTemplatePreview(template) {
+  if (!template) {
+    return [
+      '선택된 템플릿이 없습니다.',
+      '템플릿을 선택하면 오늘의 미션으로 적용하기 전 안내문을 확인할 수 있어요.',
+    ].join('\n');
+  }
+
+  return [
+    `선택 템플릿: \`${template.id}\``,
+    `제목: ${template.title || '제목 없음'}`,
+    `추천 요일: ${template.recommendedDay || '미지정'} / 분류: ${template.category || template.type || '미지정'}`,
+    `지급: ${formatPoints(template.rewardPoints || 0)} / 인증 필요: ${template.requiresSubmission === false ? '아니오' : '예'}`,
+    template.isExample ? '예시 템플릿입니다. 실제 오늘의 미션으로 적용하려면 local 템플릿 파일을 준비해 주세요.' : null,
+    truncateText(template.description || '설명 없음', 500, '설명 없음'),
+    template.note ? `운영 메모: ${truncateText(template.note, 180, '')}` : null,
+  ].filter(Boolean).join('\n');
+}
+
+function formatWeekdayRecommendationLine(recommendation) {
+  const templateTitle = recommendation.template ? recommendation.template.title : recommendation.title;
+  return `- ${recommendation.label || recommendation.weekday}: ${templateTitle || '추천 미션 없음'}${recommendation.note ? ` (${truncateText(recommendation.note, 45, '')})` : ''}`;
+}
+
+function formatTodayMissionRecommendation(recommendation) {
+  if (!recommendation || !recommendation.template) {
+    return '오늘 요일에 연결된 추천 템플릿이 없습니다. 필요하면 템플릿 목록에서 직접 선택해 주세요.';
+  }
+
+  return [
+    `${recommendation.label || recommendation.weekday} 추천: ${recommendation.template.title}`,
+    truncateText(recommendation.template.description || '설명 없음', 280, '설명 없음'),
+    `적용하면 오늘 날짜의 active 미션으로 저장됩니다.`,
+  ].join('\n');
+}
+
+function createAdminMissionHubEmbed(missions, selectedMissionId = null, templates = [], selectedTemplateId = null, recommendations = [], todayRecommendation = null) {
   const selectedMission = getMissionHubSelection(missions, selectedMissionId);
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId)
+    || (todayRecommendation && todayRecommendation.template)
+    || templates[0]
+    || null;
   const missionLines = missions.length > 0
     ? missions.slice(0, 8).map((mission) => {
       const marker = selectedMission && mission.id === selectedMission.id ? '>' : '-';
@@ -701,6 +749,12 @@ function createAdminMissionHubEmbed(missions, selectedMissionId = null) {
       `날짜: ${selectedMission.activeDate || '미지정'}`,
     ]
     : ['선택된 미션이 없습니다.'];
+  const templateLines = templates.length > 0
+    ? templates.slice(0, 8).map((template) => formatMissionTemplateLine(template, selectedTemplate ? selectedTemplate.id : null))
+    : ['등록된 템플릿이 없습니다.'];
+  const recommendationLines = recommendations.length > 0
+    ? recommendations.map(formatWeekdayRecommendationLine)
+    : ['요일별 추천이 없습니다.'];
 
   return createGuideEmbed(
     '미션 관리 허브',
@@ -716,7 +770,20 @@ function createAdminMissionHubEmbed(missions, selectedMissionId = null) {
       '참여자 안내문 미리보기',
       formatMissionParticipantPreview(selectedMission),
       '',
+      '미션 템플릿',
+      ...templateLines,
+      '',
+      '선택 템플릿 미리보기',
+      formatMissionTemplatePreview(selectedTemplate),
+      '',
+      '요일별 추천',
+      ...recommendationLines,
+      '',
+      '오늘의 추천',
+      formatTodayMissionRecommendation(todayRecommendation),
+      '',
       'active 상태의 미션만 참여자 `/미션`에 노출됩니다.',
+      '템플릿 적용은 미션을 저장할 뿐 자동 공지는 보내지 않습니다.',
     ].join('\n'),
     {
       footer: OPERATOR_CHECK_FOOTER,
@@ -724,15 +791,36 @@ function createAdminMissionHubEmbed(missions, selectedMissionId = null) {
   );
 }
 
-function createMissionHubPayload(selectedMissionId = null) {
+function createMissionHubPayload(selectedMissionId = null, selectedTemplateId = null) {
   const missions = pointsRepository.listMissionsForAdmin({ limit: 25 });
   const selectedMission = getMissionHubSelection(missions, selectedMissionId);
+  const baseTemplates = pointsRepository.listMissionTemplates({ limit: 25 });
+  const recommendations = pointsRepository.listWeekdayMissionRecommendations();
+  const todayRecommendation = pointsRepository.getTodayMissionRecommendation();
+  const selectedRecommendationTemplate = todayRecommendation && todayRecommendation.template
+    ? todayRecommendation.template
+    : null;
+  const templates = selectedRecommendationTemplate && !baseTemplates.some((template) => template.id === selectedRecommendationTemplate.id)
+    ? [selectedRecommendationTemplate, ...baseTemplates.slice(0, 24)]
+    : baseTemplates;
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId)
+    || selectedRecommendationTemplate
+    || templates[0]
+    || null;
 
   return {
-    embeds: [createAdminMissionHubEmbed(missions, selectedMission ? selectedMission.id : null)],
+    embeds: [createAdminMissionHubEmbed(
+      missions,
+      selectedMission ? selectedMission.id : null,
+      templates,
+      selectedTemplate ? selectedTemplate.id : null,
+      recommendations,
+      todayRecommendation
+    )],
     components: [
       createOperatorHubSelectRow('mission_management'),
       ...createOperatorMissionHubRows(missions, selectedMission ? selectedMission.id : null),
+      ...createOperatorMissionTemplateRows(templates, selectedTemplate ? selectedTemplate.id : null),
     ],
   };
 }
@@ -746,6 +834,18 @@ function getMissionHubTokenFromCustomId(customId) {
   const parts = String(customId || '').split(':');
   const token = parts.slice(2).join(':');
   return token && token !== 'none' ? token : '';
+}
+
+function getMissionTemplateIdFromCustomId(customId) {
+  const prefix = OPERATOR_MISSION_HUB_BUTTON_IDS.applyTemplatePrefix;
+  return String(customId || '').startsWith(prefix)
+    ? String(customId).slice(prefix.length)
+    : '';
+}
+
+function resolveMissionTemplateToken(token) {
+  const templates = pointsRepository.listMissionTemplates({ limit: 200 });
+  return templates.find((template) => createOperatorMissionTemplateToken(template.id) === token) || null;
 }
 
 function getMissionHubStatusInput(value, fallbackStatus = 'draft') {
@@ -1991,6 +2091,28 @@ async function handleMissionHubSelect(interaction) {
   }
 }
 
+async function handleMissionTemplateSelect(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const templateToken = interaction.values && interaction.values[0] ? interaction.values[0] : null;
+    const selectedTemplate = templateToken ? resolveMissionTemplateToken(templateToken) : null;
+    await interaction.update(createMissionHubPayload(null, selectedTemplate ? selectedTemplate.id : null));
+  } catch (error) {
+    console.error('미션 템플릿 선택 실패:', error.message);
+    await interaction.reply({
+      content: `미션 템플릿을 불러오지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
 async function handleMissionHubButton(interaction) {
   if (!isOperator(interaction)) {
     await interaction.reply({
@@ -2006,8 +2128,52 @@ async function handleMissionHubButton(interaction) {
       return;
     }
 
-    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refresh) {
+    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refresh
+      || interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refreshTemplates) {
       await interaction.update(createMissionHubPayload());
+      return;
+    }
+
+    if (interaction.customId.startsWith(OPERATOR_MISSION_HUB_BUTTON_IDS.applyTemplatePrefix)) {
+      const templateToken = getMissionTemplateIdFromCustomId(interaction.customId);
+      const template = resolveMissionTemplateToken(templateToken);
+      if (!template) {
+        await interaction.reply({
+          content: '선택한 템플릿을 찾지 못했어요. 허브를 새로고침한 뒤 다시 시도해 주세요.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const result = pointsRepository.createMissionFromTemplateForToday(template.id);
+      if (!result.ok && result.reason === 'TODAY_MISSION_EXISTS') {
+        await interaction.update(createMissionHubPayload(result.mission.id, template.id));
+        await sendEphemeralAfterUpdate(interaction, {
+          content: `이미 오늘의 active 미션이 있어요: ${result.mission.title || result.mission.id}. 중복 생성하지 않았습니다.`,
+        });
+        return;
+      }
+
+      if (!result.ok && result.reason === 'EXAMPLE_TEMPLATE') {
+        await interaction.reply({
+          content: '예시 템플릿은 오늘의 미션으로 적용할 수 없어요. 실제 운영용 local 템플릿 파일을 준비한 뒤 다시 시도해 주세요.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      if (!result.ok) {
+        await interaction.reply({
+          content: '선택한 템플릿을 찾지 못했어요. 허브를 새로고침한 뒤 다시 시도해 주세요.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      await interaction.update(createMissionHubPayload(result.mission.id, result.template.id));
+      await sendEphemeralAfterUpdate(interaction, {
+        content: `${result.template.title || result.template.id} 템플릿을 오늘의 미션으로 적용했어요. 필요한 채널에 운영자가 직접 공지해 주세요.`,
+      });
       return;
     }
 
@@ -2101,6 +2267,7 @@ async function handleMissionHubModal(interaction) {
       components: [
         createOperatorHubSelectRow('mission_management'),
         ...createOperatorMissionHubRows(pointsRepository.listMissionsForAdmin({ limit: 25 }), mission.id),
+        ...createOperatorMissionTemplateRows(pointsRepository.listMissionTemplates({ limit: 25 })),
       ],
       ephemeral: true,
     });
@@ -2551,6 +2718,11 @@ async function handleInteractionCreate(interaction) {
 
     if (interaction.customId === OPERATOR_MISSION_HUB_SELECT_ID) {
       await handleMissionHubSelect(interaction);
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_MISSION_TEMPLATE_SELECT_ID) {
+      await handleMissionTemplateSelect(interaction);
       return;
     }
 
