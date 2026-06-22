@@ -1,7 +1,7 @@
 {
   "isExample": true,
   "description": "매일/오늘의 미션 UX 설계 문서에 맞춘 미션 템플릿 예시 데이터입니다. 실제 운영 데이터, 실제 Discord 채널 ID, 사용자 ID, 토큰은 포함하지 않습니다.",
-  "schemaNote": "이 파일은 문서와 운영 준비용 예시이며, 로컬 템플릿 파일이 없을 때 관리자 미션 관리 허브의 읽기 전용 fallback으로 표시될 수 있습니다.",
+  "schemaNote": "이 파일은 문서와 운영 준비용 예시이며, 로컬 템플릿 파일이 없을 때 관리자 미션 관리 허브의 fallback으로 표시됩니다. 운영자가 직접 선택하면 오늘의 active 미션으로 복사 생성할 수 있습니다.",
   "weekdayRecommendations": [
     {
       "weekday": "monday",

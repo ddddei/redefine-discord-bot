@@ -706,7 +706,7 @@ function formatMissionTemplatePreview(template) {
     `제목: ${template.title || '제목 없음'}`,
     `추천 요일: ${template.recommendedDay || '미지정'} / 분류: ${template.category || template.type || '미지정'}`,
     `지급: ${formatPoints(template.rewardPoints || 0)} / 인증 필요: ${template.requiresSubmission === false ? '아니오' : '예'}`,
-    template.isExample ? '예시 템플릿입니다. 실제 오늘의 미션으로 적용하려면 local 템플릿 파일을 준비해 주세요.' : null,
+    template.isExample ? '예시 템플릿입니다. 운영자가 선택하면 오늘의 미션으로 복사 생성할 수 있어요.' : null,
     truncateText(template.description || '설명 없음', 500, '설명 없음'),
     template.note ? `운영 메모: ${truncateText(template.note, 180, '')}` : null,
   ].filter(Boolean).join('\n');
@@ -2298,14 +2298,6 @@ async function handleMissionHubButton(interaction) {
         return;
       }
 
-      if (!result.ok && result.reason === 'EXAMPLE_TEMPLATE') {
-        await interaction.reply({
-          content: '예시 템플릿은 오늘의 미션으로 적용할 수 없어요. 실제 운영용 local 템플릿 파일을 준비한 뒤 다시 시도해 주세요.',
-          ephemeral: true,
-        });
-        return;
-      }
-
       if (!result.ok) {
         await interaction.reply({
           content: '선택한 템플릿을 찾지 못했어요. 허브를 새로고침한 뒤 다시 시도해 주세요.',
@@ -2316,7 +2308,7 @@ async function handleMissionHubButton(interaction) {
 
       await interaction.update(createMissionHubPayload(result.mission.id, result.template.id));
       await sendEphemeralAfterUpdate(interaction, {
-        content: `${result.template.title || result.template.id} 템플릿을 오늘의 미션으로 적용했어요. 필요한 채널에 운영자가 직접 공지해 주세요.`,
+        content: `${result.template.title || result.template.id} 템플릿을 오늘의 미션으로 저장했어요. 이제 공지 미리보기 후 게시할 수 있어요.${result.template.isExample ? ' 이 템플릿은 예시 템플릿입니다.' : ''}`,
       });
       return;
     }
