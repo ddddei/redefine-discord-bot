@@ -1005,9 +1005,6 @@ function createPointsRepository(paths = {}, options = {}) {
     if (!template) {
       return { ok: false, reason: 'TEMPLATE_NOT_FOUND' };
     }
-    if (template.isExample) {
-      return { ok: false, reason: 'EXAMPLE_TEMPLATE' };
-    }
 
     const activeDate = options.activeDate || getKoreanDateString();
     const missionsData = getMissionsData();

@@ -368,7 +368,8 @@ async function main() {
   const applyTemplateButton = createButtonInteraction(`admin_mission_hub:apply_template:${createOperatorMissionTemplateToken('template_monday_checkin')}`);
   await handleInteractionCreate(applyTemplateButton);
   assert.strictEqual(getEmbedTitle(applyTemplateButton.updatePayload), '미션 관리 허브');
-  assert.match(applyTemplateButton.followUpPayload.content, /오늘의 미션으로 적용/);
+  assert.match(applyTemplateButton.followUpPayload.content, /오늘의 미션으로 저장/);
+  assert.match(applyTemplateButton.followUpPayload.content, /공지 미리보기 후 게시/);
 
   const templateMission = repository.listMissionsForAdmin({ limit: 20 })
     .find((mission) => mission.sourceTemplateId === 'template_monday_checkin');
@@ -558,9 +559,12 @@ async function main() {
   });
   assert.ok(exampleRepository.listMissionTemplates().some((template) => template.isExample === true));
   const exampleApply = exampleRepository.createMissionFromTemplateForToday('template_monday_checkin_example');
-  assert.strictEqual(exampleApply.ok, false);
-  assert.strictEqual(exampleApply.reason, 'EXAMPLE_TEMPLATE');
-  assert.strictEqual(exampleRepository.listMissionsForAdmin({ limit: 10 }).length, 0);
+  assert.strictEqual(exampleApply.ok, true);
+  assert.strictEqual(exampleApply.template.isExample, true);
+  assert.strictEqual(exampleApply.mission.status, 'active');
+  assert.strictEqual(exampleApply.mission.sourceTemplateId, 'template_monday_checkin_example');
+  assert.strictEqual(exampleApply.mission.title, '월요일 가벼운 체크인');
+  assert.ok(exampleRepository.findTodayActiveMission());
 
   const primaryExampleTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-mission-template-primary-example-'));
   const primaryExampleTemplatePath = path.join(primaryExampleTempDir, 'primary-example-templates.json');
@@ -569,13 +573,13 @@ async function main() {
     missionTemplates: [{
       id: 'template_primary_example',
       title: '기본 경로 예시 템플릿',
-      description: '기본 경로여도 isExample이면 적용하면 안 됩니다.',
+      description: '기본 경로가 isExample이어도 운영자가 선택하면 적용할 수 있습니다.',
       rewardPoints: 10,
       requiresSubmission: true,
       category: 'example',
       recommendedDay: 'monday',
       status: 'active',
-      note: 'primary example guard',
+      note: 'primary example apply smoke',
     }],
     weekdayRecommendations: [],
   }, null, 2));
@@ -584,9 +588,42 @@ async function main() {
     missionTemplates: primaryExampleTemplatePath,
   });
   const primaryExampleApply = primaryExampleRepository.createMissionFromTemplateForToday('template_primary_example');
-  assert.strictEqual(primaryExampleApply.ok, false);
-  assert.strictEqual(primaryExampleApply.reason, 'EXAMPLE_TEMPLATE');
-  assert.strictEqual(primaryExampleRepository.listMissionsForAdmin({ limit: 10 }).length, 0);
+  assert.strictEqual(primaryExampleApply.ok, true);
+  assert.strictEqual(primaryExampleApply.template.isExample, true);
+  assert.strictEqual(primaryExampleApply.mission.status, 'active');
+  assert.strictEqual(primaryExampleApply.mission.category, 'example');
+  assert.strictEqual(primaryExampleRepository.findTodayActiveMission().id, primaryExampleApply.mission.id);
+
+  const exampleHandlerTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-mission-template-example-handler-'));
+  process.env.MISSIONS_DATA_PATH = path.join(exampleHandlerTempDir, 'handler-example-missions.json');
+  process.env.MISSION_TEMPLATES_DATA_PATH = path.join(exampleHandlerTempDir, 'missing-handler-example-templates.json');
+  resetModule('../src/pointsRepository');
+  resetModule('../src/components');
+  resetModule('../src/handlers');
+  const exampleHandlerComponents = require('../src/components');
+  const exampleHandlers = require('../src/handlers');
+  const exampleHandlerRepository = require('../src/pointsRepository').createPointsRepository();
+  const exampleHandlerPayload = exampleHandlers.createMissionHubPayload(null, 'template_monday_checkin_example');
+  assert.match(exampleHandlerPayload.embeds[0].data.description, /예시 템플릿입니다/);
+  assert.doesNotMatch(exampleHandlerPayload.embeds[0].data.description, /local 템플릿 파일/);
+  const exampleHandlerApply = createButtonInteraction(`admin_mission_hub:apply_template:${exampleHandlerComponents.createOperatorMissionTemplateToken('template_monday_checkin_example')}`);
+  await exampleHandlers.handleInteractionCreate(exampleHandlerApply);
+  assert.strictEqual(getEmbedTitle(exampleHandlerApply.updatePayload), '미션 관리 허브');
+  assert.match(exampleHandlerApply.followUpPayload.content, /오늘의 미션으로 저장/);
+  assert.match(exampleHandlerApply.followUpPayload.content, /예시 템플릿/);
+  const exampleHandlerMission = exampleHandlerRepository.findTodayActiveMission();
+  assert.ok(exampleHandlerMission);
+  assert.strictEqual(exampleHandlerMission.status, 'active');
+  assert.strictEqual(exampleHandlerMission.sourceTemplateId, 'template_monday_checkin_example');
+  const exampleHandlerPreview = createButtonInteraction('admin_mission_hub:preview_today_notice');
+  await exampleHandlers.handleInteractionCreate(exampleHandlerPreview);
+  assert.match(exampleHandlerPreview.replyPayload.embeds[0].data.description, /월요일 가벼운 체크인/);
+  assert.match(exampleHandlerPreview.replyPayload.embeds[0].data.description, /10P/);
+
+  const missingTemplateButton = createButtonInteraction('admin_mission_hub:apply_template:mt_missing_token');
+  await exampleHandlers.handleInteractionCreate(missingTemplateButton);
+  assert.strictEqual(missingTemplateButton.replyPayload.ephemeral, true);
+  assert.match(missingTemplateButton.replyPayload.content, /선택한 템플릿을 찾지 못했어요/);
 
   const manyTemplatesTempDir = setupEnvironment();
   const manyTemplates = [];
