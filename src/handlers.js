@@ -347,6 +347,7 @@ function createRedemptionConfirmRow(displayCode) {
 }
 
 const PARTICIPANT_MENU_BUTTON_IDS = {
+  onboarding: 'participant_menu_onboarding',
   todayMission: 'participant_menu_today_mission',
   points: 'participant_menu_points',
   ranking: 'participant_menu_ranking',
@@ -354,7 +355,40 @@ const PARTICIPANT_MENU_BUTTON_IDS = {
   help: 'participant_menu_help',
 };
 
-function createParticipantMenuButtonRow() {
+function createParticipantMenuButtonRows() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.onboarding)
+        .setLabel('🌱 처음 왔다면 여기부터')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.todayMission)
+        .setLabel('🌱 오늘의 미션 보기')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.points)
+        .setLabel('💰 내 포인트 확인')
+        .setStyle(ButtonStyle.Success)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.ranking)
+        .setLabel('🏆 랭킹 확인')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.minigames)
+        .setLabel('🎮 미니게임')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.help)
+        .setLabel('❓ 이용 방법 보기')
+        .setStyle(ButtonStyle.Secondary)
+    ),
+  ];
+}
+
+function createParticipantOnboardingNextStepRow() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.todayMission)
@@ -365,16 +399,8 @@ function createParticipantMenuButtonRow() {
       .setLabel('💰 내 포인트 확인')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.ranking)
-      .setLabel('🏆 랭킹 확인')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
       .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.minigames)
       .setLabel('🎮 미니게임')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.help)
-      .setLabel('❓ 이용 방법 보기')
       .setStyle(ButtonStyle.Secondary)
   );
 }
@@ -1122,7 +1148,7 @@ async function handleGuideCommand(interaction) {
         '더 자세한 안내가 필요하면 아래 선택 메뉴도 함께 사용할 수 있어요.',
       ].join('\n')
     )],
-    components: [createParticipantMenuButtonRow(), createGuideHubSelectRow()],
+    components: [...createParticipantMenuButtonRows(), createGuideHubSelectRow()],
     ephemeral: true,
   });
 }
@@ -1144,6 +1170,37 @@ function createPointBalanceEmbedForUser(userId) {
 }
 
 async function handleParticipantMenuButton(interaction) {
+  if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.onboarding) {
+    await interaction.reply({
+      embeds: [createGuideEmbed(
+        '처음 왔다면 여기부터',
+        [
+          '처음엔 모든 채널과 기능을 한 번에 다 보지 않아도 괜찮아요. 아래 순서대로만 확인해도 시작하기에 충분합니다.',
+          '',
+          '1. 참여동의 확인 채널 확인',
+          '#참여동의-확인 채널이나 운영진이 안내한 참여동의 안내를 먼저 확인해 주세요. 동의 확인 방식이 헷갈리면 운영진에게 물어봐도 됩니다.',
+          '',
+          '2. 이름표/색상 고르기',
+          '이름표나 색상 선택 채널에서 나를 편하게 알아볼 수 있는 표시를 골라 주세요. 꼭 화려하게 꾸미지 않아도 괜찮아요.',
+          '',
+          '3. `/안내` 메뉴 살펴보기',
+          '`/안내`를 열면 오늘의 미션, 내 포인트, 상점/교환, 미니게임, 문의 방법을 버튼으로 다시 볼 수 있어요.',
+          '',
+          '4. 오늘의 미션 확인과 인증 방법',
+          '`오늘의 미션 보기` 버튼을 눌러 오늘 할 수 있는 활동을 확인해 주세요. 오늘의 미션 채널에 글이나 사진을 올리면 인증이 접수되고, 운영자가 확인한 뒤 포인트가 지급됩니다.',
+          '',
+          '5. 포인트, 미니게임, 상점은 선택 활동',
+          '`내 포인트 확인`으로 현재 포인트를 볼 수 있고, `미니게임`은 가볍게 즐기는 선택 활동이에요. 상점/교환은 포인트를 사용하고 싶을 때 천천히 확인하면 됩니다.',
+          '',
+          '처음엔 여기까지만 해도 충분해요. 지금은 아래 버튼 중 하나만 눌러 다음 안내를 이어서 봐도 됩니다.',
+        ].join('\n')
+      )],
+      components: [createParticipantOnboardingNextStepRow()],
+      ephemeral: true,
+    });
+    return;
+  }
+
   if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.todayMission) {
     await interaction.reply({
       embeds: [createGuideEmbed(

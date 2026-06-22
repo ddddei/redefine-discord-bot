@@ -23,6 +23,7 @@
 | [google-sheets-integration-plan.md](google-sheets-integration-plan.md) | Google Sheets 운영 데이터 연동 설계안 | local JSON 운영 데이터 유실 위험을 줄이고 Sheets 보조 로그 저장소를 검토할 때 | append-only 포인트/인증 로그, 탭 구조, Apps Script 방식, fallback, DB 전환 고려사항 |
 | [mission-template-guide.md](mission-template-guide.md) | 미션 템플릿 운영 가이드 | `/운영현황` 미션 관리 허브에서 템플릿과 요일별 오늘의 미션을 운영할 때 | 템플릿 개념, 요일별 추천, 오늘의 미션 적용, 자동 게시 보류, 운영자 QA |
 | [participant-command-guide.md](participant-command-guide.md) | 참여자 명령어 가이드 | 참여자 안내문이나 운영진 응대 문구를 정리할 때 | 참여자 명령어 목적, 공개 범위, 안내 톤, 교환/인증 주의사항 |
+| [first-time-participant-guide.md](first-time-participant-guide.md) | 처음 참여자 시작 가이드 | 참여자가 입장 직후 무엇부터 보면 되는지 안내할 때 | `/안내` 시작 가이드 버튼, 참여동의 확인, 이름표/색상, 오늘의 미션, 포인트/미니게임/상점 선택 활동 |
 | [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md) | 실제 운영 전 QA 체크리스트 | 실제 참여자 입장 전 운영 환경과 명령어 흐름을 점검할 때 | 환경변수, Discord 권한, 참여자/운영자 명령어, 포인트/인증 흐름, 백업, 배포 확인 |
 | [prelaunch-automation-audit.md](prelaunch-automation-audit.md) | 운영 전 자동 점검 리포트 | 참여자 입장 전 자동화에 맡길 작업과 수동 확인 작업을 구분할 때 | 구현 기능 요약, 운영 문서 현황, 남은 작업, 자동화 적합/위험 작업, 다음 개발 후보 |
 | [operator-check-command-plan.md](operator-check-command-plan.md) | 운영진용 `/점검` 명령어 설계안 | Discord 안에서 운영 전 점검 항목과 운영진 전용 권한 기준을 검토할 때 | 봇 상태 확인 항목, 로그/민감 질문 알림 확인, 권한 원칙, 수동 확인 항목 |
@@ -54,9 +55,10 @@
 - [onboarding-message-pack.md](onboarding-message-pack.md)
 - [discord-permission-setup-guide.md](discord-permission-setup-guide.md)
 - [participant-notice-pack.md](participant-notice-pack.md)
+- [first-time-participant-guide.md](first-time-participant-guide.md)
 - [operator-response-templates.md](operator-response-templates.md)
 
-선발 참여자 입장 전에는 온보딩 역할/채널 구조, 72시간 운영 런북, 온보딩 메시지 패키지, Discord 권한 수동 세팅 가이드를 먼저 확인한 뒤, 참여자에게 보일 공지와 운영진 내부 대응 문구를 준비하고, 실제 운영 전 QA 체크리스트와 릴리즈 체크리스트로 최종 상태를 확인해 주세요.
+선발 참여자 입장 전에는 온보딩 역할/채널 구조, 72시간 운영 런북, 온보딩 메시지 패키지, Discord 권한 수동 세팅 가이드를 먼저 확인한 뒤, 참여자에게 보일 공지와 운영진 내부 대응 문구를 준비합니다. 입장 직후 안내는 처음 참여자 시작 가이드의 `/안내` 시작 버튼 흐름과 맞춰 두고, 실제 운영 전 QA 체크리스트와 릴리즈 체크리스트로 최종 상태를 확인해 주세요.
 
 ### 포인트, 교환, 인증 운영
 

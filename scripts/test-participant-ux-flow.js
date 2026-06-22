@@ -264,11 +264,14 @@ function main() {
       assert.strictEqual(getEmbedTitle(guideCommand.replyPayload), '📌 리디파인 이용 메뉴');
       assert.match(guideCommand.replyPayload.embeds[0].data.description, /필요한 내용을 버튼으로 바로 확인/);
       assert.match(guideCommand.replyPayload.embeds[0].data.description, /본인에게만 보여요/);
-      assert.strictEqual(guideCommand.replyPayload.components.length, 2);
-      const guideButtons = guideCommand.replyPayload.components[0].components.map((button) => button.toJSON());
+      assert.strictEqual(guideCommand.replyPayload.components.length, 3);
+      const guideButtons = guideCommand.replyPayload.components
+        .slice(0, 2)
+        .flatMap((row) => row.components.map((button) => button.toJSON()));
       assert.deepStrictEqual(
         guideButtons.map((button) => button.custom_id),
         [
+          'participant_menu_onboarding',
           'participant_menu_today_mission',
           'participant_menu_points',
           'participant_menu_ranking',
@@ -278,11 +281,12 @@ function main() {
       );
       assert.deepStrictEqual(
         guideButtons.map((button) => button.label),
-        ['🌱 오늘의 미션 보기', '💰 내 포인트 확인', '🏆 랭킹 확인', '🎮 미니게임', '❓ 이용 방법 보기']
+        ['🌱 처음 왔다면 여기부터', '🌱 오늘의 미션 보기', '💰 내 포인트 확인', '🏆 랭킹 확인', '🎮 미니게임', '❓ 이용 방법 보기']
       );
       assert.deepStrictEqual(
         guideButtons.map((button) => button.style),
         [
+          ButtonStyle.Primary,
           ButtonStyle.Primary,
           ButtonStyle.Success,
           ButtonStyle.Secondary,
@@ -290,7 +294,7 @@ function main() {
           ButtonStyle.Secondary,
         ]
       );
-      const guideSelect = guideCommand.replyPayload.components[1].components[0].toJSON();
+      const guideSelect = guideCommand.replyPayload.components[2].components[0].toJSON();
       assert.strictEqual(guideSelect.custom_id, GUIDE_HUB_SELECT_ID);
       assert.strictEqual(guideSelect.placeholder, '궁금한 내용을 선택해 주세요');
       assert.deepStrictEqual(
@@ -300,6 +304,30 @@ function main() {
       assert.deepStrictEqual(
         guideSelect.options.map((option) => option.label),
         ['처음 왔어요', '오늘 뭐 하면 되나요?', '내 포인트', '상점/교환', '미션/인증', '문의하기']
+      );
+
+      const onboardingMenuButton = createButtonInteraction(
+        'participant_menu_onboarding',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      await handleInteractionCreate(onboardingMenuButton);
+      assert.strictEqual(onboardingMenuButton.replyPayload.ephemeral, true);
+      assert.strictEqual(getEmbedTitle(onboardingMenuButton.replyPayload), '처음 왔다면 여기부터');
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /참여동의/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /이름표/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /색상/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /\/안내/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /오늘의 미션/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /인증/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /포인트/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /미니게임/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /상점/);
+      assert.match(onboardingMenuButton.replyPayload.embeds[0].data.description, /처음엔 여기까지만 해도 충분/);
+      assert.strictEqual(onboardingMenuButton.replyPayload.components.length, 1);
+      assert.deepStrictEqual(
+        onboardingMenuButton.replyPayload.components[0].components.map((button) => button.toJSON().custom_id),
+        ['participant_menu_today_mission', 'participant_menu_points', 'participant_menu_minigames']
       );
 
       const todayMissionMenuButton = createButtonInteraction(
