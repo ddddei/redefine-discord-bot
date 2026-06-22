@@ -16,6 +16,7 @@ const {
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
+  buildOperatorInvitationNoticeEmbed,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
@@ -40,6 +41,7 @@ const {
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_MISSION_TEMPLATE_SELECT_ID,
+  OPERATOR_HUB_BUTTON_IDS,
   OPERATOR_HUB_SELECT_ID,
   createGuideHubSelectRow,
   createOperatorMissionHubToken,
@@ -47,6 +49,7 @@ const {
   createOperatorMissionHubRows,
   createOperatorMissionTemplateRows,
   createOperatorHubSelectRow,
+  createOperatorInvitationNoticeButtonRow,
 } = require('./components');
 const {
   createSubmissionReviewActionRow,
@@ -2204,6 +2207,10 @@ function getOperatorHubEmbed(value, limit = 10) {
     return buildOperatorEnvironmentCheckEmbed();
   }
 
+  if (value === 'invitation_notice') {
+    return buildOperatorInvitationNoticeEmbed();
+  }
+
   if (value === 'exports') {
     return buildOperatorExportGuideEmbed();
   }
@@ -2280,6 +2287,22 @@ async function handleMissionHubSelect(interaction) {
       ephemeral: true,
     });
   }
+}
+
+async function handleOperatorInvitationNoticeButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    embeds: [buildOperatorInvitationNoticeEmbed()],
+    components: [createOperatorHubSelectRow('invitation_notice')],
+    ephemeral: true,
+  });
 }
 
 async function handleMissionTemplateSelect(interaction) {
@@ -2506,7 +2529,7 @@ async function handleOperationStatusCommand(interaction) {
 
     await interaction.reply({
       embeds: [embed],
-      components: [createOperatorHubSelectRow(selectedValue)],
+      components: [createOperatorHubSelectRow(selectedValue), createOperatorInvitationNoticeButtonRow()],
       ephemeral: true,
     });
   } catch (error) {
@@ -2931,6 +2954,11 @@ async function handleInteractionCreate(interaction) {
   }
 
   if (interaction.isButton && interaction.isButton()) {
+    if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.invitationNotice) {
+      await handleOperatorInvitationNoticeButton(interaction);
+      return;
+    }
+
     if (interaction.customId.startsWith('admin_mission_hub:')) {
       await handleMissionHubButton(interaction);
       return;

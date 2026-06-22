@@ -487,6 +487,65 @@ function buildOperatorReactionApprovalsEmbed(records = []) {
   );
 }
 
+function buildOperatorInvitationNoticeEmbed() {
+  const shortNotice = [
+    '리디파인 Discord에 오신 것을 환영합니다.',
+    '',
+    '처음 들어오셨다면 먼저 참여동의 확인 채널을 확인하고, 이름표/색상 선택을 마쳐 주세요.',
+    '그다음 `/안내`를 실행해 `🌱 처음 왔다면 여기부터` 버튼을 눌러 보면 됩니다.',
+    '',
+    '오늘의 미션은 가능한 만큼 참여하는 선택 활동이에요. 오늘의 미션 채널에 글이나 사진으로 인증을 남기면 운영진 확인 후 포인트가 지급됩니다.',
+    '포인트, 미니게임, 상점은 필수가 아니라 천천히 둘러봐도 되는 선택 활동입니다.',
+    '',
+    '헷갈리거나 불편한 점이 있으면 운영진에게 편하게 말해 주세요.',
+  ].join('\n');
+  const detailedNotice = [
+    '리디파인 Discord에 오신 것을 환영합니다.',
+    '',
+    '처음엔 모든 채널과 기능을 한 번에 다 확인하지 않아도 괜찮아요. 아래 순서대로만 살펴봐도 충분합니다.',
+    '',
+    '1. 참여동의 확인',
+    '참여동의 확인 채널에서 안내를 먼저 확인해 주세요. 확인 방식이 헷갈리면 운영진에게 물어봐도 됩니다.',
+    '',
+    '2. 이름표/색상 고르기',
+    '이름표나 색상 선택 채널에서 나를 편하게 알아볼 수 있는 표시를 골라 주세요. 꼭 화려하게 꾸미지 않아도 괜찮습니다.',
+    '',
+    '3. `/안내` 열기',
+    '`/안내`를 실행하면 필요한 기능을 버튼으로 볼 수 있어요. 처음이라면 `🌱 처음 왔다면 여기부터` 버튼부터 눌러 주세요.',
+    '',
+    '4. 오늘의 미션 참여',
+    '오늘의 미션은 가능한 만큼 참여하는 선택 활동입니다. 오늘의 미션 채널에 글이나 사진을 올리면 인증이 접수되고, 운영진 확인 후 포인트가 지급됩니다.',
+    '',
+    '5. 포인트/미니게임/상점은 선택 활동',
+    '`내 포인트 확인`으로 현재 포인트를 볼 수 있고, 미니게임은 가볍게 즐기는 활동입니다. 상점은 포인트를 사용하고 싶을 때 천천히 확인해 주세요.',
+    '',
+    '문의가 필요하거나 공개 채널에 쓰기 어려운 내용이 있으면 운영진에게 말해 주세요. 처음부터 완벽하게 참여하지 않아도 괜찮습니다.',
+  ].join('\n');
+
+  return createGuideEmbed(
+    '참여자 초대 안내문',
+    [
+      '아래 문구를 운영 상황에 맞게 다듬은 뒤 복사해서 공지 채널에 붙여넣어 주세요.',
+      '실제 채널 ID나 비공개 링크는 넣지 말고, 서버에서 보이는 채널명 중심으로 안내합니다.',
+      '',
+      '짧은 초대 공지 버전',
+      '```text',
+      shortNotice,
+      '```',
+      '',
+      '자세한 첫 입장 안내 버전',
+      '```text',
+      detailedNotice,
+      '```',
+      '',
+      '자동 게시 기능은 후속 작업입니다. 이번 MVP에서는 운영자가 확인 후 직접 복사/게시합니다.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
 function formatCheckBoolean(value, trueLabel = '가능', falseLabel = '불가') {
   if (value === null || typeof value === 'undefined') {
     return '확인 안 됨';
@@ -697,6 +756,7 @@ module.exports = {
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
+  buildOperatorInvitationNoticeEmbed,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,

@@ -4,15 +4,18 @@ const os = require('os');
 const path = require('path');
 
 const {
+  OPERATOR_HUB_BUTTON_IDS,
   OPERATOR_HUB_OPTIONS,
   OPERATOR_HUB_SELECT_ID,
   createOperatorHubSelectRow,
+  createOperatorInvitationNoticeButtonRow,
 } = require('../src/components');
 const {
   buildOperatorChecklistEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
+  buildOperatorInvitationNoticeEmbed,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
@@ -20,6 +23,7 @@ const {
   buildOperatorSubmissionsEmbed,
 } = require('../src/embeds');
 const {
+  handleInteractionCreate,
   handleOperatorHubSelect,
 } = require('../src/handlers');
 const { createPointsRepository } = require('../src/pointsRepository');
@@ -62,6 +66,16 @@ function restoreEnv(name, value) {
   process.env[name] = value;
 }
 
+function flattenComponentData(rows) {
+  return rows.flatMap((row) => row.components.map((component) => component.data || component.toJSON()));
+}
+
+function assertNoAutoPostComponents(rows) {
+  assert.ok(!flattenComponentData(rows).some((component) => {
+    return /publish|post|send|게시|발송|전송/i.test(`${component.custom_id || ''} ${component.label || ''}`);
+  }));
+}
+
 async function main() {
   assert.strictEqual(OPERATOR_HUB_SELECT_ID, 'operator_hub_select');
   assert.deepStrictEqual(
@@ -74,6 +88,7 @@ async function main() {
       'missions_shop',
       'mission_management',
       'reaction_approvals',
+      'invitation_notice',
       'environment_check',
       'exports',
       'checklist',
@@ -84,9 +99,17 @@ async function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 10);
+  assert.strictEqual(menu.options.length, 11);
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'invitation_notice'
+    && /초대 안내문|초대 공지/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'environment_check'
     && /환경|채널/.test(option.label)));
+
+  const invitationButtonRow = createOperatorInvitationNoticeButtonRow();
+  const invitationButton = invitationButtonRow.components[0].data;
+  assert.strictEqual(OPERATOR_HUB_BUTTON_IDS.invitationNotice, 'operator_hub:invitation_notice');
+  assert.strictEqual(invitationButton.custom_id, OPERATOR_HUB_BUTTON_IDS.invitationNotice);
+  assert.strictEqual(invitationButton.label, '참여자 초대 안내문');
 
   const repository = createTempRepository();
   const emptySummary = repository.getOperationSummary();
@@ -199,6 +222,25 @@ async function main() {
   assert.strictEqual(getEmbedTitle(reactions), '반응 승인 기록');
   assert.match(getEmbedDescription(reactions), /반응 승인 사용자/);
 
+  const invitationNotice = buildOperatorInvitationNoticeEmbed();
+  const invitationDescription = getEmbedDescription(invitationNotice);
+  assert.strictEqual(getEmbedTitle(invitationNotice), '참여자 초대 안내문');
+  assert.match(invitationDescription, /짧은 초대 공지/);
+  assert.match(invitationDescription, /자세한 첫 입장 안내/);
+  assert.match(invitationDescription, /리디파인 Discord에 오신 것을 환영/);
+  assert.match(invitationDescription, /참여동의/);
+  assert.match(invitationDescription, /이름표/);
+  assert.match(invitationDescription, /색상/);
+  assert.match(invitationDescription, /\/안내/);
+  assert.match(invitationDescription, /처음 왔다면 여기부터/);
+  assert.match(invitationDescription, /오늘의 미션/);
+  assert.match(invitationDescription, /포인트/);
+  assert.match(invitationDescription, /미니게임/);
+  assert.match(invitationDescription, /상점/);
+  assert.match(invitationDescription, /운영진/);
+  assert.match(invitationDescription, /자동 게시 기능은 후속 작업/);
+  assert.doesNotMatch(invitationDescription, /TODAY_MISSION_CHANNEL_ID|DISCORD|WEB_APP_SECRET|script\.google\.com/);
+
   const envCheck = buildOperatorEnvironmentCheckEmbed({
     channelChecks: [
       {
@@ -293,6 +335,77 @@ async function main() {
     restoreEnv('GOOGLE_SHEETS_LOGGING_ENABLED', originalEnv.sheetsEnabled);
     restoreEnv('GOOGLE_SHEETS_WEB_APP_URL', originalEnv.sheetsUrl);
   }
+
+  let invitationPayload = null;
+  await handleOperatorHubSelect({
+    customId: OPERATOR_HUB_SELECT_ID,
+    values: ['invitation_notice'],
+    member: {
+      permissions: {
+        has: () => true,
+      },
+    },
+    reply: async (payload) => {
+      invitationPayload = payload;
+    },
+  });
+  assert.ok(invitationPayload);
+  assert.strictEqual(invitationPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(invitationPayload.embeds[0]), '참여자 초대 안내문');
+  assert.match(getEmbedDescription(invitationPayload.embeds[0]), /복사해서 공지 채널에 붙여넣/);
+  assert.strictEqual(invitationPayload.components.length, 1);
+  assert.strictEqual(invitationPayload.components[0].components[0].data.custom_id, OPERATOR_HUB_SELECT_ID);
+  assertNoAutoPostComponents(invitationPayload.components);
+
+  let operationHubPayload = null;
+  await handleInteractionCreate({
+    commandName: '운영현황',
+    options: {
+      getString: () => null,
+      getInteger: () => null,
+    },
+    member: {
+      permissions: {
+        has: () => true,
+      },
+    },
+    isChatInputCommand: () => true,
+    isStringSelectMenu: () => false,
+    isButton: () => false,
+    isModalSubmit: () => false,
+    reply: async (payload) => {
+      operationHubPayload = payload;
+    },
+  });
+  assert.ok(operationHubPayload);
+  assert.strictEqual(operationHubPayload.ephemeral, true);
+  assert.ok(flattenComponentData(operationHubPayload.components).some((component) => {
+    return component.custom_id === OPERATOR_HUB_BUTTON_IDS.invitationNotice
+      && component.label === '참여자 초대 안내문';
+  }));
+  assertNoAutoPostComponents(operationHubPayload.components);
+
+  let invitationButtonPayload = null;
+  await handleInteractionCreate({
+    customId: OPERATOR_HUB_BUTTON_IDS.invitationNotice,
+    member: {
+      permissions: {
+        has: () => true,
+      },
+    },
+    isChatInputCommand: () => false,
+    isStringSelectMenu: () => false,
+    isButton: () => true,
+    isModalSubmit: () => false,
+    reply: async (payload) => {
+      invitationButtonPayload = payload;
+    },
+  });
+  assert.ok(invitationButtonPayload);
+  assert.strictEqual(invitationButtonPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(invitationButtonPayload.embeds[0]), '참여자 초대 안내문');
+  assert.match(getEmbedDescription(invitationButtonPayload.embeds[0]), /처음 왔다면 여기부터/);
+  assertNoAutoPostComponents(invitationButtonPayload.components);
 
   assert.match(getEmbedDescription(buildOperatorExportGuideEmbed()), /\/운영내보내기 종류:전체 형식:JSON/);
   assert.match(getEmbedDescription(buildOperatorChecklistEmbed()), /docs\/operator-dashboard-guide\.md/);
