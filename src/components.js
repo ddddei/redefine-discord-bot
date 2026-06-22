@@ -10,6 +10,9 @@ const GUIDE_HUB_SELECT_ID = 'guide_hub_select';
 const OPERATOR_HUB_SELECT_ID = 'operator_hub_select';
 const OPERATOR_MISSION_HUB_SELECT_ID = 'admin_mission_hub_select';
 const OPERATOR_MISSION_TEMPLATE_SELECT_ID = 'admin_mission_template_select';
+const OPERATOR_HUB_BUTTON_IDS = {
+  invitationNotice: 'operator_hub:invitation_notice',
+};
 const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   create: 'admin_mission_hub:create',
   editPrefix: 'admin_mission_hub:edit:',
@@ -108,6 +111,11 @@ const OPERATOR_HUB_OPTIONS = [
     description: '미션 인증 채널 이모지 처리 기록',
   },
   {
+    label: '참여자 초대 안내문',
+    value: 'invitation_notice',
+    description: '초대 전 복사용 공지문 미리보기',
+  },
+  {
     label: '환경 설정 점검',
     value: 'environment_check',
     description: '주요 환경변수와 Discord 채널 권한 확인',
@@ -145,6 +153,15 @@ function createOperatorHubSelectRow(selectedValue = null) {
         ...option,
         default: option.value === selectedValue,
       })))
+  );
+}
+
+function createOperatorInvitationNoticeButtonRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_HUB_BUTTON_IDS.invitationNotice)
+      .setLabel('참여자 초대 안내문')
+      .setStyle(ButtonStyle.Secondary)
   );
 }
 
@@ -246,12 +263,14 @@ module.exports = {
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_MISSION_TEMPLATE_SELECT_ID,
+  OPERATOR_HUB_BUTTON_IDS,
   OPERATOR_HUB_OPTIONS,
   OPERATOR_HUB_SELECT_ID,
   createOperatorMissionHubToken,
   createOperatorMissionTemplateToken,
   createGuideHubSelectRow,
   createOperatorHubSelectRow,
+  createOperatorInvitationNoticeButtonRow,
   createOperatorMissionHubRows,
   createOperatorMissionTemplateRows,
 };
