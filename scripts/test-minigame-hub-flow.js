@@ -194,6 +194,7 @@ async function run() {
   assert.deepStrictEqual(
     guideButtons.map((button) => [button.custom_id, button.style]),
     [
+      ['participant_menu_onboarding', ButtonStyle.Primary],
       ['participant_menu_today_mission', ButtonStyle.Primary],
       ['participant_menu_points', ButtonStyle.Success],
       ['participant_menu_ranking', ButtonStyle.Secondary],
