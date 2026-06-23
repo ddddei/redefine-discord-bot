@@ -88,6 +88,7 @@ async function main() {
       'points',
       'missions_shop',
       'mission_management',
+      'shop_management',
       'reaction_approvals',
       'invitation_notice',
       'prelaunch_check',
@@ -101,7 +102,7 @@ async function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 12);
+  assert.strictEqual(menu.options.length, 13);
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'invitation_notice'
     && /초대 안내문|초대 공지/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'prelaunch_check'

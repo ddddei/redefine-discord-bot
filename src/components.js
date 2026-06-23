@@ -10,11 +10,13 @@ const GUIDE_HUB_SELECT_ID = 'guide_hub_select';
 const OPERATOR_HUB_SELECT_ID = 'operator_hub_select';
 const OPERATOR_MISSION_HUB_SELECT_ID = 'admin_mission_hub_select';
 const OPERATOR_MISSION_TEMPLATE_SELECT_ID = 'admin_mission_template_select';
+const OPERATOR_SHOP_HUB_SELECT_ID = 'admin_shop_hub_select';
 const OPERATOR_HUB_BUTTON_IDS = {
   invitationNotice: 'operator_hub:invitation_notice',
   prelaunchCheck: 'operator_hub:prelaunch_check',
   prelaunchOpenEnvironmentCheck: 'operator_hub:prelaunch_open_environment_check',
   prelaunchOpenMissionHub: 'operator_hub:prelaunch_open_mission_hub',
+  prelaunchOpenShopHub: 'operator_hub:prelaunch_open_shop_hub',
 };
 const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   create: 'admin_mission_hub:create',
@@ -26,6 +28,14 @@ const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   publishTodayNotice: 'admin_mission_hub:publish_today_notice',
   refresh: 'admin_mission_hub:refresh',
   refreshTemplates: 'admin_mission_hub:refresh_templates',
+};
+const OPERATOR_SHOP_HUB_BUTTON_IDS = {
+  create: 'admin_shop_hub:create',
+  editPrefix: 'admin_shop_hub:edit:',
+  togglePrefix: 'admin_shop_hub:toggle:',
+  soldOutPrefix: 'admin_shop_hub:sold_out:',
+  hidePrefix: 'admin_shop_hub:hide:',
+  refresh: 'admin_shop_hub:refresh',
 };
 
 function createOperatorMissionHubToken(missionId) {
@@ -40,6 +50,14 @@ function createOperatorMissionTemplateToken(templateId) {
   return `mt_${crypto
     .createHash('sha1')
     .update(String(templateId || ''))
+    .digest('hex')
+    .slice(0, 16)}`;
+}
+
+function createOperatorShopHubToken(itemId) {
+  return `sh_${crypto
+    .createHash('sha1')
+    .update(String(itemId || ''))
     .digest('hex')
     .slice(0, 16)}`;
 }
@@ -107,6 +125,11 @@ const OPERATOR_HUB_OPTIONS = [
     label: '미션 관리 허브',
     value: 'mission_management',
     description: '미션 확인, 생성, 수정, 상태 변경',
+  },
+  {
+    label: '상점 관리 허브',
+    value: 'shop_management',
+    description: '상점 항목 확인, 생성, 상태 변경',
   },
   {
     label: '반응 승인 기록',
@@ -198,11 +221,78 @@ function createOperatorPrelaunchCheckActionRow(issues = {}) {
     );
   }
 
+  if (issues.hasShopIssue) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(OPERATOR_HUB_BUTTON_IDS.prelaunchOpenShopHub)
+        .setLabel('상점 관리 허브 열기')
+        .setStyle(ButtonStyle.Primary)
+    );
+  }
+
   if (buttons.length === 0) {
     return null;
   }
 
   return new ActionRowBuilder().addComponents(...buttons);
+}
+
+function createOperatorShopHubRows(items = [], selectedItemId = null) {
+  const selectedItem = items.find((item) => item.id === selectedItemId) || items[0] || null;
+  const selectedId = selectedItem ? selectedItem.id : '';
+  const rows = [];
+
+  if (items.length > 0) {
+    rows.push(new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(OPERATOR_SHOP_HUB_SELECT_ID)
+        .setPlaceholder('관리할 상점 항목을 선택해 주세요')
+        .addOptions(items.slice(0, 25).map((item) => ({
+          label: String(item.name || item.id).slice(0, 100),
+          description: `상태 ${item.status || 'unknown'} / ${item.cost || 0}P`,
+          value: createOperatorShopHubToken(item.id),
+          default: item.id === selectedId,
+        })))
+    ));
+  }
+
+  const isActive = selectedItem && selectedItem.status === 'active';
+  const selectedToken = selectedItem ? createOperatorShopHubToken(selectedItem.id) : 'none';
+  rows.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_SHOP_HUB_BUTTON_IDS.create)
+      .setLabel('새 항목')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_SHOP_HUB_BUTTON_IDS.editPrefix}${selectedToken}`)
+      .setLabel('수정')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!selectedItem),
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_SHOP_HUB_BUTTON_IDS.togglePrefix}${selectedToken}`)
+      .setLabel(isActive ? '비활성화' : '활성화')
+      .setStyle(isActive ? ButtonStyle.Secondary : ButtonStyle.Success)
+      .setDisabled(!selectedItem),
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_SHOP_HUB_BUTTON_IDS.soldOutPrefix}${selectedToken}`)
+      .setLabel('품절 처리')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(!selectedItem || selectedItem.status === 'soldOut'),
+    new ButtonBuilder()
+      .setCustomId(`${OPERATOR_SHOP_HUB_BUTTON_IDS.hidePrefix}${selectedToken}`)
+      .setLabel('숨김')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!selectedItem || selectedItem.status === 'hidden')
+  ));
+
+  rows.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_SHOP_HUB_BUTTON_IDS.refresh)
+      .setLabel('새로고침')
+      .setStyle(ButtonStyle.Secondary)
+  ));
+
+  return rows;
 }
 
 function createOperatorMissionHubRows(missions = [], selectedMissionId = null) {
@@ -303,15 +393,19 @@ module.exports = {
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_MISSION_TEMPLATE_SELECT_ID,
+  OPERATOR_SHOP_HUB_BUTTON_IDS,
+  OPERATOR_SHOP_HUB_SELECT_ID,
   OPERATOR_HUB_BUTTON_IDS,
   OPERATOR_HUB_OPTIONS,
   OPERATOR_HUB_SELECT_ID,
   createOperatorMissionHubToken,
   createOperatorMissionTemplateToken,
+  createOperatorShopHubToken,
   createGuideHubSelectRow,
   createOperatorHubSelectRow,
   createOperatorInvitationNoticeButtonRow,
   createOperatorPrelaunchCheckActionRow,
   createOperatorMissionHubRows,
   createOperatorMissionTemplateRows,
+  createOperatorShopHubRows,
 };
