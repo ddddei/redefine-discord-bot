@@ -630,6 +630,35 @@ function formatPrelaunchChannelLine(label, check, options = {}) {
   return `⚠️ 확인 필요 ${label}: 미설정 - ${options.note || 'Railway Variables와 Discord 채널 권한을 확인해 주세요.'}`;
 }
 
+function getOperatorPrelaunchCheckIssues({
+  channelChecks = [],
+  todayMissionCheck = {},
+  operationSummary = {},
+  googleSheetsCheck = {},
+} = {}) {
+  const logChannel = getChannelCheck(channelChecks, 'LOG_CHANNEL_ID');
+  const todayMissionChannel = getChannelCheck(channelChecks, 'TODAY_MISSION_CHANNEL_ID');
+  const reviewChannel = getChannelCheck(channelChecks, 'ACTIVITY_REVIEW_CHANNEL_ID');
+  const minigameChannel = getChannelCheck(channelChecks, 'MINIGAME_CHANNEL_ID');
+  const redeemChannel = getChannelCheck(channelChecks, 'POINT_REDEEM_CHANNEL_ID');
+  const activeMissionExists = Boolean(todayMissionCheck.activeMissionExists);
+  const publishChannelReady = Boolean(todayMissionCheck.publishChannelReady);
+  const duplicateGuardReady = todayMissionCheck.duplicateGuardReady !== false;
+  const activeShopItemsCount = operationSummary.activeShopItemsCount || 0;
+  const sheetsReady = Boolean(googleSheetsCheck.loggingEnabled && googleSheetsCheck.webAppUrlConfigured);
+
+  return {
+    hasEnvironmentIssue: !isChannelReady(logChannel)
+      || !isChannelReady(todayMissionChannel)
+      || !isChannelReady(reviewChannel)
+      || !isChannelReady(minigameChannel)
+      || !isChannelReady(redeemChannel)
+      || !sheetsReady,
+    hasMissionIssue: !activeMissionExists || !publishChannelReady || !duplicateGuardReady,
+    hasShopIssue: activeShopItemsCount === 0,
+  };
+}
+
 function buildOperatorPrelaunchCheckEmbed({
   channelChecks = [],
   todayMissionCheck = {},
@@ -673,7 +702,7 @@ function buildOperatorPrelaunchCheckEmbed({
       alreadyPublishedToday
         ? '✅ 준비됨 오늘 게시 기록: 이미 오늘 게시된 기록이 있어 중복 게시 방지가 작동합니다.'
         : 'ℹ️ 선택 항목 오늘 게시 기록: 아직 오늘 게시된 기록은 없습니다. 게시 시 중복 게시 방지 기록이 생성됩니다.',
-      formatReadyStatus(duplicateGuardReady, '오늘의 미션 하루 1회 지급 차단 흐름이 준비되어 있습니다.', '중복 지급 방지 상태를 확인해 주세요.'),
+      formatReadyStatus(duplicateGuardReady, '오늘의 미션 하루 1회 지급 차단 흐름이 정상 작동 중입니다.', '오늘 한 참여자에게 중복 지급된 기록이 발견되었습니다. 미션 검토 내역을 확인해 주세요.'),
       '',
       '미션 인증/검토',
       formatPrelaunchChannelLine('검토 알림 채널', reviewChannel),
@@ -876,6 +905,7 @@ module.exports = {
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
   buildOperatorPrelaunchCheckEmbed,
+  getOperatorPrelaunchCheckIssues,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,

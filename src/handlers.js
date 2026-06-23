@@ -18,6 +18,7 @@ const {
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
   buildOperatorPrelaunchCheckEmbed,
+  getOperatorPrelaunchCheckIssues,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
@@ -51,6 +52,7 @@ const {
   createOperatorMissionTemplateRows,
   createOperatorHubSelectRow,
   createOperatorInvitationNoticeButtonRow,
+  createOperatorPrelaunchCheckActionRow,
 } = require('./components');
 const {
   createSubmissionReviewActionRow,
@@ -269,9 +271,23 @@ async function createOperatorPrelaunchCheck(interaction) {
       activeMissionExists: Boolean(activeTodayMission),
       publishChannelReady: Boolean(activeTodayMission && channelReady),
       alreadyPublishedToday: pointsRepository.hasTodayMissionNoticeBeenPublished(),
-      duplicateGuardReady: true,
+      duplicateGuardReady: pointsRepository.isDuplicateMissionRewardGuardHealthy(),
     },
     operationSummary: pointsRepository.getOperationSummary(),
+  };
+}
+
+async function createOperatorPrelaunchCheckPayload(interaction) {
+  const checkData = await createOperatorPrelaunchCheck(interaction);
+  const issueActionRow = createOperatorPrelaunchCheckActionRow(getOperatorPrelaunchCheckIssues(checkData));
+  const components = [createOperatorHubSelectRow('prelaunch_check')];
+  if (issueActionRow) {
+    components.push(issueActionRow);
+  }
+
+  return {
+    embeds: [buildOperatorPrelaunchCheckEmbed(checkData)],
+    components,
   };
 }
 
@@ -2271,10 +2287,7 @@ async function handleOperatorHubSelect(interaction) {
         components: [createOperatorHubSelectRow(selectedValue)],
       };
     } else if (selectedValue === 'prelaunch_check') {
-      payload = {
-        embeds: [buildOperatorPrelaunchCheckEmbed(await createOperatorPrelaunchCheck(interaction))],
-        components: [createOperatorHubSelectRow(selectedValue)],
-      };
+      payload = await createOperatorPrelaunchCheckPayload(interaction);
     } else {
       payload = {
         embeds: [getOperatorHubEmbed(selectedValue, 10)],
@@ -2348,8 +2361,38 @@ async function handleOperatorPrelaunchCheckButton(interaction) {
   }
 
   await interaction.reply({
-    embeds: [buildOperatorPrelaunchCheckEmbed(await createOperatorPrelaunchCheck(interaction))],
-    components: [createOperatorHubSelectRow('prelaunch_check')],
+    ...(await createOperatorPrelaunchCheckPayload(interaction)),
+    ephemeral: true,
+  });
+}
+
+async function handleOperatorPrelaunchOpenEnvironmentCheckButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    embeds: [buildOperatorEnvironmentCheckEmbed(await createOperatorEnvironmentCheck(interaction))],
+    components: [createOperatorHubSelectRow('environment_check')],
+    ephemeral: true,
+  });
+}
+
+async function handleOperatorPrelaunchOpenMissionHubButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    ...createMissionHubPayload(),
     ephemeral: true,
   });
 }
@@ -3010,6 +3053,16 @@ async function handleInteractionCreate(interaction) {
 
     if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.prelaunchCheck) {
       await handleOperatorPrelaunchCheckButton(interaction);
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.prelaunchOpenEnvironmentCheck) {
+      await handleOperatorPrelaunchOpenEnvironmentCheckButton(interaction);
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.prelaunchOpenMissionHub) {
+      await handleOperatorPrelaunchOpenMissionHubButton(interaction);
       return;
     }
 

@@ -534,6 +534,53 @@ async function main() {
   assert.strictEqual(getEmbedTitle(prelaunchButtonPayload.embeds[0]), '초대 전 점검');
   assert.match(getEmbedDescription(prelaunchButtonPayload.embeds[0]), /오늘의 미션을 먼저 적용하거나 새 미션을 active/);
   assertNoAutoPostComponents(prelaunchButtonPayload.components);
+  const prelaunchShortcutButtons = flattenComponentData(prelaunchButtonPayload.components);
+  assert.ok(prelaunchShortcutButtons.some((component) => {
+    return component.custom_id === OPERATOR_HUB_BUTTON_IDS.prelaunchOpenEnvironmentCheck
+      && component.label === '환경 설정 점검 열기';
+  }));
+  assert.ok(prelaunchShortcutButtons.some((component) => {
+    return component.custom_id === OPERATOR_HUB_BUTTON_IDS.prelaunchOpenMissionHub
+      && component.label === '미션 관리 허브 열기';
+  }));
+
+  let environmentShortcutPayload = null;
+  await handleInteractionCreate({
+    customId: OPERATOR_HUB_BUTTON_IDS.prelaunchOpenEnvironmentCheck,
+    member: {
+      permissions: {
+        has: () => true,
+      },
+    },
+    isChatInputCommand: () => false,
+    isStringSelectMenu: () => false,
+    isButton: () => true,
+    isModalSubmit: () => false,
+    reply: async (payload) => {
+      environmentShortcutPayload = payload;
+    },
+  });
+  assert.ok(environmentShortcutPayload);
+  assert.strictEqual(getEmbedTitle(environmentShortcutPayload.embeds[0]), '환경 설정 점검');
+
+  let missionHubShortcutPayload = null;
+  await handleInteractionCreate({
+    customId: OPERATOR_HUB_BUTTON_IDS.prelaunchOpenMissionHub,
+    member: {
+      permissions: {
+        has: () => true,
+      },
+    },
+    isChatInputCommand: () => false,
+    isStringSelectMenu: () => false,
+    isButton: () => true,
+    isModalSubmit: () => false,
+    reply: async (payload) => {
+      missionHubShortcutPayload = payload;
+    },
+  });
+  assert.ok(missionHubShortcutPayload);
+  assert.strictEqual(getEmbedTitle(missionHubShortcutPayload.embeds[0]), '미션 관리 허브');
 
   assert.match(getEmbedDescription(buildOperatorExportGuideEmbed()), /\/운영내보내기 종류:전체 형식:JSON/);
   assert.match(getEmbedDescription(buildOperatorChecklistEmbed()), /docs\/operator-dashboard-guide\.md/);
