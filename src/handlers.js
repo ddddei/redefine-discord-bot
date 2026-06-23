@@ -1122,20 +1122,26 @@ function createMissionHubModal(action, mission = null) {
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
-          .setCustomId('note')
-          .setLabel('운영 메모')
-          .setStyle(TextInputStyle.Paragraph)
+          .setCustomId('activeDate')
+          .setLabel('미션 날짜 (YYYY-MM-DD)')
+          .setStyle(TextInputStyle.Short)
           .setRequired(false)
-          .setMaxLength(500)
-          .setValue(mission && mission.note ? truncateText(mission.note, 500, '') : '')
+          .setMaxLength(10)
+          .setPlaceholder('비우면 오늘 날짜 또는 기존 날짜를 유지합니다.')
+          .setValue(mission && mission.activeDate ? mission.activeDate : '')
       )
     );
 }
 
-function getMissionHubModalInput(interaction, fallbackStatus = 'draft') {
+function getMissionHubModalInput(interaction, fallbackStatus = 'draft', fallbackActiveDate = null) {
   const rewardPoints = Number.parseInt(interaction.fields.getTextInputValue('rewardPoints'), 10);
   if (!Number.isInteger(rewardPoints) || rewardPoints <= 0) {
     throw new Error('지급 포인트는 0보다 큰 정수로 입력해 주세요.');
+  }
+
+  const activeDateInput = interaction.fields.getTextInputValue('activeDate').trim();
+  if (activeDateInput && !/^\d{4}-\d{2}-\d{2}$/.test(activeDateInput)) {
+    throw new Error('미션 날짜는 YYYY-MM-DD 형식으로 입력해 주세요.');
   }
 
   return {
@@ -1143,7 +1149,7 @@ function getMissionHubModalInput(interaction, fallbackStatus = 'draft') {
     description: interaction.fields.getTextInputValue('description'),
     rewardPoints,
     status: getMissionHubStatusInput(interaction.fields.getTextInputValue('status'), fallbackStatus),
-    note: interaction.fields.getTextInputValue('note') || null,
+    activeDate: activeDateInput || fallbackActiveDate,
   };
 }
 
@@ -2771,8 +2777,7 @@ async function handleMissionHubButton(interaction) {
       return;
     }
 
-    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refresh
-      || interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refreshTemplates) {
+    if (interaction.customId === OPERATOR_MISSION_HUB_BUTTON_IDS.refresh) {
       await interaction.update(createMissionHubPayload());
       return;
     }
@@ -2856,6 +2861,16 @@ async function handleMissionHubButton(interaction) {
       return;
     }
 
+    if (interaction.customId.startsWith(OPERATOR_MISSION_HUB_BUTTON_IDS.toggleSubmissionPrefix)) {
+      const nextRequiresSubmission = mission.requiresSubmission === false;
+      const updatedMission = pointsRepository.updateMission(mission.id, { requiresSubmission: nextRequiresSubmission });
+      await interaction.update(createMissionHubPayload(updatedMission.id));
+      await sendEphemeralAfterUpdate(interaction, {
+        content: `${updatedMission.title || updatedMission.id} 인증 필요 여부를 ${updatedMission.requiresSubmission === false ? '아니오' : '예'}로 변경했어요.`,
+      });
+      return;
+    }
+
     await interaction.reply({
       content: '지원하지 않는 미션 관리 허브 버튼이에요. 허브를 새로고침한 뒤 다시 시도해 주세요.',
       ephemeral: true,
@@ -2896,7 +2911,7 @@ async function handleMissionHubModal(interaction) {
       }
       mission = pointsRepository.updateMission(
         currentMission.id,
-        getMissionHubModalInput(interaction, currentMission.status || 'draft')
+        getMissionHubModalInput(interaction, currentMission.status || 'draft', currentMission.activeDate || null)
       );
     } else {
       throw new Error('지원하지 않는 미션 허브 작업입니다.');

@@ -708,7 +708,7 @@ async function main() {
     description: '버튼과 모달로 생성한 미션입니다.',
     rewardPoints: '35',
     status: 'active',
-    note: 'admin mission hub smoke test',
+    activeDate: '2031-01-15',
   });
   await handleInteractionCreate(createModal);
   assert.strictEqual(createModal.replyPayload.ephemeral, true);
@@ -720,6 +720,9 @@ async function main() {
   const createdToken = createOperatorMissionHubToken(createdMission.id);
   assert.strictEqual(createdMission.status, 'active');
   assert.strictEqual(createdMission.rewardPoints, 35);
+  assert.strictEqual(createdMission.activeDate, '2031-01-15');
+  assert.strictEqual(createdMission.note, null);
+  assert.strictEqual(createdMission.requiresSubmission, true);
 
   const editButton = createButtonInteraction(`admin_mission_hub:edit:${createdToken}`);
   await handleInteractionCreate(editButton);
@@ -727,12 +730,23 @@ async function main() {
   assert.strictEqual(editButton.shownModal.data.title, '미션 수정');
   editButton.shownModal.toJSON();
 
+  const invalidDateModal = createModalInteraction(`admin_mission_hub_modal:update:${createdToken}`, {
+    title: '허브 수정 미션',
+    description: '수정된 미션 안내문입니다.',
+    rewardPoints: '45',
+    status: 'paused',
+    activeDate: '2031/01/16',
+  });
+  await handleInteractionCreate(invalidDateModal);
+  assert.strictEqual(invalidDateModal.replyPayload.ephemeral, true);
+  assert.match(invalidDateModal.replyPayload.content, /YYYY-MM-DD/);
+
   const updateModal = createModalInteraction(`admin_mission_hub_modal:update:${createdToken}`, {
     title: '허브 수정 미션',
     description: '수정된 미션 안내문입니다.',
     rewardPoints: '45',
     status: 'paused',
-    note: 'updated by hub smoke test',
+    activeDate: '',
   });
   await handleInteractionCreate(updateModal);
   assert.strictEqual(getEmbedTitle(updateModal.replyPayload), '미션 수정 완료');
@@ -742,12 +756,25 @@ async function main() {
   assert.strictEqual(updatedMission.title, '허브 수정 미션');
   assert.strictEqual(updatedMission.rewardPoints, 45);
   assert.strictEqual(updatedMission.status, 'paused');
+  assert.strictEqual(updatedMission.activeDate, '2031-01-15');
+  assert.strictEqual(updatedMission.note, null);
 
   const toggleButton = createButtonInteraction(`admin_mission_hub:toggle:${updatedToken}`);
   await handleInteractionCreate(toggleButton);
   assert.strictEqual(repository.findMission(updatedMission.id).status, 'active');
   assert.strictEqual(getEmbedTitle(toggleButton.updatePayload), '미션 관리 허브');
   assert.match(toggleButton.followUpPayload.content, /active/);
+
+  const toggleSubmissionOffButton = createButtonInteraction(`admin_mission_hub:toggle_submission:${updatedToken}`);
+  await handleInteractionCreate(toggleSubmissionOffButton);
+  assert.strictEqual(repository.findMission(updatedMission.id).requiresSubmission, false);
+  assert.strictEqual(getEmbedTitle(toggleSubmissionOffButton.updatePayload), '미션 관리 허브');
+  assert.match(toggleSubmissionOffButton.followUpPayload.content, /아니오/);
+
+  const toggleSubmissionOnButton = createButtonInteraction(`admin_mission_hub:toggle_submission:${updatedToken}`);
+  await handleInteractionCreate(toggleSubmissionOnButton);
+  assert.strictEqual(repository.findMission(updatedMission.id).requiresSubmission, true);
+  assert.match(toggleSubmissionOnButton.followUpPayload.content, /예/);
 
   const closeButton = createButtonInteraction(`admin_mission_hub:close:${updatedToken}`);
   await handleInteractionCreate(closeButton);
