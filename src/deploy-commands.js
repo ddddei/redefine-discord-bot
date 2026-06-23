@@ -51,6 +51,10 @@ const commands = [
     .setDescription('리디파인 디스코드 주요 채널의 용도를 안내해요.'),
 
   new SlashCommandBuilder()
+    .setName('던전월드')
+    .setDescription('혼자 짧게 즐기는 솔로 던전월드 미니게임이에요. 포인트는 지급되지 않아요.'),
+
+  new SlashCommandBuilder()
     .setName('포인트')
     .setDescription('내 여정 포인트를 확인합니다.'),
 
@@ -262,7 +266,8 @@ const commands = [
           { name: '인증', value: 'submissions' },
           { name: '미션', value: 'missions' },
           { name: '상점', value: 'shopItems' },
-          { name: '요약', value: 'summary' }
+          { name: '요약', value: 'summary' },
+          { name: '던전월드', value: 'dungeonworld' }
         )
     )
     .addStringOption((option) =>

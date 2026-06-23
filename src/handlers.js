@@ -11,6 +11,8 @@ const {
   TextInputStyle,
 } = require('discord.js');
 const {
+  buildDungeonworldIntroEmbed,
+  buildDungeonworldResultEmbed,
   OPERATOR_CHECK_FOOTER,
   buildOperatorChecklistEmbed,
   buildOperatorEnvironmentCheckEmbed,
@@ -39,6 +41,7 @@ const {
   truncateText,
 } = require('./embeds');
 const {
+  DUNGEONWORLD_CHOICE_PREFIX,
   GUIDE_HUB_SELECT_ID,
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
@@ -57,6 +60,7 @@ const {
   createOperatorHubSelectRow,
   createOperatorInvitationNoticeButtonRow,
   createOperatorPrelaunchCheckActionRow,
+  createDungeonworldChoiceRow,
 } = require('./components');
 const {
   createSubmissionReviewActionRow,
@@ -90,8 +94,18 @@ const {
 const { buildOperationExportPayload, truncateForDiscord } = require('./exportUtils');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
+const {
+  CLOSING_NOTE: DUNGEONWORLD_CLOSING_NOTE,
+  buildDungeonworldExportPayload,
+  createDungeonworldRepository,
+  getChoice: getDungeonworldChoice,
+  getSession: getDungeonworldSession,
+  listChoices: listDungeonworldChoices,
+  playChoice: playDungeonworldChoice,
+} = require('./dungeonworld');
 
 const pointsRepository = createPointsRepository();
+const dungeonworldRepository = createDungeonworldRepository();
 const handleMinigameButton = createMinigameButtonHandler({
   pointsRepository,
   getMemberDisplayName,
@@ -1526,6 +1540,56 @@ async function handleGuideCommand(interaction) {
     components: [...createParticipantMenuButtonRows(), createGuideHubSelectRow()],
     ephemeral: true,
   });
+}
+
+async function handleDungeonworldCommand(interaction) {
+  const session = getDungeonworldSession();
+  const choices = listDungeonworldChoices();
+
+  await interaction.reply({
+    embeds: [buildDungeonworldIntroEmbed(session, choices)],
+    components: [createDungeonworldChoiceRow(choices)],
+    ephemeral: true,
+  });
+}
+
+async function handleDungeonworldButton(interaction) {
+  try {
+    const choiceId = interaction.customId.slice(DUNGEONWORLD_CHOICE_PREFIX.length);
+    const choice = getDungeonworldChoice(choiceId);
+    if (!choice) {
+      await interaction.reply({
+        content: '선택지를 찾지 못했어요. `/던전월드`를 다시 실행해 주세요.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const result = playDungeonworldChoice(choiceId);
+    dungeonworldRepository.recordPlay({
+      userId: interaction.user.id,
+      displayName: getMemberDisplayName(interaction.user, interaction.member),
+      choiceId: result.choice.id,
+      choiceLabel: result.choice.label,
+      die1: result.die1,
+      die2: result.die2,
+      total: result.total,
+      tier: result.tier,
+      tierLabel: result.tierLabel,
+      outcomeText: result.outcomeText,
+    });
+
+    await interaction.reply({
+      embeds: [buildDungeonworldResultEmbed(result, DUNGEONWORLD_CLOSING_NOTE)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('던전월드 처리 실패:', error.message);
+    await interaction.reply({
+      content: `던전월드를 진행하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
 }
 
 function createPointBalanceEmbedForUser(userId) {
@@ -3027,11 +3091,9 @@ async function handleOperationExportCommand(interaction) {
     const kind = interaction.options.getString('종류');
     const format = interaction.options.getString('형식') || 'summary';
     const limit = interaction.options.getInteger('개수') || 50;
-    const payload = buildOperationExportPayload(pointsRepository, {
-      kind,
-      format,
-      limit,
-    });
+    const payload = kind === 'dungeonworld'
+      ? buildDungeonworldExportPayload(dungeonworldRepository, { format, limit })
+      : buildOperationExportPayload(pointsRepository, { kind, format, limit });
 
     if (payload.isAttachment) {
       const attachment = new AttachmentBuilder(payload.buffer, {
@@ -3466,6 +3528,11 @@ async function handleInteractionCreate(interaction) {
       await handleParticipantMenuButton(interaction);
       return;
     }
+
+    if (interaction.customId.startsWith(DUNGEONWORLD_CHOICE_PREFIX)) {
+      await handleDungeonworldButton(interaction);
+      return;
+    }
   }
 
   if (interaction.isModalSubmit && interaction.isModalSubmit()) {
@@ -3499,6 +3566,11 @@ async function handleInteractionCreate(interaction) {
 
   if (interaction.commandName === '채널안내') {
     await handleChannelGuideCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '던전월드') {
+    await handleDungeonworldCommand(interaction);
     return;
   }
 
@@ -3595,6 +3667,8 @@ module.exports = {
   getOperatorHubEmbed,
   handleChannelGuideCommand,
   handleCheckinCommand,
+  handleDungeonworldButton,
+  handleDungeonworldCommand,
   handleGuideCommand,
   handleGuideHubSelect,
   handleInteractionCreate,
