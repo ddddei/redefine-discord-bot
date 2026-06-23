@@ -12,6 +12,7 @@ const OPERATOR_MISSION_HUB_SELECT_ID = 'admin_mission_hub_select';
 const OPERATOR_MISSION_TEMPLATE_SELECT_ID = 'admin_mission_template_select';
 const OPERATOR_HUB_BUTTON_IDS = {
   invitationNotice: 'operator_hub:invitation_notice',
+  prelaunchCheck: 'operator_hub:prelaunch_check',
 };
 const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   create: 'admin_mission_hub:create',
@@ -116,6 +117,11 @@ const OPERATOR_HUB_OPTIONS = [
     description: '초대 전 복사용 공지문 미리보기',
   },
   {
+    label: '초대 전 점검',
+    value: 'prelaunch_check',
+    description: '참여자 초대 준비 상태 체크리스트',
+  },
+  {
     label: '환경 설정 점검',
     value: 'environment_check',
     description: '주요 환경변수와 Discord 채널 권한 확인',
@@ -161,6 +167,10 @@ function createOperatorInvitationNoticeButtonRow() {
     new ButtonBuilder()
       .setCustomId(OPERATOR_HUB_BUTTON_IDS.invitationNotice)
       .setLabel('참여자 초대 안내문')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_HUB_BUTTON_IDS.prelaunchCheck)
+      .setLabel('초대 전 점검')
       .setStyle(ButtonStyle.Secondary)
   );
 }

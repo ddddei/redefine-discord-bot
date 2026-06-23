@@ -17,7 +17,7 @@
 | [operation-guide.md](operation-guide.md) | 평소 운영 루틴과 수정 절차 안내 | 운영 중, 데이터 수정 전후, 문의 대응 흐름 확인 시 | 운영 점검표, 데이터 수정 루틴, 검증 명령어, 운영 정책 미확정 질문 처리 원칙, 운영 시 주의사항 |
 | [export-and-backup-guide.md](export-and-backup-guide.md) | 운영 데이터 내보내기와 백업 가이드 | 포인트 운영 데이터를 백업하거나 외부 공유 전 보관 주의사항을 확인할 때 | `/운영내보내기`, JSON/CSV 백업, 개인정보 보관 주의사항, local JSON 한계 |
 | [operator-command-guide.md](operator-command-guide.md) | 운영자 명령어 가이드 | 운영자가 포인트, 교환, 인증, 미션, 상점, 내보내기 명령어를 처리할 때 | 명령어별 사용 흐름, 주요 옵션, 확인 사항, 실수 방지 포인트 |
-| [operator-dashboard-guide.md](operator-dashboard-guide.md) | 운영자 허브 가이드 | `/운영현황`에서 운영 상태를 확인하고 다음 처리 명령어를 찾을 때 | 전체 요약, 교환/인증 대기, 포인트 로그, 미션/상점, 반응 승인, 참여자 초대 안내문, 백업 체크리스트 |
+| [operator-dashboard-guide.md](operator-dashboard-guide.md) | 운영자 허브 가이드 | `/운영현황`에서 운영 상태를 확인하고 다음 처리 명령어를 찾을 때 | 전체 요약, 교환/인증 대기, 포인트 로그, 미션/상점, 반응 승인, 초대 전 점검, 참여자 초대 안내문, 백업 체크리스트 |
 | [admin-mission-management-hub.md](admin-mission-management-hub.md) | 관리자 미션 관리 허브 가이드 | Discord 안에서 미션을 확인, 생성, 수정, 상태 변경할 때 | `/운영현황` 미션 관리 허브, 버튼과 modal 사용법, 보류 기능, QA 체크리스트 |
 | [minigame-hub-guide.md](minigame-hub-guide.md) | 미니게임 허브 운영 가이드 | 지정 미니게임 채널과 버튼형 미니게임 포인트 보상 제한을 확인할 때 | `MINIGAME_CHANNEL_ID`, 2단계 미니게임 허브, 행운 카드, 가위바위보, 주사위, 숫자, 문 선택, 이모지 기억력, 초성 퀴즈, 리디파인 탐험, 하루 보상 상한, 중복 지급 차단 |
 | [google-sheets-integration-plan.md](google-sheets-integration-plan.md) | Google Sheets 운영 데이터 연동 설계안 | local JSON 운영 데이터 유실 위험을 줄이고 Sheets 보조 로그 저장소를 검토할 때 | append-only 포인트/인증 로그, 탭 구조, Apps Script 방식, fallback, DB 전환 고려사항 |
@@ -59,6 +59,7 @@
 - [operator-response-templates.md](operator-response-templates.md)
 
 선발 참여자 입장 전에는 온보딩 역할/채널 구조, 72시간 운영 런북, 온보딩 메시지 패키지, Discord 권한 수동 세팅 가이드를 먼저 확인한 뒤, 참여자에게 보일 공지와 운영진 내부 대응 문구를 준비합니다. `/운영현황`의 `참여자 초대 안내문`에서 복사용 공지문을 확인할 수 있고, 입장 직후 안내는 처음 참여자 시작 가이드의 `/안내` 시작 버튼 흐름과 맞춰 두면 됩니다. 실제 운영 전 QA 체크리스트와 릴리즈 체크리스트로 최종 상태를 확인해 주세요.
+Discord 안에서 바로 확인할 때는 [operator-dashboard-guide.md](operator-dashboard-guide.md)의 `초대 전 점검` 모드를 먼저 실행해 Railway Variables, Discord 채널 권한, active 미션, Google Sheets 설정을 한 번에 점검합니다.
 
 ### 포인트, 교환, 인증 운영
 
@@ -110,6 +111,7 @@ FAQ는 짧은 즉답, Knowledge는 프로그램 구조와 운영 원칙 설명�
 
 - [release-checklist.md](release-checklist.md)
 - [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md)
+- [operator-dashboard-guide.md](operator-dashboard-guide.md)
 
 참여자 입장 전에는 실제 운영 전 QA 체크리스트와 릴리즈 체크리스트를 기준으로 환경, 데이터, 명령어, 공지, 운영 대응 준비 상태를 확인해 주세요.
 

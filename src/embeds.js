@@ -594,6 +594,124 @@ function buildOperatorEnvironmentCheckEmbed({ channelChecks = [], googleSheetsCh
   );
 }
 
+function getChannelCheck(channelChecks = [], envName) {
+  return channelChecks.find((check) => check.envName === envName) || null;
+}
+
+function isChannelReady(check) {
+  return Boolean(check && check.configured && check.found && check.accessible && check.canSendMessages);
+}
+
+function formatReadyStatus(ready, readyText, actionText) {
+  return ready
+    ? `✅ 준비됨: ${readyText}`
+    : `⚠️ 확인 필요: ${actionText}`;
+}
+
+function formatOptionalStatus(ready, readyText, actionText) {
+  return ready
+    ? `✅ 준비됨: ${readyText}`
+    : `ℹ️ 선택 항목: ${actionText}`;
+}
+
+function formatPrelaunchChannelLine(label, check, options = {}) {
+  if (isChannelReady(check)) {
+    return `✅ 준비됨 ${label}: 설정됨 / 채널 접근 가능 / 메시지 전송 가능`;
+  }
+
+  if (check && check.configured) {
+    return `⚠️ 확인 필요 ${label}: 설정됨 / 채널 접근 또는 메시지 전송 권한 확인 필요`;
+  }
+
+  if (options.optional) {
+    return `ℹ️ 선택 항목 ${label}: 미설정 - ${options.note || '별도 채널을 운영할 때만 설정해도 됩니다.'}`;
+  }
+
+  return `⚠️ 확인 필요 ${label}: 미설정 - ${options.note || 'Railway Variables와 Discord 채널 권한을 확인해 주세요.'}`;
+}
+
+function buildOperatorPrelaunchCheckEmbed({
+  channelChecks = [],
+  todayMissionCheck = {},
+  operationSummary = {},
+  googleSheetsCheck = {},
+} = {}) {
+  const logChannel = getChannelCheck(channelChecks, 'LOG_CHANNEL_ID');
+  const todayMissionChannel = getChannelCheck(channelChecks, 'TODAY_MISSION_CHANNEL_ID');
+  const reviewChannel = getChannelCheck(channelChecks, 'ACTIVITY_REVIEW_CHANNEL_ID');
+  const minigameChannel = getChannelCheck(channelChecks, 'MINIGAME_CHANNEL_ID');
+  const redeemChannel = getChannelCheck(channelChecks, 'POINT_REDEEM_CHANNEL_ID');
+  const separateSubmissionChannel = getChannelCheck(channelChecks, 'MISSION_SUBMISSION_CHANNEL_ID');
+  const activeMissionExists = Boolean(todayMissionCheck.activeMissionExists);
+  const publishChannelReady = Boolean(todayMissionCheck.publishChannelReady);
+  const alreadyPublishedToday = Boolean(todayMissionCheck.alreadyPublishedToday);
+  const duplicateGuardReady = todayMissionCheck.duplicateGuardReady !== false;
+  const activeShopItemsCount = operationSummary.activeShopItemsCount || 0;
+  const sheetsReady = Boolean(googleSheetsCheck.loggingEnabled && googleSheetsCheck.webAppUrlConfigured);
+
+  return createGuideEmbed(
+    '초대 전 점검',
+    [
+      '운영자가 실제 참여자를 초대하기 전에 확인하는 읽기 전용 체크리스트입니다.',
+      '이 화면은 자동 수정이나 자동 게시를 하지 않습니다.',
+      '',
+      '참여자 안내/온보딩',
+      '✅ 준비됨 /안내 참여자 메뉴: 구성됨 - 버튼과 선택 메뉴로 안내가 열립니다.',
+      '✅ 준비됨 시작 가이드: `처음 왔다면 여기부터` 버튼이 있습니다.',
+      '✅ 준비됨 참여자 초대 안내문: `/운영현황`에서 복사용 안내문을 확인할 수 있습니다.',
+      '',
+      '필수 채널/환경변수',
+      formatPrelaunchChannelLine('운영 로그 채널', logChannel),
+      formatPrelaunchChannelLine('오늘의 미션 채널', todayMissionChannel),
+      formatPrelaunchChannelLine('미션 인증 검토 채널', reviewChannel),
+      formatPrelaunchChannelLine('미니게임 채널', minigameChannel),
+      formatPrelaunchChannelLine('교환 신청 알림 채널', redeemChannel),
+      '',
+      '오늘의 미션',
+      formatReadyStatus(activeMissionExists, 'active 상태의 오늘의 미션이 있습니다.', 'active 미션 없음 - 오늘의 미션을 먼저 적용하거나 새 미션을 active로 만들어주세요.'),
+      formatReadyStatus(publishChannelReady, '오늘의 미션 채널에 게시 가능한 상태입니다.', '오늘의 미션 게시 전 채널 설정과 봇 메시지 전송 권한을 확인해 주세요.'),
+      alreadyPublishedToday
+        ? '✅ 준비됨 오늘 게시 기록: 이미 오늘 게시된 기록이 있어 중복 게시 방지가 작동합니다.'
+        : 'ℹ️ 선택 항목 오늘 게시 기록: 아직 오늘 게시된 기록은 없습니다. 게시 시 중복 게시 방지 기록이 생성됩니다.',
+      formatReadyStatus(duplicateGuardReady, '오늘의 미션 하루 1회 지급 차단 흐름이 준비되어 있습니다.', '중복 지급 방지 상태를 확인해 주세요.'),
+      '',
+      '미션 인증/검토',
+      formatPrelaunchChannelLine('검토 알림 채널', reviewChannel),
+      formatOptionalStatus(
+        isChannelReady(separateSubmissionChannel),
+        '별도 인증 제출 채널이 준비되어 있습니다.',
+        '별도 인증 제출 채널은 미설정입니다 - 현재 #오늘의-미션 채널에 인증을 함께 올리는 운영이라면 괜찮습니다.'
+      ),
+      formatReadyStatus(isChannelReady(todayMissionChannel), '승인/반려 반응 흐름에 필요한 오늘의 미션 채널 접근이 가능합니다.', '승인/반려 전 오늘의 미션 채널 접근과 메시지 보기 권한을 확인해 주세요.'),
+      '',
+      '포인트/교환',
+      '✅ 준비됨 포인트 확인: `/포인트`와 포인트 기록 저장소를 사용할 수 있습니다.',
+      activeShopItemsCount > 0
+        ? `✅ 준비됨 상점 항목: active 항목 ${activeShopItemsCount}개가 있습니다.`
+        : '⚠️ 확인 필요 상점 항목: active 항목이 없습니다 - 교환 전 `/상점관리`에서 항목을 준비해 주세요.',
+      formatPrelaunchChannelLine('교환 신청 알림', redeemChannel, {
+        note: 'POINT_REDEEM_CHANNEL_ID가 없으면 교환 신청 알림을 받을 채널 확인이 필요합니다.',
+      }),
+      '',
+      '미니게임',
+      formatPrelaunchChannelLine('미니게임 전용 채널', minigameChannel),
+      isChannelReady(minigameChannel)
+        ? '✅ 준비됨 미니게임 안내: 전용 채널 기준으로 안내할 수 있습니다.'
+        : '⚠️ 확인 필요 미니게임 안내: MINIGAME_CHANNEL_ID와 채널 권한을 확인해 주세요.',
+      'ℹ️ 선택 항목 이용 제한: 미니게임은 하루 4회, 하루 최대 40P 제한으로 운영됩니다.',
+      '',
+      'Google Sheets 기록',
+      sheetsReady
+        ? '✅ 준비됨 기록 연동: Google Sheets 보조 기록이 켜져 있고 Web App URL도 설정되어 있습니다.'
+        : '⚠️ 확인 필요 기록 연동: GOOGLE_SHEETS_LOGGING_ENABLED와 GOOGLE_SHEETS_WEB_APP_URL 설정을 확인해 주세요.',
+      'ℹ️ 선택 항목 민감한 설정값: 실제 URL과 검증 값은 이 화면에 표시하지 않습니다.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
 function buildOperatorExportGuideEmbed() {
   return createGuideEmbed(
     '내보내기 안내',
@@ -757,6 +875,7 @@ module.exports = {
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
+  buildOperatorPrelaunchCheckEmbed,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,

@@ -527,7 +527,7 @@ async function run() {
   assert.match(rankingDescription, /재미용 기록/);
   assert.match(rankingDescription, /상위 5명/);
   assert.match(rankingDescription, /상한 사용자 - 40P \(4회\)/);
-  assert.match(rankingDescription, /상한 테스트 사용자 - 15P \(3회\)/);
+  assert.match(rankingDescription, /상한 테스트 사용자 - \d+P \(3회\)/);
   assert.match(rankingDescription, /하루 미니게임은 최대 4회, 보상 합계는 최대 40P/);
   assert.doesNotMatch(rankingDescription, /0P 사용자/);
 

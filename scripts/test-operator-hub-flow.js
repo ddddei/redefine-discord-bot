@@ -16,6 +16,7 @@ const {
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
+  buildOperatorPrelaunchCheckEmbed,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
@@ -89,6 +90,7 @@ async function main() {
       'mission_management',
       'reaction_approvals',
       'invitation_notice',
+      'prelaunch_check',
       'environment_check',
       'exports',
       'checklist',
@@ -99,17 +101,24 @@ async function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 11);
+  assert.strictEqual(menu.options.length, 12);
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'invitation_notice'
     && /초대 안내문|초대 공지/.test(`${option.label} ${option.description}`)));
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'prelaunch_check'
+    && /초대.*점검|준비.*점검/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'environment_check'
     && /환경|채널/.test(option.label)));
 
   const invitationButtonRow = createOperatorInvitationNoticeButtonRow();
-  const invitationButton = invitationButtonRow.components[0].data;
+  const hubButtons = invitationButtonRow.components.map((component) => component.data);
+  const invitationButton = hubButtons.find((button) => button.custom_id === OPERATOR_HUB_BUTTON_IDS.invitationNotice);
+  const prelaunchButton = hubButtons.find((button) => button.custom_id === OPERATOR_HUB_BUTTON_IDS.prelaunchCheck);
   assert.strictEqual(OPERATOR_HUB_BUTTON_IDS.invitationNotice, 'operator_hub:invitation_notice');
+  assert.strictEqual(OPERATOR_HUB_BUTTON_IDS.prelaunchCheck, 'operator_hub:prelaunch_check');
   assert.strictEqual(invitationButton.custom_id, OPERATOR_HUB_BUTTON_IDS.invitationNotice);
   assert.strictEqual(invitationButton.label, '참여자 초대 안내문');
+  assert.strictEqual(prelaunchButton.custom_id, OPERATOR_HUB_BUTTON_IDS.prelaunchCheck);
+  assert.strictEqual(prelaunchButton.label, '초대 전 점검');
 
   const repository = createTempRepository();
   const emptySummary = repository.getOperationSummary();
@@ -284,6 +293,57 @@ async function main() {
   assert.doesNotMatch(envCheckDescription, /secret/i);
   assert.doesNotMatch(envCheckDescription, /token/i);
 
+  const prelaunchCheck = buildOperatorPrelaunchCheckEmbed({
+    channelChecks: [
+      {
+        envName: 'LOG_CHANNEL_ID',
+        label: '기본 운영 로그',
+        required: true,
+        configured: true,
+        found: true,
+        accessible: true,
+        canSendMessages: true,
+      },
+      {
+        envName: 'POINT_REDEEM_CHANNEL_ID',
+        label: '교환 신청 알림',
+        required: true,
+        configured: false,
+        found: false,
+        accessible: false,
+        canSendMessages: false,
+      },
+    ],
+    todayMissionCheck: {
+      activeMissionExists: false,
+      publishChannelReady: false,
+      alreadyPublishedToday: false,
+      duplicateGuardReady: true,
+    },
+    operationSummary: {
+      activeShopItemsCount: 1,
+    },
+    googleSheetsCheck: {
+      loggingEnabled: true,
+      webAppUrlConfigured: true,
+    },
+  });
+  const prelaunchDescription = getEmbedDescription(prelaunchCheck);
+  assert.strictEqual(getEmbedTitle(prelaunchCheck), '초대 전 점검');
+  assert.match(prelaunchDescription, /참여자 안내\/온보딩/);
+  assert.match(prelaunchDescription, /오늘의 미션/);
+  assert.match(prelaunchDescription, /미션 인증\/검토/);
+  assert.match(prelaunchDescription, /포인트\/교환/);
+  assert.match(prelaunchDescription, /미니게임/);
+  assert.match(prelaunchDescription, /Google Sheets/);
+  assert.match(prelaunchDescription, /✅ 준비됨/);
+  assert.match(prelaunchDescription, /⚠️ 확인 필요/);
+  assert.match(prelaunchDescription, /ℹ️ 선택 항목/);
+  assert.match(prelaunchDescription, /오늘의 미션을 먼저 적용하거나 새 미션을 active/);
+  assert.doesNotMatch(prelaunchDescription, /https:\/\/script\.google\.com/);
+  assert.doesNotMatch(prelaunchDescription, /operator-secret-url/);
+  assert.doesNotMatch(prelaunchDescription, /WEB_APP_SECRET|secret|token/i);
+
   const originalEnv = {
     logChannelId: process.env.LOG_CHANNEL_ID,
     sheetsEnabled: process.env.GOOGLE_SHEETS_LOGGING_ENABLED,
@@ -336,6 +396,39 @@ async function main() {
     restoreEnv('GOOGLE_SHEETS_WEB_APP_URL', originalEnv.sheetsUrl);
   }
 
+  let prelaunchSelectPayload = null;
+  await handleOperatorHubSelect({
+    customId: OPERATOR_HUB_SELECT_ID,
+    values: ['prelaunch_check'],
+    member: {
+      permissions: {
+        has: () => true,
+      },
+    },
+    client: {
+      user: { id: 'bot_user' },
+      channels: {
+        cache: {
+          get: () => null,
+        },
+        fetch: async () => null,
+      },
+    },
+    reply: async (payload) => {
+      prelaunchSelectPayload = payload;
+    },
+  });
+  assert.ok(prelaunchSelectPayload);
+  assert.strictEqual(prelaunchSelectPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(prelaunchSelectPayload.embeds[0]), '초대 전 점검');
+  const prelaunchSelectDescription = getEmbedDescription(prelaunchSelectPayload.embeds[0]);
+  assert.match(prelaunchSelectDescription, /참여자 안내\/온보딩/);
+  assert.match(prelaunchSelectDescription, /오늘의 미션/);
+  assert.match(prelaunchSelectDescription, /미니게임/);
+  assert.match(prelaunchSelectDescription, /포인트\/교환/);
+  assert.match(prelaunchSelectDescription, /Google Sheets/);
+  assert.doesNotMatch(prelaunchSelectDescription, /script\.google\.com|WEB_APP_SECRET|secret|token/i);
+
   let invitationPayload = null;
   await handleOperatorHubSelect({
     customId: OPERATOR_HUB_SELECT_ID,
@@ -383,6 +476,10 @@ async function main() {
     return component.custom_id === OPERATOR_HUB_BUTTON_IDS.invitationNotice
       && component.label === '참여자 초대 안내문';
   }));
+  assert.ok(flattenComponentData(operationHubPayload.components).some((component) => {
+    return component.custom_id === OPERATOR_HUB_BUTTON_IDS.prelaunchCheck
+      && component.label === '초대 전 점검';
+  }));
   assertNoAutoPostComponents(operationHubPayload.components);
 
   let invitationButtonPayload = null;
@@ -406,6 +503,37 @@ async function main() {
   assert.strictEqual(getEmbedTitle(invitationButtonPayload.embeds[0]), '참여자 초대 안내문');
   assert.match(getEmbedDescription(invitationButtonPayload.embeds[0]), /처음 왔다면 여기부터/);
   assertNoAutoPostComponents(invitationButtonPayload.components);
+
+  let prelaunchButtonPayload = null;
+  await handleInteractionCreate({
+    customId: OPERATOR_HUB_BUTTON_IDS.prelaunchCheck,
+    member: {
+      permissions: {
+        has: () => true,
+      },
+    },
+    client: {
+      user: { id: 'bot_user' },
+      channels: {
+        cache: {
+          get: () => null,
+        },
+        fetch: async () => null,
+      },
+    },
+    isChatInputCommand: () => false,
+    isStringSelectMenu: () => false,
+    isButton: () => true,
+    isModalSubmit: () => false,
+    reply: async (payload) => {
+      prelaunchButtonPayload = payload;
+    },
+  });
+  assert.ok(prelaunchButtonPayload);
+  assert.strictEqual(prelaunchButtonPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(prelaunchButtonPayload.embeds[0]), '초대 전 점검');
+  assert.match(getEmbedDescription(prelaunchButtonPayload.embeds[0]), /오늘의 미션을 먼저 적용하거나 새 미션을 active/);
+  assertNoAutoPostComponents(prelaunchButtonPayload.components);
 
   assert.match(getEmbedDescription(buildOperatorExportGuideEmbed()), /\/운영내보내기 종류:전체 형식:JSON/);
   assert.match(getEmbedDescription(buildOperatorChecklistEmbed()), /docs\/operator-dashboard-guide\.md/);
