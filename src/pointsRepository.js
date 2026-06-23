@@ -1446,6 +1446,30 @@ function createPointsRepository(paths = {}, options = {}) {
     });
   }
 
+  function isDuplicateMissionRewardGuardHealthy(dateString = getKoreanDateString()) {
+    const submissionsData = getSubmissionsData();
+    const submissions = Array.isArray(submissionsData.submissions) ? submissionsData.submissions : [];
+
+    const paidByUser = new Map();
+    for (const submission of submissions) {
+      if (submission.type !== 'todayMission'
+        || submission.todayMissionDate !== dateString
+        || submission.status !== 'approved'
+        || !submission.rewardTransactionId
+        || submission.duplicateRewardBlocked === true) {
+        continue;
+      }
+
+      const previousCount = paidByUser.get(submission.userId) || 0;
+      if (previousCount >= 1) {
+        return false;
+      }
+      paidByUser.set(submission.userId, previousCount + 1);
+    }
+
+    return true;
+  }
+
   function getSubmissionMission(submission) {
     if (!submission) {
       return null;
@@ -2015,6 +2039,7 @@ function createPointsRepository(paths = {}, options = {}) {
     getReactionApprovalData,
     hasCheckedInToday,
     hasPaidTodayMissionReward,
+    isDuplicateMissionRewardGuardHealthy,
     hasReactionMessageBeenReviewed,
     hasTodayMissionNoticeBeenPublished,
     listMissionsForAdmin,

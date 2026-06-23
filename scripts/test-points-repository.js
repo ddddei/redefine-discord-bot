@@ -20,6 +20,10 @@ function main() {
     shopItemsFallback: path.join(dataDir, 'shop-items.example.json'),
     redemptions: path.join(tempDir, 'redemptions.json'),
     redemptionsFallback: path.join(dataDir, 'redemptions.example.json'),
+    missions: path.join(tempDir, 'missions.json'),
+    missionsFallback: path.join(dataDir, 'missions.example.json'),
+    submissions: path.join(tempDir, 'submissions.json'),
+    submissionsFallback: path.join(dataDir, 'submissions.example.json'),
   };
   const sheetsEvents = [];
   const repository = createPointsRepository(paths, {
@@ -112,6 +116,60 @@ function main() {
   });
   assert.strictEqual(logs.length, 1);
   assert.strictEqual(logs[0].relatedId, 'rd_example_cancelled');
+
+  assert.strictEqual(repository.isDuplicateMissionRewardGuardHealthy('2030-06-01'), true);
+
+  const guardCheckSubmission = repository.createTodayMissionSubmission({
+    user: {
+      userId: 'user_guard_check',
+      displayName: '가드 점검 참여자',
+    },
+    content: '오늘의 미션 인증',
+    attachmentCount: 1,
+    rewardPoints: 20,
+    todayMissionDate: '2030-06-01',
+    messageId: 'today_message_guard_check',
+    channelId: 'today_channel_guard_check',
+    guildId: 'guild_guard_check',
+  });
+  const guardCheckApproved = repository.approveSubmissionById(
+    guardCheckSubmission.submission.id,
+    { userId: 'operator_guard_check', displayName: '가드 점검 운영자' },
+    '확인'
+  );
+  assert.ok(guardCheckApproved.transaction);
+  assert.strictEqual(repository.isDuplicateMissionRewardGuardHealthy('2030-06-01'), true);
+
+  const duplicateGuardCheckSubmission = repository.createTodayMissionSubmission({
+    user: {
+      userId: 'user_guard_check',
+      displayName: '가드 점검 참여자',
+    },
+    content: '오늘의 미션 두 번째 인증',
+    attachmentCount: 1,
+    rewardPoints: 20,
+    todayMissionDate: '2030-06-01',
+    messageId: 'today_message_guard_check_duplicate',
+    channelId: 'today_channel_guard_check',
+    guildId: 'guild_guard_check',
+  });
+  const duplicateGuardCheckBlocked = repository.approveSubmissionById(
+    duplicateGuardCheckSubmission.submission.id,
+    { userId: 'operator_guard_check', displayName: '가드 점검 운영자' },
+    '중복 확인'
+  );
+  assert.strictEqual(duplicateGuardCheckBlocked.transaction, null);
+  assert.strictEqual(duplicateGuardCheckBlocked.submission.duplicateRewardBlocked, true);
+  assert.strictEqual(repository.isDuplicateMissionRewardGuardHealthy('2030-06-01'), true);
+
+  const submissionsData = readJson(paths.submissions);
+  submissionsData.submissions.push({
+    ...submissionsData.submissions.find((submission) => submission.id === guardCheckSubmission.submission.id),
+    id: 'today_submission_manual_anomaly',
+    rewardTransactionId: 'tx_manual_anomaly',
+  });
+  fs.writeFileSync(paths.submissions, JSON.stringify(submissionsData, null, 2));
+  assert.strictEqual(repository.isDuplicateMissionRewardGuardHealthy('2030-06-01'), false);
 
   console.log('pointsRepository smoke test passed');
 }

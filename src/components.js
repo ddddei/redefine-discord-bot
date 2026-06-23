@@ -13,6 +13,8 @@ const OPERATOR_MISSION_TEMPLATE_SELECT_ID = 'admin_mission_template_select';
 const OPERATOR_HUB_BUTTON_IDS = {
   invitationNotice: 'operator_hub:invitation_notice',
   prelaunchCheck: 'operator_hub:prelaunch_check',
+  prelaunchOpenEnvironmentCheck: 'operator_hub:prelaunch_open_environment_check',
+  prelaunchOpenMissionHub: 'operator_hub:prelaunch_open_mission_hub',
 };
 const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   create: 'admin_mission_hub:create',
@@ -175,6 +177,34 @@ function createOperatorInvitationNoticeButtonRow() {
   );
 }
 
+function createOperatorPrelaunchCheckActionRow(issues = {}) {
+  const buttons = [];
+
+  if (issues.hasEnvironmentIssue) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(OPERATOR_HUB_BUTTON_IDS.prelaunchOpenEnvironmentCheck)
+        .setLabel('환경 설정 점검 열기')
+        .setStyle(ButtonStyle.Primary)
+    );
+  }
+
+  if (issues.hasMissionIssue) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(OPERATOR_HUB_BUTTON_IDS.prelaunchOpenMissionHub)
+        .setLabel('미션 관리 허브 열기')
+        .setStyle(ButtonStyle.Primary)
+    );
+  }
+
+  if (buttons.length === 0) {
+    return null;
+  }
+
+  return new ActionRowBuilder().addComponents(...buttons);
+}
+
 function createOperatorMissionHubRows(missions = [], selectedMissionId = null) {
   const selectedMission = missions.find((mission) => mission.id === selectedMissionId) || missions[0] || null;
   const selectedId = selectedMission ? selectedMission.id : '';
@@ -281,6 +311,7 @@ module.exports = {
   createGuideHubSelectRow,
   createOperatorHubSelectRow,
   createOperatorInvitationNoticeButtonRow,
+  createOperatorPrelaunchCheckActionRow,
   createOperatorMissionHubRows,
   createOperatorMissionTemplateRows,
 };
