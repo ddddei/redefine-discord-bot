@@ -897,8 +897,37 @@ function createChannelGuideEmbed(options = {}) {
   return embed;
 }
 
+function buildDungeonworldIntroEmbed(session, choices) {
+  return createGuideEmbed(
+    session.title,
+    [
+      session.intro,
+      '',
+      '어떻게 하시겠어요?',
+      ...choices.map((choice) => `- ${choice.label}`),
+      '',
+      '포인트가 지급되지 않는 가벼운 솔로 모험이에요. 편하게 골라 보세요.',
+    ].join('\n')
+  );
+}
+
+function buildDungeonworldResultEmbed(result, closingNote) {
+  return createGuideEmbed(
+    `${result.choice.label} → ${result.tierLabel}`,
+    [
+      `🎲 ${result.die1} + ${result.die2} = ${result.total}`,
+      '',
+      result.outcomeText,
+      '',
+      closingNote,
+    ].join('\n')
+  );
+}
+
 module.exports = {
   OPERATOR_CHECK_FOOTER,
+  buildDungeonworldIntroEmbed,
+  buildDungeonworldResultEmbed,
   buildOperatorChecklistEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,

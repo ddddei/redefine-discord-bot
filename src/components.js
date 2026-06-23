@@ -6,6 +6,8 @@ const {
 } = require('discord.js');
 const crypto = require('crypto');
 
+const DUNGEONWORLD_CHOICE_PREFIX = 'dungeonworld:choice:';
+
 const GUIDE_HUB_SELECT_ID = 'guide_hub_select';
 const OPERATOR_HUB_SELECT_ID = 'operator_hub_select';
 const OPERATOR_MISSION_HUB_SELECT_ID = 'admin_mission_hub_select';
@@ -184,6 +186,15 @@ function createOperatorHubSelectRow(selectedValue = null) {
         ...option,
         default: option.value === selectedValue,
       })))
+  );
+}
+
+function createDungeonworldChoiceRow(choices) {
+  return new ActionRowBuilder().addComponents(
+    ...choices.map((choice) => new ButtonBuilder()
+      .setCustomId(`${DUNGEONWORLD_CHOICE_PREFIX}${choice.id}`)
+      .setLabel(choice.label)
+      .setStyle(ButtonStyle.Secondary))
   );
 }
 
@@ -390,6 +401,7 @@ function createOperatorMissionTemplateRows(templates = [], selectedTemplateId = 
 }
 
 module.exports = {
+  DUNGEONWORLD_CHOICE_PREFIX,
   GUIDE_HUB_OPTIONS,
   GUIDE_HUB_SELECT_ID,
   OPERATOR_MISSION_HUB_BUTTON_IDS,
@@ -410,4 +422,5 @@ module.exports = {
   createOperatorMissionHubRows,
   createOperatorMissionTemplateRows,
   createOperatorShopHubRows,
+  createDungeonworldChoiceRow,
 };
