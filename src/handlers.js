@@ -69,6 +69,7 @@ const {
 const { getAiFallbackAnswer } = require('./ai');
 const {
   getChannelGuideRoleNote,
+  getOnboardingGuideMessage,
   getOnboardingRoleType,
 } = require('./onboardingRoles');
 const {
@@ -1507,15 +1508,20 @@ function createNoticeEmbed(type) {
 }
 
 async function handleGuideCommand(interaction) {
+  const roleType = getOnboardingRoleType(interaction.member);
+  const roleGuideMessage = getOnboardingGuideMessage(roleType);
+
   await interaction.reply({
     embeds: [createGuideEmbed(
       '📌 리디파인 이용 메뉴',
       [
         '필요한 내용을 버튼으로 바로 확인할 수 있어요.',
         '내 포인트 같은 개인 정보는 본인에게만 보여요.',
+        roleGuideMessage ? '' : null,
+        roleGuideMessage || null,
         '',
         '더 자세한 안내가 필요하면 아래 선택 메뉴도 함께 사용할 수 있어요.',
-      ].join('\n')
+      ].filter((line) => line !== null).join('\n')
     )],
     components: [...createParticipantMenuButtonRows(), createGuideHubSelectRow()],
     ephemeral: true,
