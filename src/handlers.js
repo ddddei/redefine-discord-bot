@@ -17,6 +17,7 @@ const {
   buildOperatorExportGuideEmbed,
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
+  buildOperatorPrelaunchCheckEmbed,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
@@ -248,6 +249,29 @@ async function createOperatorEnvironmentCheck(interaction) {
       loggingEnabled: isGoogleSheetsLoggingEnabled(),
       webAppUrlConfigured: Boolean(getConfiguredEnvValue('GOOGLE_SHEETS_WEB_APP_URL')),
     },
+  };
+}
+
+async function createOperatorPrelaunchCheck(interaction) {
+  const environmentCheck = await createOperatorEnvironmentCheck(interaction);
+  const todayMissionChannel = environmentCheck.channelChecks
+    .find((check) => check.envName === 'TODAY_MISSION_CHANNEL_ID');
+  const activeTodayMission = pointsRepository.findTodayActiveMission();
+  const channelReady = Boolean(todayMissionChannel
+    && todayMissionChannel.configured
+    && todayMissionChannel.found
+    && todayMissionChannel.accessible
+    && todayMissionChannel.canSendMessages);
+
+  return {
+    ...environmentCheck,
+    todayMissionCheck: {
+      activeMissionExists: Boolean(activeTodayMission),
+      publishChannelReady: Boolean(activeTodayMission && channelReady),
+      alreadyPublishedToday: pointsRepository.hasTodayMissionNoticeBeenPublished(),
+      duplicateGuardReady: true,
+    },
+    operationSummary: pointsRepository.getOperationSummary(),
   };
 }
 
@@ -2211,6 +2235,10 @@ function getOperatorHubEmbed(value, limit = 10) {
     return buildOperatorInvitationNoticeEmbed();
   }
 
+  if (value === 'prelaunch_check') {
+    return buildOperatorPrelaunchCheckEmbed();
+  }
+
   if (value === 'exports') {
     return buildOperatorExportGuideEmbed();
   }
@@ -2240,6 +2268,11 @@ async function handleOperatorHubSelect(interaction) {
     } else if (selectedValue === 'environment_check') {
       payload = {
         embeds: [buildOperatorEnvironmentCheckEmbed(await createOperatorEnvironmentCheck(interaction))],
+        components: [createOperatorHubSelectRow(selectedValue)],
+      };
+    } else if (selectedValue === 'prelaunch_check') {
+      payload = {
+        embeds: [buildOperatorPrelaunchCheckEmbed(await createOperatorPrelaunchCheck(interaction))],
         components: [createOperatorHubSelectRow(selectedValue)],
       };
     } else {
@@ -2301,6 +2334,22 @@ async function handleOperatorInvitationNoticeButton(interaction) {
   await interaction.reply({
     embeds: [buildOperatorInvitationNoticeEmbed()],
     components: [createOperatorHubSelectRow('invitation_notice')],
+    ephemeral: true,
+  });
+}
+
+async function handleOperatorPrelaunchCheckButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    embeds: [buildOperatorPrelaunchCheckEmbed(await createOperatorPrelaunchCheck(interaction))],
+    components: [createOperatorHubSelectRow('prelaunch_check')],
     ephemeral: true,
   });
 }
@@ -2956,6 +3005,11 @@ async function handleInteractionCreate(interaction) {
   if (interaction.isButton && interaction.isButton()) {
     if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.invitationNotice) {
       await handleOperatorInvitationNoticeButton(interaction);
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.prelaunchCheck) {
+      await handleOperatorPrelaunchCheckButton(interaction);
       return;
     }
 
