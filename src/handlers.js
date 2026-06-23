@@ -43,13 +43,17 @@ const {
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_MISSION_TEMPLATE_SELECT_ID,
+  OPERATOR_SHOP_HUB_BUTTON_IDS,
+  OPERATOR_SHOP_HUB_SELECT_ID,
   OPERATOR_HUB_BUTTON_IDS,
   OPERATOR_HUB_SELECT_ID,
   createGuideHubSelectRow,
   createOperatorMissionHubToken,
   createOperatorMissionTemplateToken,
+  createOperatorShopHubToken,
   createOperatorMissionHubRows,
   createOperatorMissionTemplateRows,
+  createOperatorShopHubRows,
   createOperatorHubSelectRow,
   createOperatorInvitationNoticeButtonRow,
   createOperatorPrelaunchCheckActionRow,
@@ -1159,6 +1163,322 @@ function createAdminShopListEmbed(items) {
       footer: OPERATOR_CHECK_FOOTER,
     }
   );
+}
+
+function getShopHubSelection(items, selectedItemId = null) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return null;
+  }
+
+  return items.find((item) => item.id === selectedItemId) || items[0];
+}
+
+function createAdminShopHubEmbed(items, selectedItemId = null) {
+  const selectedItem = getShopHubSelection(items, selectedItemId);
+  const itemLines = items.length > 0
+    ? items.slice(0, 8).map((item) => {
+      const marker = selectedItem && item.id === selectedItem.id ? '>' : '-';
+      return `${marker} \`${item.id}\` ${truncateText(item.name || '이름 없음', 60, '이름 없음')} / ${item.status || 'unknown'} / ${formatPoints(item.cost || 0)}`;
+    })
+    : ['등록된 상점 항목이 없습니다.'];
+  const selectedLines = selectedItem
+    ? [
+      `선택 항목: \`${selectedItem.id}\``,
+      `상태: ${selectedItem.status || 'unknown'} / 비용: ${formatPoints(selectedItem.cost || 0)}`,
+      `재고: ${formatNullableCount(selectedItem.stock, '개')} / 월한도: ${formatNullableCount(selectedItem.monthlyLimit, '회')}`,
+      `유형: ${selectedItem.type || '미지정'}`,
+      truncateText(selectedItem.description || '설명 없음', 500, '설명 없음'),
+    ]
+    : ['선택된 상점 항목이 없습니다.'];
+
+  return createGuideEmbed(
+    '상점 관리 허브',
+    [
+      '운영진 전용 상점 관리 화면입니다.',
+      '아래에서 현재 상점 항목을 확인하고 버튼으로 생성, 수정, 상태 변경을 진행할 수 있어요.',
+      '',
+      '현재 상점 항목',
+      ...itemLines,
+      '',
+      ...selectedLines,
+      '',
+      'active 상태의 항목만 참여자 `/상점`에 노출됩니다.',
+      '재고, 월한도 등 세부 값은 `/상점관리`로도 조정할 수 있어요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function createShopHubPayload(selectedItemId = null) {
+  const items = pointsRepository.listShopItemsForAdmin({ limit: 25 });
+  const selectedItem = getShopHubSelection(items, selectedItemId);
+
+  return {
+    embeds: [createAdminShopHubEmbed(items, selectedItem ? selectedItem.id : null)],
+    components: [
+      createOperatorHubSelectRow('shop_management'),
+      ...createOperatorShopHubRows(items, selectedItem ? selectedItem.id : null),
+    ],
+  };
+}
+
+function resolveShopHubToken(token) {
+  const items = pointsRepository.listShopItemsForAdmin({ limit: 200 });
+  return items.find((item) => createOperatorShopHubToken(item.id) === token) || null;
+}
+
+function getShopHubTokenFromCustomId(customId) {
+  const parts = String(customId || '').split(':');
+  const token = parts.slice(2).join(':');
+  return token && token !== 'none' ? token : '';
+}
+
+function getShopHubTypeInput(value, fallbackType = 'reward') {
+  const normalized = String(value || fallbackType || 'reward').trim();
+  const aliases = {
+    청년동포인트: 'youthCenterPoint',
+    리워드: 'reward',
+    굿즈: 'goods',
+    이벤트: 'event',
+  };
+  const type = aliases[normalized] || normalized;
+
+  if (!['youthCenterPoint', 'reward', 'goods', 'event'].includes(type)) {
+    throw new Error('유형은 youthCenterPoint, reward, goods, event 중 하나로 입력해 주세요.');
+  }
+
+  return type;
+}
+
+function getShopHubStatusInput(value, fallbackStatus = 'paused') {
+  const normalized = String(value || fallbackStatus || 'paused').trim();
+  const aliases = {
+    활성: 'active',
+    비활성: 'paused',
+    일시중지: 'paused',
+    품절: 'soldOut',
+    숨김: 'hidden',
+  };
+  const status = aliases[normalized] || normalized;
+
+  if (!['active', 'paused', 'soldOut', 'hidden'].includes(status)) {
+    throw new Error('상태는 active, paused, soldOut, hidden 중 하나로 입력해 주세요.');
+  }
+
+  return status;
+}
+
+function createShopHubModal(action, item = null) {
+  const isUpdate = action === 'update';
+  const customId = isUpdate
+    ? `admin_shop_hub_modal:update:${createOperatorShopHubToken(item.id)}`
+    : 'admin_shop_hub_modal:create';
+
+  return new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(isUpdate ? '상점 항목 수정' : '새 상점 항목 만들기')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('name')
+          .setLabel('항목 이름')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100)
+          .setValue(item && item.name ? truncateText(item.name, 100, '') : '')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('description')
+          .setLabel('항목 설명')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+          .setMaxLength(1000)
+          .setValue(item && item.description ? truncateText(item.description, 1000, '') : '')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('cost')
+          .setLabel('필요 포인트')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(8)
+          .setValue(item && item.cost ? String(item.cost) : '')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('type')
+          .setLabel('유형')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(20)
+          .setPlaceholder('youthCenterPoint, reward, goods, event')
+          .setValue(item && item.type ? item.type : 'reward')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('status')
+          .setLabel('상태')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(20)
+          .setPlaceholder('active, paused, soldOut, hidden')
+          .setValue(item && item.status ? item.status : 'paused')
+      )
+    );
+}
+
+function getShopHubModalInput(interaction, fallbackType = 'reward', fallbackStatus = 'paused') {
+  const cost = Number.parseInt(interaction.fields.getTextInputValue('cost'), 10);
+  if (!Number.isInteger(cost) || cost <= 0) {
+    throw new Error('필요 포인트는 0보다 큰 정수로 입력해 주세요.');
+  }
+
+  return {
+    name: interaction.fields.getTextInputValue('name'),
+    description: interaction.fields.getTextInputValue('description'),
+    cost,
+    type: getShopHubTypeInput(interaction.fields.getTextInputValue('type'), fallbackType),
+    status: getShopHubStatusInput(interaction.fields.getTextInputValue('status'), fallbackStatus),
+  };
+}
+
+async function handleShopHubSelect(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const selectedItemToken = interaction.values && interaction.values[0] ? interaction.values[0] : null;
+    const selectedItem = selectedItemToken ? resolveShopHubToken(selectedItemToken) : null;
+    await interaction.update(createShopHubPayload(selectedItem ? selectedItem.id : null));
+  } catch (error) {
+    console.error('상점 관리 허브 선택 실패:', error.message);
+    await interaction.reply({
+      content: `상점 관리 허브를 불러오지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleShopHubButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    if (interaction.customId === OPERATOR_SHOP_HUB_BUTTON_IDS.create) {
+      await interaction.showModal(createShopHubModal('create'));
+      return;
+    }
+
+    if (interaction.customId === OPERATOR_SHOP_HUB_BUTTON_IDS.refresh) {
+      await interaction.update(createShopHubPayload());
+      return;
+    }
+
+    const itemToken = getShopHubTokenFromCustomId(interaction.customId);
+    const item = itemToken ? resolveShopHubToken(itemToken) : null;
+
+    if (interaction.customId.startsWith(OPERATOR_SHOP_HUB_BUTTON_IDS.editPrefix)) {
+      if (!item) {
+        await interaction.reply({
+          content: '수정할 상점 항목을 찾지 못했어요. 새로고침 후 다시 시도해 주세요.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      await interaction.showModal(createShopHubModal('update', item));
+      return;
+    }
+
+    if (!item) {
+      await interaction.reply({
+        content: '대상 상점 항목을 찾지 못했어요. 새로고침 후 다시 시도해 주세요.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (interaction.customId.startsWith(OPERATOR_SHOP_HUB_BUTTON_IDS.togglePrefix)) {
+      const updatedItem = pointsRepository.setShopItemStatus(item.id, item.status === 'active' ? 'paused' : 'active');
+      await interaction.update(createShopHubPayload(updatedItem.id));
+      return;
+    }
+
+    if (interaction.customId.startsWith(OPERATOR_SHOP_HUB_BUTTON_IDS.soldOutPrefix)) {
+      const updatedItem = pointsRepository.setShopItemStatus(item.id, 'soldOut');
+      await interaction.update(createShopHubPayload(updatedItem.id));
+      return;
+    }
+
+    if (interaction.customId.startsWith(OPERATOR_SHOP_HUB_BUTTON_IDS.hidePrefix)) {
+      const updatedItem = pointsRepository.setShopItemStatus(item.id, 'hidden');
+      await interaction.update(createShopHubPayload(updatedItem.id));
+      return;
+    }
+  } catch (error) {
+    console.error('상점 관리 허브 처리 실패:', error.message);
+    await interaction.reply({
+      content: `상점 관리 허브 작업을 완료하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleShopHubModal(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    let item;
+
+    if (interaction.customId === 'admin_shop_hub_modal:create') {
+      item = pointsRepository.createShopItem(getShopHubModalInput(interaction));
+    } else {
+      const itemToken = getShopHubTokenFromCustomId(interaction.customId);
+      const currentItem = itemToken ? resolveShopHubToken(itemToken) : null;
+      if (!currentItem) {
+        await interaction.reply({
+          content: '수정할 상점 항목을 찾지 못했어요. 새로고침 후 다시 시도해 주세요.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      item = pointsRepository.updateShopItem(
+        currentItem.id,
+        getShopHubModalInput(interaction, currentItem.type || 'reward', currentItem.status || 'paused')
+      );
+    }
+
+    await interaction.reply({
+      ...createShopHubPayload(item.id),
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('상점 관리 허브 저장 실패:', error.message);
+    await interaction.reply({
+      content: `상점 항목을 저장하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
 }
 
 function createNoticeEmbed(type) {
@@ -2281,6 +2601,8 @@ async function handleOperatorHubSelect(interaction) {
 
     if (selectedValue === 'mission_management') {
       payload = createMissionHubPayload();
+    } else if (selectedValue === 'shop_management') {
+      payload = createShopHubPayload();
     } else if (selectedValue === 'environment_check') {
       payload = {
         embeds: [buildOperatorEnvironmentCheckEmbed(await createOperatorEnvironmentCheck(interaction))],
@@ -2393,6 +2715,21 @@ async function handleOperatorPrelaunchOpenMissionHubButton(interaction) {
 
   await interaction.reply({
     ...createMissionHubPayload(),
+    ephemeral: true,
+  });
+}
+
+async function handleOperatorPrelaunchOpenShopHubButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    ...createShopHubPayload(),
     ephemeral: true,
   });
 }
@@ -3034,6 +3371,11 @@ async function handleInteractionCreate(interaction) {
       return;
     }
 
+    if (interaction.customId === OPERATOR_SHOP_HUB_SELECT_ID) {
+      await handleShopHubSelect(interaction);
+      return;
+    }
+
     if (interaction.customId === 'participant_shop_select') {
       await handleShopSelect(interaction);
       return;
@@ -3066,8 +3408,18 @@ async function handleInteractionCreate(interaction) {
       return;
     }
 
+    if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.prelaunchOpenShopHub) {
+      await handleOperatorPrelaunchOpenShopHubButton(interaction);
+      return;
+    }
+
     if (interaction.customId.startsWith('admin_mission_hub:')) {
       await handleMissionHubButton(interaction);
+      return;
+    }
+
+    if (interaction.customId.startsWith('admin_shop_hub:')) {
+      await handleShopHubButton(interaction);
       return;
     }
 
@@ -3098,6 +3450,11 @@ async function handleInteractionCreate(interaction) {
   if (interaction.isModalSubmit && interaction.isModalSubmit()) {
     if (interaction.customId.startsWith('admin_mission_hub_modal:')) {
       await handleMissionHubModal(interaction);
+      return;
+    }
+
+    if (interaction.customId.startsWith('admin_shop_hub_modal:')) {
+      await handleShopHubModal(interaction);
       return;
     }
 
@@ -3206,11 +3563,13 @@ async function handleInteractionCreate(interaction) {
 
 module.exports = {
   createAdminMissionHubEmbed,
+  createAdminShopHubEmbed,
   createNoticeEmbed,
   createOperationSummaryEmbed,
   createPendingRedemptionsEmbed,
   createPendingSubmissionsEmbed,
   createMissionHubPayload,
+  createShopHubPayload,
   getOperatorHubEmbed,
   handleChannelGuideCommand,
   handleCheckinCommand,
@@ -3241,6 +3600,9 @@ module.exports = {
   handleRedemptionCommand,
   handleRedemptionConfirmButton,
   handleRedemptionManageCommand,
+  handleShopHubButton,
+  handleShopHubModal,
+  handleShopHubSelect,
   handleShopSelect,
   handleSubmissionCommand,
   handleSubmissionManageCommand,
