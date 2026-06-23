@@ -3577,6 +3577,7 @@ async function handleInteractionCreate(interaction) {
 }
 
 module.exports = {
+  buildTodayMissionNoticePayload,
   createAdminMissionHubEmbed,
   createAdminShopHubEmbed,
   createNoticeEmbed,

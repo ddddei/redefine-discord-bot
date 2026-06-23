@@ -5,6 +5,7 @@ const { handleInteractionCreate } = require('./handlers');
 const { handleMissionReactionApproval } = require('./reactionApproval');
 const { startAdminServer } = require('./adminServer');
 const { startDailyMissionAnnouncementScheduler } = require('./dailyMissionAnnouncement');
+const { startTodayMissionAutoPublishScheduler } = require('./todayMissionAutoPublish');
 const { handleTodayMissionMessageCreate } = require('./todayMission');
 const {
   findFaqAnswer,
@@ -33,6 +34,7 @@ const client = new Client({
 client.once('clientReady', () => {
   console.log(`${client.user.tag} 봇이 준비됐어요.`);
   startDailyMissionAnnouncementScheduler(client);
+  startTodayMissionAutoPublishScheduler(client);
 });
 
 client.on('interactionCreate', handleInteractionCreate);
