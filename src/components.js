@@ -23,11 +23,11 @@ const OPERATOR_MISSION_HUB_BUTTON_IDS = {
   editPrefix: 'admin_mission_hub:edit:',
   togglePrefix: 'admin_mission_hub:toggle:',
   closePrefix: 'admin_mission_hub:close:',
+  toggleSubmissionPrefix: 'admin_mission_hub:toggle_submission:',
   applyTemplatePrefix: 'admin_mission_hub:apply_template:',
   previewTodayNotice: 'admin_mission_hub:preview_today_notice',
   publishTodayNotice: 'admin_mission_hub:publish_today_notice',
   refresh: 'admin_mission_hub:refresh',
-  refreshTemplates: 'admin_mission_hub:refresh_templates',
 };
 const OPERATOR_SHOP_HUB_BUTTON_IDS = {
   create: 'admin_shop_hub:create',
@@ -315,6 +315,7 @@ function createOperatorMissionHubRows(missions = [], selectedMissionId = null) {
   }
 
   const isActive = selectedMission && selectedMission.status === 'active';
+  const requiresSubmission = !selectedMission || selectedMission.requiresSubmission !== false;
   const selectedToken = selectedMission ? createOperatorMissionHubToken(selectedMission.id) : 'none';
   rows.push(new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -337,9 +338,10 @@ function createOperatorMissionHubRows(missions = [], selectedMissionId = null) {
       .setStyle(ButtonStyle.Danger)
       .setDisabled(!selectedMission || selectedMission.status === 'closed'),
     new ButtonBuilder()
-      .setCustomId(OPERATOR_MISSION_HUB_BUTTON_IDS.refreshTemplates)
-      .setLabel('새로고침')
+      .setCustomId(`${OPERATOR_MISSION_HUB_BUTTON_IDS.toggleSubmissionPrefix}${selectedToken}`)
+      .setLabel(requiresSubmission ? '인증 필요 끄기' : '인증 필요 켜기')
       .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!selectedMission)
   ));
 
   return rows;
