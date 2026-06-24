@@ -209,6 +209,41 @@ const checks = [
     args: ['--check', 'scripts/test-dungeonworld-session-02.js'],
   },
   {
+    label: 'scripts/test-dungeonworld-session-03.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-03.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-04.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-04.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-05.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-05.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-06.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-06.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-07.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-07.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-08.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-08.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-09.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-09.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -287,6 +322,41 @@ const checks = [
     label: 'dungeonworld session 02 content test',
     command: 'node',
     args: ['scripts/test-dungeonworld-session-02.js'],
+  },
+  {
+    label: 'dungeonworld session 03 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-03.js'],
+  },
+  {
+    label: 'dungeonworld session 04 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-04.js'],
+  },
+  {
+    label: 'dungeonworld session 05 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-05.js'],
+  },
+  {
+    label: 'dungeonworld session 06 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-06.js'],
+  },
+  {
+    label: 'dungeonworld session 07 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-07.js'],
+  },
+  {
+    label: 'dungeonworld session 08 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-08.js'],
+  },
+  {
+    label: 'dungeonworld session 09 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-09.js'],
   },
   {
     label: '데이터 구조 검사',
