@@ -97,8 +97,11 @@ const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./
 const {
   CLOSING_NOTE: DUNGEONWORLD_CLOSING_NOTE,
   buildDungeonworldExportPayload,
+  createDungeonworldConfigRepository,
   createDungeonworldRepository,
   getChoice: getDungeonworldChoice,
+  getCurrentSessionId: getCurrentDungeonworldSessionId,
+  getPreviousSessionId: getPreviousDungeonworldSessionId,
   getSession: getDungeonworldSession,
   listChoices: listDungeonworldChoices,
   playChoice: playDungeonworldChoice,
@@ -106,6 +109,7 @@ const {
 
 const pointsRepository = createPointsRepository();
 const dungeonworldRepository = createDungeonworldRepository();
+const dungeonworldConfigRepository = createDungeonworldConfigRepository();
 const handleMinigameButton = createMinigameButtonHandler({
   pointsRepository,
   getMemberDisplayName,
@@ -1542,9 +1546,21 @@ async function handleGuideCommand(interaction) {
   });
 }
 
+function getDungeonworldPreviousTier(userId, currentSessionId) {
+  const previousSessionId = getPreviousDungeonworldSessionId(currentSessionId);
+  if (!previousSessionId) {
+    return null;
+  }
+
+  const previousPlay = dungeonworldRepository.getLastPlayForUserInSession(userId, previousSessionId);
+  return previousPlay ? previousPlay.tier : null;
+}
+
 async function handleDungeonworldCommand(interaction) {
-  const session = getDungeonworldSession();
-  const choices = listDungeonworldChoices();
+  const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
+  const previousTier = getDungeonworldPreviousTier(interaction.user.id, currentSessionId);
+  const session = getDungeonworldSession(currentSessionId, { previousTier });
+  const choices = listDungeonworldChoices(currentSessionId);
 
   await interaction.reply({
     embeds: [buildDungeonworldIntroEmbed(session, choices)],
@@ -1555,8 +1571,9 @@ async function handleDungeonworldCommand(interaction) {
 
 async function handleDungeonworldButton(interaction) {
   try {
+    const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
     const choiceId = interaction.customId.slice(DUNGEONWORLD_CHOICE_PREFIX.length);
-    const choice = getDungeonworldChoice(choiceId);
+    const choice = getDungeonworldChoice(choiceId, currentSessionId);
     if (!choice) {
       await interaction.reply({
         content: '선택지를 찾지 못했어요. `/던전월드`를 다시 실행해 주세요.',
@@ -1565,10 +1582,12 @@ async function handleDungeonworldButton(interaction) {
       return;
     }
 
-    const result = playDungeonworldChoice(choiceId);
+    const result = playDungeonworldChoice(choiceId, currentSessionId);
     dungeonworldRepository.recordPlay({
       userId: interaction.user.id,
       displayName: getMemberDisplayName(interaction.user, interaction.member),
+      sessionId: result.sessionId,
+      sessionTitle: result.sessionTitle,
       choiceId: result.choice.id,
       choiceLabel: result.choice.label,
       die1: result.die1,
@@ -1587,6 +1606,46 @@ async function handleDungeonworldButton(interaction) {
     console.error('던전월드 처리 실패:', error.message);
     await interaction.reply({
       content: `던전월드를 진행하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleDungeonworldManageCommand(interaction) {
+  try {
+    const sessionIdInput = interaction.options.getString('회차');
+    const reset = interaction.options.getBoolean('초기화');
+
+    if (reset) {
+      dungeonworldConfigRepository.clearOverride(interaction.user.id);
+    } else if (sessionIdInput) {
+      dungeonworldConfigRepository.setOverride(sessionIdInput, interaction.user.id);
+    }
+
+    const override = dungeonworldConfigRepository.getOverride();
+    const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
+    const session = getDungeonworldSession(currentSessionId);
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '던전월드 회차 관리',
+          [
+            `현재 회차: ${session.title} (\`${session.id}\`)`,
+            `수동 설정: ${override ? `예 (\`${override}\`)` : '아니오 (자동 계산)'}`,
+            '회차를 바꾸려면 `/던전월드관리 회차:<회차ID>`를, 자동 계산으로 되돌리려면 `/던전월드관리 초기화:true`를 사용해 주세요.',
+          ].join('\n'),
+          {
+            footer: OPERATOR_CHECK_FOOTER,
+          }
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('던전월드 회차 관리 실패:', error.message);
+    await interaction.reply({
+      content: `던전월드 회차 설정을 처리하지 못했어요. ${error.message}`,
       ephemeral: true,
     });
   }
@@ -3571,6 +3630,11 @@ async function handleInteractionCreate(interaction) {
 
   if (interaction.commandName === '던전월드') {
     await handleDungeonworldCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '던전월드관리') {
+    await handleDungeonworldManageCommand(interaction);
     return;
   }
 
