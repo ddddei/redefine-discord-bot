@@ -6,7 +6,11 @@ const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_PATHS = {
   logs: process.env.DUNGEONWORLD_LOG_PATH || path.join(DATA_DIR, 'dungeonworld-logs.local.json'),
   logsFallback: path.join(DATA_DIR, 'dungeonworld-logs.example.json'),
+  config: process.env.DUNGEONWORLD_CONFIG_PATH || path.join(DATA_DIR, 'dungeonworld-config.local.json'),
+  configFallback: path.join(DATA_DIR, 'dungeonworld-config.example.json'),
 };
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 // 회차(SESSION) 콘텐츠 정의.
 // 새 회차를 추가하려면:
@@ -16,15 +20,37 @@ const DEFAULT_PATHS = {
 //   3. 해당 회차를 참여자에게 보여줄 시점이 되면 DEFAULT_SESSION_ID를 그 회차 id로 바꾼다.
 // 판정 메커닉(2d6, TIER_LABELS, resolveTier)은 회차 공통이라 회차 객체 밖에 둔다.
 
+const SESSION_01_INTRO = [
+  '변방 여관 `마른 참나무`의 난로 곁, 여관 주인 마라가 묻습니다. "이런 밤에 이 마을까지 온 사람은 흔치 않은데, 당신은 무슨 일로 여기까지 왔소?" 문가에서는 경비병 토른이 창에 기대어 마을 어귀를 살피고 있습니다.',
+  '대답할 틈도 없이 지도 조각이 문 아래로 밀려 들어오고, 멀리서 검은 종소리가 울립니다. 종소리는 마을 북쪽, 안개에 잠긴 탑 쪽에서 들려온 것 같습니다.',
+  '고블린 정찰병이 그 지도 조각을 빼앗아 북쪽 숲길로 달아나려 합니다. 토른이 먼저 칼자루를 잡으며 당신을 돌아봅니다.',
+].join('\n');
+
 const SESSION_01_BLACK_BELL = {
   id: 'session_01_black_bell',
   title: '1회차. 변방 여관의 검은 종',
-  intro: [
-    '변방 여관 `마른 참나무`의 난로 곁, 여관 주인 마라가 묻습니다. "이런 밤에 이 마을까지 온 사람은 흔치 않은데, 당신은 무슨 일로 여기까지 왔소?" 문가에서는 경비병 토른이 창에 기대어 마을 어귀를 살피고 있습니다.',
-    '대답할 틈도 없이 지도 조각이 문 아래로 밀려 들어오고, 멀리서 검은 종소리가 울립니다. 종소리는 마을 북쪽, 안개에 잠긴 탑 쪽에서 들려온 것 같습니다.',
-    '고블린 정찰병이 그 지도 조각을 빼앗아 북쪽 숲길로 달아나려 합니다. 토른이 먼저 칼자루를 잡으며 당신을 돌아봅니다.',
-  ].join('\n'),
+  intro: SESSION_01_INTRO,
   closingNote: '지도 조각과 숲길 표식이 다음 회차, 뿌리 아래로 이어진 길로 이어집니다. 다음에 이어서 해볼 수 있어요.',
+  // introVariants: 직전 회차에서 이 참여자가 받은 결과 등급(strong/mixed/weak)에 따라 다른 도입부를 보여줄 때 사용한다.
+  // 직전 회차 기록이 없으면(첫 회차이거나 아직 플레이하지 않았으면) default를 사용한다.
+  introVariants: {
+    default: SESSION_01_INTRO,
+    strong: [
+      '지난번 만남이 깔끔하게 풀린 덕에, 여관 `마른 참나무`의 마라는 당신을 반갑게 맞습니다. "지난번 그 일, 다들 칭찬하더군요."',
+      '이야기를 나누는 사이 지도 조각이 문 아래로 밀려 들어오고, 멀리서 검은 종소리가 울립니다.',
+      '고블린 정찰병이 그 지도 조각을 빼앗아 북쪽 숲길로 달아나려 합니다.',
+    ].join('\n'),
+    mixed: [
+      '지난번 일은 무사히 끝났지만, 약간의 뒷말이 남았습니다. 여관 `마른 참나무`의 마라가 묻습니다. "이번엔 또 무슨 일로 왔소?"',
+      '말이 끝나기도 전에 지도 조각이 문 아래로 밀려 들어오고, 멀리서 검은 종소리가 울립니다.',
+      '고블린 정찰병이 그 지도 조각을 빼앗아 북쪽 숲길로 달아나려 합니다.',
+    ].join('\n'),
+    weak: [
+      '지난번 일이 예상과 다르게 흘러간 탓에, 여관 `마른 참나무`의 마라는 조심스럽게 당신을 맞습니다. "이번엔 무사히 풀리길 바라죠."',
+      '그 사이 지도 조각이 문 아래로 밀려 들어오고, 멀리서 검은 종소리가 울립니다.',
+      '고블린 정찰병이 그 지도 조각을 빼앗아 북쪽 숲길로 달아나려 합니다.',
+    ].join('\n'),
+  },
   choices: {
     pursue: {
       id: 'pursue',
@@ -483,9 +509,7 @@ function readLogsData(logsPath) {
 }
 
 function saveLogsData(logsPath, data) {
-  fs.mkdirSync(path.dirname(logsPath), { recursive: true });
-  fs.writeFileSync(`${logsPath}.tmp`, `${JSON.stringify(data, null, 2)}\n`);
-  fs.renameSync(`${logsPath}.tmp`, logsPath);
+  saveJsonAtomic(logsPath, data);
 }
 
 function createOperationId() {
@@ -520,12 +544,30 @@ function listSessions() {
   });
 }
 
-function getSession(sessionId) {
+function pickIntroForSession(session, previousTier) {
+  const introVariants = session.introVariants || {};
+  if (previousTier && introVariants[previousTier]) {
+    return introVariants[previousTier];
+  }
+
+  return introVariants.default || session.intro;
+}
+
+function getPreviousSessionId(sessionId) {
+  const index = SESSION_ORDER.indexOf(resolveSessionId(sessionId));
+  if (index <= 0) {
+    return null;
+  }
+
+  return SESSION_ORDER[index - 1];
+}
+
+function getSession(sessionId, options = {}) {
   const session = getSessionEntry(sessionId);
   return {
     id: session.id,
     title: session.title,
-    intro: session.intro,
+    intro: pickIntroForSession(session, options.previousTier),
     closingNote: session.closingNote,
   };
 }
@@ -562,6 +604,116 @@ function playChoice(choiceId, sessionId) {
     tier,
     tierLabel: TIER_LABELS[tier],
     outcomeText: choice.outcomes[tier],
+  };
+}
+
+function parseStartDate(startDateString) {
+  if (!startDateString) {
+    return null;
+  }
+
+  const parsed = new Date(startDateString);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+// DUNGEONWORLD_START_DATE(캠페인 시작일) 기준으로 몇 주차가 지났는지 계산해 그 주차에 맞는 회차 id를 고른다.
+// 시작일이 설정되지 않았거나 아직 시작일 전이면 1주차(SESSION_ORDER[0])를 보여준다.
+// 회차 수보다 더 많은 주가 지나면 마지막 회차에 고정한다.
+function resolveAutoSessionId(now = new Date()) {
+  const startDate = parseStartDate(process.env.DUNGEONWORLD_START_DATE);
+  if (!startDate) {
+    return DEFAULT_SESSION_ID;
+  }
+
+  const elapsedMs = now.getTime() - startDate.getTime();
+  const weekIndex = elapsedMs <= 0 ? 0 : Math.floor(elapsedMs / WEEK_MS);
+  const clampedIndex = Math.min(SESSION_ORDER.length - 1, weekIndex);
+  return SESSION_ORDER[clampedIndex];
+}
+
+function getCurrentSessionId(configRepository, now = new Date()) {
+  const override = configRepository ? configRepository.getOverride() : null;
+  if (override && SESSIONS[override]) {
+    return override;
+  }
+
+  return resolveAutoSessionId(now);
+}
+
+function createEmptyConfigData() {
+  return {
+    isExample: false,
+    overrideSessionId: null,
+    updatedAt: null,
+    updatedBy: null,
+  };
+}
+
+function readConfigData(configPath, fallbackPath) {
+  const pathToRead = fs.existsSync(configPath) ? configPath : fallbackPath;
+  if (!pathToRead || !fs.existsSync(pathToRead)) {
+    return createEmptyConfigData();
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(pathToRead, 'utf8'));
+    return {
+      ...createEmptyConfigData(),
+      ...parsed,
+    };
+  } catch (error) {
+    console.warn('던전월드 설정을 읽지 못했습니다:', error.message);
+    return createEmptyConfigData();
+  }
+}
+
+function saveJsonAtomic(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(`${filePath}.tmp`, `${JSON.stringify(data, null, 2)}\n`);
+  fs.renameSync(`${filePath}.tmp`, filePath);
+}
+
+function createDungeonworldConfigRepository(paths = {}) {
+  const resolvedPaths = {
+    ...DEFAULT_PATHS,
+    ...paths,
+  };
+
+  function getOverride() {
+    const data = readConfigData(resolvedPaths.config, resolvedPaths.configFallback);
+    return data.overrideSessionId || null;
+  }
+
+  function setOverride(sessionId, operatorId) {
+    if (!SESSIONS[sessionId]) {
+      throw new Error('존재하지 않는 회차 ID입니다.');
+    }
+
+    const data = {
+      ...createEmptyConfigData(),
+      overrideSessionId: sessionId,
+      updatedAt: new Date().toISOString(),
+      updatedBy: operatorId || null,
+    };
+    saveJsonAtomic(resolvedPaths.config, data);
+    return data;
+  }
+
+  function clearOverride(operatorId) {
+    const data = {
+      ...createEmptyConfigData(),
+      overrideSessionId: null,
+      updatedAt: new Date().toISOString(),
+      updatedBy: operatorId || null,
+    };
+    saveJsonAtomic(resolvedPaths.config, data);
+    return data;
+  }
+
+  return {
+    getOverride,
+    setOverride,
+    clearOverride,
   };
 }
 
@@ -607,7 +759,20 @@ function createDungeonworldRepository(paths = {}) {
     return data.logs.length;
   }
 
+  function getLastPlayForUserInSession(userId, sessionId) {
+    const data = readLogsData(resolvedPaths.logs);
+    const matches = data.logs.filter((log) => log.userId === userId && log.sessionId === sessionId);
+    if (matches.length === 0) {
+      return null;
+    }
+
+    return matches.reduce((latest, log) => (
+      new Date(log.createdAt).getTime() > new Date(latest.createdAt).getTime() ? log : latest
+    ));
+  }
+
   return {
+    getLastPlayForUserInSession,
     getPlayCount,
     listRecentPlays,
     recordPlay,
@@ -696,12 +861,17 @@ module.exports = {
   buildDungeonworldExportPayload,
   CLOSING_NOTE,
   TIER_LABELS,
+  createDungeonworldConfigRepository,
   createDungeonworldRepository,
   getChoice,
+  getCurrentSessionId,
+  getPreviousSessionId,
   getSession,
   listChoices,
   listSessions,
+  pickIntroForSession,
   playChoice,
+  resolveAutoSessionId,
   resolveTier,
   rollD6,
 };

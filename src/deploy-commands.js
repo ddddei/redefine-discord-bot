@@ -55,6 +55,23 @@ const commands = [
     .setDescription('혼자 짧게 즐기는 솔로 던전월드 미니게임이에요. 포인트는 지급되지 않아요.'),
 
   new SlashCommandBuilder()
+    .setName('던전월드관리')
+    .setDescription('운영진이 현재 던전월드 회차를 확인하거나 수동으로 변경합니다.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .addStringOption((option) =>
+      option
+        .setName('회차')
+        .setDescription('변경할 회차 ID를 입력해 주세요. 비워두면 현재 회차만 보여줘요.')
+        .setRequired(false)
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName('초기화')
+        .setDescription('수동 설정을 지우고 자동(주차 기준) 계산으로 되돌릴지 선택해 주세요.')
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
     .setName('포인트')
     .setDescription('내 여정 포인트를 확인합니다.'),
 

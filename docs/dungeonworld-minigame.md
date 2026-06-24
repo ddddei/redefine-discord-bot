@@ -30,10 +30,24 @@
 
 - 1회차("변방 여관의 검은 종")부터 9회차("검은탑의 마지막 문")까지 캠페인 전체 콘텐츠가 `src/dungeonworld.js`의 `SESSIONS`에 등록되어 있습니다. 캐릭터/클래스 시스템, 다단계 분기는 아직 없습니다.
 - 모든 회차가 3가지 접근 방식(위기 넘기기/살펴보기/말로 풀기)만으로 2d6 판정을 진행합니다.
-- `DEFAULT_SESSION_ID`는 아직 1회차를 가리킵니다. 다음 회차를 참여자에게 공개할 준비가 되면 이 값을 해당 회차 id로 바꿉니다.
+- 회차 노출 시점은 아래 "회차 자동 오픈과 운영자 오버라이드"를 따릅니다.
 - 반응이 괜찮으면 캠페인 이후 회차나 클래스 선택을 추가하는 걸 다음 단계로 검토할 수 있습니다.
+
+## 회차 자동 오픈과 운영자 오버라이드
+
+- `DUNGEONWORLD_START_DATE`(캠페인 시작일, `YYYY-MM-DD`)를 설정하면 시작일 기준 경과 주차에 맞는 회차를 자동으로 엽니다(매주 화요일 기준 다음 회차로 넘어감). 비워두면 항상 1회차입니다.
+- 회차 수보다 더 많은 주가 지나면 마지막으로 등록된 회차에 고정됩니다.
+- 운영진은 `/던전월드관리`로 현재 회차를 확인하거나, `회차:<회차ID>` 옵션으로 수동 오버라이드를 걸 수 있습니다. `초기화:true`를 주면 오버라이드를 지우고 자동 계산으로 돌아갑니다.
+- 오버라이드는 `data/dungeonworld-config.local.json`에 저장됩니다(없으면 `data/dungeonworld-config.example.json`을 기본값으로 사용). 구현은 `createDungeonworldConfigRepository`(`src/dungeonworld.js`)입니다.
+
+## 직전 회차 결과가 다음 회차 인트로에 반영됨
+
+- 각 회차 객체는 `introVariants: { default, strong, mixed, weak }`를 가질 수 있습니다.
+- 참여자가 `/던전월드`를 실행하면, 현재 회차의 **바로 이전** 회차에서 그 참여자가 받은 결과 등급(strong/mixed/weak)을 조회해 해당 변형 인트로를 보여줍니다.
+- 직전 회차 기록이 없거나(첫 회차, 또는 아직 플레이하지 않음) 해당 등급의 변형이 없으면 `default` 인트로를 보여줍니다.
+- 선택 로직은 `pickIntroForSession`, 직전 회차 조회는 `getPreviousSessionId` + `dungeonworldRepository.getLastPlayForUserInSession`(둘 다 `src/dungeonworld.js`)입니다.
 
 ## 배포 주의사항
 
-- `/던전월드`는 새 Slash Command이므로 `src/deploy-commands.js` 변경 후 `npm run deploy`를 실행해야 실제 서버에 명령어가 나타납니다.
+- `/던전월드`, `/던전월드관리`는 Slash Command이므로 `src/deploy-commands.js` 변경 후 `npm run deploy`를 실행해야 실제 서버에 명령어가 나타납니다.
 - `/운영내보내기`의 `종류` 선택지에 `던전월드`를 추가했으므로, 이 선택지가 보이려면 마찬가지로 `npm run deploy`가 필요합니다.

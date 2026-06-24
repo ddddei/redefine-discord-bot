@@ -134,6 +134,11 @@ const checks = [
     args: ['--check', 'src/dungeonworld.js'],
   },
   {
+    label: 'scripts/test-dungeonworld-sessions.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-sessions.js'],
+  },
+  {
     label: 'scripts/test-points-store.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-points-store.js'],
@@ -357,6 +362,11 @@ const checks = [
     label: 'dungeonworld session 09 content test',
     command: 'node',
     args: ['scripts/test-dungeonworld-session-09.js'],
+  },
+  {
+    label: 'dungeonworld sessions smoke test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-sessions.js'],
   },
   {
     label: '데이터 구조 검사',
