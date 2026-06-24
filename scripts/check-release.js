@@ -204,6 +204,11 @@ const checks = [
     args: ['--check', 'scripts/test-admin-dashboard-flow.js'],
   },
   {
+    label: 'scripts/test-dungeonworld-session-02.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-02.js'],
+  },
+  {
     label: 'pointsStore smoke test',
     command: 'node',
     args: ['scripts/test-points-store.js'],
@@ -277,6 +282,11 @@ const checks = [
     label: 'dungeonworld flow smoke test',
     command: 'node',
     args: ['scripts/test-dungeonworld-flow.js'],
+  },
+  {
+    label: 'dungeonworld session 02 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-02.js'],
   },
   {
     label: '데이터 구조 검사',
