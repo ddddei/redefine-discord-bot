@@ -247,6 +247,14 @@ function main() {
   resetModule('../src/embeds');
   const { handleInteractionCreate } = require('../src/handlers');
   const { GUIDE_HUB_OPTIONS, GUIDE_HUB_SELECT_ID } = require('../src/components');
+  const { getShopTypeLabel } = require('../src/embeds');
+
+  assert.strictEqual(getShopTypeLabel('youthCenterPoint'), '🟢 청년동 포인트');
+  assert.strictEqual(getShopTypeLabel('reward'), '🎁 리워드');
+  assert.strictEqual(getShopTypeLabel('goods'), '🎁 굿즈');
+  assert.strictEqual(getShopTypeLabel('event'), '✨ 이벤트');
+  assert.strictEqual(getShopTypeLabel('subscription'), '🎟️ 구독권');
+  assert.strictEqual(getShopTypeLabel('annualSubscription'), '🎟️ 구독권');
 
   return Promise.resolve()
     .then(async () => {
@@ -413,7 +421,7 @@ function main() {
       assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].name, /🎁 리워드/);
       assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].name, /S001|item_ux_active/);
       assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].value, /item_ux_active|표시 코드|설명/);
-      assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].value, /100P로 교환을 신청할 수 있어요/);
+      assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].value, /필요 포인트 100P · 운영진 확인 후 지급/);
       assert.ok(shopCommand.replyPayload.embeds[0].data.fields[0].value.length <= 80);
       assert.strictEqual(shopCommand.replyPayload.components.length, 1);
       assert.match(shopCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /S001/);
@@ -435,10 +443,20 @@ function main() {
       await handleInteractionCreate(shopSelect);
       assert.strictEqual(getEmbedTitle(shopSelect.updatePayload), '교환 신청 전 확인해 주세요');
       assert.match(shopSelect.updatePayload.embeds[0].data.description, /🎁 리워드/);
+      assert.match(shopSelect.updatePayload.embeds[0].data.description, /UX 테스트 리워드/);
       assert.match(shopSelect.updatePayload.embeds[0].data.description, /신청 후 포인트: 150P/);
+      assert.match(shopSelect.updatePayload.embeds[0].data.description, /신청하면 포인트가 차감돼요/);
       assert.match(shopSelect.updatePayload.embeds[0].data.description, /직접 입력용 신청 코드: S001/);
       assert.doesNotMatch(shopSelect.updatePayload.embeds[0].data.description, /item_ux_active|항목 ID/);
       assert.strictEqual(shopSelect.updatePayload.components[0].components[1].toJSON().label, '신청하지 않기');
+      assert.strictEqual(
+        shopSelect.updatePayload.components[0].components[0].toJSON().custom_id,
+        'participant_redeem_confirm:S001'
+      );
+      assert.strictEqual(
+        shopSelect.updatePayload.components[0].components[1].toJSON().custom_id,
+        'participant_redeem_cancel_check:S001'
+      );
       assert.strictEqual(shopSelect.updatePayload.components.length, 1);
 
       const lowPointSelect = createSelectInteraction(
@@ -466,6 +484,14 @@ function main() {
       assert.match(cancelButton.updatePayload.embeds[0].data.description, /아직 포인트는 차감되지 않았어요/);
       assert.strictEqual(cancelButton.updatePayload.components[0].components[0].toJSON().label, '네, 종료할게요');
       assert.strictEqual(cancelButton.updatePayload.components[0].components[1].toJSON().label, '다시 확인할게요');
+      assert.strictEqual(
+        cancelButton.updatePayload.components[0].components[0].toJSON().custom_id,
+        'participant_redeem_cancel_done:S001'
+      );
+      assert.strictEqual(
+        cancelButton.updatePayload.components[0].components[1].toJSON().custom_id,
+        'participant_redeem_cancel_back:S001'
+      );
 
       const cancelBackButton = createButtonInteraction(
         'participant_redeem_cancel_back:S001',
@@ -507,7 +533,7 @@ function main() {
       assert.strictEqual(getEmbedTitle(missionCommand.replyPayload), '오늘 참여 가능한 미션');
       assert.doesNotMatch(missionCommand.replyPayload.embeds[0].data.description, /M001/);
       assert.doesNotMatch(missionCommand.replyPayload.embeds[0].data.description, /mission_ux_active|미션 ID|표시 코드/);
-      assert.match(missionCommand.replyPayload.embeds[0].data.description, /글로 남기면 15P를 받을 수 있어요/);
+      assert.match(missionCommand.replyPayload.embeds[0].data.description, /지급 포인트 15P · 글로 인증/);
       assert.match(missionCommand.replyPayload.embeds[0].data.description, /첨부파일/);
       assert.match(missionCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /M001/);
       assert.strictEqual(missionCommand.replyPayload.components.length, 1);

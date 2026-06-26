@@ -335,7 +335,15 @@ function createInsufficientPointsDescription({ currentPoints = 0, requiredPoints
 
 function getRedemptionFailureMessage(reason) {
   const messages = {
-    USER_NOT_FOUND: createInsufficientPointsDescription({ currentPoints: 0, requiredPoints: 0 }),
+    USER_NOT_FOUND: [
+      '현재 포인트 기록이 없어 아직 신청할 수 없어요.',
+      '',
+      '먼저 체크인이나 미션 참여 후 다시 확인해 주세요.',
+      '',
+      '- `/체크인`으로 오늘의 기록 남기기',
+      '- `/미션`에서 참여 가능한 활동 확인하기',
+      '- `/포인트`로 내 포인트 다시 확인하기',
+    ].join('\n'),
     ITEM_NOT_FOUND: '해당 항목을 찾지 못했어요. `/상점`에서 신청 코드를 다시 확인해 주세요.',
     SOLD_OUT: '해당 항목은 현재 재고가 없어 신청할 수 없어요.',
     ITEM_NOT_ACTIVE: '해당 항목은 현재 신청 가능한 상태가 아니에요.',
@@ -644,12 +652,10 @@ async function replyWithMissionSelection(interaction) {
   }
 
   const lines = missions.slice(0, 10).map((mission) => {
-    const actionText = mission.requiresSubmission === false
-      ? `${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`
-      : `글로 남기면 ${formatPoints(mission.rewardPoints || 0)}를 받을 수 있어요.`;
+    const submissionText = mission.requiresSubmission === false ? '운영진 안내' : '글로 인증';
     return [
-      `**🌱 ${mission.title || '미션'}**`,
-      actionText,
+      `🌱 ${mission.title || '미션'}`,
+      `지급 포인트 ${formatPoints(mission.rewardPoints || 0)} · ${submissionText}`,
     ].join('\n');
   });
 
@@ -1914,13 +1920,14 @@ async function handleShopSelect(interaction) {
       createGuideEmbed(
         '교환 신청 전 확인해 주세요',
         [
-          `${getShopTypeLabel(item.type)} ${item.name}`,
+          `${getShopTypeLabel(item.type)}`,
+          `${item.name}`,
           '',
           `필요 포인트: ${formatPoints(item.cost)}`,
           `현재 포인트: ${formatPoints(currentPoints)}`,
           `신청 후 포인트: ${formatPoints(balanceAfter)}`,
           '',
-          '신청이 완료되면 포인트가 차감돼요.',
+          '신청하면 포인트가 차감돼요.',
           '단순 변심에 따른 취소나 환불은 원칙적으로 어렵습니다.',
           '',
           `직접 입력용 신청 코드: ${item.displayCode}`,
@@ -1975,13 +1982,14 @@ async function handleRedemptionConfirmButton(interaction) {
         createGuideEmbed(
           '교환 신청 전 확인해 주세요',
           [
-            `${getShopTypeLabel(item.type)} ${item.name}`,
+            `${getShopTypeLabel(item.type)}`,
+            `${item.name}`,
             '',
             `필요 포인트: ${formatPoints(item.cost)}`,
             `현재 포인트: ${formatPoints(currentPoints)}`,
             `신청 후 포인트: ${formatPoints(balanceAfter)}`,
             '',
-            '신청이 완료되면 포인트가 차감돼요.',
+            '신청하면 포인트가 차감돼요.',
             '단순 변심에 따른 취소나 환불은 원칙적으로 어렵습니다.',
             '',
             `직접 입력용 신청 코드: ${item.displayCode}`,

@@ -144,14 +144,15 @@ async function sendSensitiveQuestionAlert(interaction, question, detection) {
 
 async function sendMissionSubmissionReviewAlert(interaction, submission, mission) {
   const alertChannelId = process.env.ACTIVITY_REVIEW_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+  const alertChannelEnvName = process.env.ACTIVITY_REVIEW_CHANNEL_ID ? 'ACTIVITY_REVIEW_CHANNEL_ID' : 'LOG_CHANNEL_ID';
 
   if (!alertChannelId) {
-    console.warn('인증 검토 알림 채널이 설정되지 않아 알림을 건너뜁니다.');
+    console.warn('[submission-alert] skipped: ACTIVITY_REVIEW_CHANNEL_ID and LOG_CHANNEL_ID are not configured');
     return;
   }
 
   if (!interaction.client || !interaction.client.channels || typeof interaction.client.channels.fetch !== 'function') {
-    console.warn('인증 검토 알림 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    console.warn('[submission-alert] failed: Discord client channel access is unavailable');
     return;
   }
 
@@ -159,7 +160,7 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
     const channel = await interaction.client.channels.fetch(alertChannelId);
 
     if (!channel || typeof channel.send !== 'function') {
-      console.warn('인증 검토 알림 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      console.warn('[submission-alert] failed: missing channel permission or channel not found');
       return;
     }
 
@@ -230,9 +231,9 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
       embeds: [embed],
       components: [createSubmissionReviewActionRow(submission.id)],
     });
-    console.info(`인증 검토 알림 전송됨: channel=${alertChannelId} submission=${submission.id}`);
+    console.info(`[submission-alert] sent to ${alertChannelEnvName}: channel=${alertChannelId} submission=${submission.id}`);
   } catch (error) {
-    console.warn('미션 인증 검토 알림 전송 실패:', error.message);
+    console.warn(`[submission-alert] failed: ${error.message}`);
   }
 }
 
@@ -374,14 +375,15 @@ async function sendMissionReactionApprovalLog(client, record) {
 
 async function sendRedemptionReviewAlert(interaction, redemption, item, user, transaction) {
   const alertChannelId = process.env.POINT_REDEEM_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+  const alertChannelEnvName = process.env.POINT_REDEEM_CHANNEL_ID ? 'POINT_REDEEM_CHANNEL_ID' : 'LOG_CHANNEL_ID';
 
   if (!alertChannelId) {
-    console.warn('교환 신청 알림 채널이 설정되지 않아 알림을 건너뜁니다.');
+    console.warn('[redeem-alert] skipped: POINT_REDEEM_CHANNEL_ID and LOG_CHANNEL_ID are not configured');
     return;
   }
 
   if (!interaction.client || !interaction.client.channels || typeof interaction.client.channels.fetch !== 'function') {
-    console.warn('교환 신청 알림 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    console.warn('[redeem-alert] failed: Discord client channel access is unavailable');
     return;
   }
 
@@ -389,7 +391,7 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
     const channel = await interaction.client.channels.fetch(alertChannelId);
 
     if (!channel || typeof channel.send !== 'function') {
-      console.warn('교환 신청 알림 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      console.warn('[redeem-alert] failed: missing channel permission or channel not found');
       return;
     }
 
@@ -424,9 +426,9 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
       );
 
     await channel.send({ embeds: [embed] });
-    console.info(`교환 신청 알림 전송됨: channel=${alertChannelId} redemption=${redemption.id}`);
+    console.info(`[redeem-alert] sent to ${alertChannelEnvName}: channel=${alertChannelId} redemption=${redemption.id}`);
   } catch (error) {
-    console.warn('교환 신청 알림 전송 실패:', error.message);
+    console.warn(`[redeem-alert] failed: ${error.message}`);
   }
 }
 

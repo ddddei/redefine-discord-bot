@@ -798,6 +798,7 @@ function buildOperatorChecklistEmbed() {
 
 function getShopTypeLabel(type) {
   const normalizedType = String(type || '').trim();
+  const lowercaseType = normalizedType.toLowerCase();
   const labels = {
     youthCenterPoint: '🟢 청년동 포인트',
     reward: '🎁 리워드',
@@ -810,7 +811,7 @@ function getShopTypeLabel(type) {
     return labels[normalizedType];
   }
 
-  if (/subscription|구독/.test(normalizedType)) {
+  if (/subscription|구독/.test(lowercaseType)) {
     return '🎟️ 구독권';
   }
 
@@ -819,10 +820,14 @@ function getShopTypeLabel(type) {
 
 function formatShopParticipantSummary(item) {
   if (String(item.type || '').trim() === 'youthCenterPoint') {
-    return `${formatPoints(item.cost)}로 청년동 포인트 전환을 신청할 수 있어요.`;
+    return `필요 포인트 ${formatPoints(item.cost)} · 청년동 내부 사용`;
   }
 
-  return `${formatPoints(item.cost)}로 교환을 신청할 수 있어요.`;
+  if (String(item.type || '').trim() === 'goods') {
+    return `필요 포인트 ${formatPoints(item.cost)} · 수량 운영진 확인`;
+  }
+
+  return `필요 포인트 ${formatPoints(item.cost)} · 운영진 확인 후 지급`;
 }
 
 function createShopEmbed(items) {
