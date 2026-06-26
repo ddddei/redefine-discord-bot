@@ -55,6 +55,10 @@ const commands = [
     .setDescription('혼자 짧게 즐기는 솔로 던전월드 미니게임이에요. 포인트는 지급되지 않아요.'),
 
   new SlashCommandBuilder()
+    .setName('던전월드기록')
+    .setDescription('내 던전월드 진행 기록을 개인 메시지로 확인해요.'),
+
+  new SlashCommandBuilder()
     .setName('던전월드관리')
     .setDescription('운영진이 현재 던전월드 회차를 확인하거나 수동으로 변경합니다.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
@@ -446,4 +450,8 @@ async function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { commands };

@@ -43,6 +43,8 @@ const {
 const {
   DUNGEONWORLD_CHOICE_PREFIX,
   GUIDE_HUB_SELECT_ID,
+  OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS,
+  OPERATOR_DUNGEONWORLD_MANAGE_PREFIX,
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_MISSION_TEMPLATE_SELECT_ID,
@@ -61,6 +63,7 @@ const {
   createOperatorInvitationNoticeButtonRow,
   createOperatorPrelaunchCheckActionRow,
   createDungeonworldChoiceRow,
+  createDungeonworldManageRow,
 } = require('./components');
 const {
   createSubmissionReviewActionRow,
@@ -96,7 +99,9 @@ const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 const {
   CLOSING_NOTE: DUNGEONWORLD_CLOSING_NOTE,
+  buildDungeonworldAnalytics,
   buildDungeonworldExportPayload,
+  buildDungeonworldUserProgress,
   createDungeonworldConfigRepository,
   createDungeonworldRepository,
   getChoice: getDungeonworldChoice,
@@ -104,6 +109,7 @@ const {
   getPreviousSessionId: getPreviousDungeonworldSessionId,
   getSession: getDungeonworldSession,
   listChoices: listDungeonworldChoices,
+  listSessions: listDungeonworldSessions,
   playChoice: playDungeonworldChoice,
 } = require('./dungeonworld');
 
@@ -1556,6 +1562,72 @@ function getDungeonworldPreviousTier(userId, currentSessionId) {
   return previousPlay ? previousPlay.tier : null;
 }
 
+function listAllDungeonworldLogs() {
+  const totalPlayCount = dungeonworldRepository.getPlayCount();
+  return totalPlayCount > 0 ? dungeonworldRepository.listRecentPlays(totalPlayCount) : [];
+}
+
+function formatDungeonworldContinuityNote(progress) {
+  if (!progress.previousSessionId) {
+    return '직전 회차 연속성: 첫 회차라 아직 반영할 직전 결과가 없어요.';
+  }
+
+  if (!progress.previousSessionLatestPlay) {
+    return `직전 회차 연속성: ${progress.previousSessionTitle} 기록이 없어 현재 인트로는 기본 흐름으로 보여요.`;
+  }
+
+  return `직전 회차 연속성: ${progress.previousSessionTitle}의 ${progress.previousTierLabel || progress.previousTier} 결과가 현재 인트로에 반영돼요.`;
+}
+
+function formatDungeonworldRecordDescription(progress) {
+  const latestLines = progress.latestPlayBySession.length > 0
+    ? progress.latestPlayBySession.map((log) => [
+      `- ${log.sessionTitle || log.sessionId}`,
+      `${log.choiceLabel || log.choiceId}`,
+      `${log.tierLabel || log.tier || '결과 미확인'}`,
+      Number.isFinite(log.total) ? `합계 ${log.total}` : null,
+    ].filter(Boolean).join(' / '))
+    : ['아직 던전월드 플레이 기록이 없어요. `/던전월드`로 현재 회차를 시작할 수 있어요.'];
+
+  return [
+    `총 플레이 수: ${progress.totalPlayCount}`,
+    `완료한 회차: ${progress.completedSessionCount}`,
+    `현재 열린 회차: ${progress.currentSessionTitle || '확인 불가'}${progress.currentSessionId ? ` (\`${progress.currentSessionId}\`)` : ''}`,
+    `현재 회차 참여: ${progress.hasPlayedCurrentSession ? '완료' : '아직 미참여'}`,
+    formatDungeonworldContinuityNote(progress),
+    '',
+    '회차별 최신 결과',
+    ...latestLines,
+  ].join('\n');
+}
+
+async function handleDungeonworldRecordCommand(interaction) {
+  try {
+    const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
+    const progress = buildDungeonworldUserProgress(
+      listAllDungeonworldLogs(),
+      interaction.user.id,
+      currentSessionId
+    );
+
+    await interaction.reply({
+      embeds: [
+        createGuideEmbed(
+          '내 던전월드 기록',
+          formatDungeonworldRecordDescription(progress)
+        ),
+      ],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('던전월드 기록 조회 실패:', error.message);
+    await interaction.reply({
+      content: `던전월드 기록을 확인하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
 async function handleDungeonworldCommand(interaction) {
   const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
   const previousTier = getDungeonworldPreviousTier(interaction.user.id, currentSessionId);
@@ -1611,41 +1683,204 @@ async function handleDungeonworldButton(interaction) {
   }
 }
 
+function formatDungeonworldCountItems(items, emptyText, options = {}) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [emptyText];
+  }
+
+  const limit = options.limit || 5;
+  return items.slice(0, limit).map((item) => {
+    const preferChoice = options.preferChoice === true;
+    const label = preferChoice
+      ? item.choiceLabel || item.choiceId || item.sessionTitle || item.sessionId || '항목'
+      : item.sessionTitle || item.choiceLabel || item.sessionId || item.choiceId || '항목';
+    const id = preferChoice ? item.choiceId || item.sessionId || '' : item.sessionId || item.choiceId || '';
+    const suffix = id ? ` (\`${id}\`)` : '';
+    const sessionContext = preferChoice && item.sessionTitle ? ` / ${truncateText(item.sessionTitle, 40)}` : '';
+    return `- ${truncateText(label, 60)}${suffix}${sessionContext}: ${item.count}`;
+  });
+}
+
+function formatDungeonworldTierCounts(tierCounts) {
+  return [
+    `10+: ${tierCounts.strong || 0}`,
+    `7-9: ${tierCounts.mixed || 0}`,
+    `6-: ${tierCounts.weak || 0}`,
+    `미확인: ${tierCounts.unknown || 0}`,
+  ].join(' / ');
+}
+
+function getDungeonworldAutoOpenContext(now = new Date()) {
+  const startDateText = String(process.env.DUNGEONWORLD_START_DATE || '').trim();
+  if (!startDateText) {
+    return null;
+  }
+
+  const startDate = new Date(startDateText);
+  if (Number.isNaN(startDate.getTime())) {
+    return null;
+  }
+
+  const sessions = listDungeonworldSessions();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const elapsedMs = now.getTime() - startDate.getTime();
+  const weekIndex = elapsedMs <= 0 ? 0 : Math.floor(elapsedMs / weekMs);
+  const currentIndex = Math.min(sessions.length - 1, weekIndex);
+  const nextIndex = currentIndex + 1;
+
+  if (nextIndex >= sessions.length) {
+    return '다음 자동 오픈: 마지막 회차에 도달해 자동 계산은 마지막 회차로 유지돼요.';
+  }
+
+  const nextOpenAt = new Date(startDate.getTime() + (nextIndex * weekMs)).toISOString();
+  const nextSession = sessions[nextIndex];
+  return `다음 자동 오픈: ${nextOpenAt} / ${nextSession.title} (\`${nextSession.id}\`)`;
+}
+
+function createDungeonworldManagePayload(statusLine = null) {
+  const override = dungeonworldConfigRepository.getOverride();
+  const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
+  const autoSessionId = getCurrentDungeonworldSessionId(null);
+  const session = getDungeonworldSession(currentSessionId);
+  const autoSession = getDungeonworldSession(autoSessionId);
+  const sessions = listDungeonworldSessions();
+  const analytics = buildDungeonworldAnalytics(listAllDungeonworldLogs(), {
+    currentSessionId,
+    recentLimit: 10,
+  });
+  const nextAutoOpenContext = getDungeonworldAutoOpenContext();
+  const sessionLines = sessions.map((item) => `- ${item.title} (\`${item.id}\`)`);
+  const progressCounts = analytics.latestSessionProgressCounts;
+
+  return {
+    embeds: [
+      createGuideEmbed(
+        '던전월드 회차 관리',
+        [
+          statusLine,
+          statusLine ? '' : null,
+          `현재 회차: ${session.title} (\`${session.id}\`)`,
+          `자동 계산 회차: ${autoSession.title} (\`${autoSession.id}\`)`,
+          `수동 설정: ${override ? `예 (\`${override}\`)` : '아니오 (자동 계산)'}`,
+          nextAutoOpenContext,
+          '',
+          '운영 지표',
+          `전체 플레이 수: ${analytics.totalPlayCount}`,
+          `최근 기록 수: ${analytics.recentActivity.length}`,
+          `고유 참여자 수: ${analytics.uniqueUserCount}`,
+          `결과 분포: ${formatDungeonworldTierCounts(analytics.tierCounts)}`,
+          progressCounts ? `현재 회차 진행: ${progressCounts.playCount}회 / ${progressCounts.uniqueUserCount}명` : '현재 회차 진행: 확인 불가',
+          '',
+          '인기 회차',
+          ...formatDungeonworldCountItems(analytics.sessionCounts, '- 아직 플레이 기록이 없습니다.', { limit: 5 }),
+          '',
+          '인기 선택',
+          ...formatDungeonworldCountItems(analytics.choiceCounts, '- 아직 선택 기록이 없습니다.', {
+            limit: 5,
+            preferChoice: true,
+          }),
+          '',
+          '전체 회차',
+          ...sessionLines,
+          '',
+          '버튼으로 이전/다음 회차 수동 설정, 오버라이드 해제, 새로고침만 할 수 있어요.',
+        ].filter((line) => line !== null).join('\n'),
+        {
+          footer: OPERATOR_CHECK_FOOTER,
+        }
+      ),
+    ],
+    components: [createDungeonworldManageRow()],
+  };
+}
+
 async function handleDungeonworldManageCommand(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 명령어는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
   try {
     const sessionIdInput = interaction.options.getString('회차');
     const reset = interaction.options.getBoolean('초기화');
+    let statusLine = null;
 
     if (reset) {
       dungeonworldConfigRepository.clearOverride(interaction.user.id);
+      statusLine = '수동 설정을 해제하고 자동 회차 계산으로 되돌렸어요.';
     } else if (sessionIdInput) {
       dungeonworldConfigRepository.setOverride(sessionIdInput, interaction.user.id);
+      statusLine = `수동 회차를 \`${sessionIdInput}\`로 설정했어요.`;
     }
 
-    const override = dungeonworldConfigRepository.getOverride();
-    const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
-    const session = getDungeonworldSession(currentSessionId);
-
     await interaction.reply({
-      embeds: [
-        createGuideEmbed(
-          '던전월드 회차 관리',
-          [
-            `현재 회차: ${session.title} (\`${session.id}\`)`,
-            `수동 설정: ${override ? `예 (\`${override}\`)` : '아니오 (자동 계산)'}`,
-            '회차를 바꾸려면 `/던전월드관리 회차:<회차ID>`를, 자동 계산으로 되돌리려면 `/던전월드관리 초기화:true`를 사용해 주세요.',
-          ].join('\n'),
-          {
-            footer: OPERATOR_CHECK_FOOTER,
-          }
-        ),
-      ],
+      ...createDungeonworldManagePayload(statusLine),
       ephemeral: true,
     });
   } catch (error) {
     console.error('던전월드 회차 관리 실패:', error.message);
     await interaction.reply({
       content: `던전월드 회차 설정을 처리하지 못했어요. ${error.message}`,
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleDungeonworldManageButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({
+      content: '이 메뉴는 운영진 권한이 필요해요.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  try {
+    const action = interaction.customId.slice(OPERATOR_DUNGEONWORLD_MANAGE_PREFIX.length);
+    const sessions = listDungeonworldSessions();
+    const sessionIds = sessions.map((session) => session.id);
+    const currentSessionId = getCurrentDungeonworldSessionId(dungeonworldConfigRepository);
+    const currentIndex = Math.max(0, sessionIds.indexOf(currentSessionId));
+    let statusLine = null;
+
+    if (interaction.customId === OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.previous) {
+      const targetIndex = Math.max(0, currentIndex - 1);
+      const targetSession = sessions[targetIndex];
+      dungeonworldConfigRepository.setOverride(targetSession.id, interaction.user.id);
+      statusLine = targetIndex === currentIndex
+        ? `이미 첫 회차라 \`${targetSession.id}\`에 머물렀어요.`
+        : `이전 회차 \`${targetSession.id}\`로 수동 설정했어요.`;
+    } else if (interaction.customId === OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.next) {
+      const targetIndex = Math.min(sessions.length - 1, currentIndex + 1);
+      const targetSession = sessions[targetIndex];
+      dungeonworldConfigRepository.setOverride(targetSession.id, interaction.user.id);
+      statusLine = targetIndex === currentIndex
+        ? `이미 마지막 회차라 \`${targetSession.id}\`에 머물렀어요.`
+        : `다음 회차 \`${targetSession.id}\`로 수동 설정했어요.`;
+    } else if (interaction.customId === OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.clearOverride) {
+      dungeonworldConfigRepository.clearOverride(interaction.user.id);
+      statusLine = '수동 설정을 해제하고 자동 회차 계산으로 되돌렸어요.';
+    } else if (interaction.customId === OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.refresh) {
+      statusLine = '던전월드 회차 관리 화면을 새로고침했어요.';
+    } else {
+      await interaction.reply({
+        content: `지원하지 않는 던전월드 관리 작업이에요: ${action || 'unknown'}`,
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      ...createDungeonworldManagePayload(statusLine),
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('던전월드 회차 관리 버튼 처리 실패:', error.message);
+    await interaction.reply({
+      content: `던전월드 회차 관리 작업을 완료하지 못했어요. ${error.message}`,
       ephemeral: true,
     });
   }
@@ -3588,6 +3823,11 @@ async function handleInteractionCreate(interaction) {
       return;
     }
 
+    if (interaction.customId.startsWith(OPERATOR_DUNGEONWORLD_MANAGE_PREFIX)) {
+      await handleDungeonworldManageButton(interaction);
+      return;
+    }
+
     if (interaction.customId.startsWith(DUNGEONWORLD_CHOICE_PREFIX)) {
       await handleDungeonworldButton(interaction);
       return;
@@ -3630,6 +3870,11 @@ async function handleInteractionCreate(interaction) {
 
   if (interaction.commandName === '던전월드') {
     await handleDungeonworldCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '던전월드기록') {
+    await handleDungeonworldRecordCommand(interaction);
     return;
   }
 
@@ -3733,6 +3978,9 @@ module.exports = {
   handleCheckinCommand,
   handleDungeonworldButton,
   handleDungeonworldCommand,
+  handleDungeonworldManageButton,
+  handleDungeonworldManageCommand,
+  handleDungeonworldRecordCommand,
   handleGuideCommand,
   handleGuideHubSelect,
   handleInteractionCreate,

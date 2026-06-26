@@ -7,6 +7,13 @@ const {
 const crypto = require('crypto');
 
 const DUNGEONWORLD_CHOICE_PREFIX = 'dungeonworld:choice:';
+const OPERATOR_DUNGEONWORLD_MANAGE_PREFIX = 'dungeonworld_manage:';
+const OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS = {
+  previous: `${OPERATOR_DUNGEONWORLD_MANAGE_PREFIX}prev`,
+  next: `${OPERATOR_DUNGEONWORLD_MANAGE_PREFIX}next`,
+  clearOverride: `${OPERATOR_DUNGEONWORLD_MANAGE_PREFIX}clear`,
+  refresh: `${OPERATOR_DUNGEONWORLD_MANAGE_PREFIX}refresh`,
+};
 
 const GUIDE_HUB_SELECT_ID = 'guide_hub_select';
 const OPERATOR_HUB_SELECT_ID = 'operator_hub_select';
@@ -195,6 +202,27 @@ function createDungeonworldChoiceRow(choices) {
       .setCustomId(`${DUNGEONWORLD_CHOICE_PREFIX}${choice.id}`)
       .setLabel(choice.label)
       .setStyle(ButtonStyle.Secondary))
+  );
+}
+
+function createDungeonworldManageRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.previous)
+      .setLabel('이전 회차')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.next)
+      .setLabel('다음 회차')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.clearOverride)
+      .setLabel('오버라이드 해제')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS.refresh)
+      .setLabel('새로고침')
+      .setStyle(ButtonStyle.Secondary)
   );
 }
 
@@ -404,6 +432,8 @@ module.exports = {
   DUNGEONWORLD_CHOICE_PREFIX,
   GUIDE_HUB_OPTIONS,
   GUIDE_HUB_SELECT_ID,
+  OPERATOR_DUNGEONWORLD_MANAGE_BUTTON_IDS,
+  OPERATOR_DUNGEONWORLD_MANAGE_PREFIX,
   OPERATOR_MISSION_HUB_BUTTON_IDS,
   OPERATOR_MISSION_HUB_SELECT_ID,
   OPERATOR_MISSION_TEMPLATE_SELECT_ID,
@@ -422,5 +452,6 @@ module.exports = {
   createOperatorMissionHubRows,
   createOperatorMissionTemplateRows,
   createOperatorShopHubRows,
+  createDungeonworldManageRow,
   createDungeonworldChoiceRow,
 };

@@ -582,6 +582,258 @@ function listChoices(sessionId) {
   return Object.values(session.choices);
 }
 
+function getKnownSession(sessionId) {
+  if (!sessionId || !SESSIONS[sessionId]) {
+    return null;
+  }
+
+  return SESSIONS[sessionId];
+}
+
+function getLogTime(log) {
+  const timestamp = new Date(log.createdAt).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getLogRecords(logs) {
+  return Array.isArray(logs) ? logs.filter((log) => log && typeof log === 'object') : [];
+}
+
+function getLatestLog(current, candidate) {
+  if (!current) {
+    return candidate;
+  }
+
+  return getLogTime(candidate) >= getLogTime(current) ? candidate : current;
+}
+
+function getLatestDungeonworldPlaysBySession(logs, options = {}) {
+  const latestBySession = new Map();
+
+  for (const log of getLogRecords(logs)) {
+    if (options.userId && log.userId !== options.userId) {
+      continue;
+    }
+
+    if (!getKnownSession(log.sessionId)) {
+      continue;
+    }
+
+    latestBySession.set(log.sessionId, getLatestLog(latestBySession.get(log.sessionId), log));
+  }
+
+  return SESSION_ORDER
+    .filter((sessionId) => latestBySession.has(sessionId))
+    .map((sessionId) => latestBySession.get(sessionId));
+}
+
+function getDungeonworldContinuityContext(logs, userId, currentSessionId) {
+  const currentSession = getKnownSession(currentSessionId);
+  if (!currentSession) {
+    return {
+      currentSessionId: null,
+      currentSessionTitle: null,
+      previousSessionId: null,
+      previousSessionTitle: null,
+      previousSessionLatestPlay: null,
+      previousTier: null,
+      previousTierLabel: null,
+    };
+  }
+
+  const previousSessionId = getPreviousSessionId(currentSession.id);
+  const previousSession = previousSessionId ? SESSIONS[previousSessionId] : null;
+  const latestPlayBySession = getLatestDungeonworldPlaysBySession(logs, { userId });
+  const previousSessionLatestPlay = previousSessionId
+    ? latestPlayBySession.find((log) => log.sessionId === previousSessionId) || null
+    : null;
+  const previousTier = previousSessionLatestPlay ? previousSessionLatestPlay.tier : null;
+
+  return {
+    currentSessionId: currentSession.id,
+    currentSessionTitle: currentSession.title,
+    previousSessionId,
+    previousSessionTitle: previousSession ? previousSession.title : null,
+    previousSessionLatestPlay,
+    previousTier,
+    previousTierLabel: previousSessionLatestPlay
+      ? previousSessionLatestPlay.tierLabel || TIER_LABELS[previousTier] || null
+      : null,
+  };
+}
+
+function buildDungeonworldUserProgress(logs, userId, currentSessionId) {
+  const records = getLogRecords(logs);
+  const userLogs = records.filter((log) => log.userId === userId);
+  const latestPlayBySession = getLatestDungeonworldPlaysBySession(records, { userId });
+  const currentSession = getKnownSession(currentSessionId);
+  const currentSessionLatestPlay = currentSession
+    ? latestPlayBySession.find((log) => log.sessionId === currentSession.id) || null
+    : null;
+  const continuityContext = getDungeonworldContinuityContext(records, userId, currentSessionId);
+
+  return {
+    userId,
+    totalPlayCount: userLogs.length,
+    completedSessionCount: latestPlayBySession.length,
+    currentSessionId: currentSession ? currentSession.id : null,
+    currentSessionTitle: currentSession ? currentSession.title : null,
+    hasPlayedCurrentSession: Boolean(currentSessionLatestPlay),
+    currentSessionLatestPlay,
+    latestPlayBySession,
+    ...continuityContext,
+  };
+}
+
+function getDungeonworldSessionCounts(logs) {
+  const counts = new Map();
+
+  for (const log of getLogRecords(logs)) {
+    if (getKnownSession(log.sessionId)) {
+      counts.set(log.sessionId, (counts.get(log.sessionId) || 0) + 1);
+    }
+  }
+
+  return SESSION_ORDER
+    .filter((sessionId) => counts.has(sessionId))
+    .map((sessionId) => ({
+      sessionId,
+      sessionTitle: SESSIONS[sessionId].title,
+      count: counts.get(sessionId),
+    }))
+    .sort((left, right) => {
+      const countComparison = right.count - left.count;
+      if (countComparison !== 0) {
+        return countComparison;
+      }
+
+      return SESSION_ORDER.indexOf(left.sessionId) - SESSION_ORDER.indexOf(right.sessionId)
+        || left.sessionTitle.localeCompare(right.sessionTitle, 'ko');
+    });
+}
+
+function getDungeonworldChoiceCounts(logs) {
+  const counts = new Map();
+
+  for (const log of getLogRecords(logs)) {
+    if (!log.choiceId) {
+      continue;
+    }
+
+    const session = getKnownSession(log.sessionId);
+    const sessionId = session ? session.id : log.sessionId || null;
+    const choiceKey = `${sessionId || 'unknown_session'}:${log.choiceId}`;
+    const item = counts.get(choiceKey) || {
+      choiceKey,
+      sessionId,
+      sessionTitle: session ? session.title : log.sessionTitle || null,
+      choiceId: log.choiceId,
+      choiceLabel: log.choiceLabel || log.choiceId,
+      count: 0,
+    };
+    item.count += 1;
+    counts.set(choiceKey, item);
+  }
+
+  return [...counts.values()].sort((left, right) => {
+    const countComparison = right.count - left.count;
+    if (countComparison !== 0) {
+      return countComparison;
+    }
+
+    const leftSessionIndex = SESSION_ORDER.indexOf(left.sessionId);
+    const rightSessionIndex = SESSION_ORDER.indexOf(right.sessionId);
+    const sessionComparison = (leftSessionIndex === -1 ? Number.MAX_SAFE_INTEGER : leftSessionIndex)
+      - (rightSessionIndex === -1 ? Number.MAX_SAFE_INTEGER : rightSessionIndex);
+    if (sessionComparison !== 0) {
+      return sessionComparison;
+    }
+
+    return 0;
+  });
+}
+
+function getDungeonworldTierCounts(logs) {
+  const counts = { strong: 0, mixed: 0, weak: 0, unknown: 0 };
+
+  for (const log of getLogRecords(logs)) {
+    if (Object.prototype.hasOwnProperty.call(TIER_LABELS, log.tier)) {
+      counts[log.tier] += 1;
+    } else {
+      counts.unknown += 1;
+    }
+  }
+
+  return counts;
+}
+
+function getDungeonworldUniqueUserCount(logs) {
+  const userIds = new Set();
+
+  for (const log of getLogRecords(logs)) {
+    if (log.userId) {
+      userIds.add(log.userId);
+    }
+  }
+
+  return userIds.size;
+}
+
+function getRecentDungeonworldActivity(logs, limit = 10) {
+  const resolvedLimit = Math.max(0, Number(limit) || 0);
+  return [...getLogRecords(logs)]
+    .sort((left, right) => getLogTime(right) - getLogTime(left))
+    .slice(0, resolvedLimit);
+}
+
+function getLatestSessionIdForProgress(logs) {
+  const activeSessionIds = new Set(getDungeonworldSessionCounts(logs).map((item) => item.sessionId));
+
+  for (const sessionId of [...SESSION_ORDER].reverse()) {
+    if (activeSessionIds.has(sessionId)) {
+      return sessionId;
+    }
+  }
+
+  return DEFAULT_SESSION_ID;
+}
+
+function getDungeonworldSessionProgressCounts(logs, sessionId) {
+  const session = getKnownSession(sessionId);
+  if (!session) {
+    return null;
+  }
+
+  const sessionLogs = getLogRecords(logs).filter((log) => log.sessionId === session.id);
+
+  return {
+    sessionId: session.id,
+    sessionTitle: session.title,
+    playCount: sessionLogs.length,
+    uniqueUserCount: getDungeonworldUniqueUserCount(sessionLogs),
+  };
+}
+
+function buildDungeonworldAnalytics(logs, options = {}) {
+  const records = getLogRecords(logs);
+  const progressSessionId = Object.prototype.hasOwnProperty.call(options, 'currentSessionId')
+    ? options.currentSessionId
+    : getLatestSessionIdForProgress(records);
+
+  return {
+    totalPlayCount: records.length,
+    uniqueUserCount: getDungeonworldUniqueUserCount(records),
+    sessionCounts: getDungeonworldSessionCounts(records),
+    choiceCounts: getDungeonworldChoiceCounts(records),
+    tierCounts: getDungeonworldTierCounts(records),
+    recentActivity: getRecentDungeonworldActivity(
+      records,
+      Object.prototype.hasOwnProperty.call(options, 'recentLimit') ? options.recentLimit : 10
+    ),
+    latestSessionProgressCounts: getDungeonworldSessionProgressCounts(records, progressSessionId),
+  };
+}
+
 function playChoice(choiceId, sessionId) {
   const session = getSessionEntry(sessionId);
   const choice = session.choices[choiceId];
@@ -798,6 +1050,30 @@ function formatTimestampForFilename(now = new Date()) {
   return now.toISOString().replace(/[:.]/g, '-');
 }
 
+function formatAnalyticsDistribution(items, emptyText) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return emptyText;
+  }
+
+  return items
+    .map((item) => {
+      const label = item.sessionTitle && item.choiceLabel
+        ? `${item.sessionTitle} / ${item.choiceLabel}`
+        : item.sessionTitle || item.choiceLabel || item.sessionId || item.choiceId || '항목';
+      return `${label}: ${item.count}`;
+    })
+    .join(', ');
+}
+
+function formatTierDistribution(tierCounts) {
+  return [
+    `10+: ${tierCounts.strong || 0}`,
+    `7-9: ${tierCounts.mixed || 0}`,
+    `6-: ${tierCounts.weak || 0}`,
+    `미확인: ${tierCounts.unknown || 0}`,
+  ].join(', ');
+}
+
 function buildDungeonworldExportPayload(repository, options = {}) {
   const now = options.now || new Date();
   const generatedAt = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
@@ -805,12 +1081,35 @@ function buildDungeonworldExportPayload(repository, options = {}) {
   const limit = Math.min(200, Math.max(1, Number(options.limit || 50)));
   const logs = repository.listRecentPlays(limit);
   const totalPlayCount = repository.getPlayCount();
+  const analyticsLogs = totalPlayCount > 0 ? repository.listRecentPlays(totalPlayCount) : [];
+  const analyticsOptions = Object.prototype.hasOwnProperty.call(options, 'currentSessionId')
+    ? { currentSessionId: options.currentSessionId }
+    : {};
+  const analytics = buildDungeonworldAnalytics(analyticsLogs, analyticsOptions);
+  const exportAnalytics = {
+    totalPlayCount: analytics.totalPlayCount,
+    uniqueUserCount: analytics.uniqueUserCount,
+    sessionCounts: analytics.sessionCounts,
+    choiceCounts: analytics.choiceCounts,
+    tierCounts: analytics.tierCounts,
+    latestSessionProgressCounts: analytics.latestSessionProgressCounts,
+  };
+  const progressCounts = analytics.latestSessionProgressCounts;
 
   const summaryText = [
     '종류: 던전월드',
     `포함 개수: ${logs.length}`,
     `전체 플레이 수: ${totalPlayCount}`,
     `생성 시간: ${generatedAt}`,
+    '',
+    '집계',
+    `고유 참여자 수: ${analytics.uniqueUserCount}`,
+    `회차별 플레이: ${formatAnalyticsDistribution(analytics.sessionCounts, '아직 플레이 기록이 없습니다.')}`,
+    `결과 등급 분포: ${formatTierDistribution(analytics.tierCounts)}`,
+    `선택 분포: ${formatAnalyticsDistribution(analytics.choiceCounts, '아직 선택 기록이 없습니다.')}`,
+    progressCounts
+      ? `최신 회차 진행: ${progressCounts.sessionTitle} / ${progressCounts.playCount}회 / ${progressCounts.uniqueUserCount}명`
+      : '최신 회차 진행: 확인할 회차가 없습니다.',
     '',
     '최근 플레이',
     ...(logs.length > 0
@@ -828,15 +1127,20 @@ function buildDungeonworldExportPayload(repository, options = {}) {
       generatedAt,
       content: summaryText,
       summaryText,
-      data: { logs, totalPlayCount },
+      data: { logs, totalPlayCount, analytics },
       isAttachment: false,
       rowCount: logs.length,
     };
   }
 
+  const exportedData = {
+    logs,
+    totalPlayCount,
+    analytics: format === 'json' ? exportAnalytics : analytics,
+  };
   const content = format === 'csv'
     ? toCsv(logs, DUNGEONWORLD_CSV_COLUMNS)
-    : toSafeJson({ exportedAt: generatedAt, kind: 'dungeonworld', limit, data: { logs, totalPlayCount } });
+    : toSafeJson({ exportedAt: generatedAt, kind: 'dungeonworld', limit, data: exportedData });
   const extension = format === 'csv' ? 'csv' : 'json';
   const filename = `operation-export-dungeonworld-${formatTimestampForFilename(now)}.${extension}`;
 
@@ -851,21 +1155,31 @@ function buildDungeonworldExportPayload(repository, options = {}) {
     content,
     buffer: Buffer.from(content, 'utf8'),
     summaryText,
-    data: { logs, totalPlayCount },
+    data: exportedData,
     isAttachment: true,
     rowCount: logs.length,
   };
 }
 
 module.exports = {
+  buildDungeonworldAnalytics,
   buildDungeonworldExportPayload,
+  buildDungeonworldUserProgress,
   CLOSING_NOTE,
   TIER_LABELS,
   createDungeonworldConfigRepository,
   createDungeonworldRepository,
+  getDungeonworldChoiceCounts,
+  getDungeonworldContinuityContext,
+  getDungeonworldSessionCounts,
+  getDungeonworldSessionProgressCounts,
+  getDungeonworldTierCounts,
+  getDungeonworldUniqueUserCount,
   getChoice,
   getCurrentSessionId,
+  getLatestDungeonworldPlaysBySession,
   getPreviousSessionId,
+  getRecentDungeonworldActivity,
   getSession,
   listChoices,
   listSessions,
