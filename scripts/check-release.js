@@ -169,6 +169,11 @@ const checks = [
     args: ['--check', 'scripts/test-admin-mission-hub-flow.js'],
   },
   {
+    label: 'scripts/test-admin-shop-hub-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-admin-shop-hub-flow.js'],
+  },
+  {
     label: 'scripts/test-operation-export-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-operation-export-flow.js'],
@@ -177,6 +182,16 @@ const checks = [
     label: 'scripts/test-participant-ux-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-participant-ux-flow.js'],
+  },
+  {
+    label: 'scripts/test-onboarding-role-personalization-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-onboarding-role-personalization-flow.js'],
+  },
+  {
+    label: 'scripts/test-safety-detection.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-safety-detection.js'],
   },
   {
     label: 'scripts/test-minigame-hub-flow.js 문법 검사',
@@ -192,6 +207,11 @@ const checks = [
     label: 'scripts/test-daily-mission-announcement-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-daily-mission-announcement-flow.js'],
+  },
+  {
+    label: 'scripts/test-today-mission-auto-publish-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-today-mission-auto-publish-flow.js'],
   },
   {
     label: 'scripts/test-submission-review-buttons-flow.js 문법 검사',
@@ -279,6 +299,11 @@ const checks = [
     args: ['scripts/test-admin-mission-hub-flow.js'],
   },
   {
+    label: 'admin shop hub flow smoke test',
+    command: 'node',
+    args: ['scripts/test-admin-shop-hub-flow.js'],
+  },
+  {
     label: 'operation export flow smoke test',
     command: 'node',
     args: ['scripts/test-operation-export-flow.js'],
@@ -287,6 +312,16 @@ const checks = [
     label: 'participant UX flow smoke test',
     command: 'node',
     args: ['scripts/test-participant-ux-flow.js'],
+  },
+  {
+    label: 'onboarding role personalization flow smoke test',
+    command: 'node',
+    args: ['scripts/test-onboarding-role-personalization-flow.js'],
+  },
+  {
+    label: 'safety detection smoke test',
+    command: 'node',
+    args: ['scripts/test-safety-detection.js'],
   },
   {
     label: 'minigame hub flow smoke test',
@@ -302,6 +337,11 @@ const checks = [
     label: 'daily mission announcement flow smoke test',
     command: 'node',
     args: ['scripts/test-daily-mission-announcement-flow.js'],
+  },
+  {
+    label: 'today mission auto publish flow smoke test',
+    command: 'node',
+    args: ['scripts/test-today-mission-auto-publish-flow.js'],
   },
   {
     label: 'submission review buttons flow smoke test',
