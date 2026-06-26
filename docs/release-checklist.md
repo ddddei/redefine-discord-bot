@@ -86,6 +86,33 @@ Railway에서 봇이 실행 중일 때 로컬에서도 `npm run start`를 동시
 - [ ] 답변 실패 질문이 `#봇-질문로그`에 기록됩니다.
 - [ ] 운영진용 응답은 필요한 사람에게만 보입니다.
 
+## 던전월드 미니게임 확인
+
+- [ ] `/던전월드`가 현재 열린 회차의 도입부와 선택지 3개를 private/ephemeral 응답으로 보여줍니다.
+- [ ] 선택지 클릭 후 2d6 결과, 등급(10+ / 7~9 / 6-), 결과 텍스트, 다음 회차 안내가 보입니다.
+- [ ] 결과 응답에 포인트 지급 안내가 나오지 않습니다.
+- [ ] `DUNGEONWORLD_START_DATE`를 운영 시작일로 설정했다면 시작일 기준 7일마다 다음 회차가 열리는지 확인했습니다.
+- [ ] `/던전월드관리`를 운영자 계정으로 실행해 현재 회차와 자동/수동 오버라이드 상태를 확인했습니다.
+- [ ] 필요한 경우 `/던전월드관리 회차:<회차ID>`로 테스트 회차를 열고, 확인 후 `/던전월드관리 초기화:true`로 자동 계산으로 되돌렸습니다.
+- [ ] 같은 참여자가 직전 회차를 플레이한 뒤 다음 회차를 열었을 때, 직전 결과 등급에 맞는 인트로 변형이 보이는지 확인했습니다.
+- [ ] `/운영내보내기 종류:던전월드 형식:요약`으로 최근 플레이가 집계되는지 확인했습니다.
+- [ ] JSON/CSV 백업이 필요하면 `/운영내보내기 종류:던전월드 형식:JSON` 또는 `/운영내보내기 종류:던전월드 형식:CSV` 파일을 내려받아 보관 범위를 확인했습니다.
+
+로컬에서는 아래 스크립트가 던전월드 관련 릴리즈 게이트입니다. `npm run check:release`에도 포함되어 있습니다.
+
+```bash
+node scripts/test-dungeonworld-flow.js
+node scripts/test-dungeonworld-sessions.js
+node scripts/test-dungeonworld-session-02.js
+node scripts/test-dungeonworld-session-03.js
+node scripts/test-dungeonworld-session-04.js
+node scripts/test-dungeonworld-session-05.js
+node scripts/test-dungeonworld-session-06.js
+node scripts/test-dungeonworld-session-07.js
+node scripts/test-dungeonworld-session-08.js
+node scripts/test-dungeonworld-session-09.js
+```
+
 ## `/공지` 권한 확인
 
 - [ ] `/공지` 명령어는 운영자 권한이 있는 계정에서만 보일 수 있음을 확인했습니다.
