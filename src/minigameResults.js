@@ -4,6 +4,9 @@ const {
   INITIAL_QUIZZES,
   MEMORY_PATTERNS,
   MINIGAMES,
+  ROGUE_EXITS,
+  ROGUE_ITEMS,
+  ROGUE_PATHS,
   RPS_CHOICES,
 } = require('./minigameData');
 
@@ -205,6 +208,38 @@ function createExploreResult({ placeKey }) {
   };
 }
 
+function createRogueResult({ pathKey, itemKey, exitKey }) {
+  const path = ROGUE_PATHS[pathKey] || ROGUE_PATHS.market;
+  const item = ROGUE_ITEMS[itemKey] || ROGUE_ITEMS.lantern;
+  const exit = ROGUE_EXITS[exitKey] || ROGUE_EXITS.signal;
+  const matchCount = [
+    path.favoredItem === itemKey,
+    path.favoredExit === exitKey,
+  ].filter(Boolean).length;
+  const rewardPoints = matchCount === 2 ? 10 : (matchCount === 1 ? 5 : 3);
+  const ending = matchCount === 2
+    ? '선택이 묘하게 잘 맞아 숨겨진 표식까지 찾아냈어요.'
+    : (matchCount === 1
+      ? '완벽하진 않아도 길을 잃지 않고 작은 발견을 챙겼어요.'
+      : '조금 돌아갔지만 무사히 빠져나왔고, 다음 탐험에 쓸 감을 얻었어요.');
+
+  return {
+    gameId: MINIGAMES.rogue.id,
+    title: MINIGAMES.rogue.title,
+    rewardPoints,
+    lines: [
+      `탐험지: ${path.label}`,
+      `장비: ${item.label}`,
+      `마지막 행동: ${exit.label}`,
+      path.intro,
+      item.message,
+      exit.message,
+      ending,
+      `탐험 결과: ${rewardPoints}P`,
+    ],
+  };
+}
+
 module.exports = {
   createCardResult,
   createDiceResult,
@@ -215,6 +250,7 @@ module.exports = {
   createMemoryDetail,
   createMemoryResult,
   createNumberResult,
+  createRogueResult,
   createRpsResult,
   deterministicNumber,
 };

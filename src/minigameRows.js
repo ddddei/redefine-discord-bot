@@ -3,7 +3,12 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require('discord.js');
-const { RPS_CHOICES } = require('./minigameData');
+const {
+  ROGUE_EXITS,
+  ROGUE_ITEMS,
+  ROGUE_PATHS,
+  RPS_CHOICES,
+} = require('./minigameData');
 
 function createMinigameHubRows() {
   return [
@@ -19,7 +24,8 @@ function createMinigameHubRows() {
     ),
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('participant_minigame_select:initial').setLabel('🧩 초성 퀴즈').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('participant_minigame_select:explore').setLabel('🧭 리디파인 탐험').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('participant_minigame_select:explore').setLabel('🧭 리디파인 탐험').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('participant_minigame_select:rogue').setLabel('🗺️ 세 칸 탐험').setStyle(ButtonStyle.Primary)
     ),
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('participant_minigame_today_record').setLabel('📊 오늘의 기록').setStyle(ButtonStyle.Secondary),
@@ -120,6 +126,45 @@ function createExploreChoiceRows() {
   ];
 }
 
+function createRoguePathRows() {
+  return [
+    new ActionRowBuilder().addComponents(
+      ...Object.entries(ROGUE_PATHS).map(([pathKey, path]) => {
+        return new ButtonBuilder()
+          .setCustomId(`participant_minigame_rogue_path:${pathKey}`)
+          .setLabel(path.label)
+          .setStyle(ButtonStyle.Secondary);
+      })
+    ),
+  ];
+}
+
+function createRogueItemRows(pathKey) {
+  return [
+    new ActionRowBuilder().addComponents(
+      ...Object.entries(ROGUE_ITEMS).map(([itemKey, item]) => {
+        return new ButtonBuilder()
+          .setCustomId(`participant_minigame_rogue_item:${pathKey}:${itemKey}`)
+          .setLabel(item.label)
+          .setStyle(ButtonStyle.Secondary);
+      })
+    ),
+  ];
+}
+
+function createRogueExitRows(pathKey, itemKey) {
+  return [
+    new ActionRowBuilder().addComponents(
+      ...Object.entries(ROGUE_EXITS).map(([exitKey, exit]) => {
+        return new ButtonBuilder()
+          .setCustomId(`participant_minigame_rogue_exit:${pathKey}:${itemKey}:${exitKey}`)
+          .setLabel(exit.label)
+          .setStyle(ButtonStyle.Secondary);
+      })
+    ),
+  ];
+}
+
 module.exports = {
   createCardChoiceRows,
   createDiceChoiceRows,
@@ -129,5 +174,8 @@ module.exports = {
   createMemoryChoiceRows,
   createMinigameHubRows,
   createNumberChoiceRows,
+  createRogueExitRows,
+  createRogueItemRows,
+  createRoguePathRows,
   createRpsChoiceRows,
 };

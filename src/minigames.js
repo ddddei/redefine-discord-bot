@@ -9,6 +9,7 @@ const {
   createMemoryDetail,
   createMemoryResult,
   createNumberResult,
+  createRogueResult,
   createRpsResult,
   deterministicNumber,
 } = require('./minigameResults');
@@ -46,6 +47,10 @@ function createMinigameResult(input) {
 
   if (input.gameId === MINIGAMES.explore.id) {
     return createExploreResult(input);
+  }
+
+  if (input.gameId === MINIGAMES.rogue.id) {
+    return createRogueResult(input);
   }
 
   return null;

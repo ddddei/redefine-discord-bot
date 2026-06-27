@@ -4,6 +4,9 @@ const {
 } = require('./embeds');
 const {
   MINIGAMES,
+  ROGUE_EXITS,
+  ROGUE_ITEMS,
+  ROGUE_PATHS,
   createInitialDetail,
   createMemoryDetail,
 } = require('./minigames');
@@ -21,6 +24,9 @@ const {
   createMemoryChoiceRows,
   createMinigameHubRows,
   createNumberChoiceRows,
+  createRogueExitRows,
+  createRogueItemRows,
+  createRoguePathRows,
   createRpsChoiceRows,
 } = require('./minigameRows');
 
@@ -201,6 +207,62 @@ function createInitialDetailPayload(interaction) {
   };
 }
 
+function createRoguePathPayload() {
+  return {
+    embeds: [createGuideEmbed(
+      MINIGAMES.rogue.title,
+      [
+        '세 번의 선택으로 짧은 탐험을 진행해요.',
+        '먼저 오늘 들어갈 장소를 골라 주세요.',
+        '',
+        ...Object.values(ROGUE_PATHS).map((path) => `- ${path.label}: ${path.intro}`),
+      ].join('\n')
+    )],
+    components: createRoguePathRows(),
+    ephemeral: true,
+  };
+}
+
+function createRogueItemPayload(pathKey) {
+  const path = ROGUE_PATHS[pathKey] || ROGUE_PATHS.market;
+
+  return {
+    embeds: [createGuideEmbed(
+      MINIGAMES.rogue.title,
+      [
+        `탐험지: ${path.label}`,
+        path.intro,
+        '',
+        '가져갈 장비를 하나 골라 주세요.',
+        ...Object.values(ROGUE_ITEMS).map((item) => `- ${item.label}`),
+      ].join('\n')
+    )],
+    components: createRogueItemRows(pathKey),
+    ephemeral: true,
+  };
+}
+
+function createRogueExitPayload(pathKey, itemKey) {
+  const path = ROGUE_PATHS[pathKey] || ROGUE_PATHS.market;
+  const item = ROGUE_ITEMS[itemKey] || ROGUE_ITEMS.lantern;
+
+  return {
+    embeds: [createGuideEmbed(
+      MINIGAMES.rogue.title,
+      [
+        `탐험지: ${path.label}`,
+        `장비: ${item.label}`,
+        item.message,
+        '',
+        '마지막으로 어떻게 움직일지 골라 주세요.',
+        ...Object.values(ROGUE_EXITS).map((exit) => `- ${exit.label}`),
+      ].join('\n')
+    )],
+    components: createRogueExitRows(pathKey, itemKey),
+    ephemeral: true,
+  };
+}
+
 function createMinigameDetailPayload(minigameInput, interaction) {
   const staticPayloads = {
     card: {
@@ -244,6 +306,18 @@ function createMinigameDetailPayload(minigameInput, interaction) {
 
   if (minigameInput.gameId === MINIGAMES.initial.id) {
     return createInitialDetailPayload(interaction);
+  }
+
+  if (minigameInput.gameId === MINIGAMES.rogue.id) {
+    if (minigameInput.action === 'choosePath') {
+      return createRogueItemPayload(minigameInput.pathKey);
+    }
+
+    if (minigameInput.action === 'chooseItem') {
+      return createRogueExitPayload(minigameInput.pathKey, minigameInput.itemKey);
+    }
+
+    return createRoguePathPayload();
   }
 
   return null;

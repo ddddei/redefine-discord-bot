@@ -19,7 +19,7 @@
 | [operator-command-guide.md](operator-command-guide.md) | 운영자 명령어 가이드 | 운영자가 포인트, 교환, 인증, 미션, 상점, 내보내기 명령어를 처리할 때 | 명령어별 사용 흐름, 주요 옵션, 확인 사항, 실수 방지 포인트 |
 | [operator-dashboard-guide.md](operator-dashboard-guide.md) | 운영자 허브 가이드 | `/운영현황`에서 운영 상태를 확인하고 다음 처리 명령어를 찾을 때 | 전체 요약, 교환/인증 대기, 포인트 로그, 미션/상점, 반응 승인, 초대 전 점검, 참여자 초대 안내문, 백업 체크리스트 |
 | [admin-mission-management-hub.md](admin-mission-management-hub.md) | 관리자 미션 관리 허브 가이드 | Discord 안에서 미션을 확인, 생성, 수정, 상태 변경할 때 | `/운영현황` 미션 관리 허브, 버튼과 modal 사용법, 보류 기능, QA 체크리스트 |
-| [minigame-hub-guide.md](minigame-hub-guide.md) | 미니게임 허브 운영 가이드 | 지정 미니게임 채널과 버튼형 미니게임 포인트 보상 제한을 확인할 때 | `MINIGAME_CHANNEL_ID`, 2단계 미니게임 허브, 행운 카드, 가위바위보, 주사위, 숫자, 문 선택, 이모지 기억력, 초성 퀴즈, 리디파인 탐험, 하루 보상 상한, 중복 지급 차단 |
+| [minigame-hub-guide.md](minigame-hub-guide.md) | 미니게임 허브 운영 가이드 | 지정 미니게임 채널과 버튼형 미니게임 포인트 보상 제한을 확인할 때 | `MINIGAME_CHANNEL_ID`, 2단계 미니게임 허브, 행운 카드, 가위바위보, 주사위, 숫자, 문 선택, 이모지 기억력, 초성 퀴즈, 리디파인 탐험, 세 칸 탐험, 하루 보상 상한, 중복 지급 차단 |
 | [dungeonworld-minigame.md](dungeonworld-minigame.md) | 던전월드 솔로 미니게임 가이드 | `/던전월드`, `/던전월드기록` 동작 방식, 포인트 미지급 이유, 회차 운영, 기록/보고서 내보내기를 확인할 때 | 2d6 판정, 1~9회차 콘텐츠, 자동 회차 오픈, 직전 결과 기반 인트로, `/던전월드기록`, `/던전월드관리` 운영 지표/버튼, `/운영내보내기 종류:던전월드` 분석, 배포 시 `npm run deploy` 필요 여부 |
 | [google-sheets-integration-plan.md](google-sheets-integration-plan.md) | Google Sheets 운영 데이터 연동 설계안 | local JSON 운영 데이터 유실 위험을 줄이고 Sheets 보조 로그 저장소를 검토할 때 | append-only 포인트/인증 로그, 탭 구조, Apps Script 방식, fallback, DB 전환 고려사항 |
 | [mission-template-guide.md](mission-template-guide.md) | 미션 템플릿 운영 가이드 | `/운영현황` 미션 관리 허브에서 템플릿과 요일별 오늘의 미션을 운영할 때 | 템플릿 개념, 요일별 추천, 오늘의 미션 적용, 자동 게시 보류, 운영자 QA |

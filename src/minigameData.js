@@ -41,6 +41,11 @@ const MINIGAMES = {
     title: '🧭 리디파인 탐험',
     description: '숲길, 도서관, 광장 중 한 곳을 골라 짧은 탐험 결과를 받아요.',
   },
+  rogue: {
+    id: 'rogue',
+    title: '🗺️ 세 칸 탐험',
+    description: '탐험지, 장비, 마지막 행동을 골라 짧은 로그라이크 한 판을 진행해요.',
+  },
 };
 
 const RPS_CHOICES = {
@@ -79,11 +84,47 @@ const EXPLORE_PLACES = {
   plaza: { label: '광장', reward: 0, message: '광장에서 쉬어 가며 다음 여정을 준비했어요.' },
 };
 
+const ROGUE_PATHS = {
+  market: {
+    label: '새벽 시장',
+    intro: '아직 문을 덜 연 새벽 시장에 들어섰어요. 천막 사이로 작은 종소리가 들려요.',
+    favoredItem: 'map',
+    favoredExit: 'talk',
+  },
+  station: {
+    label: '비밀 정거장',
+    intro: '표지판 없는 정거장에 불이 하나 켜져 있어요. 곧 이름 없는 열차가 올 것 같아요.',
+    favoredItem: 'lantern',
+    favoredExit: 'signal',
+  },
+  rooftop: {
+    label: '옥상 정원',
+    intro: '낡은 계단 끝 옥상 정원에 도착했어요. 바람이 화분 사이의 쪽지를 넘겨요.',
+    favoredItem: 'snack',
+    favoredExit: 'rest',
+  },
+};
+
+const ROGUE_ITEMS = {
+  lantern: { label: '작은 랜턴', message: '주머니 속 작은 랜턴이 길 가장자리의 표시를 비춰 줬어요.' },
+  map: { label: '접힌 지도', message: '접힌 지도에는 남들이 잘 보지 않는 샛길이 그려져 있었어요.' },
+  snack: { label: '비상 간식', message: '비상 간식 하나가 긴장을 조금 풀어 줬어요.' },
+};
+
+const ROGUE_EXITS = {
+  signal: { label: '신호 보내기', message: '멀리 있는 불빛에 짧은 신호를 보냈어요.' },
+  talk: { label: '말 걸기', message: '근처에 있던 낯선 안내자에게 조심스럽게 말을 걸었어요.' },
+  rest: { label: '잠깐 쉬기', message: '서두르지 않고 숨을 고른 뒤 다시 주변을 살폈어요.' },
+};
+
 module.exports = {
   EXPLORE_PLACES,
   INITIAL_QUIZZES,
   MEMORY_PATTERNS,
   MINIGAMES,
   MINIGAME_REWARD_RELATED_TYPE,
+  ROGUE_EXITS,
+  ROGUE_ITEMS,
+  ROGUE_PATHS,
   RPS_CHOICES,
 };

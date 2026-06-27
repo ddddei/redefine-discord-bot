@@ -76,6 +76,34 @@ function getMinigameInputFromCustomId(customId) {
     };
   }
 
+  if (customId.startsWith('participant_minigame_rogue_path:')) {
+    return {
+      gameId: MINIGAMES.rogue.id,
+      action: 'choosePath',
+      pathKey: customId.split(':')[1],
+    };
+  }
+
+  if (customId.startsWith('participant_minigame_rogue_item:')) {
+    const parts = customId.split(':');
+    return {
+      gameId: MINIGAMES.rogue.id,
+      action: 'chooseItem',
+      pathKey: parts[1],
+      itemKey: parts[2],
+    };
+  }
+
+  if (customId.startsWith('participant_minigame_rogue_exit:')) {
+    const parts = customId.split(':');
+    return {
+      gameId: MINIGAMES.rogue.id,
+      pathKey: parts[1],
+      itemKey: parts[2],
+      exitKey: parts[3],
+    };
+  }
+
   if (customId === 'participant_minigame_rps_start') {
     return { gameId: MINIGAMES.rps.id, action: 'start' };
   }
@@ -176,7 +204,10 @@ function createMinigameButtonHandler({ pointsRepository, getMemberDisplayName })
         return;
       }
 
-      if (minigameInput.action === 'select' || minigameInput.action === 'start') {
+      if (minigameInput.action === 'select'
+        || minigameInput.action === 'start'
+        || minigameInput.action === 'choosePath'
+        || minigameInput.action === 'chooseItem') {
         const detailPayload = minigameInput.action === 'start'
           ? createRpsChoicePayload()
           : createMinigameDetailPayload(minigameInput, interaction);

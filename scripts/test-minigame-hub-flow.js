@@ -217,6 +217,7 @@ async function run() {
     'participant_minigame_select:memory',
     'participant_minigame_select:initial',
     'participant_minigame_select:explore',
+    'participant_minigame_select:rogue',
     'participant_minigame_today_record',
     'participant_minigame_today_ranking',
   ]);
@@ -225,10 +226,10 @@ async function run() {
     'participant_minigame_today_record': ButtonStyle.Secondary,
     'participant_minigame_today_ranking': ButtonStyle.Secondary,
   });
-  assert.ok(getButtonIds(hubButton.replyPayload).slice(0, 8).every((customId) => {
+  assert.ok(getButtonIds(hubButton.replyPayload).slice(0, 9).every((customId) => {
     return customId.startsWith('participant_minigame_select:');
   }));
-  assert.ok(getButtons(hubButton.replyPayload).slice(0, 8).every((button) => button.style === ButtonStyle.Primary));
+  assert.ok(getButtons(hubButton.replyPayload).slice(0, 9).every((button) => button.style === ButtonStyle.Primary));
   assert.match(hubButton.replyPayload.embeds[0].data.description, /최대 4회/);
   assert.match(hubButton.replyPayload.embeds[0].data.description, /최대 40P/);
 
@@ -458,6 +459,58 @@ async function run() {
   await handleInteractionCreate(exploreButton);
   assert.strictEqual(getEmbedTitle(exploreButton.replyPayload), '🧭 리디파인 탐험');
   assert.match(exploreButton.replyPayload.embeds[0].data.description, /선택한 장소: 도서관/);
+
+  const rogueSelect = createButtonInteraction('participant_minigame_select:rogue', 'rogue_user', '세 칸 탐험 사용자');
+  await handleInteractionCreate(rogueSelect);
+  assert.strictEqual(rogueSelect.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(rogueSelect.replyPayload), '🗺️ 세 칸 탐험');
+  assertButtonIds(rogueSelect.replyPayload, [
+    'participant_minigame_rogue_path:market',
+    'participant_minigame_rogue_path:station',
+    'participant_minigame_rogue_path:rooftop',
+  ]);
+  assertMaxButtonsPerRow(rogueSelect.replyPayload);
+
+  const roguePath = createButtonInteraction('participant_minigame_rogue_path:market', 'rogue_user', '세 칸 탐험 사용자');
+  await handleInteractionCreate(roguePath);
+  assert.strictEqual(roguePath.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(roguePath.replyPayload), '🗺️ 세 칸 탐험');
+  assert.match(roguePath.replyPayload.embeds[0].data.description, /탐험지: 새벽 시장/);
+  assertButtonIds(roguePath.replyPayload, [
+    'participant_minigame_rogue_item:market:lantern',
+    'participant_minigame_rogue_item:market:map',
+    'participant_minigame_rogue_item:market:snack',
+  ]);
+
+  const rogueItem = createButtonInteraction('participant_minigame_rogue_item:market:map', 'rogue_user', '세 칸 탐험 사용자');
+  await handleInteractionCreate(rogueItem);
+  assert.strictEqual(rogueItem.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(rogueItem.replyPayload), '🗺️ 세 칸 탐험');
+  assert.match(rogueItem.replyPayload.embeds[0].data.description, /장비: 접힌 지도/);
+  assertButtonIds(rogueItem.replyPayload, [
+    'participant_minigame_rogue_exit:market:map:signal',
+    'participant_minigame_rogue_exit:market:map:talk',
+    'participant_minigame_rogue_exit:market:map:rest',
+  ]);
+
+  assert.ok(!readJson(paths.points).pointTransactions.some((transaction) => {
+    return transaction.userId === 'rogue_user' && transaction.relatedId.endsWith(':rogue');
+  }));
+
+  const rogueExit = createButtonInteraction('participant_minigame_rogue_exit:market:map:talk', 'rogue_user', '세 칸 탐험 사용자');
+  await handleInteractionCreate(rogueExit);
+  assert.strictEqual(rogueExit.replyPayload.ephemeral, true);
+  assert.strictEqual(getEmbedTitle(rogueExit.replyPayload), '🗺️ 세 칸 탐험');
+  assert.match(rogueExit.replyPayload.embeds[0].data.description, /탐험지: 새벽 시장/);
+  assert.match(rogueExit.replyPayload.embeds[0].data.description, /장비: 접힌 지도/);
+  assert.match(rogueExit.replyPayload.embeds[0].data.description, /마지막 행동: 말 걸기/);
+  assert.match(rogueExit.replyPayload.embeds[0].data.description, /탐험 결과: 10P/);
+  assert.match(rogueExit.replyPayload.embeds[0].data.description, /지급 포인트: 10P/);
+
+  const duplicateRogueExit = createButtonInteraction('participant_minigame_rogue_exit:station:lantern:signal', 'rogue_user', '세 칸 탐험 사용자');
+  await handleInteractionCreate(duplicateRogueExit);
+  assert.strictEqual(getEmbedTitle(duplicateRogueExit.replyPayload), '🗺️ 세 칸 탐험');
+  assert.match(duplicateRogueExit.replyPayload.embeds[0].data.description, /같은 게임 보상은 같은 날짜에 중복 지급되지 않아요/);
 
   const capCard = createButtonInteraction('participant_minigame_card:1', 'cap_user', '상한 테스트 사용자');
   const capDice = createButtonInteraction('participant_minigame_dice', 'cap_user', '상한 테스트 사용자');
