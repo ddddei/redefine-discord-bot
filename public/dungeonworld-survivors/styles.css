@@ -402,6 +402,24 @@ canvas {
   color: var(--text-secondary);
 }
 
+.run-goal-list li {
+  margin-bottom: var(--space-2);
+}
+
+.run-goal-list strong,
+.run-goal-list span {
+  display: block;
+}
+
+.run-goal-list strong {
+  color: var(--accent-hover);
+}
+
+.run-goal-list span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -501,6 +519,21 @@ canvas {
   color: var(--option-accent);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
+  font-weight: 700;
+}
+
+.recommendation-pill {
+  justify-self: start;
+  border: 1px solid color-mix(in srgb, var(--option-accent) 64%, var(--border-default));
+  border-radius: 4px;
+  padding: 2px var(--space-2);
+  color: var(--option-accent);
+  background: color-mix(in srgb, var(--surface-primary) 44%, transparent);
+  font-weight: 700;
+}
+
+.recommendation-reason {
+  color: var(--text-primary);
   font-weight: 700;
 }
 
@@ -665,6 +698,23 @@ canvas {
 .result-list strong {
   display: block;
   color: var(--text-primary);
+}
+
+.goal-result-list li {
+  border-left: 3px solid var(--border-default);
+  padding-left: var(--space-3);
+}
+
+.goal-result-list .goal-achieved {
+  border-left-color: var(--status-success);
+}
+
+.goal-result-list .goal-close {
+  border-left-color: var(--status-warning);
+}
+
+.goal-result-list .goal-failed {
+  border-left-color: var(--status-error);
 }
 
 @media (max-width: 980px) {

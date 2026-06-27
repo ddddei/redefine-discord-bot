@@ -338,6 +338,86 @@
     },
   ];
 
+  const runGoals = [
+    {
+      id: 'fighter-close-vow',
+      playbooks: ['fighter'],
+      type: 'level_before_boss',
+      title: '문 앞에 설 힘',
+      copy: '보스 등장 전까지 레벨 8에 도달하세요.',
+      target: 8,
+      near: 7,
+    },
+    {
+      id: 'thief-clean-bell',
+      playbooks: ['thief'],
+      type: 'boss_avoid',
+      title: '종소리 밑의 발놀림',
+      copy: '보스 패턴을 3번 피하고, 보스 패턴 피격은 1회 이하로 끝내세요.',
+      avoidTarget: 3,
+      maxHits: 1,
+      nearAvoid: 2,
+    },
+    {
+      id: 'cleric-faith-anchor',
+      playbooks: ['cleric'],
+      type: 'tag_combo',
+      title: '기도 닻 완성',
+      copy: '#faith 또는 #survival 태그를 합쳐 3개 완성하세요.',
+      tags: ['faith', 'survival'],
+      target: 3,
+      near: 2,
+    },
+    {
+      id: 'druid-safe-forest',
+      playbooks: ['druid'],
+      type: 'hazard_damage',
+      title: '숲의 상처 줄이기',
+      copy: '위험 구역 피해를 12 이하로 억제하세요.',
+      maxDamage: 12,
+      nearDamage: 18,
+    },
+    {
+      id: 'wizard-arcane-ward',
+      playbooks: ['wizard'],
+      type: 'tag_combo',
+      title: '비전 결계 완성',
+      copy: '#arcane 또는 #shield 태그를 합쳐 3개 완성하세요.',
+      tags: ['arcane', 'shield'],
+      target: 3,
+      near: 2,
+    },
+    {
+      id: 'ranger-marked-gate',
+      playbooks: ['ranger'],
+      type: 'boss_time',
+      title: '표식이 사라지기 전에',
+      copy: '보스 등장 후 45초 안에 파수꾼을 쓰러뜨리세요.',
+      targetSeconds: 45,
+      nearSeconds: 60,
+    },
+    {
+      id: 'shared-forest-hunt',
+      playbooks: ['fighter', 'thief', 'cleric', 'druid', 'wizard', 'ranger'],
+      type: 'wave_kills',
+      title: '숲의 추격 돌파',
+      copy: '숲의 추격 웨이브에서 적 18체를 처치하세요.',
+      waveId: 'forest',
+      target: 18,
+      near: 14,
+    },
+    {
+      id: 'shared-boss-build',
+      playbooks: ['fighter', 'thief', 'cleric', 'druid', 'wizard', 'ranger'],
+      type: 'tag_combo',
+      title: '마지막 문 빌드',
+      copy: '#boss, #bell, #pierce 중 2개를 완성하세요.',
+      tags: ['boss', 'bell', 'pierce'],
+      target: 2,
+      near: 1,
+    },
+  ];
+
   const playbooks = [
     {
       id: 'fighter',
@@ -956,5 +1036,5 @@
     upgrade.synergyText = meta.synergyText || `${upgrade.family} 선택을 이어가면 빌드 정체성이 강해집니다.`;
   });
 
-  window.DungeonworldSurvivorsContent = { scenes, balance, enemyTypes, wavePatterns, playbooks, upgrades };
+  window.DungeonworldSurvivorsContent = { scenes, balance, enemyTypes, wavePatterns, playbooks, upgrades, runGoals };
 })();

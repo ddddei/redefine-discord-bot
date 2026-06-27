@@ -63,6 +63,9 @@
       companionTimer: 0,
       spawnPressure: 0,
       bossDamageBonus: 0,
+      bossBurstTimer: 0,
+      bossSpellTimer: 0,
+      bossCloseTimer: 0,
       warningGrace: 0,
       hazardResist: 0,
       healBonus: 0,
@@ -132,11 +135,50 @@
       selectedUpgrades: [],
       buildTags: {},
       synergies: [],
+      runGoals: createRunGoals(content, playbook),
+      waveKills: {},
+      hazardDamageTaken: 0,
+      bossPatternAvoids: 0,
+      bossPatternHits: 0,
+      bossStartedAt: null,
+      bossDefeatedAt: null,
+      levelAtBoss: null,
+      bossContribution: createBossContribution(playbook),
       runSummary: null,
       hazardTimer: 2.4,
       bossPhase: null,
       bossPatternTimer: 0,
       status: 'ready',
+    };
+  }
+
+  function createRunGoals(content, playbook) {
+    const goals = (content.runGoals || []).filter((goal) => goal.playbooks.includes(playbook.id));
+    const classGoal = goals.find((goal) => goal.playbooks.length === 1) || goals[0];
+    return goals
+      .filter((goal) => goal.id !== (classGoal && classGoal.id))
+      .slice(0, 2)
+      .concat(classGoal ? [classGoal] : [])
+      .slice(0, 3);
+  }
+
+  function createBossContribution(playbook) {
+    const labels = {
+      fighter: '근접 유지 보상',
+      thief: '회피 후 폭딜',
+      cleric: '피격 후 회복',
+      druid: '패턴 후 둔화',
+      wizard: '보호막 주문 강화',
+      ranger: '거리 유지 표식',
+    };
+    return {
+      label: labels[playbook.id] || '보스전 기여',
+      triggers: 0,
+      bonusDamage: 0,
+      preventedDamage: 0,
+      recoveredHealth: 0,
+      controlTime: 0,
+      text: '보스전 특수 기여는 아직 발동하지 않았습니다.',
     };
   }
 
@@ -226,6 +268,8 @@
     if (!state.bossSpawned && state.elapsed > bossAt) {
       spawnEnemy(state, state.content.enemyTypes.sentinel, { x: WORLD.towerX, y: WORLD.towerY + 170 });
       state.bossSpawned = true;
+      state.bossStartedAt = state.elapsed;
+      state.levelAtBoss = state.player.level;
       state.bossPhase = state.content.enemyTypes.sentinel.bossPhases[0];
       state.bossPatternTimer = state.content.balance && state.content.balance.boss
         ? state.content.balance.boss.firstPatternDelay
@@ -365,7 +409,8 @@
     const moving = dx !== 0 || dy !== 0;
     const tensionScale = 1 + player.tension * player.tensionSpeed;
     const hazardScale = player.hazardSlowTimer > 0 ? 0.68 : 1;
-    const speed = player.speed * tensionScale * hazardScale;
+    const bossBurstScale = player.bossBurstTimer > 0 ? 1.12 : 1;
+    const speed = player.speed * tensionScale * hazardScale * bossBurstScale;
     if (moving) player.facing = Math.atan2(direction.y, direction.x);
     player.x = clamp(player.x + (moving ? direction.x * speed * dt : 0), 28, WORLD.width - 28);
     player.y = clamp(player.y + (moving ? direction.y * speed * dt : 0), 28, WORLD.height - 28);
@@ -374,10 +419,32 @@
     player.hazardSlowTimer = Math.max(0, player.hazardSlowTimer - dt);
     player.arcaneShieldTimer = Math.max(0, player.arcaneShieldTimer - dt);
     player.companionTimer = Math.max(0, player.companionTimer - dt);
+    player.bossBurstTimer = Math.max(0, player.bossBurstTimer - dt);
+    player.bossSpellTimer = Math.max(0, player.bossSpellTimer - dt);
     updateAura(state, dt);
     updateHealPulse(state, dt);
     updateCompanionStrike(state);
     updateWeaponTimers(state, dt);
+    updateBossClassInteraction(state, dt);
+  }
+
+  function updateBossClassInteraction(state, dt) {
+    const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
+    if (!boss) return;
+    const player = state.player;
+    if (player.playbookId !== 'fighter') return;
+    if (distance(player, boss) > 135) {
+      player.bossCloseTimer = 0;
+      return;
+    }
+    player.bossCloseTimer += dt;
+    if (player.bossCloseTimer < 1.4) return;
+    player.bossCloseTimer = 0;
+    player.tension = Math.max(0, player.tension - 0.45);
+    state.bossContribution.triggers += 1;
+    state.bossContribution.preventedDamage += 1.5;
+    state.bossContribution.text = '보스 근접을 유지해 긴장과 피해 압박을 낮췄습니다.';
+    addFloater(state, '방패 압박', player.x, player.y - 46, '--class-fighter', 0.9);
   }
 
   function updateAura(state, dt) {
@@ -489,7 +556,11 @@
       const toEnemy = normalize(enemy.x - player.x, enemy.y - player.y);
       const angle = Math.acos(clamp(facing.x * toEnemy.x + facing.y * toEnemy.y, -1, 1));
       if (distance(player, enemy) <= player.cleaveRange + enemy.radius && angle <= player.cleaveArc / 2) {
-        enemy.hp -= player.damage + 8;
+        const baseDamage = player.damage + 8;
+        const bossBonus = enemy.behavior === 'boss' ? getBossDamageBonus(state, enemy) : 0;
+        const finalDamage = baseDamage * (1 + bossBonus);
+        enemy.hp -= finalDamage;
+        if (enemy.behavior === 'boss' && bossBonus > 0) recordBossBonusDamage(state, baseDamage * bossBonus);
         enemy.hitFlash = 0.16;
         enemy.slowTimer = Math.max(enemy.slowTimer, player.cleaveSlow);
         hits += 1;
@@ -699,9 +770,26 @@
     if (shieldReduction < 1) {
       player.arcaneShieldTimer = Math.max(2.8, 4.8 - player.arcaneShieldCooldownBonus);
       addFloater(state, '비전 보호막', player.x, player.y - 24, '--accent-bell');
+      if (source && source.behavior === 'boss' && player.playbookId === 'wizard') {
+        player.bossSpellTimer = Math.max(player.bossSpellTimer, 3);
+        state.bossContribution.triggers += 1;
+        state.bossContribution.preventedDamage += rawDamage * 0.55;
+        state.bossContribution.text = '보스 피해를 보호막 타이밍으로 받아 주문 강화 시간을 만들었습니다.';
+        addFloater(state, '주문 과충전', player.x, player.y - 46, '--class-wizard', 1);
+      }
     }
     const armor = source && source.behavior === 'boss' ? player.armor * 0.55 : player.armor;
-    player.health -= Math.max(2, rawDamage - armor) * shieldReduction;
+    const damageTaken = Math.max(2, rawDamage - armor) * shieldReduction;
+    player.health -= damageTaken;
+    if (source && source.behavior === 'boss' && player.playbookId === 'cleric') {
+      const recovered = Math.min(8, 3 + player.healPulse);
+      player.health = Math.min(player.maxHealth, player.health + recovered);
+      player.tension = Math.max(0, player.tension - 0.8);
+      state.bossContribution.triggers += 1;
+      state.bossContribution.recoveredHealth += recovered;
+      state.bossContribution.text = '보스 피해 뒤 치유 기도가 체력과 긴장을 되돌렸습니다.';
+      addFloater(state, `사면 +${recovered}`, player.x, player.y - 46, '--class-cleric', 1);
+    }
     player.tension = clamp(player.tension + Math.max(0.3, 1 - player.tensionResist), 0, player.maxTension);
     player.invulnerableTimer = invulnerableTime || 0.7;
     state.effects.flash = Math.max(state.effects.flash, 0.12);
@@ -779,8 +867,9 @@
     state.projectiles.forEach((projectile) => {
       state.enemies.forEach((enemy) => {
         if (projectile.life <= 0 || distance(projectile, enemy) > projectile.radius + enemy.radius) return;
-        const bossBonus = enemy.behavior === 'boss' ? state.player.bossDamageBonus : 0;
+        const bossBonus = enemy.behavior === 'boss' ? getBossDamageBonus(state, enemy) : 0;
         enemy.hp -= projectile.damage * (1 + bossBonus);
+        if (enemy.behavior === 'boss' && bossBonus > 0) recordBossBonusDamage(state, projectile.damage * bossBonus);
         enemy.hitFlash = 0.13;
         state.attackMarks.push({
           x: enemy.x,
@@ -804,9 +893,12 @@
     const defeated = state.enemies.filter((enemy) => enemy.hp <= 0);
     defeated.forEach((enemy) => {
       state.kills += 1;
+      const wave = getCurrentWave(state);
+      state.waveKills[wave.id] = (state.waveKills[wave.id] || 0) + 1;
       state.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 6, age: 0 });
       if (enemy.behavior === 'boss') {
         state.bossDefeated = true;
+        state.bossDefeatedAt = state.elapsed;
         state.effects.flash = 0.65;
         state.effects.shake = 0.55;
         addFloater(state, '마지막 문이 열립니다', state.player.x, state.player.y - 100, '--status-success', 2, true);
@@ -815,6 +907,29 @@
       }
     });
     state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+  }
+
+  function getBossDamageBonus(state, enemy) {
+    const player = state.player;
+    let bonus = player.bossDamageBonus || 0;
+    if (player.playbookId === 'fighter' && distance(player, enemy) <= 135) bonus += 0.14;
+    if (player.playbookId === 'thief' && player.bossBurstTimer > 0) bonus += 0.28;
+    if (player.playbookId === 'wizard' && player.bossSpellTimer > 0) bonus += 0.24;
+    if (player.playbookId === 'ranger' && distance(player, enemy) >= 260) bonus += 0.18;
+    return bonus;
+  }
+
+  function recordBossBonusDamage(state, amount) {
+    if (amount <= 0) return;
+    state.bossContribution.bonusDamage += amount;
+    const playbookId = state.player.playbookId;
+    if (playbookId === 'fighter') state.bossContribution.text = '근접 유지로 보스 피해를 더 밀어 넣었습니다.';
+    else if (playbookId === 'thief') state.bossContribution.text = '회피 후 열린 폭딜 시간에 보스 피해를 넣었습니다.';
+    else if (playbookId === 'wizard') state.bossContribution.text = '보호막 주문 강화 시간에 보스 피해를 끌어올렸습니다.';
+    else if (playbookId === 'ranger') {
+      state.bossContribution.triggers += 1;
+      state.bossContribution.text = '거리를 유지한 표식 화살로 보스 피해를 높였습니다.';
+    }
   }
 
   function updateGems(state, dt) {
@@ -881,11 +996,42 @@
       warning.pulseTimer = Math.max(0, warning.pulseTimer - dt);
       if (warning.warningLeft > 0 || warning.pulseTimer > 0) return;
       if (isPointInWarning(state.player, warning, state.player.radius)) {
+        if (!warning.evaluated) state.bossPatternHits += 1;
+        warning.evaluated = true;
         applyPlayerDamage(state, warning.damage || 10, { behavior: 'boss' }, warning.label, warning.colorToken, 0.72);
         warning.pulseTimer = 0.8;
+      } else if (!warning.evaluated) {
+        warning.evaluated = true;
+        recordBossPatternAvoided(state, warning);
       }
     });
     state.bossWarnings = state.bossWarnings.filter((warning) => warning.life > 0);
+  }
+
+  function recordBossPatternAvoided(state, warning) {
+    state.bossPatternAvoids += 1;
+    const player = state.player;
+    if (player.playbookId === 'thief') {
+      player.bossBurstTimer = Math.max(player.bossBurstTimer, 2.2);
+      state.bossContribution.triggers += 1;
+      state.bossContribution.text = '보스 패턴 회피 직후 짧은 가속과 폭딜 창을 열었습니다.';
+      addFloater(state, '그림자 반격', player.x, player.y - 42, '--class-thief', 0.95);
+      return;
+    }
+    if (player.playbookId === 'druid') {
+      const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
+      if (boss) boss.slowTimer = Math.max(boss.slowTimer, 1.35);
+      player.bossBurstTimer = Math.max(player.bossBurstTimer, 1.2);
+      state.bossContribution.triggers += 1;
+      state.bossContribution.controlTime += 1.35;
+      state.bossContribution.text = '보스 패턴 뒤 뿌리 둔화와 짧은 이동 보상을 얻었습니다.';
+      addFloater(state, '뿌리 되감기', player.x, player.y - 42, '--class-druid', 0.95);
+      return;
+    }
+    if (player.playbookId === 'ranger' && warning.kind === 'line') {
+      state.bossContribution.triggers += 1;
+      state.bossContribution.text = '직선 패턴을 벌려 피하며 표식 피해 창을 유지했습니다.';
+    }
   }
 
   function isPointInHazard(point, hazard, radius) {
@@ -905,6 +1051,7 @@
     const player = state.player;
     if (player.invulnerableTimer > 0) return;
     player.health -= hazard.damage;
+    state.hazardDamageTaken += hazard.damage;
     player.invulnerableTimer = 0.42;
     state.effects.flash = Math.max(state.effects.flash, 0.1);
     addFloater(state, hazard.label || '위험 구역', player.x, player.y - 26, hazard.colorToken || '--status-error', 0.8);
@@ -961,15 +1108,55 @@
       (state.upgradeLevels[upgrade.id] || 0) < upgrade.maxLevel
       && (upgrade.pools || []).some((pool) => state.playbook.upgradePool.includes(pool))
     ));
-    const byFamily = available.reduce((groups, upgrade) => {
-      if (!groups[upgrade.family]) groups[upgrade.family] = [];
-      groups[upgrade.family].push(upgrade);
-      return groups;
-    }, {});
-    return Object.keys(byFamily)
+    const chosen = [];
+    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scoreCurrentBuild), '현재 빌드', '현재 태그와 플레이북 강점을 이어갑니다.');
+    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scorePivotBuild, chosen), '방향 전환', '같은 태그만 밀지 않고 다른 승리 조건을 엽니다.');
+    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scoreStabilityBuild, chosen), '안정 보정', '체력, 전조, 기동 보정으로 런을 덜 흔들리게 합니다.');
+    available
+      .filter((upgrade) => !chosen.some((item) => item.id === upgrade.id))
       .sort(() => Math.random() - 0.5)
-      .flatMap((family) => byFamily[family].sort(() => Math.random() - 0.5).slice(0, 1))
-      .slice(0, 3);
+      .slice(0, 3 - chosen.length)
+      .forEach((upgrade) => addRecommendedUpgrade(chosen, upgrade, '보조 선택', '남은 빌드 빈칸을 메우는 선택입니다.'));
+    return chosen;
+  }
+
+  function addRecommendedUpgrade(chosen, upgrade, role, reason) {
+    if (!upgrade || chosen.some((item) => item.id === upgrade.id)) return;
+    chosen.push({
+      ...upgrade,
+      recommendationRole: role,
+      recommendationReason: reason,
+    });
+  }
+
+  function pickBestUpgrade(available, state, scorer, existing = []) {
+    return available
+      .filter((upgrade) => !existing.some((item) => item.id === upgrade.id))
+      .map((upgrade) => ({ upgrade, score: scorer(upgrade, state) + Math.random() * 0.01 }))
+      .sort((a, b) => b.score - a.score)[0]?.upgrade || null;
+  }
+
+  function scoreCurrentBuild(upgrade, state) {
+    const tagScore = (upgrade.tags || []).reduce((score, tag) => score + (state.buildTags[tag] || 0) * 6, 0);
+    const poolScore = (upgrade.pools || []).some((pool) => pool === state.playbook.id) ? 8 : 0;
+    const rarityScore = upgrade.rarity === 'class' ? 4 : 0;
+    return tagScore + poolScore + rarityScore;
+  }
+
+  function scorePivotBuild(upgrade, state) {
+    const usedTags = Object.keys(state.buildTags);
+    const freshTags = (upgrade.tags || []).filter((tag) => !usedTags.includes(tag)).length;
+    const repeatPenalty = (upgrade.tags || []).reduce((penalty, tag) => penalty + (state.buildTags[tag] || 0), 0);
+    const bossHook = (upgrade.tags || []).some((tag) => tag === 'boss' || tag === 'bell' || tag === 'pierce') ? 4 : 0;
+    return freshTags * 5 + bossHook - repeatPenalty * 2 + (upgrade.rarity === 'rare' ? 1 : 0);
+  }
+
+  function scoreStabilityBuild(upgrade, state) {
+    const stableTags = ['survival', 'shield', 'control', 'mobility', 'faith', 'root'];
+    const stableScore = (upgrade.tags || []).filter((tag) => stableTags.includes(tag)).length * 5;
+    const lowHealthBonus = state.player.health < state.player.maxHealth * 0.55 ? 5 : 0;
+    const highTensionBonus = state.player.tension > state.player.maxTension * 0.5 ? 4 : 0;
+    return stableScore + lowHealthBonus + highTensionBonus + (upgrade.family === 'survival' ? 4 : 0);
   }
 
   function applyUpgrade(state, upgrade) {
@@ -1023,6 +1210,65 @@
     });
   }
 
+  function evaluateRunGoals(state) {
+    return state.runGoals.map((goal) => {
+      if (goal.type === 'level_before_boss') return evaluateLevelGoal(state, goal);
+      if (goal.type === 'tag_combo') return evaluateTagGoal(state, goal);
+      if (goal.type === 'hazard_damage') return evaluateHazardGoal(state, goal);
+      if (goal.type === 'wave_kills') return evaluateWaveKillGoal(state, goal);
+      if (goal.type === 'boss_avoid') return evaluateBossAvoidGoal(state, goal);
+      if (goal.type === 'boss_time') return evaluateBossTimeGoal(state, goal);
+      return { ...goal, status: 'failed', progress: '평가 기준을 찾지 못했습니다.', close: '다음 런에서 다시 확인합니다.' };
+    });
+  }
+
+  function goalResult(goal, achieved, close, progress, closeText) {
+    return {
+      id: goal.id,
+      title: goal.title,
+      copy: goal.copy,
+      status: achieved ? 'achieved' : close ? 'close' : 'failed',
+      progress,
+      close: achieved ? '달성했습니다.' : closeText,
+    };
+  }
+
+  function evaluateLevelGoal(state, goal) {
+    const level = state.levelAtBoss || state.player.level;
+    const achieved = level >= goal.target;
+    const close = level >= goal.near;
+    return goalResult(goal, achieved, close, `보스 전 레벨 ${level} / ${goal.target}`, `아까운 점: 레벨 ${Math.max(1, goal.target - level)}만 더 필요했습니다.`);
+  }
+
+  function evaluateTagGoal(state, goal) {
+    const count = goal.tags.reduce((total, tag) => total + (state.buildTags[tag] || 0), 0);
+    return goalResult(goal, count >= goal.target, count >= goal.near, `${goal.tags.map((tag) => `#${tag}`).join(' ')} ${count} / ${goal.target}`, '아까운 점: 같은 방향 태그를 한 장만 더 모으면 완성됩니다.');
+  }
+
+  function evaluateHazardGoal(state, goal) {
+    const damage = Math.round(state.hazardDamageTaken);
+    return goalResult(goal, damage <= goal.maxDamage, damage <= goal.nearDamage, `위험 구역 피해 ${damage} / ${goal.maxDamage}`, '아까운 점: 전조 한두 번만 더 피하면 안정 목표권입니다.');
+  }
+
+  function evaluateWaveKillGoal(state, goal) {
+    const count = state.waveKills[goal.waveId] || 0;
+    return goalResult(goal, count >= goal.target, count >= goal.near, `${count} / ${goal.target} 처치`, '아까운 점: 해당 웨이브 화력이 조금 부족했습니다.');
+  }
+
+  function evaluateBossAvoidGoal(state, goal) {
+    const achieved = state.bossPatternAvoids >= goal.avoidTarget && state.bossPatternHits <= goal.maxHits;
+    const close = state.bossPatternAvoids >= goal.nearAvoid;
+    return goalResult(goal, achieved, close, `회피 ${state.bossPatternAvoids} / ${goal.avoidTarget}, 피격 ${state.bossPatternHits} / ${goal.maxHits}`, '아까운 점: 보스 전조를 한 번만 더 안정적으로 넘기면 됩니다.');
+  }
+
+  function evaluateBossTimeGoal(state, goal) {
+    const elapsed = state.bossStartedAt === null ? null : Math.round((state.bossDefeatedAt || state.elapsed) - state.bossStartedAt);
+    const achieved = state.bossDefeated && elapsed !== null && elapsed <= goal.targetSeconds;
+    const close = state.bossDefeated && elapsed !== null && elapsed <= goal.nearSeconds;
+    const progress = elapsed === null ? '보스 미등장' : `${elapsed}초 / ${goal.targetSeconds}초`;
+    return goalResult(goal, achieved, close, progress, '아까운 점: 보스 화력 태그나 거리 유지 보상을 더 챙기면 단축됩니다.');
+  }
+
   function getRunSummary(state) {
     const sortedTags = Object.keys(state.buildTags)
       .sort((a, b) => state.buildTags[b] - state.buildTags[a])
@@ -1036,6 +1282,14 @@
       selectedUpgrades: state.selectedUpgrades.slice(),
       buildTags: sortedTags,
       synergies: state.synergies.slice(),
+      goals: evaluateRunGoals(state),
+      bossContribution: {
+        ...state.bossContribution,
+        bonusDamage: Math.round(state.bossContribution.bonusDamage),
+        preventedDamage: Math.round(state.bossContribution.preventedDamage),
+        recoveredHealth: Math.round(state.bossContribution.recoveredHealth),
+        controlTime: Math.round(state.bossContribution.controlTime * 10) / 10,
+      },
     };
   }
 
@@ -1078,6 +1332,7 @@
     WORLD,
     createState,
     applyUpgrade,
+    evaluateRunGoals,
     getRunSummary,
     pickUpgrades,
     tick,

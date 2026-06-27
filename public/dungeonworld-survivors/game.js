@@ -19,6 +19,7 @@
     wave: document.getElementById('wave-value'),
     objective: document.getElementById('objective-value'),
     upgrades: document.getElementById('upgrade-list'),
+    runGoals: document.getElementById('run-goal-list'),
     sheetCard: document.getElementById('sheet-card'),
     role: document.getElementById('role-value'),
     attack: document.getElementById('attack-value'),
@@ -108,9 +109,11 @@
       button.className = `upgrade-option rarity-${upgrade.rarity || 'common'}`;
       button.type = 'button';
       button.innerHTML = [
+        `<span class="recommendation-pill">${upgrade.recommendationRole || '추천'}</span>`,
         `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${upgrade.family} · ${formatTags(upgrade.tags)}</span>`,
         `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong>`,
         `<span>${upgrade.text}</span>`,
+        `<span class="recommendation-reason">${upgrade.recommendationReason || '현재 런의 선택지를 넓힙니다.'}</span>`,
         `<span class="build-line">${describeBuildDirection(upgrade)}</span>`,
         `<span class="synergy-hint">${upgrade.classHint}</span>`,
         `<span class="synergy-hint">${upgrade.synergyText}</span>`,
@@ -197,6 +200,9 @@
       : (wave.objective || wave.copy);
     elements.goal.textContent = state.bossSpawned ? '보스전' : '생존';
     elements.upgrades.innerHTML = state.learnedUpgrades.map((name) => `<li>${name}</li>`).join('');
+    elements.runGoals.innerHTML = systems.evaluateRunGoals(state).map((goal) => (
+      `<li><strong>${goal.title}</strong><span>${goal.progress}</span></li>`
+    )).join('');
     updateQaOverlay();
   }
 
@@ -260,6 +266,12 @@
     return (tags || []).map((tag) => `#${tag}`).join(' ');
   }
 
+  function formatGoalStatus(status) {
+    if (status === 'achieved') return '달성';
+    if (status === 'close') return '아까움';
+    return '실패';
+  }
+
   function describeBuildDirection(upgrade) {
     const tags = upgrade.tags || [];
     if (tags.includes('boss')) return '빌드 방향: 마지막 문 보스 화력을 확보합니다.';
@@ -283,6 +295,10 @@
     const synergies = summary.synergies.length > 0
       ? summary.synergies.map((synergy) => `<li><strong>${synergy.title}</strong><span>${synergy.text}</span></li>`).join('')
       : '<li><strong>시너지 미발동</strong><span>같은 태그의 선택지를 더 모으면 빌드 효과가 열립니다.</span></li>';
+    const goals = summary.goals.map((goal) => (
+      `<li class="goal-${goal.status}"><strong>${formatGoalStatus(goal.status)} · ${goal.title}</strong><span>${goal.progress}</span><span>${goal.close}</span></li>`
+    )).join('');
+    const contribution = summary.bossContribution;
     elements.upgradeOptions.innerHTML = [
       '<p class="retry-copy">다음 런에서는 같은 태그를 두 번 이상 모아 시너지를 먼저 여는 쪽이 보스 도달이 안정적입니다.</p>',
       '<div class="result-grid">',
@@ -292,6 +308,8 @@
       `<article><span>레벨</span><strong>${summary.level}</strong></article>`,
       '</div>',
       `<div class="result-tags">${tags}</div>`,
+      `<h3 class="result-heading">런 목표</h3><ul class="result-list goal-result-list">${goals}</ul>`,
+      `<h3 class="result-heading">보스전 기여</h3><ul class="result-list"><li><strong>${contribution.label}</strong><span>${contribution.text}</span><span>발동 ${contribution.triggers}회 · 추가 피해 ${contribution.bonusDamage} · 완화 ${contribution.preventedDamage} · 회복 ${contribution.recoveredHealth} · 제어 ${contribution.controlTime}초</span></li></ul>`,
       `<h3 class="result-heading">선택한 업그레이드</h3><ul class="result-list">${upgrades}</ul>`,
       `<h3 class="result-heading">빌드 시너지</h3><ul class="result-list">${synergies}</ul>`,
     ].join('');
@@ -362,6 +380,9 @@
       ? `${state.bossPhase ? state.bossPhase.title : '대기'} ${Math.ceil(boss.hp)} / ${Math.ceil(boss.maxHp)}`
       : (state.bossSpawned ? '처치됨' : '미등장');
     const recent = state.selectedUpgrades.slice(-3).map((upgrade) => `${upgrade.title} ${formatLevel(upgrade.level)}`).join(', ') || '없음';
+    const goals = systems.evaluateRunGoals(state).map((goal) => `${goal.title}:${goal.progress}`).join(' / ');
+    const recommendation = pendingUpgrades.map((upgrade) => `${upgrade.recommendationRole || '추천'}-${upgrade.title}`).join(' / ') || '대기';
+    const contribution = state.bossContribution;
     elements.qaPanel.classList.remove('hidden');
     elements.qaPanel.innerHTML = [
       `<strong>QA balance</strong>`,
@@ -370,6 +391,9 @@
       `<span>웨이브 ${wave.title} · 적 ${state.enemies.length}</span>`,
       `<span>위험 ${state.hazards.length} · 보스 ${bossState}</span>`,
       `<span>최근 업그레이드 ${recent}</span>`,
+      `<span>추천 ${recommendation}</span>`,
+      `<span>런 목표 ${goals}</span>`,
+      `<span>보스 기여 ${contribution.label} · 발동 ${contribution.triggers} · 추가 ${Math.round(contribution.bonusDamage)}</span>`,
     ].join('');
   }
 

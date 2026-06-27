@@ -222,6 +222,69 @@ function testUpgradeMetadataAndSynergies() {
   assert.ok(wizard.player.shots > 1);
 }
 
+function testRunGoalsSmartRecommendationsAndBossTelemetry() {
+  const { content, systems } = loadGameRuntime();
+  const goalTypes = new Set(content.runGoals.map((goal) => goal.type));
+  ['level_before_boss', 'tag_combo', 'hazard_damage', 'wave_kills', 'boss_avoid', 'boss_time'].forEach((type) => {
+    assert.ok(goalTypes.has(type), `runGoals should include ${type}`);
+  });
+
+  const ranger = systems.createState(content, 'ranger');
+  assert.strictEqual(ranger.runGoals.length, 3);
+  assert.ok(ranger.runGoals.some((goal) => goal.type === 'boss_time'));
+  let goals = systems.evaluateRunGoals(ranger);
+  assert.ok(goals.every((goal) => goal.status));
+  assert.ok(goals.some((goal) => goal.progress.includes('/')));
+
+  const hawkMark = content.upgrades.find((upgrade) => upgrade.id === 'hawkMark');
+  ranger.upgradeLevels.hawkMark = hawkMark.maxLevel;
+  systems.applyUpgrade(ranger, content.upgrades.find((upgrade) => upgrade.id === 'farShot'));
+  const choices = systems.pickUpgrades(ranger);
+  assert.strictEqual(choices.length, 3);
+  assert.strictEqual(
+    JSON.stringify(choices.map((upgrade) => upgrade.recommendationRole).sort()),
+    JSON.stringify(['방향 전환', '안정 보정', '현재 빌드'].sort())
+  );
+  choices.forEach((upgrade) => {
+    assert.notStrictEqual(upgrade.id, 'hawkMark');
+    assert.ok(upgrade.recommendationReason, `${upgrade.id} should explain recommendation`);
+    assert.ok((ranger.upgradeLevels[upgrade.id] || 0) < upgrade.maxLevel);
+  });
+
+  const thief = systems.createState(content, 'thief');
+  thief.spawnTimer = 99;
+  thief.player.attackTimer = 99;
+  thief.enemies.push(createRuntimeEnemy(thief, 'sentinel', 320));
+  thief.bossStartedAt = thief.elapsed;
+  thief.bossWarnings.push({
+    x: thief.player.x + 360,
+    y: thief.player.y,
+    kind: 'line',
+    label: '테스트 탑 그림자',
+    angle: 0,
+    width: 42,
+    length: 120,
+    warningLeft: 0,
+    life: 1,
+    maxLife: 1,
+    damage: 9,
+    colorToken: '--accent-bell',
+    pulseTimer: 0,
+  });
+  systems.tick(thief, { up: false, down: false, left: false, right: false }, 0.05);
+  assert.strictEqual(thief.bossPatternAvoids, 1);
+  assert.ok(thief.player.bossBurstTimer > 0);
+  assert.ok(thief.bossContribution.triggers > 0);
+
+  const fighter = systems.createState(content, 'fighter');
+  fighter.spawnTimer = 99;
+  fighter.player.attackTimer = 99;
+  fighter.enemies.push(createRuntimeEnemy(fighter, 'sentinel', 96));
+  systems.tick(fighter, { up: false, down: false, left: false, right: false }, 1.5);
+  assert.ok(fighter.bossContribution.triggers > 0);
+  assert.match(systems.getRunSummary(fighter).bossContribution.label, /근접/);
+}
+
 function testEveryPlaybookStartsAndAttacks() {
   const { content, systems } = loadGameRuntime();
   const expectedAttacks = {
@@ -397,6 +460,9 @@ function main() {
   assert.ok(content.includes('pressureRule'));
   assert.ok(content.includes('upgradeMeta'));
   assert.ok(content.includes('synergyText'));
+  assert.ok(content.includes('runGoals'));
+  assert.ok(content.includes('보스 등장 전까지 레벨 8'));
+  assert.ok(content.includes('표식이 사라지기 전에'));
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('const GAME_DURATION = 240;'));
@@ -426,6 +492,11 @@ function main() {
   assert.ok(systems.includes('applyBalanceAdjustments'));
   assert.ok(systems.includes('warningGrace'));
   assert.ok(systems.includes('hazardResist'));
+  assert.ok(systems.includes('function evaluateRunGoals'));
+  assert.ok(systems.includes('function scoreCurrentBuild'));
+  assert.ok(systems.includes('recommendationRole'));
+  assert.ok(systems.includes('bossContribution'));
+  assert.ok(systems.includes('bossPatternAvoids'));
 
   const game = readGameFile('game.js');
   assert.ok(game.includes('function renderPlaybookOptions'));
@@ -440,6 +511,9 @@ function main() {
   assert.ok(game.includes('describeBuildDirection'));
   assert.ok(game.includes('function formatRarity'));
   assert.ok(game.includes('dataset.mode'));
+  assert.ok(game.includes('recommendation-reason'));
+  assert.ok(game.includes('런 목표'));
+  assert.ok(game.includes('보스전 기여'));
 
   const renderer = readGameFile('renderer.js');
   assert.ok(renderer.includes('function createCamera'));
@@ -468,6 +542,9 @@ function main() {
   assert.ok(styles.includes('.qa-panel'));
   assert.ok(styles.includes('.build-line'));
   assert.ok(styles.includes('.retry-copy'));
+  assert.ok(styles.includes('.recommendation-pill'));
+  assert.ok(styles.includes('.run-goal-list'));
+  assert.ok(styles.includes('.goal-result-list'));
   assert.ok(styles.includes('@media (max-width: 980px)'));
 
   testWaveRollBehavior();
@@ -476,6 +553,7 @@ function main() {
   testEnemyProfilesAndTelegraphs();
   testWaveHazardsAffectOnlyInsideArea();
   testUpgradeMetadataAndSynergies();
+  testRunGoalsSmartRecommendationsAndBossTelemetry();
   testBossFlowCanSpawnAndResolveWin();
 
   console.log('dungeonworld survivors static test passed');
