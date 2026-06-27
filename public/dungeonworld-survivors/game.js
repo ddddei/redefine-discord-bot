@@ -30,6 +30,7 @@
     modalPrimary: document.getElementById('modal-primary'),
     modalSecondary: document.getElementById('modal-secondary'),
     upgradeOptions: document.getElementById('upgrade-options'),
+    qaPanel: document.getElementById('qa-panel'),
   };
   let state = systems.createState(content);
   let lastFrame = 0;
@@ -110,6 +111,7 @@
         `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${upgrade.family} · ${formatTags(upgrade.tags)}</span>`,
         `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong>`,
         `<span>${upgrade.text}</span>`,
+        `<span class="build-line">${describeBuildDirection(upgrade)}</span>`,
         `<span class="synergy-hint">${upgrade.classHint}</span>`,
         `<span class="synergy-hint">${upgrade.synergyText}</span>`,
       ].join('');
@@ -126,8 +128,9 @@
       button.type = 'button';
       button.dataset.playbook = playbook.id;
       button.innerHTML = [
+        `<span class="playbook-role">${playbook.role}</span>`,
         `<strong>${playbook.title}</strong>`,
-        `<span class="option-meta">${playbook.role} · ${playbook.combatMood}</span>`,
+        `<span class="option-meta">${playbook.combatMood} · ${playbook.upgradePool.map((pool) => `#${pool}`).join(' ')}</span>`,
         `<span>${playbook.sheetLine}</span>`,
         `<span>${playbook.text}</span>`,
         `<span class="visual-cue">${playbook.visualCue}</span>`,
@@ -194,6 +197,7 @@
       : (wave.objective || wave.copy);
     elements.goal.textContent = state.bossSpawned ? '보스전' : '생존';
     elements.upgrades.innerHTML = state.learnedUpgrades.map((name) => `<li>${name}</li>`).join('');
+    updateQaOverlay();
   }
 
   function showMessage(title, copy, primaryLabel, primaryAction) {
@@ -256,6 +260,17 @@
     return (tags || []).map((tag) => `#${tag}`).join(' ');
   }
 
+  function describeBuildDirection(upgrade) {
+    const tags = upgrade.tags || [];
+    if (tags.includes('boss')) return '빌드 방향: 마지막 문 보스 화력을 확보합니다.';
+    if (tags.includes('shield') || tags.includes('survival')) return '빌드 방향: 맞아도 무너지지 않는 안정 런입니다.';
+    if (tags.includes('blade') || tags.includes('pierce')) return '빌드 방향: 처치 속도를 올려 XP 흐름을 당깁니다.';
+    if (tags.includes('control') || tags.includes('root')) return '빌드 방향: 전조를 읽고 적 속도를 꺾는 제어 런입니다.';
+    if (tags.includes('bell') || tags.includes('arcane')) return '빌드 방향: 고위험 화력과 보스 압박을 키웁니다.';
+    if (tags.includes('hunt') || tags.includes('mobility')) return '빌드 방향: 거리 유지와 보석 회수로 성장 속도를 냅니다.';
+    return '빌드 방향: 현재 플레이북의 빈틈을 메웁니다.';
+  }
+
   function renderResultSummary(summary) {
     const upgrades = summary.selectedUpgrades.length > 0
       ? summary.selectedUpgrades.map((upgrade) => (
@@ -269,6 +284,7 @@
       ? summary.synergies.map((synergy) => `<li><strong>${synergy.title}</strong><span>${synergy.text}</span></li>`).join('')
       : '<li><strong>시너지 미발동</strong><span>같은 태그의 선택지를 더 모으면 빌드 효과가 열립니다.</span></li>';
     elements.upgradeOptions.innerHTML = [
+      '<p class="retry-copy">다음 런에서는 같은 태그를 두 번 이상 모아 시너지를 먼저 여는 쪽이 보스 도달이 안정적입니다.</p>',
       '<div class="result-grid">',
       `<article><span>생존 시간</span><strong>${renderer.formatTime(summary.survivalTime)}</strong></article>`,
       `<article><span>플레이북</span><strong>${summary.playbook}</strong></article>`,
@@ -331,6 +347,30 @@
   function qaModeEnabled() {
     return (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
       && window.location.search.includes('qa=1');
+  }
+
+  function updateQaOverlay() {
+    if (!elements.qaPanel) return;
+    if (!qaModeEnabled()) {
+      elements.qaPanel.classList.add('hidden');
+      elements.qaPanel.textContent = '';
+      return;
+    }
+    const wave = content.wavePatterns[state.waveIndex];
+    const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
+    const bossState = boss
+      ? `${state.bossPhase ? state.bossPhase.title : '대기'} ${Math.ceil(boss.hp)} / ${Math.ceil(boss.maxHp)}`
+      : (state.bossSpawned ? '처치됨' : '미등장');
+    const recent = state.selectedUpgrades.slice(-3).map((upgrade) => `${upgrade.title} ${formatLevel(upgrade.level)}`).join(', ') || '없음';
+    elements.qaPanel.classList.remove('hidden');
+    elements.qaPanel.innerHTML = [
+      `<strong>QA balance</strong>`,
+      `<span>생존 ${renderer.formatTime(state.elapsed)} · 처치 ${state.kills}</span>`,
+      `<span>레벨 ${state.player.level} · XP ${state.player.xp} / ${state.player.nextXp}</span>`,
+      `<span>웨이브 ${wave.title} · 적 ${state.enemies.length}</span>`,
+      `<span>위험 ${state.hazards.length} · 보스 ${bossState}</span>`,
+      `<span>최근 업그레이드 ${recent}</span>`,
+    ].join('');
   }
 
   function handleQaShortcut(event) {

@@ -264,6 +264,35 @@ h2 {
   pointer-events: none;
 }
 
+.qa-panel {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+  width: min(320px, calc(100% - var(--space-6)));
+  border: 1px solid var(--accent-ember);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--surface-primary) 86%, transparent);
+  color: var(--text-secondary);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.qa-panel strong {
+  color: var(--accent-ember);
+}
+
+.qa-panel span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .hud-chip {
   min-width: 0;
   border: 1px solid color-mix(in srgb, var(--border-default) 80%, transparent);
@@ -376,11 +405,12 @@ canvas {
 .modal {
   position: fixed;
   inset: 0;
+  z-index: 30;
   display: grid;
   place-items: center;
   overflow: auto;
   padding: var(--space-4);
-  background: color-mix(in srgb, var(--surface-canvas) 82%, transparent);
+  background: var(--surface-canvas);
   opacity: 1;
   transition: opacity 220ms ease-in-out;
 }
@@ -400,6 +430,9 @@ canvas {
   overflow: auto;
   overflow-x: hidden;
   padding: var(--space-6);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 82%, var(--surface-secondary)), var(--surface-secondary)),
+    var(--surface-secondary);
   box-shadow: var(--shadow-ritual);
 }
 
@@ -436,7 +469,7 @@ canvas {
   padding: var(--space-4);
   text-align: left;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--option-soft) 74%, transparent), transparent 64%),
+    linear-gradient(135deg, color-mix(in srgb, var(--option-soft) 64%, var(--surface-elevated)), var(--surface-elevated) 64%),
     var(--surface-elevated);
   color: var(--text-primary);
   cursor: pointer;
@@ -488,6 +521,11 @@ canvas {
   padding-top: var(--space-2);
 }
 
+.build-line {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 .playbook-option {
   gap: var(--space-2);
   min-height: 168px;
@@ -502,6 +540,16 @@ canvas {
 
 .playbook-option .visual-cue {
   color: var(--text-primary);
+  font-weight: 700;
+}
+
+.playbook-role {
+  justify-self: start;
+  border: 1px solid color-mix(in srgb, var(--option-accent) 62%, var(--border-default));
+  border-radius: 4px;
+  padding: 2px var(--space-2);
+  color: var(--option-accent);
+  background: color-mix(in srgb, var(--option-soft) 64%, transparent);
   font-weight: 700;
 }
 
@@ -546,6 +594,15 @@ canvas {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
   margin: var(--space-5) 0 var(--space-3);
+}
+
+.retry-copy {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--surface-parchment) 42%, transparent);
+  color: var(--accent-hover);
+  font-weight: 700;
 }
 
 .result-grid article {

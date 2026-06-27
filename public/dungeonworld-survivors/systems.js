@@ -22,7 +22,7 @@
     return { x: x / length, y: y / length };
   }
 
-  function createPlayer(playbook) {
+  function createPlayer(playbook, balance) {
     const player = {
       x: WORLD.startX, y: WORLD.startY,
       radius: 15, maxHealth: 100, health: 100, speed: 168,
@@ -63,6 +63,10 @@
       companionTimer: 0,
       spawnPressure: 0,
       bossDamageBonus: 0,
+      warningGrace: 0,
+      hazardResist: 0,
+      healBonus: 0,
+      arcaneShieldCooldownBonus: 0,
       facing: 0,
       playbookId: playbook ? playbook.id : 'fighter',
       accentToken: playbook ? playbook.accentToken : '--accent-primary',
@@ -73,8 +77,26 @@
       player.stats = { ...player.stats, ...playbook.stats };
       player.attackStyle = playbook.attack || player.attackStyle;
       playbook.apply(player);
+      applyBalanceAdjustments(player, playbook.id, balance);
     }
     return player;
+  }
+
+  function applyBalanceAdjustments(player, playbookId, balance) {
+    const earlyGame = balance && balance.earlyGame;
+    if (earlyGame && earlyGame.xpCurve) player.nextXp = earlyGame.xpCurve.firstLevel;
+    const adjustment = earlyGame && earlyGame.classAdjustments && earlyGame.classAdjustments[playbookId];
+    if (!adjustment) return;
+    if (adjustment.damage) player.damage += adjustment.damage;
+    if (adjustment.magnet) player.magnet += adjustment.magnet;
+    if (adjustment.auraDamage) player.auraDamage += adjustment.auraDamage;
+    if (adjustment.auraRange) player.auraRange += adjustment.auraRange;
+    if (adjustment.rootSlow) player.rootSlow += adjustment.rootSlow;
+    if (adjustment.projectileSpeed) player.projectileSpeed += adjustment.projectileSpeed;
+    if (adjustment.projectileLife) player.projectileLife += adjustment.projectileLife;
+    if (adjustment.firstHealTimer) player.healTimer = adjustment.firstHealTimer;
+    if (adjustment.arcaneShieldTimer) player.arcaneShieldTimer = adjustment.arcaneShieldTimer;
+    if (adjustment.companionTimer) player.companionTimer = adjustment.companionTimer;
   }
 
   function findPlaybook(content, playbookId) {
@@ -90,13 +112,13 @@
       elapsed: 0,
       sceneIndex: 0,
       waveIndex: 0,
-      spawnTimer: 0,
+      spawnTimer: content.balance && content.balance.earlyGame ? content.balance.earlyGame.spawnGrace : 0,
       bossSpawned: false,
       bossDefeated: false,
       lastMoveResult: '아직 판정 없음',
       kills: 0,
       attackMarks: [],
-      player: createPlayer(playbook),
+      player: createPlayer(playbook, content.balance),
       enemies: [],
       projectiles: [],
       gems: [],
@@ -136,11 +158,15 @@
 
   function spawnEnemy(state, type, edge) {
     const profile = type.attackProfile || {};
+    const bossScale = type.behavior === 'boss' && state.content.balance && state.content.balance.boss
+      ? state.content.balance.boss.hpScale
+      : 1;
     state.enemies.push({
       ...type,
       x: edge.x,
       y: edge.y,
-      maxHp: type.hp,
+      hp: type.hp * bossScale,
+      maxHp: type.hp * bossScale,
       slowTimer: 0,
       behaviorTimer: Math.random() * 0.6,
       hitFlash: 0,
@@ -186,18 +212,24 @@
       resolveDungeonMove(state, wave);
     }
 
-    const pressure = wave.pressure + state.elapsed / 210 + state.player.spawnPressure + state.player.tension * 0.025;
+    const baseCadence = state.content.balance && state.content.balance.earlyGame
+      ? state.content.balance.earlyGame.baseSpawnCadence
+      : 1;
+    const pressure = wave.pressure + state.elapsed / 230 + state.player.spawnPressure + state.player.tension * 0.022;
     state.spawnTimer -= dt * pressure;
     if (state.spawnTimer <= 0) {
       wave.packs.forEach((pack) => spawnPack(state, pack));
-      state.spawnTimer = Math.max(0.24, wave.cadence - state.elapsed / 520);
+      state.spawnTimer = Math.max(0.28, wave.cadence * baseCadence - state.elapsed / 560);
     }
 
-    if (!state.bossSpawned && state.elapsed > 205) {
+    const bossAt = state.content.balance && state.content.balance.boss ? state.content.balance.boss.spawnAt : 205;
+    if (!state.bossSpawned && state.elapsed > bossAt) {
       spawnEnemy(state, state.content.enemyTypes.sentinel, { x: WORLD.towerX, y: WORLD.towerY + 170 });
       state.bossSpawned = true;
       state.bossPhase = state.content.enemyTypes.sentinel.bossPhases[0];
-      state.bossPatternTimer = 1.2;
+      state.bossPatternTimer = state.content.balance && state.content.balance.boss
+        ? state.content.balance.boss.firstPatternDelay
+        : 1.2;
       state.effects.flash = 0.45;
       state.effects.shake = 0.7;
       state.effects.bossPulse = 1;
@@ -266,11 +298,18 @@
       addFloater(state, phase.warning, boss.x, boss.y - 84, '--accent-bell', 1.2, true);
       return;
     }
+    if (phase.pattern === 'cross') {
+      spawnEnemy(state, state.content.enemyTypes.cultist, { x: clamp(boss.x, 40, WORLD.width - 40), y: clamp(boss.y + 130, 40, WORLD.height - 40) });
+      state.bossWarnings.push(createBossWarning(boss, phase, 'line', 0));
+      state.bossWarnings.push(createBossWarning(boss, phase, 'line', Math.PI / 2));
+      addFloater(state, phase.warning, boss.x, boss.y - 84, '--accent-bell', 1.2, true);
+      return;
+    }
     state.bossWarnings.push(createBossWarning(boss, phase, phase.pattern));
     addFloater(state, phase.warning, boss.x, boss.y - 84, '--accent-bell', 1.2, true);
   }
 
-  function createBossWarning(boss, phase, pattern) {
+  function createBossWarning(boss, phase, pattern, forcedAngle) {
     const angle = Math.atan2(WORLD.startY - boss.y, WORLD.startX - boss.x);
     return {
       x: boss.x,
@@ -278,14 +317,14 @@
       kind: pattern,
       phase: phase.id,
       label: phase.warning,
-      angle,
+      angle: typeof forcedAngle === 'number' ? forcedAngle : angle,
       radius: pattern === 'ring' ? 142 : 0,
       width: pattern === 'line' ? 52 : 38,
-      length: pattern === 'line' ? 430 : 0,
+      length: pattern === 'line' ? 460 : 0,
       warningLeft: 0.95,
       life: 1.75,
       maxLife: 1.75,
-      damage: pattern === 'line' ? 13 : 10,
+      damage: phase.pattern === 'cross' ? 12 : pattern === 'line' ? 13 : 10,
       colorToken: '--accent-bell',
       pulseTimer: 0,
     };
@@ -362,7 +401,7 @@
     player.healTimer -= dt;
     if (player.healTimer > 0) return;
     player.healTimer = Math.max(3.2, 5.4 - player.healPulse * 0.46);
-    const amount = 3 + player.healPulse * 2;
+    const amount = 3 + player.healPulse * 2 + player.healBonus;
     player.health = Math.min(player.maxHealth, player.health + amount);
     addFloater(state, `기도 +${amount}`, player.x, player.y - 34, '--status-success', 1);
   }
@@ -617,7 +656,7 @@
 
   function startEnemyAttack(state, enemy, direction) {
     const profile = enemy.attackProfile;
-    enemy.attackWindup = profile.windup;
+    enemy.attackWindup = profile.windup + state.player.warningGrace;
     enemy.attackTarget = { x: state.player.x, y: state.player.y };
     const angle = Math.atan2(direction.y, direction.x);
     enemy.warning = {
@@ -634,8 +673,8 @@
       arc: profile.arc || Math.PI * 0.5,
       length: profile.length || profile.range,
       width: profile.width || 30,
-      warningLeft: profile.windup,
-      maxLife: profile.windup,
+      warningLeft: enemy.attackWindup,
+      maxLife: enemy.attackWindup,
       colorToken: profile.warningColorToken || enemy.colorToken,
     };
     state.enemyWarnings.push(enemy.warning);
@@ -658,7 +697,7 @@
     }
     const shieldReduction = player.arcaneShield > 0 && player.arcaneShieldTimer <= 0 ? 0.45 : 1;
     if (shieldReduction < 1) {
-      player.arcaneShieldTimer = 4.8;
+      player.arcaneShieldTimer = Math.max(2.8, 4.8 - player.arcaneShieldCooldownBonus);
       addFloater(state, '비전 보호막', player.x, player.y - 24, '--accent-bell');
     }
     const armor = source && source.behavior === 'boss' ? player.armor * 0.55 : player.armor;
@@ -716,6 +755,16 @@
     }
     if (enemy.behavior === 'charger') {
       return { x: direction.x, y: direction.y, speedScale: Math.sin(enemy.behaviorTimer * 2.7) > 0.68 ? 2.35 : 0.72 };
+    }
+    if (enemy.behavior === 'ambusher') {
+      const sway = Math.sin(enemy.behaviorTimer * 2.2) * 0.32;
+      const movement = normalize(direction.x - direction.y * sway, direction.y + direction.x * sway);
+      return { x: movement.x, y: movement.y, speedScale: Math.sin(enemy.behaviorTimer * 3.6) > 0.55 ? 1.85 : 0.38 };
+    }
+    if (enemy.behavior === 'caster') {
+      const towerDistance = Math.hypot(enemy.x - WORLD.towerX, enemy.y - WORLD.towerY);
+      const holdScale = towerDistance < 520 ? 0.42 : 0.86;
+      return { x: direction.x, y: direction.y, speedScale: enemy.attackWindup > 0 ? 0.08 : holdScale };
     }
     if (enemy.behavior === 'bulwark') {
       return { x: direction.x, y: direction.y, speedScale: enemy.hp > enemy.maxHp * 0.45 ? 0.82 : 1.22 };
@@ -811,7 +860,10 @@
       if (!isPointInHazard(state.player, hazard, state.player.radius)) return;
       if (hazard.damage) applyHazardDamage(state, hazard);
       if (hazard.tension) state.player.tension = clamp(state.player.tension + hazard.tension, 0, state.player.maxTension);
-      if (hazard.slow) state.player.hazardSlowTimer = Math.max(state.player.hazardSlowTimer, hazard.slow);
+      if (hazard.slow) {
+        const slowTime = Math.max(0.35, hazard.slow * (1 - state.player.hazardResist));
+        state.player.hazardSlowTimer = Math.max(state.player.hazardSlowTimer, slowTime);
+      }
       hazard.pulseTimer = 0.65;
     });
     state.hazards = state.hazards.filter((hazard) => hazard.life > 0);
@@ -837,7 +889,10 @@
   }
 
   function isPointInHazard(point, hazard, radius) {
-    if (hazard.kind === 'wolfLane') return pointInLine(point, hazard, radius);
+    if (hazard.kind === 'wolfLane' || hazard.kind === 'towerGaze') return pointInLine(point, hazard, radius);
+    if (hazard.kind === 'thornCross') {
+      return pointInLine(point, hazard, radius) || pointInLine(point, { ...hazard, angle: (hazard.angle || 0) + Math.PI / 2 }, radius);
+    }
     if (hazard.kind === 'bellRing') {
       const dist = Math.hypot(point.x - hazard.x, point.y - hazard.y);
       return Math.abs(dist - hazard.radius) <= (hazard.width || 34) + radius;
@@ -888,7 +943,10 @@
     while (player.xp >= player.nextXp) {
       player.xp -= player.nextXp;
       player.level += 1;
-      player.nextXp = Math.floor(player.nextXp * 1.35 + 4);
+      const curve = state.content.balance && state.content.balance.earlyGame && state.content.balance.earlyGame.xpCurve;
+      const growth = curve ? curve.growth : 1.35;
+      const flat = curve ? curve.flat : 4;
+      player.nextXp = Math.floor(player.nextXp * growth + flat);
       leveled = true;
     }
     if (leveled) {

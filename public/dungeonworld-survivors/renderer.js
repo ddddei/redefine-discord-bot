@@ -348,6 +348,23 @@
     ctx.fillStyle = color;
     ctx.beginPath();
     if (enemy.behavior === 'bulwark') ctx.rect(enemy.x - enemy.radius, enemy.y - enemy.radius, enemy.radius * 2, enemy.radius * 2);
+    else if (enemy.behavior === 'ambusher') {
+      ctx.moveTo(enemy.x, enemy.y - enemy.radius);
+      ctx.lineTo(enemy.x + enemy.radius, enemy.y);
+      ctx.lineTo(enemy.x, enemy.y + enemy.radius);
+      ctx.lineTo(enemy.x - enemy.radius, enemy.y);
+      ctx.closePath();
+    } else if (enemy.behavior === 'caster') {
+      for (let index = 0; index < 6; index += 1) {
+        const angle = index * Math.PI * 2 / 6;
+        const radius = index % 2 === 0 ? enemy.radius : enemy.radius * 0.62;
+        const x = enemy.x + Math.cos(angle) * radius;
+        const y = enemy.y + Math.sin(angle) * radius;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    }
     else ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = enemy.slowTimer > 0 ? palette.accentPrimary : palette.surfacePrimary;
@@ -372,8 +389,12 @@
     ctx.fillStyle = withAlpha(color, alpha * 0.34);
     ctx.lineWidth = armed ? 4 : 2;
     ctx.setLineDash(armed ? [] : [10, 8]);
-    if (hazard.kind === 'wolfLane') {
+    if (hazard.kind === 'wolfLane' || hazard.kind === 'towerGaze') {
       drawLaneShape(ctx, hazard.length || 240, hazard.width || 38);
+    } else if (hazard.kind === 'thornCross') {
+      drawLaneShape(ctx, hazard.length || 210, hazard.width || 34);
+      ctx.rotate(Math.PI / 2);
+      drawLaneShape(ctx, hazard.length || 210, hazard.width || 34);
     } else if (hazard.kind === 'bellRing') {
       ctx.beginPath();
       ctx.arc(0, 0, hazard.radius || 110, 0, Math.PI * 2);

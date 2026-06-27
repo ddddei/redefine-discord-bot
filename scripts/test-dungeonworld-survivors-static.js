@@ -91,6 +91,10 @@ function createRuntimeEnemy(state, typeId, distanceFromPlayer = 72) {
 
 function testEnemyProfilesAndTelegraphs() {
   const { content, systems } = loadGameRuntime();
+  assert.ok(content.balance.earlyGame.spawnGrace > 0);
+  assert.strictEqual(content.balance.boss.spawnAt, 198);
+  assert.ok(content.enemyTypes.mimic);
+  assert.ok(content.enemyTypes.cultist);
   Object.keys(content.enemyTypes).forEach((typeId) => {
     const profile = content.enemyTypes[typeId].attackProfile;
     assert.ok(profile, `${typeId} should have attackProfile`);
@@ -100,9 +104,11 @@ function testEnemyProfilesAndTelegraphs() {
     assert.ok(profile.shape, `${typeId} profile should have shape`);
     assert.ok(profile.warningLabel, `${typeId} profile should have warningLabel`);
   });
-  assert.ok(content.enemyTypes.sentinel.bossPhases.length >= 3);
+  assert.ok(content.enemyTypes.sentinel.bossPhases.length >= 4);
+  assert.ok(content.enemyTypes.sentinel.bossPhases.some((phase) => phase.pattern === 'cross'));
 
   const state = systems.createState(content, 'fighter');
+  assert.strictEqual(state.player.nextXp, content.balance.earlyGame.xpCurve.firstLevel);
   state.spawnTimer = 99;
   state.player.attackTimer = 99;
   state.enemies = [createRuntimeEnemy(state, 'goblin', 46)];
@@ -128,6 +134,10 @@ function testEnemyProfilesAndTelegraphs() {
 
 function testWaveHazardsAffectOnlyInsideArea() {
   const { content, systems } = loadGameRuntime();
+  const hazardKinds = new Set(content.wavePatterns.flatMap((wave) => wave.hazards.map((hazard) => hazard.kind)));
+  assert.ok(hazardKinds.has('mimicBite'));
+  assert.ok(hazardKinds.has('thornCross'));
+  assert.ok(hazardKinds.has('towerGaze'));
   content.wavePatterns.slice(1).forEach((wave) => {
     assert.ok(wave.objective, `${wave.id} should have objective`);
     assert.ok(wave.hazards.length > 0, `${wave.id} should have hazards`);
@@ -176,6 +186,10 @@ function testWaveHazardsAffectOnlyInsideArea() {
 
 function testUpgradeMetadataAndSynergies() {
   const { content, systems } = loadGameRuntime();
+  content.playbooks.forEach((playbook) => {
+    const classUpgrades = content.upgrades.filter((upgrade) => upgrade.pools.includes(playbook.id));
+    assert.ok(classUpgrades.length >= 3, `${playbook.id} should have at least three class upgrades`);
+  });
   content.upgrades.forEach((upgrade) => {
     assert.ok(upgrade.rarity, `${upgrade.id} should have rarity`);
     assert.ok(Array.isArray(upgrade.tags) && upgrade.tags.length > 0, `${upgrade.id} should have tags`);
@@ -197,6 +211,15 @@ function testUpgradeMetadataAndSynergies() {
   assert.strictEqual(summary.selectedUpgrades.length, 2);
   assert.ok(summary.buildTags.some((entry) => entry.tag === 'shield'));
   assert.ok(summary.synergies.some((synergy) => synergy.title === '방패선'));
+
+  const wizard = systems.createState(content, 'wizard');
+  const sigilBattery = content.upgrades.find((upgrade) => upgrade.id === 'sigilBattery');
+  const forkedMissile = content.upgrades.find((upgrade) => upgrade.id === 'forkedMissile');
+  systems.applyUpgrade(wizard, sigilBattery);
+  systems.applyUpgrade(wizard, forkedMissile);
+  assert.ok(wizard.buildTags.arcane >= 2);
+  assert.ok(wizard.synergies.some((synergy) => synergy.id === 'arcaneWard'));
+  assert.ok(wizard.player.shots > 1);
 }
 
 function testEveryPlaybookStartsAndAttacks() {
@@ -347,14 +370,30 @@ function main() {
   assert.ok(content.includes('바루크의 창선'));
   assert.ok(content.includes('라메의 잎 표식'));
   assert.ok(content.includes('검은 종 파수꾼'));
+  assert.ok(content.includes('balance'));
+  assert.ok(content.includes('spawnAt: 198'));
   assert.ok(content.includes('wavePatterns'));
   assert.ok(content.includes('behavior: \'skirmisher\''));
   assert.ok(content.includes('behavior: \'charger\''));
   assert.ok(content.includes('behavior: \'bulwark\''));
+  assert.ok(content.includes('behavior: \'ambusher\''));
+  assert.ok(content.includes('behavior: \'caster\''));
+  assert.ok(content.includes('물그릇 미믹'));
+  assert.ok(content.includes('검은 종 신도'));
+  assert.ok(content.includes('mimicBite'));
+  assert.ok(content.includes('thornCross'));
+  assert.ok(content.includes('towerGaze'));
   assert.ok(content.includes('maxLevel'));
   assert.ok(content.includes('토른의 방패 II'));
+  assert.ok(content.includes('철의 맹세'));
+  assert.ok(content.includes('연막 주머니'));
+  assert.ok(content.includes('성역 원'));
+  assert.ok(content.includes('뿌리 미로'));
+  assert.ok(content.includes('문양 축전'));
+  assert.ok(content.includes('매의 표식'));
   assert.ok(content.includes('attackProfile'));
   assert.ok(content.includes('bossPhases'));
+  assert.ok(content.includes('brokenGate'));
   assert.ok(content.includes('pressureRule'));
   assert.ok(content.includes('upgradeMeta'));
   assert.ok(content.includes('synergyText'));
@@ -384,6 +423,9 @@ function main() {
   assert.ok(systems.includes('function updateBossPatterns'));
   assert.ok(systems.includes('function applyUpgrade'));
   assert.ok(systems.includes('function getRunSummary'));
+  assert.ok(systems.includes('applyBalanceAdjustments'));
+  assert.ok(systems.includes('warningGrace'));
+  assert.ok(systems.includes('hazardResist'));
 
   const game = readGameFile('game.js');
   assert.ok(game.includes('function renderPlaybookOptions'));
@@ -393,6 +435,9 @@ function main() {
   assert.ok(game.includes('visualCue'));
   assert.ok(game.includes('accentToken'));
   assert.ok(game.includes('function renderResultSummary'));
+  assert.ok(game.includes('function updateQaOverlay'));
+  assert.ok(game.includes('QA balance'));
+  assert.ok(game.includes('describeBuildDirection'));
   assert.ok(game.includes('function formatRarity'));
   assert.ok(game.includes('dataset.mode'));
 
@@ -406,6 +451,8 @@ function main() {
   assert.ok(renderer.includes('function drawHazard'));
   assert.ok(renderer.includes('function drawWarning'));
   assert.ok(renderer.includes('drawLaneShape'));
+  assert.ok(renderer.includes('thornCross'));
+  assert.ok(renderer.includes('ambusher'));
 
   const styles = readGameFile('styles.css');
   assert.ok(styles.includes('--surface-parchment: #2a241c;'));
@@ -418,6 +465,9 @@ function main() {
   assert.ok(styles.includes('.rarity-rare'));
   assert.ok(styles.includes('.result-grid'));
   assert.ok(styles.includes('.synergy-hint'));
+  assert.ok(styles.includes('.qa-panel'));
+  assert.ok(styles.includes('.build-line'));
+  assert.ok(styles.includes('.retry-copy'));
   assert.ok(styles.includes('@media (max-width: 980px)'));
 
   testWaveRollBehavior();

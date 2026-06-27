@@ -27,6 +27,28 @@
     },
   ];
 
+  const balance = {
+    earlyGame: {
+      spawnGrace: 1.25,
+      baseSpawnCadence: 1.2,
+      xpCurve: { firstLevel: 5, growth: 1.3, flat: 3 },
+      classAdjustments: {
+        fighter: { damage: 2, magnet: 8 },
+        cleric: { auraDamage: 2, firstHealTimer: 2.6 },
+        thief: { damage: 1, magnet: 12 },
+        druid: { auraRange: 8, rootSlow: 0.12 },
+        wizard: { projectileSpeed: 20, arcaneShieldTimer: 2.4 },
+        ranger: { companionTimer: 1.8, projectileLife: 0.12 },
+      },
+    },
+    boss: {
+      spawnAt: 198,
+      targetLevel: 8,
+      hpScale: 0.92,
+      firstPatternDelay: 1,
+    },
+  };
+
   const enemyTypes = {
     goblin: {
       name: '고블린 정찰병',
@@ -111,6 +133,48 @@
         warningLabel: '그림자 돌진',
       },
     },
+    mimic: {
+      name: '물그릇 미믹',
+      colorToken: '--accent-ember',
+      behavior: 'ambusher',
+      hp: 42,
+      speed: 46,
+      radius: 18,
+      damage: 13,
+      xp: 7,
+      attackProfile: {
+        range: 112,
+        windup: 0.7,
+        recovery: 1.55,
+        shape: 'cone',
+        arc: Math.PI * 0.58,
+        reach: 116,
+        damageScale: 1.08,
+        warningColorToken: '--accent-ember',
+        warningLabel: '상자 이빨',
+      },
+    },
+    cultist: {
+      name: '검은 종 신도',
+      colorToken: '--accent-bell',
+      behavior: 'caster',
+      hp: 34,
+      speed: 42,
+      radius: 14,
+      damage: 12,
+      xp: 6,
+      attackProfile: {
+        range: 168,
+        windup: 0.86,
+        recovery: 1.75,
+        shape: 'ring',
+        radius: 86,
+        width: 28,
+        damageScale: 0.95,
+        warningColorToken: '--accent-bell',
+        warningLabel: '종말 기도',
+      },
+    },
     sentinel: {
       name: '검은 종 파수꾼',
       colorToken: '--accent-bell',
@@ -155,6 +219,14 @@
           warning: '협공 소환과 넓은 종파',
           pattern: 'summon',
           cadence: 2.4,
+        },
+        {
+          id: 'brokenGate',
+          threshold: 0.18,
+          title: '무너진 문턱',
+          warning: '십자형 종압과 신도 소환',
+          pattern: 'cross',
+          cadence: 2.15,
         },
       ],
     },
@@ -210,12 +282,14 @@
       pressureRule: 'basin-pools',
       hazards: [
         { kind: 'basinPool', cadence: 4.8, warning: 0.8, duration: 2.8, radius: 74, damage: 2.6, slow: 1.6, colorToken: '--status-info', label: '물그릇 웅덩이' },
+        { kind: 'mimicBite', cadence: 6.4, warning: 0.82, duration: 1.3, radius: 58, damage: 6, tension: 0.45, colorToken: '--accent-ember', label: '미믹 이빨' },
       ],
       cadence: 1.34,
       pressure: 1.28,
       packs: [
         { type: 'slime', count: 3, formation: 'line' },
         { type: 'armor', count: 1, formation: 'split' },
+        { type: 'mimic', count: 1, formation: 'arc' },
       ],
     },
     {
@@ -230,12 +304,14 @@
       pressureRule: 'charge-lanes',
       hazards: [
         { kind: 'wolfLane', cadence: 4.2, warning: 0.72, duration: 1.25, length: 280, width: 42, damage: 7, tension: 0.7, colorToken: '--status-error', label: '늑대 돌진로' },
+        { kind: 'thornCross', cadence: 6.2, warning: 0.9, duration: 1.45, length: 210, width: 34, damage: 5, slow: 1.1, colorToken: '--class-druid', label: '가시 십자로' },
       ],
       cadence: 1.42,
       pressure: 1.42,
       packs: [
         { type: 'wolf', count: 2, formation: 'arc' },
         { type: 'armor', count: 2, formation: 'line' },
+        { type: 'mimic', count: 1, formation: 'split' },
       ],
     },
     {
@@ -250,12 +326,14 @@
       pressureRule: 'bell-rings',
       hazards: [
         { kind: 'bellRing', cadence: 4.6, warning: 0.95, duration: 1.7, radius: 112, width: 34, damage: 8, tension: 0.9, colorToken: '--accent-bell', label: '검은 종파' },
+        { kind: 'towerGaze', cadence: 5.8, warning: 1, duration: 1.2, length: 360, width: 54, damage: 9, tension: 0.65, colorToken: '--accent-bell', label: '탑의 눈길' },
       ],
       cadence: 1.55,
       pressure: 1.5,
       packs: [
         { type: 'wolf', count: 2, formation: 'split' },
         { type: 'armor', count: 1, formation: 'arc' },
+        { type: 'cultist', count: 2, formation: 'line' },
       ],
     },
   ];
@@ -638,6 +716,201 @@
         player.auraDamage += 5;
       },
     },
+    {
+      id: 'ironVow',
+      title: '철의 맹세',
+      family: 'playbook',
+      pools: ['fighter'],
+      maxLevel: 3,
+      text: '보스와 빈 갑옷에게 주는 피해가 오르고 몸싸움 피해를 더 낮춥니다.',
+      apply: (player, level) => {
+        player.bossDamageBonus += 0.06 + level * 0.02;
+        player.armor += 1;
+        player.tensionResist += 0.04;
+      },
+    },
+    {
+      id: 'guardedAdvance',
+      title: '방패 전진',
+      family: 'playbook',
+      pools: ['fighter'],
+      maxLevel: 3,
+      text: '베기 후 짧게 빨라지고 경험치 자석 범위가 넓어집니다.',
+      apply: (player) => {
+        player.speed *= 1.04;
+        player.magnet += 22;
+        player.cleaveSlow += 0.16;
+      },
+    },
+    {
+      id: 'backstabRhythm',
+      title: '뒤찌르기 박자',
+      family: 'playbook',
+      pools: ['thief'],
+      maxLevel: 3,
+      text: '단검과 부채꼴 칼 피해가 오르고 회피 직후 공격 주기가 짧아집니다.',
+      apply: (player, level) => {
+        player.damage += 3 + level;
+        player.fanCooldownBonus += 0.08;
+        player.dodgeChance += 0.03;
+      },
+    },
+    {
+      id: 'smokePocket',
+      title: '연막 주머니',
+      family: 'playbook',
+      pools: ['thief'],
+      maxLevel: 2,
+      text: '위험 구역 둔화 시간이 짧아지고 긴장 상승을 조금 줄입니다.',
+      apply: (player) => {
+        player.hazardResist = (player.hazardResist || 0) + 0.18;
+        player.tensionResist += 0.06;
+        player.speed *= 1.04;
+      },
+    },
+    {
+      id: 'sanctuaryCircle',
+      title: '성역 원',
+      family: 'playbook',
+      pools: ['cleric'],
+      maxLevel: 3,
+      text: '축성의 빛 범위와 치유량이 함께 오릅니다.',
+      apply: (player, level) => {
+        player.auraRange += 12;
+        player.auraDamage += 3;
+        player.healBonus = (player.healBonus || 0) + level;
+      },
+    },
+    {
+      id: 'bellAbsolution',
+      title: '종소리 사면',
+      family: 'playbook',
+      pools: ['cleric'],
+      maxLevel: 2,
+      text: '검은 종 계열 피해가 오르고 보스 패턴에 맞은 뒤 회복 파동이 빨라집니다.',
+      apply: (player) => {
+        player.bellWave = Math.max(player.bellWave, 1);
+        player.bossDamageBonus += 0.05;
+        player.healPulse += 1;
+      },
+    },
+    {
+      id: 'rootMaze',
+      title: '뿌리 미로',
+      family: 'playbook',
+      pools: ['druid'],
+      maxLevel: 3,
+      text: '가시뿌리 둔화와 제어 태그 효과가 강화됩니다.',
+      apply: (player, level) => {
+        player.rootSlow += 0.28;
+        player.damage += 2 + level;
+        player.magnet += 12;
+      },
+    },
+    {
+      id: 'moonPelt',
+      title: '달빛 가죽',
+      family: 'playbook',
+      pools: ['druid'],
+      maxLevel: 2,
+      text: '긴장이 높을수록 덜 아프고 더 빠르게 빠져나갑니다.',
+      apply: (player) => {
+        player.tensionResist += 0.1;
+        player.tensionSpeed += 0.008;
+        player.maxHealth += 8;
+        player.health = Math.min(player.maxHealth, player.health + 8);
+      },
+    },
+    {
+      id: 'sigilBattery',
+      title: '문양 축전',
+      family: 'playbook',
+      pools: ['wizard'],
+      maxLevel: 3,
+      text: '마력탄 속도와 보호막 회복이 좋아집니다.',
+      apply: (player) => {
+        player.projectileSpeed += 45;
+        player.arcaneShield = Math.max(player.arcaneShield, 1);
+        player.arcaneShieldCooldownBonus = (player.arcaneShieldCooldownBonus || 0) + 0.35;
+      },
+    },
+    {
+      id: 'forkedMissile',
+      title: '갈라진 마력탄',
+      family: 'playbook',
+      pools: ['wizard'],
+      maxLevel: 2,
+      text: '추가 투사체를 얻고 관통 피해가 보스에게 더 잘 들어갑니다.',
+      apply: (player) => {
+        player.shots += 1;
+        player.pierce += 1;
+        player.bossDamageBonus += 0.04;
+      },
+    },
+    {
+      id: 'hawkMark',
+      title: '매의 표식',
+      family: 'playbook',
+      pools: ['ranger'],
+      maxLevel: 3,
+      text: '동료 매가 더 강하게 찍고 표식 뒤 화살 피해가 오릅니다.',
+      apply: (player, level) => {
+        player.companionStrike += 1;
+        player.damage += 2 + level;
+        player.bossDamageBonus += 0.03;
+      },
+    },
+    {
+      id: 'snareArrow',
+      title: '올가미 화살',
+      family: 'playbook',
+      pools: ['ranger'],
+      maxLevel: 3,
+      text: '검은 화살이 적을 늦추고 관통 빌드가 더 안정적으로 굴러갑니다.',
+      apply: (player) => {
+        player.rootSlow += 0.22;
+        player.pierce += 1;
+        player.projectileLife += 0.12;
+      },
+    },
+    {
+      id: 'campfireRation',
+      title: '여관 비상식량',
+      family: 'survival',
+      pools: ['survival', 'faith', 'mobility'],
+      maxLevel: 2,
+      text: '초반 레벨업 사이를 버틸 체력과 자석 범위를 얻습니다.',
+      apply: (player) => {
+        player.maxHealth += 12;
+        player.health = Math.min(player.maxHealth, player.health + 18);
+        player.magnet += 18;
+      },
+    },
+    {
+      id: 'silverThread',
+      title: '은실 매듭',
+      family: 'control',
+      pools: ['control', 'arcane', 'trick'],
+      maxLevel: 2,
+      text: '적 공격 예고가 조금 더 길어지고 위험 구역의 둔화가 줄어듭니다.',
+      apply: (player) => {
+        player.warningGrace = (player.warningGrace || 0) + 0.08;
+        player.hazardResist = (player.hazardResist || 0) + 0.14;
+      },
+    },
+    {
+      id: 'bossOmen',
+      title: '파수꾼의 징조',
+      family: 'weapon',
+      pools: ['martial', 'arcane', 'hunt', 'faith'],
+      maxLevel: 2,
+      text: '보스에게 주는 피해가 오르고 마지막 문 도달 뒤 빌드가 선명해집니다.',
+      apply: (player) => {
+        player.bossDamageBonus += 0.08;
+        player.projectileLife += 0.08;
+        player.auraRange += 6;
+      },
+    },
   ];
 
   const upgradeMeta = {
@@ -658,6 +931,21 @@
     hawkCompanion: { rarity: 'class', tags: ['hunt', 'pierce'], classHint: '레인저 전용 추적 강화입니다.', synergyText: 'hunt 2개부터 매가 보스도 표시합니다.' },
     farShot: { rarity: 'uncommon', tags: ['hunt', 'pierce', 'mobility'], classHint: '레인저와 원거리 빌드가 먼 위협을 먼저 지웁니다.', synergyText: 'hunt/pierce가 함께 있으면 첫 명중 피해가 상승합니다.' },
     wildThicket: { rarity: 'uncommon', tags: ['root', 'wild', 'control'], classHint: '드루이드의 둔화와 피해를 함께 올립니다.', synergyText: 'root 2개부터 가시뿌리 명중 시 작은 균열을 남깁니다.' },
+    ironVow: { rarity: 'class', tags: ['shield', 'martial', 'boss'], classHint: '전사가 보스와 갑옷을 오래 붙잡는 빌드입니다.', synergyText: 'shield/boss 태그를 모으면 마지막 문 화력이 안정됩니다.' },
+    guardedAdvance: { rarity: 'class', tags: ['shield', 'mobility'], classHint: '전사가 전진하면서 경험치를 놓치지 않게 합니다.', synergyText: 'mobility 2개부터 위험 구역 회피가 쉬워집니다.' },
+    backstabRhythm: { rarity: 'class', tags: ['blade', 'trick'], classHint: '도적의 칼날 빌드 핵심 피해 선택입니다.', synergyText: 'blade 2개부터 칼날 박자가 열립니다.' },
+    smokePocket: { rarity: 'class', tags: ['mobility', 'trick', 'survival'], classHint: '도적이 중후반 위험 구역을 흘려보내게 합니다.', synergyText: 'mobility/survival 조합은 반복 런 안정성을 높입니다.' },
+    sanctuaryCircle: { rarity: 'class', tags: ['faith', 'control', 'survival'], classHint: '사제의 회복과 영역 제어를 함께 키웁니다.', synergyText: 'faith 2개부터 기도 닻이 열립니다.' },
+    bellAbsolution: { rarity: 'class', tags: ['faith', 'bell', 'boss'], classHint: '사제가 보스전에서도 기여하는 빌드입니다.', synergyText: 'bell 2개부터 검은 종 합창이 열립니다.' },
+    rootMaze: { rarity: 'class', tags: ['root', 'control', 'wild'], classHint: '드루이드가 적 속도를 무너뜨리는 제어 선택입니다.', synergyText: 'root/control 누적은 판정의 틈과 뿌리 고리를 당깁니다.' },
+    moonPelt: { rarity: 'class', tags: ['wild', 'survival', 'mobility'], classHint: '드루이드가 긴장 높은 웨이브를 버티게 합니다.', synergyText: 'wild/mobility 조합은 숲의 추격에서 강합니다.' },
+    sigilBattery: { rarity: 'class', tags: ['arcane', 'shield'], classHint: '마법사의 보호막과 주문 속도를 안정화합니다.', synergyText: 'arcane 2개부터 비전 결계가 열립니다.' },
+    forkedMissile: { rarity: 'class', tags: ['arcane', 'pierce', 'boss'], classHint: '마법사가 보스와 줄지은 적을 동시에 압박합니다.', synergyText: 'pierce/boss 조합은 마지막 문 피해를 밀어줍니다.' },
+    hawkMark: { rarity: 'class', tags: ['hunt', 'boss'], classHint: '레인저가 강한 표적을 빠르게 녹입니다.', synergyText: 'hunt 2개부터 추적 표식이 열립니다.' },
+    snareArrow: { rarity: 'class', tags: ['hunt', 'control', 'pierce'], classHint: '레인저가 먼 적을 묶고 줄지은 적을 꿰뚫습니다.', synergyText: 'control/pierce 조합은 웨이브 정리에 좋습니다.' },
+    campfireRation: { rarity: 'common', tags: ['survival', 'mobility'], classHint: '모든 직업의 초반 2분 안정성을 올립니다.', synergyText: 'survival 2개부터 결과 화면에 안정 빌드가 선명해집니다.' },
+    silverThread: { rarity: 'uncommon', tags: ['control', 'mobility'], classHint: '전조를 읽고 피하는 빌드에 잘 맞습니다.', synergyText: 'control 2개부터 판정의 틈이 열립니다.' },
+    bossOmen: { rarity: 'rare', tags: ['boss', 'bell'], classHint: '보스 도달 이후 화력이 부족한 런을 보완합니다.', synergyText: 'boss/bell 태그는 파수꾼 처치 동기를 만듭니다.' },
   };
 
   upgrades.forEach((upgrade) => {
@@ -668,5 +956,5 @@
     upgrade.synergyText = meta.synergyText || `${upgrade.family} 선택을 이어가면 빌드 정체성이 강해집니다.`;
   });
 
-  window.DungeonworldSurvivorsContent = { scenes, enemyTypes, wavePatterns, playbooks, upgrades };
+  window.DungeonworldSurvivorsContent = { scenes, balance, enemyTypes, wavePatterns, playbooks, upgrades };
 })();
