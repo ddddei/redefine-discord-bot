@@ -28,7 +28,7 @@ function testWaveRollBehavior() {
 
   const content = context.window.DungeonworldSurvivorsContent;
   const systems = context.window.DungeonworldSurvivorsSystems;
-  const state = systems.createState(content, 'cleric');
+  const state = systems.createState(content, 'cleric', { mode: 'demo' });
   state.elapsed = 44.95;
   state.enemies = [];
 
@@ -40,6 +40,28 @@ function testWaveRollBehavior() {
   assert.match(state.lastMoveResult, /7-9|10\+|6-/);
   assert.strictEqual(state.playbook.title, '사제');
   assert.strictEqual(state.player.stats.wis, 2);
+}
+
+function testRunModesAndStandardTimeline() {
+  const { content, systems } = loadGameRuntime();
+  const demo = systems.createState(content, 'fighter');
+  const quick = systems.createState(content, 'fighter', { mode: 'quick' });
+  const standard = systems.createState(content, 'fighter', { mode: 'standard' });
+
+  assert.strictEqual(demo.mode.id, 'demo');
+  assert.strictEqual(demo.duration, 240);
+  assert.strictEqual(quick.mode.id, 'quick');
+  assert.strictEqual(quick.duration, 600);
+  assert.strictEqual(standard.mode.id, 'standard');
+  assert.strictEqual(standard.duration, 1800);
+  assert.strictEqual(demo.waves[demo.waves.length - 1].id, 'finalGate');
+  assert.strictEqual(standard.waves[0].at, 0);
+  assert.strictEqual(standard.waves[standard.waves.length - 1].at, 1740);
+  assert.strictEqual(standard.waves[standard.waves.length - 1].until, 1800);
+  assert.ok(standard.waves.some((wave) => wave.id === 'standard-15-20'));
+  assert.strictEqual(systems.getCurrentWave(standard).id, 'standard-0-3');
+  standard.elapsed = 1500;
+  assert.strictEqual(systems.getCurrentWave(standard).id, 'standard-25-29');
 }
 
 function loadGameRuntime() {
@@ -223,6 +245,82 @@ function testUpgradeMetadataAndSynergies() {
   assert.ok(wizard.buildTags.arcane >= 2);
   assert.ok(wizard.synergies.some((synergy) => synergy.id === 'arcaneWard'));
   assert.ok(wizard.player.shots > 1);
+}
+
+function testInventoryEvolutionAndChestRewards() {
+  const { content, systems } = loadGameRuntime();
+  assert.ok(content.itemCatalog);
+  assert.ok(content.itemCatalog.weapons.length >= 6);
+  assert.ok(content.itemCatalog.passives.length >= 6);
+  assert.ok(content.itemCatalog.evolutions.length >= 6);
+
+  const expectedEvolutions = {
+    cleave: '방패선의 회전검',
+    knives: '그림자 칼비',
+    radiance: '라메의 태양환',
+    roots: '고대 뿌리 감옥',
+    missile: '검은 서고의 유성',
+    arrow: '파수꾼 사냥매',
+  };
+  Object.entries(expectedEvolutions).forEach(([weaponId, evolvedTitle]) => {
+    const weapon = content.itemCatalog.weapons.find((item) => item.id === weaponId);
+    const evolution = content.itemCatalog.evolutions.find((item) => item.weaponId === weaponId);
+    assert.ok(weapon, `${weaponId} weapon should exist`);
+    assert.strictEqual(weapon.maxLevel, 8);
+    assert.ok(evolution, `${weaponId} evolution should exist`);
+    assert.strictEqual(evolution.title, evolvedTitle);
+    assert.ok(content.itemCatalog.passives.some((item) => item.id === evolution.passiveId));
+  });
+  content.itemCatalog.passives.forEach((passive) => {
+    assert.strictEqual(passive.maxLevel, 5);
+  });
+
+  const state = systems.createState(content, 'fighter', { mode: 'standard' });
+  assert.deepStrictEqual(Object.keys(state.inventory).sort(), ['evolvedWeapons', 'passives', 'weapons'].sort());
+  assert.strictEqual(state.inventory.weapons[0].id, 'cleave');
+  assert.strictEqual(state.inventory.weapons[0].level, 1);
+  assert.strictEqual(systems.getEligibleEvolutions(state).length, 0);
+
+  systems.setInventoryItemLevel(state, 'weapon', 'cleave', 8);
+  systems.setInventoryItemLevel(state, 'passive', 'shieldLine', 1);
+  const eligible = systems.getEligibleEvolutions(state);
+  assert.strictEqual(eligible.length, 1);
+  assert.strictEqual(eligible[0].title, '방패선의 회전검');
+
+  const chest = systems.dropChest(state, { x: state.player.x + 1, y: state.player.y });
+  assert.strictEqual(state.chests.length, 1);
+  systems.collectChests(state);
+  assert.strictEqual(state.pendingChestRewards.length, 1);
+  const reward = systems.claimChestReward(state);
+  assert.strictEqual(reward.type, 'evolution');
+  assert.strictEqual(reward.evolution.title, '방패선의 회전검');
+  assert.strictEqual(state.pendingChestRewards.length, 0);
+  assert.strictEqual(state.inventory.evolvedWeapons[0].id, 'shieldLineSpinningBlade');
+  assert.strictEqual(state.chests.includes(chest), false);
+
+  const fallback = systems.createState(content, 'ranger', { mode: 'standard' });
+  fallback.upgradeLevels.farShot = 0;
+  systems.dropChest(fallback, { x: fallback.player.x, y: fallback.player.y });
+  systems.collectChests(fallback);
+  const fallbackReward = systems.claimChestReward(fallback);
+  assert.match(fallbackReward.type, /weapon|passive|upgrade/);
+}
+
+function testStandardEliteDropsChest() {
+  const { content, systems } = loadGameRuntime();
+  const standard = systems.createState(content, 'fighter', { mode: 'standard' });
+  standard.elapsed = 300.01;
+  standard.spawnTimer = 99;
+  standard.enemies = [];
+
+  systems.tick(standard, { up: false, down: false, left: false, right: false }, 0.02);
+  const elite = standard.enemies.find((enemy) => enemy.elite);
+  assert.ok(elite);
+  assert.strictEqual(elite.eliteMinute, 5);
+  elite.hp = 0;
+  systems.tick(standard, { up: false, down: false, left: false, right: false }, 0.016);
+  assert.strictEqual(standard.chests.length, 1);
+  assert.strictEqual(standard.chests[0].source, 'elite');
 }
 
 function testRunGoalsSmartRecommendationsAndBossTelemetry() {
@@ -468,7 +566,7 @@ function main() {
   assert.ok(content.includes('표식이 사라지기 전에'));
 
   const systems = readGameFile('systems.js');
-  assert.ok(systems.includes('const GAME_DURATION = 240;'));
+  assert.ok(systems.includes('RUN_MODES'));
   assert.ok(systems.includes('width: 2400'));
   assert.ok(systems.includes('height: 1600'));
   assert.ok(systems.includes('function resolveDungeonMove'));
@@ -500,6 +598,8 @@ function main() {
   assert.ok(systems.includes('recommendationRole'));
   assert.ok(systems.includes('bossContribution'));
   assert.ok(systems.includes('bossPatternAvoids'));
+  assert.ok(systems.includes('function getEligibleEvolutions'));
+  assert.ok(systems.includes('function claimChestReward'));
 
   const game = readGameFile('game.js');
   assert.ok(game.includes('function renderPlaybookOptions'));
@@ -566,11 +666,14 @@ function main() {
   assert.ok(styles.includes('@media (max-width: 980px)'));
 
   testWaveRollBehavior();
+  testRunModesAndStandardTimeline();
   testLargeWorldAndMovementClamp();
   testEveryPlaybookStartsAndAttacks();
   testEnemyProfilesAndTelegraphs();
   testWaveHazardsAffectOnlyInsideArea();
   testUpgradeMetadataAndSynergies();
+  testInventoryEvolutionAndChestRewards();
+  testStandardEliteDropsChest();
   testRunGoalsSmartRecommendationsAndBossTelemetry();
   testBossFlowCanSpawnAndResolveWin();
 

@@ -954,6 +954,29 @@
     ctx.stroke();
   }
 
+  function drawChest(ctx, chest, palette) {
+    const pulse = 1 + Math.sin((chest.age || 0) * 5) * 0.06;
+    ctx.save();
+    ctx.translate(chest.x, chest.y);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = palette.surfaceParchment;
+    ctx.strokeStyle = palette.accentEmber;
+    ctx.lineWidth = 2;
+    ctx.fillRect(-13, -8, 26, 18);
+    ctx.strokeRect(-13, -8, 26, 18);
+    ctx.beginPath();
+    ctx.moveTo(-13, -8);
+    ctx.quadraticCurveTo(0, -19, 13, -8);
+    ctx.lineTo(13, -4);
+    ctx.lineTo(-13, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = palette.accentBell;
+    ctx.fillRect(-2, -3, 4, 8);
+    ctx.restore();
+  }
+
   function drawHud(ctx, state, palette, canvas) {
     const player = state.player;
     const accent = resolveColor(palette, player.accentToken);
@@ -970,7 +993,7 @@
     ctx.textAlign = 'right';
     ctx.fillText(formatTime(Math.max(0, state.duration - state.elapsed)), safeWidth - 12, 42);
     ctx.fillStyle = state.bossSpawned ? palette.accentBell : palette.accentEmber;
-    ctx.fillText(state.bossSpawned ? '보스전' : state.content.wavePatterns[state.waveIndex].title, safeWidth - 12, 67);
+    ctx.fillText(state.bossSpawned ? '보스전' : state.waves[state.waveIndex].title, safeWidth - 12, 67);
     ctx.textAlign = 'left';
   }
 
@@ -1046,6 +1069,7 @@
     state.bossWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
     state.enemyWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
     state.gems.forEach((gem) => drawGem(ctx, gem, palette));
+    state.chests.forEach((chest) => drawChest(ctx, chest, palette));
     state.projectiles.forEach((projectile) => drawProjectile(ctx, projectile, palette));
     state.attackMarks.forEach((mark) => drawAttackMark(ctx, mark, palette));
     state.enemies.forEach((enemy) => drawEnemy(ctx, enemy, palette));

@@ -33,13 +33,19 @@
     upgradeOptions: document.getElementById('upgrade-options'),
     qaPanel: document.getElementById('qa-panel'),
   };
-  let state = systems.createState(content);
+  let state = systems.createState(content, 'fighter', { mode: getRequestedMode() });
   let lastFrame = 0;
   let pendingUpgrades = [];
+  let pendingChestReward = null;
   let previousFocus = null;
 
+  function getRequestedMode() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') || 'demo';
+  }
+
   function resetGame(playbookId) {
-    state = systems.createState(content, playbookId);
+    state = systems.createState(content, playbookId, { mode: getRequestedMode() });
     lastFrame = performance.now();
     elements.pause.disabled = false;
     elements.pause.textContent = '일시정지';
@@ -55,12 +61,13 @@
     if (state.status === 'running') {
       const result = systems.tick(state, input, dt);
       if (result === 'level') openUpgradeModal();
+      if (result === 'chest') openChestModal();
       if (result === 'won') finishGame(true);
       if (result === 'lost') finishGame(false);
     }
     renderer.render(ctx, state, systems.WORLD);
     updateDom();
-    if (state.status === 'running' || state.status === 'paused' || state.status === 'level') {
+    if (state.status === 'running' || state.status === 'paused' || state.status === 'level' || state.status === 'chest') {
       requestAnimationFrame(loop);
     }
   }
@@ -94,7 +101,7 @@
     pendingUpgrades = systems.pickUpgrades(state);
     elements.modalKicker.textContent = `레벨 ${state.player.level}`;
     elements.modalTitle.textContent = '어떤 도움을 붙잡을까요?';
-    elements.modalCopy.textContent = '전투가 잠깐 멈췄습니다. 다음 웨이브를 버틸 방법을 하나 선택해 주세요.';
+    elements.modalCopy.textContent = '무기와 패시브를 반복해서 고르면 레벨이 오릅니다. 무기 Lv.8과 지정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화가 열립니다.';
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.add('hidden');
     renderUpgradeOptions();
@@ -111,14 +118,16 @@
       button.innerHTML = [
         '<span class="card-seal" aria-hidden="true"></span>',
         `<span class="recommendation-pill">${upgrade.recommendationRole || '추천'}</span>`,
-        `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${upgrade.family}</span>`,
+        `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${formatItemType(upgrade)}</span>`,
         `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong>`,
         `<span class="rune-badges">${formatTagBadges(upgrade.tags)}</span>`,
-        `<span>${upgrade.text}</span>`,
-        `<span class="recommendation-reason">${upgrade.recommendationReason || '현재 런의 선택지를 넓힙니다.'}</span>`,
+        `<span class="level-line">현재 레벨 ${nextLevel - 1} → 다음 레벨 ${nextLevel} / 최대 ${upgrade.maxLevel}</span>`,
+        `<span class="effect-line">이번 선택: ${upgrade.effectPreview || upgrade.text}</span>`,
+        `<span class="evolution-line">${upgrade.evolutionCondition || '진화 조건: 무기 Lv.8 + 지정 패시브 + 엘리트 상자'}</span>`,
+        `<span class="recommendation-reason">추천 이유: ${upgrade.recommendationReason || '현재 런의 선택지를 넓힙니다.'}</span>`,
         `<span class="build-line">${describeBuildDirection(upgrade)}</span>`,
-        `<span class="synergy-hint">${upgrade.classHint}</span>`,
-        `<span class="synergy-hint">${upgrade.synergyText}</span>`,
+        `<span class="synergy-hint">역할/태그: ${upgrade.classHint}</span>`,
+        `<span class="synergy-hint">시너지 힌트: ${upgrade.synergyText}</span>`,
       ].join('');
       button.addEventListener('click', () => chooseUpgrade(upgrade));
       elements.upgradeOptions.appendChild(button);
@@ -157,6 +166,50 @@
     canvas.focus();
   }
 
+  function openChestModal() {
+    state.status = 'chest';
+    pendingChestReward = state.pendingChestRewards[0] || null;
+    elements.modalKicker.textContent = '엘리트 상자';
+    elements.modalTitle.textContent = pendingChestReward && pendingChestReward.type === 'evolution'
+      ? '무기가 진화합니다'
+      : '상자 보상을 고릅니다';
+    elements.modalCopy.textContent = '엘리트를 쓰러뜨려 상자가 열렸습니다. 진화 조건을 만족한 무기가 있으면 진화가 먼저 적용됩니다.';
+    elements.modalPrimary.classList.add('hidden');
+    elements.modalSecondary.classList.add('hidden');
+    renderChestReward();
+    showModal('chest');
+  }
+
+  function renderChestReward() {
+    elements.upgradeOptions.innerHTML = '';
+    const button = document.createElement('button');
+    button.className = 'upgrade-option rarity-rare chest-reward-option';
+    button.type = 'button';
+    const title = formatChestRewardTitle(pendingChestReward);
+    const copy = formatChestRewardCopy(pendingChestReward);
+    button.innerHTML = [
+      '<span class="card-seal" aria-hidden="true"></span>',
+      '<span class="recommendation-pill">상자 보상</span>',
+      `<span class="option-meta">${pendingChestReward ? formatChestRewardType(pendingChestReward.type) : '보상'}</span>`,
+      `<strong>${title}</strong>`,
+      `<span class="effect-line">${copy}</span>`,
+      '<span class="evolution-line">진화 우선 규칙: 무기 Lv.8 + 지정 패시브 보유 + 상자 획득</span>',
+      '<span class="recommendation-reason">추천 이유: 상자 보상은 즉시 적용되어 다음 웨이브를 버틸 힘을 만듭니다.</span>',
+    ].join('');
+    button.addEventListener('click', claimChestReward);
+    elements.upgradeOptions.appendChild(button);
+  }
+
+  function claimChestReward() {
+    systems.claimChestReward(state);
+    pendingChestReward = null;
+    hideModal();
+    state.status = 'running';
+    lastFrame = performance.now();
+    requestAnimationFrame(loop);
+    canvas.focus();
+  }
+
   function finishGame(won) {
     state.status = won ? 'won' : 'lost';
     state.runSummary = systems.getRunSummary(state);
@@ -177,7 +230,7 @@
   }
 
   function updateDom() {
-    const scene = content.scenes[state.sceneIndex];
+    const scene = state.scenes[state.sceneIndex];
     elements.sceneTitle.textContent = scene.title;
     elements.sceneCopy.textContent = scene.copy;
     elements.time.textContent = renderer.formatTime(state.duration - state.elapsed);
@@ -197,12 +250,12 @@
     document.getElementById('stat-dex-value').textContent = formatStat(state.player.stats.dex);
     document.getElementById('stat-wis-value').textContent = formatStat(state.player.stats.wis);
     document.getElementById('stat-will-value').textContent = formatStat(state.player.stats.will);
-    const wave = content.wavePatterns[state.waveIndex];
+    const wave = state.waves[state.waveIndex];
     elements.wave.textContent = wave.title;
     elements.objective.textContent = state.bossSpawned
       ? '검은 종 파수꾼을 쓰러뜨리세요'
       : (wave.objective || wave.copy);
-    elements.goal.textContent = state.bossSpawned ? '보스전' : '생존';
+    elements.goal.textContent = state.bossSpawned ? '보스전' : `${state.mode.title}`;
     elements.upgrades.innerHTML = state.learnedUpgrades.map((name) => `<li>${name}</li>`).join('');
     elements.runGoals.innerHTML = systems.evaluateRunGoals(state).map((goal) => (
       `<li><strong>${goal.title}</strong><span>${goal.progress}</span></li>`
@@ -227,7 +280,7 @@
   function showIntro() {
     elements.modalKicker.textContent = '플레이북 선택';
     elements.modalTitle.textContent = '누구로 버틸까요?';
-    elements.modalCopy.textContent = '웨이브가 바뀔 때 던전월드식 2d6 판정이 일어나고, 결과에 따라 회복이나 긴장, 추가 압박이 생깁니다. 포인트나 Discord 계정 연동은 없습니다.';
+    elements.modalCopy.textContent = '보석을 먹으면 경험치가 오르고, 레벨업하면 무기나 패시브를 고릅니다. 같은 무기를 여러 번 고르면 강해지며, 무기 Lv.8과 특정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화할 수 있습니다. 30분 정식 런에서는 엘리트를 잡아 상자를 얻고, 30분까지 버티면 마지막 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.';
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.remove('hidden');
     elements.modalSecondary.textContent = '닫기';
@@ -254,6 +307,36 @@
       arrow: '검은 화살',
     };
     return attackNames[attack] || '자동 공격';
+  }
+
+  function formatItemType(upgrade) {
+    if (upgrade.itemType) return upgrade.itemType;
+    if (upgrade.family === 'weapon') return '무기';
+    if (upgrade.family === 'survival' || upgrade.family === 'mobility' || upgrade.family === 'control') return '패시브';
+    return '강화';
+  }
+
+  function formatChestRewardType(type) {
+    if (type === 'evolution') return '진화 무기';
+    if (type === 'weapon') return '무기 강화';
+    if (type === 'passive') return '패시브 강화';
+    return '강화';
+  }
+
+  function formatChestRewardTitle(reward) {
+    if (!reward) return '상자 보상';
+    if (reward.type === 'evolution') return reward.evolution.title;
+    if (reward.item) return `${reward.item.title} Lv.${reward.item.level + 1}`;
+    if (reward.upgrade) return reward.upgrade.title;
+    return '상자 보상';
+  }
+
+  function formatChestRewardCopy(reward) {
+    if (!reward) return '상자 보상을 확인합니다.';
+    if (reward.type === 'evolution') return reward.evolution.effect;
+    if (reward.item) return `${reward.item.title}을 한 단계 강화합니다. 현재 Lv.${reward.item.level}에서 Lv.${reward.item.level + 1}이 됩니다.`;
+    if (reward.upgrade) return reward.upgrade.text;
+    return '보유 무기나 패시브를 강화합니다.';
   }
 
   function formatRarity(rarity) {
@@ -353,7 +436,7 @@
   function hideModalOnly() {
     elements.modal.classList.add('hidden');
     delete elements.modal.dataset.mode;
-    if (state.status === 'running' || state.status === 'level') {
+    if (state.status === 'running' || state.status === 'level' || state.status === 'chest') {
       canvas.focus();
       return;
     }
@@ -391,7 +474,7 @@
       elements.qaPanel.textContent = '';
       return;
     }
-    const wave = content.wavePatterns[state.waveIndex];
+    const wave = state.waves[state.waveIndex];
     const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
     const bossState = boss
       ? `${state.bossPhase ? state.bossPhase.title : '대기'} ${Math.ceil(boss.hp)} / ${Math.ceil(boss.maxHp)}`
@@ -404,9 +487,10 @@
     elements.qaPanel.innerHTML = [
       `<strong>QA balance</strong>`,
       `<span>생존 ${renderer.formatTime(state.elapsed)} · 처치 ${state.kills}</span>`,
+      `<span>모드 ${state.mode.title} · 남은 시간 ${renderer.formatTime(state.duration - state.elapsed)}</span>`,
       `<span>레벨 ${state.player.level} · XP ${state.player.xp} / ${state.player.nextXp}</span>`,
       `<span>웨이브 ${wave.title} · 적 ${state.enemies.length}</span>`,
-      `<span>위험 ${state.hazards.length} · 보스 ${bossState}</span>`,
+      `<span>위험 ${state.hazards.length} · 상자 ${state.chests.length} · 보스 ${bossState}</span>`,
       `<span>최근 업그레이드 ${recent}</span>`,
       `<span>추천 ${recommendation}</span>`,
       `<span>런 목표 ${goals}</span>`,
@@ -418,7 +502,7 @@
     if (!qaModeEnabled() || !event.shiftKey || state.status !== 'running') return false;
     const key = event.key.toLowerCase();
     if (key === 'b') {
-      state.elapsed = 205.1;
+      state.elapsed = state.mode.bossAt + 1;
       state.spawnTimer = 99;
       state.enemies = [];
       systems.tick(state, input, 0.02);

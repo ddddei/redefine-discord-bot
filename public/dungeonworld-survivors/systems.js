@@ -1,5 +1,24 @@
 (function () {
-  const GAME_DURATION = 240;
+  const RUN_MODES = {
+    demo: { id: 'demo', title: '4분 데모', duration: 240, wavesKey: 'wavePatterns', scenesKey: 'scenes', bossAt: 198, eliteMinutes: [] },
+    quick: { id: 'quick', title: '10분 퀵 런', duration: 600, wavesKey: 'standardWavePatterns', scenesKey: 'standardScenes', bossAt: 570, eliteMinutes: [5] },
+    standard: { id: 'standard', title: '30분 정식 런', duration: 1800, wavesKey: 'standardWavePatterns', scenesKey: 'standardScenes', bossAt: 1740, eliteMinutes: [5, 10, 15, 20, 25] },
+  };
+  const DEFAULT_RUN_MODE = 'demo';
+  const UPGRADE_ITEM_LINKS = {
+    shieldBash: { type: 'weapon', id: 'cleave' },
+    ironVow: { type: 'passive', id: 'shieldLine' },
+    shadowStep: { type: 'passive', id: 'shadowStepPassive' },
+    fanKnives: { type: 'weapon', id: 'knives' },
+    healingLitany: { type: 'passive', id: 'rameLeafPassive' },
+    sanctuaryCircle: { type: 'weapon', id: 'radiance' },
+    beastForm: { type: 'passive', id: 'ancientRootPassive' },
+    rootMaze: { type: 'weapon', id: 'roots' },
+    grimGrimoire: { type: 'passive', id: 'blackLibraryPassive' },
+    forkedMissile: { type: 'weapon', id: 'missile' },
+    hawkMark: { type: 'passive', id: 'sentinelMarkPassive' },
+    snareArrow: { type: 'weapon', id: 'arrow' },
+  };
   const WORLD = {
     width: 2400,
     height: 1600,
@@ -106,12 +125,38 @@
     return content.playbooks.find((playbook) => playbook.id === playbookId) || content.playbooks[0];
   }
 
-  function createState(content, playbookId = 'fighter') {
+  function resolveRunMode(options) {
+    const requested = options && options.mode ? options.mode : DEFAULT_RUN_MODE;
+    return RUN_MODES[requested] || RUN_MODES[DEFAULT_RUN_MODE];
+  }
+
+  function selectModeList(content, mode, key, fallbackKey) {
+    const list = content[mode[key]] || content[fallbackKey];
+    return list && list.length > 0 ? list : content[fallbackKey];
+  }
+
+  function createInventory(content, playbook) {
+    const catalog = content.itemCatalog || { weapons: [], passives: [], evolutions: [] };
+    const weapon = catalog.weapons.find((item) => item.attack === playbook.attack) || catalog.weapons[0];
+    return {
+      weapons: weapon ? [{ id: weapon.id, title: weapon.title, level: 1, maxLevel: weapon.maxLevel }] : [],
+      passives: [],
+      evolvedWeapons: [],
+    };
+  }
+
+  function createState(content, playbookId = 'fighter', options = {}) {
     const playbook = findPlaybook(content, playbookId);
+    const mode = resolveRunMode(options);
+    const waves = selectModeList(content, mode, 'wavesKey', 'wavePatterns');
+    const scenes = selectModeList(content, mode, 'scenesKey', 'scenes');
     return {
       content,
       playbook,
-      duration: GAME_DURATION,
+      mode,
+      duration: mode.duration,
+      waves,
+      scenes,
       elapsed: 0,
       sceneIndex: 0,
       waveIndex: 0,
@@ -125,12 +170,15 @@
       enemies: [],
       projectiles: [],
       gems: [],
+      chests: [],
+      pendingChestRewards: [],
       floaters: [],
       hazards: [],
       enemyWarnings: [],
       bossWarnings: [],
       effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0 },
       upgradeLevels: {},
+      inventory: createInventory(content, playbook),
       learnedUpgrades: [playbook.learned, playbook.loadout],
       selectedUpgrades: [],
       buildTags: {},
@@ -148,6 +196,7 @@
       hazardTimer: 2.4,
       bossPhase: null,
       bossPatternTimer: 0,
+      spawnedEliteMinutes: [],
       status: 'ready',
     };
   }
@@ -183,9 +232,9 @@
   }
 
   function getCurrentWave(state) {
-    return state.content.wavePatterns.find((wave) => (
+    return state.waves.find((wave) => (
       state.elapsed >= wave.at && state.elapsed < wave.until
-    )) || state.content.wavePatterns[state.content.wavePatterns.length - 1];
+    )) || state.waves[state.waves.length - 1];
   }
 
   function createEdgePoint(side, offset) {
@@ -245,7 +294,7 @@
 
   function updateWave(state, dt) {
     const wave = getCurrentWave(state);
-    const nextWaveIndex = state.content.wavePatterns.indexOf(wave);
+    const nextWaveIndex = state.waves.indexOf(wave);
     if (nextWaveIndex !== state.waveIndex) {
       state.waveIndex = nextWaveIndex;
       state.hazardTimer = 1.2;
@@ -264,7 +313,8 @@
       state.spawnTimer = Math.max(0.28, wave.cadence * baseCadence - state.elapsed / 560);
     }
 
-    const bossAt = state.content.balance && state.content.balance.boss ? state.content.balance.boss.spawnAt : 205;
+    spawnDueElites(state);
+    const bossAt = state.mode.bossAt || (state.content.balance && state.content.balance.boss ? state.content.balance.boss.spawnAt : 205);
     if (!state.bossSpawned && state.elapsed > bossAt) {
       spawnEnemy(state, state.content.enemyTypes.sentinel, { x: WORLD.towerX, y: WORLD.towerY + 170 });
       state.bossSpawned = true;
@@ -282,6 +332,35 @@
 
     updateWaveHazards(state, wave, dt);
     updateBossPatterns(state, dt);
+  }
+
+  function spawnDueElites(state) {
+    (state.mode.eliteMinutes || []).forEach((minute) => {
+      const at = minute * 60;
+      if (state.elapsed < at || state.spawnedEliteMinutes.includes(minute)) return;
+      state.spawnedEliteMinutes.push(minute);
+      spawnElite(state, minute);
+    });
+  }
+
+  function spawnElite(state, minute) {
+    const typeIds = ['armor', 'mimic', 'cultist', 'wolf'];
+    const type = state.content.enemyTypes[typeIds[(minute / 5 - 1) % typeIds.length]];
+    const side = Math.floor(Math.random() * 4);
+    const axisLength = side < 2 ? WORLD.height : WORLD.width;
+    const edge = createEdgePoint(side, Math.random() * axisLength);
+    spawnEnemy(state, type, edge);
+    const elite = state.enemies[state.enemies.length - 1];
+    elite.elite = true;
+    elite.eliteMinute = minute;
+    elite.name = `${minute}분 엘리트 ${type.name}`;
+    elite.hp *= 3.2;
+    elite.maxHp = elite.hp;
+    elite.damage *= 1.25;
+    elite.radius += 5;
+    elite.xp += 12;
+    state.effects.pulse = 0.55;
+    addFloater(state, `${minute}분 엘리트 등장`, state.player.x, state.player.y - 112, '--accent-ember', 1.8, true);
   }
 
   function updateWaveHazards(state, wave, dt) {
@@ -896,6 +975,9 @@
       const wave = getCurrentWave(state);
       state.waveKills[wave.id] = (state.waveKills[wave.id] || 0) + 1;
       state.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 6, age: 0 });
+      if (enemy.elite) {
+        dropChest(state, enemy);
+      }
       if (enemy.behavior === 'boss') {
         state.bossDefeated = true;
         state.bossDefeatedAt = state.elapsed;
@@ -907,6 +989,20 @@
       }
     });
     state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+  }
+
+  function dropChest(state, source) {
+    const chest = {
+      id: `chest-${Math.round(state.elapsed * 1000)}-${state.chests.length}`,
+      x: clamp(source.x, 36, WORLD.width - 36),
+      y: clamp(source.y, 36, WORLD.height - 36),
+      radius: 15,
+      source: source.elite ? 'elite' : 'event',
+      age: 0,
+    };
+    state.chests.push(chest);
+    addFloater(state, '상자', chest.x, chest.y - 18, '--accent-ember', 1.4);
+    return chest;
   }
 
   function getBossDamageBonus(state, enemy) {
@@ -949,6 +1045,44 @@
       addFloater(state, `+${gem.value}`, gem.x, gem.y - 10, '--status-info', 0.8);
     });
     state.gems = state.gems.filter((gem) => distance(player, gem) >= player.radius + gem.radius);
+  }
+
+  function collectChests(state) {
+    const collected = state.chests.filter((chest) => distance(state.player, chest) < state.player.radius + chest.radius + 4);
+    if (collected.length === 0) return false;
+    collected.forEach((chest) => {
+      state.pendingChestRewards.push(createChestReward(state, chest));
+      addFloater(state, '상자 개봉', chest.x, chest.y - 24, '--accent-ember', 1.2);
+    });
+    state.chests = state.chests.filter((chest) => !collected.includes(chest));
+    return true;
+  }
+
+  function updateChests(state, dt) {
+    state.chests.forEach((chest) => {
+      chest.age += dt;
+    });
+  }
+
+  function createChestReward(state, chest) {
+    const evolution = getEligibleEvolutions(state)[0];
+    if (evolution) {
+      return { type: 'evolution', evolution, chest };
+    }
+    const weapon = state.inventory.weapons.find((item) => item.level < item.maxLevel);
+    if (weapon) {
+      return { type: 'weapon', item: weapon, chest };
+    }
+    const passive = state.inventory.passives.find((item) => item.level < item.maxLevel);
+    if (passive) {
+      return { type: 'passive', item: passive, chest };
+    }
+    const upgrade = pickBestUpgrade(
+      state.content.upgrades.filter((item) => (state.upgradeLevels[item.id] || 0) < item.maxLevel),
+      state,
+      scoreCurrentBuild
+    );
+    return { type: 'upgrade', upgrade, chest };
   }
 
   function updateFloaters(state, dt) {
@@ -1122,11 +1256,43 @@
 
   function addRecommendedUpgrade(chosen, upgrade, role, reason) {
     if (!upgrade || chosen.some((item) => item.id === upgrade.id)) return;
+    const detail = createUpgradeDetail(upgrade, chosen.length, reason);
     chosen.push({
       ...upgrade,
       recommendationRole: role,
       recommendationReason: reason,
+      itemType: detail.itemType,
+      effectPreview: detail.effectPreview,
+      evolutionCondition: detail.evolutionCondition,
     });
+  }
+
+  function createUpgradeDetail(upgrade, index, reason) {
+    const labels = ['무기/공격 강화', '패시브/생존 강화', '빌드 강화'];
+    const itemType = upgrade.family === 'weapon'
+      ? '무기'
+      : upgrade.family === 'survival' || upgrade.family === 'control' || upgrade.family === 'mobility'
+        ? '패시브'
+        : labels[index] || '강화';
+    return {
+      itemType,
+      effectPreview: upgrade.text,
+      evolutionCondition: findEvolutionTextForUpgrade(upgrade),
+      recommendationReason: reason,
+    };
+  }
+
+  function findEvolutionTextForUpgrade(upgrade) {
+    const link = UPGRADE_ITEM_LINKS[upgrade.id];
+    if (!link) return '진화 조건: 무기 Lv.8 + 지정 패시브 + 엘리트 상자';
+    const catalog = window.DungeonworldSurvivorsContent.itemCatalog;
+    const evolution = (catalog.evolutions || []).find((item) => (
+      item.weaponId === link.id || item.passiveId === link.id
+    ));
+    if (!evolution) return '진화 조건: 무기 Lv.8 + 지정 패시브 + 엘리트 상자';
+    const weapon = catalog.weapons.find((item) => item.id === evolution.weaponId);
+    const passive = catalog.passives.find((item) => item.id === evolution.passiveId);
+    return `진화 조건: ${weapon.title} Lv.8 + ${passive.title} 보유 + 상자`;
   }
 
   function pickBestUpgrade(available, state, scorer, existing = []) {
@@ -1175,8 +1341,84 @@
     state.selectedUpgrades.push(selected);
     state.learnedUpgrades.push(`${upgrade.title} ${formatLevel(nextLevel)}`);
     recordBuildTags(state, selected.tags);
+    recordInventoryUpgrade(state, upgrade);
     updateSynergies(state);
     return selected;
+  }
+
+  function recordInventoryUpgrade(state, upgrade) {
+    const link = UPGRADE_ITEM_LINKS[upgrade.id];
+    if (!link) return;
+    setInventoryItemLevel(state, link.type, link.id, getInventoryItemLevel(state, link.type, link.id) + 1);
+  }
+
+  function getInventoryItemLevel(state, itemType, itemId) {
+    const item = findInventoryItem(state, itemType, itemId);
+    return item ? item.level : 0;
+  }
+
+  function setInventoryItemLevel(state, itemType, itemId, level) {
+    const collection = getInventoryCollection(state, itemType);
+    const catalogItem = getCatalogItem(state, itemType, itemId);
+    if (!collection || !catalogItem) return null;
+    let item = collection.find((entry) => entry.id === itemId);
+    if (!item) {
+      item = { id: catalogItem.id, title: catalogItem.title, level: 0, maxLevel: catalogItem.maxLevel };
+      collection.push(item);
+    }
+    item.level = clamp(level, 1, item.maxLevel);
+    return item;
+  }
+
+  function findInventoryItem(state, itemType, itemId) {
+    const collection = getInventoryCollection(state, itemType);
+    return collection ? collection.find((item) => item.id === itemId) : null;
+  }
+
+  function getInventoryCollection(state, itemType) {
+    if (itemType === 'weapon') return state.inventory.weapons;
+    if (itemType === 'passive') return state.inventory.passives;
+    if (itemType === 'evolvedWeapon') return state.inventory.evolvedWeapons;
+    return null;
+  }
+
+  function getCatalogItem(state, itemType, itemId) {
+    const catalog = state.content.itemCatalog || {};
+    const key = itemType === 'weapon' ? 'weapons' : itemType === 'passive' ? 'passives' : 'evolutions';
+    return (catalog[key] || []).find((item) => item.id === itemId);
+  }
+
+  function getEligibleEvolutions(state) {
+    const catalog = state.content.itemCatalog || { evolutions: [] };
+    return (catalog.evolutions || []).filter((evolution) => {
+      if (state.inventory.evolvedWeapons.some((item) => item.id === evolution.id)) return false;
+      const weapon = findInventoryItem(state, 'weapon', evolution.weaponId);
+      const passive = findInventoryItem(state, 'passive', evolution.passiveId);
+      return weapon && weapon.level >= weapon.maxLevel && passive;
+    });
+  }
+
+  function claimChestReward(state) {
+    const reward = state.pendingChestRewards.shift();
+    if (!reward) return null;
+    if (reward.type === 'evolution') {
+      const evolution = reward.evolution;
+      state.inventory.evolvedWeapons.push({ id: evolution.id, title: evolution.title, level: 1, maxLevel: 1 });
+      state.learnedUpgrades.push(`진화: ${evolution.title}`);
+      addFloater(state, `진화: ${evolution.title}`, state.player.x, state.player.y - 86, '--accent-bell', 1.8, true);
+      return reward;
+    }
+    if (reward.type === 'weapon' || reward.type === 'passive') {
+      const item = setInventoryItemLevel(state, reward.type, reward.item.id, reward.item.level + 1);
+      reward.item = item;
+      state.learnedUpgrades.push(`${item.title} Lv.${item.level}`);
+      return reward;
+    }
+    if (reward.type === 'upgrade' && reward.upgrade) {
+      reward.selected = applyUpgrade(state, reward.upgrade);
+      return reward;
+    }
+    return reward;
   }
 
   function recordBuildTags(state, tags) {
@@ -1340,9 +1582,9 @@
   }
 
   function updateScene(state) {
-    const nextIndex = state.content.scenes.findIndex((scene, index) => (
+    const nextIndex = state.scenes.findIndex((scene, index) => (
       state.elapsed >= scene.at
-      && (!state.content.scenes[index + 1] || state.elapsed < state.content.scenes[index + 1].at)
+      && (!state.scenes[index + 1] || state.elapsed < state.scenes[index + 1].at)
     ));
     if (nextIndex >= 0) state.sceneIndex = nextIndex;
   }
@@ -1363,6 +1605,8 @@
     updateEnemies(state, dt);
     resolveHits(state);
     updateGems(state, dt);
+    updateChests(state, dt);
+    if (collectChests(state)) return 'chest';
     updateFloaters(state, dt);
     updateHazards(state, dt);
     updateWarnings(state, dt);
@@ -1376,11 +1620,18 @@
 
   window.DungeonworldSurvivorsSystems = {
     WORLD,
+    RUN_MODES,
     createState,
     applyUpgrade,
+    claimChestReward,
+    collectChests,
+    dropChest,
     evaluateRunGoals,
+    getCurrentWave,
+    getEligibleEvolutions,
     getRunSummary,
     pickUpgrades,
+    setInventoryItemLevel,
     tick,
     clamp,
   };

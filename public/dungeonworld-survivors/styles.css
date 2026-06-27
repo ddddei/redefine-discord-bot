@@ -586,6 +586,27 @@ canvas {
   font-weight: 700;
 }
 
+.level-line,
+.effect-line,
+.evolution-line {
+  border-left: 2px solid color-mix(in srgb, var(--option-accent) 58%, var(--border-subtle));
+  padding-left: var(--space-2);
+}
+
+.effect-line {
+  color: var(--text-primary);
+}
+
+.evolution-line {
+  color: var(--accent-hover);
+  font-weight: 700;
+}
+
+.chest-reward-option {
+  --option-accent: var(--accent-ember);
+  --option-soft: color-mix(in srgb, var(--accent-bell) 24%, var(--surface-parchment));
+}
+
 .upgrade-option.rarity-class {
   --option-accent: var(--accent-bell);
 }

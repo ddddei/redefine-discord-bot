@@ -338,6 +338,213 @@
     },
   ];
 
+  const standardScenes = [
+    { at: 0, title: '마른 참나무 여관 앞', copy: '첫 3분은 보석을 모으고 시작 무기를 익히는 시간입니다.' },
+    { at: 180, title: '뿌리 아래 고블린 길', copy: '웨이브가 길어집니다. 같은 무기와 패시브를 반복해 진화 조건을 준비하세요.' },
+    { at: 360, title: '무너진 신전의 물그릇', copy: '미믹과 슬라임이 보석 길을 막습니다. 엘리트 상자를 노릴 준비를 합니다.' },
+    { at: 540, title: '오크 다리와 기억의 숲', copy: '늑대 돌진과 빈 갑옷이 겹칩니다. 생존 패시브가 빛나는 구간입니다.' },
+    { at: 720, title: '검은 종의 중턱', copy: '15분을 향해 압박이 올라갑니다. 진화 무기가 있다면 런의 방향이 선명해집니다.' },
+    { at: 900, title: '검은탑으로 가는 긴 길', copy: '20분까지는 화력과 자석 범위가 성장 속도를 가릅니다.' },
+    { at: 1200, title: '마지막 문 앞 숲', copy: '25분 이후에는 엘리트와 위험 구역을 모두 읽어야 합니다.' },
+    { at: 1500, title: '검은 종 아래', copy: '29분까지 살아남으면 마지막 문의 균열이 열리기 시작합니다.' },
+    { at: 1740, title: '마지막 문', copy: '30분까지 버티세요. 검은 종 파수꾼이 마지막 문을 지키고 있습니다.' },
+  ];
+
+  const standardWavePatterns = [
+    {
+      id: 'standard-0-3',
+      at: 0,
+      until: 180,
+      title: '0~3분: 여관 앞 정찰',
+      copy: '고블린 정찰병과 슬라임이 얇게 밀려옵니다.',
+      moveName: '위험 돌파',
+      checkStat: 'dex',
+      objective: '보석을 먹어 첫 레벨업을 만들고 시작 무기를 강화하세요.',
+      pressureRule: 'edge-skirmish',
+      hazards: [],
+      cadence: 1.1,
+      pressure: 1,
+      packs: [
+        { type: 'goblin', count: 2, formation: 'split' },
+        { type: 'slime', count: 1, formation: 'arc' },
+      ],
+    },
+    {
+      id: 'standard-3-6',
+      at: 180,
+      until: 360,
+      title: '3~6분: 뿌리 매복',
+      copy: '뿌리 매듭이 길을 묶고 고블린 무리가 양쪽에서 흔듭니다.',
+      moveName: '상황 파악',
+      checkStat: 'wis',
+      objective: '무기 Lv.8과 맞는 패시브 조합을 의식하며 선택지를 고르세요.',
+      pressureRule: 'snare-circles',
+      hazards: [
+        { kind: 'rootSnare', cadence: 5.2, warning: 0.9, duration: 2.2, radius: 66, slow: 1.25, tension: 0.5, colorToken: '--class-druid', label: '뿌리 매듭' },
+      ],
+      cadence: 1.18,
+      pressure: 1.18,
+      packs: [
+        { type: 'goblin', count: 3, formation: 'arc' },
+        { type: 'slime', count: 2, formation: 'line' },
+      ],
+    },
+    {
+      id: 'standard-6-9',
+      at: 360,
+      until: 540,
+      title: '6~9분: 물그릇 압박',
+      copy: '미믹과 슬라임이 경험치 길을 막고 빈 갑옷이 뒤늦게 닫습니다.',
+      moveName: '정면 방어',
+      checkStat: 'str',
+      objective: '첫 엘리트 상자 이후 진화 조건을 완성할 방향을 잡으세요.',
+      pressureRule: 'basin-pools',
+      hazards: [
+        { kind: 'basinPool', cadence: 4.8, warning: 0.8, duration: 2.8, radius: 74, damage: 3, slow: 1.6, colorToken: '--status-info', label: '물그릇 웅덩이' },
+        { kind: 'mimicBite', cadence: 6.2, warning: 0.82, duration: 1.3, radius: 60, damage: 6, tension: 0.45, colorToken: '--accent-ember', label: '미믹 이빨' },
+      ],
+      cadence: 1.28,
+      pressure: 1.32,
+      packs: [
+        { type: 'slime', count: 3, formation: 'line' },
+        { type: 'mimic', count: 1, formation: 'arc' },
+        { type: 'armor', count: 1, formation: 'split' },
+      ],
+    },
+    {
+      id: 'standard-9-12',
+      at: 540,
+      until: 720,
+      title: '9~12분: 숲의 추격',
+      copy: '그림자 늑대와 빈 갑옷이 직선 돌진로를 만들며 몰아붙입니다.',
+      moveName: '의지 유지',
+      checkStat: 'will',
+      objective: '위험 구역을 읽고 상자를 먹을 안전한 틈을 만드세요.',
+      pressureRule: 'charge-lanes',
+      hazards: [
+        { kind: 'wolfLane', cadence: 4.2, warning: 0.72, duration: 1.25, length: 300, width: 42, damage: 7, tension: 0.7, colorToken: '--status-error', label: '늑대 돌진로' },
+        { kind: 'thornCross', cadence: 6.2, warning: 0.9, duration: 1.45, length: 230, width: 34, damage: 5, slow: 1.1, colorToken: '--class-druid', label: '가시 십자로' },
+      ],
+      cadence: 1.38,
+      pressure: 1.45,
+      packs: [
+        { type: 'wolf', count: 2, formation: 'arc' },
+        { type: 'armor', count: 2, formation: 'line' },
+        { type: 'mimic', count: 1, formation: 'split' },
+      ],
+    },
+    {
+      id: 'standard-12-15',
+      at: 720,
+      until: 900,
+      title: '12~15분: 검은 종 중턱',
+      copy: '검은 종 신도가 원형 기도를 겹치고 숲의 적들이 뒤섞입니다.',
+      moveName: '마지막 문 예감',
+      checkStat: 'will',
+      objective: '무기 Lv.8과 패시브를 맞춰 다음 상자 진화를 노리세요.',
+      pressureRule: 'bell-rings',
+      hazards: [
+        { kind: 'bellRing', cadence: 5, warning: 0.95, duration: 1.7, radius: 112, width: 34, damage: 8, tension: 0.8, colorToken: '--accent-bell', label: '검은 종파' },
+      ],
+      cadence: 1.42,
+      pressure: 1.56,
+      packs: [
+        { type: 'cultist', count: 2, formation: 'line' },
+        { type: 'wolf', count: 2, formation: 'split' },
+        { type: 'armor', count: 2, formation: 'arc' },
+      ],
+    },
+    {
+      id: 'standard-15-20',
+      at: 900,
+      until: 1200,
+      title: '15~20분: 긴 검은 길',
+      copy: '중반 이후 적 밀도가 커지고 종파와 돌진로가 번갈아 열립니다.',
+      moveName: '압박 견디기',
+      checkStat: 'str',
+      objective: '진화 무기를 한 개 이상 확보하면 20분 이후가 안정됩니다.',
+      pressureRule: 'mixed-pressure',
+      hazards: [
+        { kind: 'bellRing', cadence: 4.7, warning: 0.9, duration: 1.7, radius: 118, width: 36, damage: 8, tension: 0.85, colorToken: '--accent-bell', label: '검은 종파' },
+        { kind: 'wolfLane', cadence: 4, warning: 0.68, duration: 1.2, length: 330, width: 44, damage: 7, tension: 0.7, colorToken: '--status-error', label: '늑대 돌진로' },
+      ],
+      cadence: 1.5,
+      pressure: 1.78,
+      packs: [
+        { type: 'cultist', count: 2, formation: 'arc' },
+        { type: 'wolf', count: 3, formation: 'split' },
+        { type: 'mimic', count: 2, formation: 'line' },
+      ],
+    },
+    {
+      id: 'standard-20-25',
+      at: 1200,
+      until: 1500,
+      title: '20~25분: 문 앞 숲',
+      copy: '탑의 눈길이 길게 지나가며 빈 갑옷과 신도가 문 앞을 채웁니다.',
+      moveName: '문턱 버티기',
+      checkStat: 'wis',
+      objective: '상자 보상은 진화 조건을 먼저 확인합니다. 조건이 맞으면 진화가 우선입니다.',
+      pressureRule: 'tower-gaze',
+      hazards: [
+        { kind: 'towerGaze', cadence: 5.4, warning: 1, duration: 1.2, length: 390, width: 56, damage: 9, tension: 0.7, colorToken: '--accent-bell', label: '탑의 눈길' },
+        { kind: 'thornCross', cadence: 5.8, warning: 0.86, duration: 1.45, length: 250, width: 36, damage: 6, slow: 1.2, colorToken: '--class-druid', label: '가시 십자로' },
+      ],
+      cadence: 1.58,
+      pressure: 2.05,
+      packs: [
+        { type: 'armor', count: 3, formation: 'line' },
+        { type: 'cultist', count: 3, formation: 'arc' },
+        { type: 'wolf', count: 2, formation: 'split' },
+      ],
+    },
+    {
+      id: 'standard-25-29',
+      at: 1500,
+      until: 1740,
+      title: '25~29분: 검은 종 아래',
+      copy: '모든 적군이 섞이고 상자를 먹는 순간도 위험해집니다.',
+      moveName: '마지막 호흡',
+      checkStat: 'dex',
+      objective: '남은 상자로 핵심 무기나 패시브를 마지막 단계까지 밀어 올리세요.',
+      pressureRule: 'last-hold',
+      hazards: [
+        { kind: 'bellRing', cadence: 4.4, warning: 0.86, duration: 1.6, radius: 124, width: 38, damage: 9, tension: 0.95, colorToken: '--accent-bell', label: '검은 종파' },
+        { kind: 'towerGaze', cadence: 5.1, warning: 0.95, duration: 1.2, length: 420, width: 58, damage: 10, tension: 0.75, colorToken: '--accent-bell', label: '탑의 눈길' },
+      ],
+      cadence: 1.66,
+      pressure: 2.32,
+      packs: [
+        { type: 'cultist', count: 3, formation: 'line' },
+        { type: 'wolf', count: 3, formation: 'arc' },
+        { type: 'armor', count: 3, formation: 'split' },
+        { type: 'mimic', count: 2, formation: 'arc' },
+      ],
+    },
+    {
+      id: 'standard-29-30',
+      at: 1740,
+      until: 1800,
+      title: '29~30분: 마지막 문',
+      copy: '마지막 문이 열리기 전 검은 종 파수꾼이 직접 나타납니다.',
+      moveName: '마지막 문 돌파',
+      checkStat: 'str',
+      objective: '30분까지 버티고 검은 종 파수꾼의 마지막 전조를 넘기세요.',
+      pressureRule: 'final-door',
+      hazards: [
+        { kind: 'bellRing', cadence: 4.2, warning: 0.86, duration: 1.6, radius: 130, width: 40, damage: 10, tension: 1, colorToken: '--accent-bell', label: '검은 종파' },
+        { kind: 'towerGaze', cadence: 4.8, warning: 0.9, duration: 1.18, length: 450, width: 60, damage: 11, tension: 0.8, colorToken: '--accent-bell', label: '탑의 눈길' },
+      ],
+      cadence: 1.72,
+      pressure: 2.55,
+      packs: [
+        { type: 'cultist', count: 4, formation: 'line' },
+        { type: 'armor', count: 3, formation: 'arc' },
+        { type: 'wolf', count: 4, formation: 'split' },
+      ],
+    },
+  ];
+
   const runGoals = [
     {
       id: 'fighter-close-vow',
@@ -1036,5 +1243,43 @@
     upgrade.synergyText = meta.synergyText || `${upgrade.family} 선택을 이어가면 빌드 정체성이 강해집니다.`;
   });
 
-  window.DungeonworldSurvivorsContent = { scenes, balance, enemyTypes, wavePatterns, playbooks, upgrades, runGoals };
+  const itemCatalog = {
+    weapons: [
+      { id: 'cleave', title: '철의 베기', attack: 'cleave', maxLevel: 8, playbookId: 'fighter', type: 'weapon', effect: '베기 범위와 피해가 오릅니다.', evolutionHint: '방패선 패시브와 함께 Lv.8 달성 후 상자에서 진화합니다.' },
+      { id: 'knives', title: '숨은 칼', attack: 'knives', maxLevel: 8, playbookId: 'thief', type: 'weapon', effect: '단검 수와 공격 주기가 좋아집니다.', evolutionHint: '그림자 걸음 패시브와 함께 Lv.8 달성 후 상자에서 진화합니다.' },
+      { id: 'radiance', title: '축성의 빛', attack: 'radiance', maxLevel: 8, playbookId: 'cleric', type: 'weapon', effect: '빛 피해와 회복 흐름이 강해집니다.', evolutionHint: '라메의 잎 패시브와 함께 Lv.8 달성 후 상자에서 진화합니다.' },
+      { id: 'roots', title: '가시뿌리', attack: 'roots', maxLevel: 8, playbookId: 'druid', type: 'weapon', effect: '둔화와 뿌리 피해가 커집니다.', evolutionHint: '고대 뿌리 패시브와 함께 Lv.8 달성 후 상자에서 진화합니다.' },
+      { id: 'missile', title: '마력탄', attack: 'missile', maxLevel: 8, playbookId: 'wizard', type: 'weapon', effect: '관통과 투사체 속도가 오릅니다.', evolutionHint: '검은 서고 패시브와 함께 Lv.8 달성 후 상자에서 진화합니다.' },
+      { id: 'arrow', title: '검은 화살', attack: 'arrow', maxLevel: 8, playbookId: 'ranger', type: 'weapon', effect: '먼 적을 꿰는 피해와 관통이 오릅니다.', evolutionHint: '파수꾼 표식 패시브와 함께 Lv.8 달성 후 상자에서 진화합니다.' },
+    ],
+    passives: [
+      { id: 'shieldLine', title: '방패선', maxLevel: 5, type: 'passive', effect: '방어와 긴장 저항이 오릅니다.' },
+      { id: 'shadowStepPassive', title: '그림자 걸음', maxLevel: 5, type: 'passive', effect: '이동 속도와 회피가 오릅니다.' },
+      { id: 'rameLeafPassive', title: '라메의 잎', maxLevel: 5, type: 'passive', effect: '치유와 둔화 범위가 좋아집니다.' },
+      { id: 'ancientRootPassive', title: '고대 뿌리', maxLevel: 5, type: 'passive', effect: '제어 시간과 위험 구역 저항이 오릅니다.' },
+      { id: 'blackLibraryPassive', title: '검은 서고', maxLevel: 5, type: 'passive', effect: '주문 피해와 보호막 회전이 좋아집니다.' },
+      { id: 'sentinelMarkPassive', title: '파수꾼 표식', maxLevel: 5, type: 'passive', effect: '사거리와 보스 피해가 오릅니다.' },
+    ],
+    evolutions: [
+      { id: 'shieldLineSpinningBlade', title: '방패선의 회전검', weaponId: 'cleave', passiveId: 'shieldLine', type: 'evolvedWeapon', effect: '방패선 주위를 도는 검이 가까운 적을 지속적으로 베어냅니다.' },
+      { id: 'shadowKnifeRain', title: '그림자 칼비', weaponId: 'knives', passiveId: 'shadowStepPassive', type: 'evolvedWeapon', effect: '회피 후 짧은 칼비가 주변 적을 쓸어냅니다.' },
+      { id: 'rameSolarHalo', title: '라메의 태양환', weaponId: 'radiance', passiveId: 'rameLeafPassive', type: 'evolvedWeapon', effect: '축성의 빛이 넓은 태양환으로 번지며 회복을 강화합니다.' },
+      { id: 'ancientRootPrison', title: '고대 뿌리 감옥', weaponId: 'roots', passiveId: 'ancientRootPassive', type: 'evolvedWeapon', effect: '가시뿌리가 적을 오래 묶는 감옥으로 변합니다.' },
+      { id: 'blackLibraryMeteor', title: '검은 서고의 유성', weaponId: 'missile', passiveId: 'blackLibraryPassive', type: 'evolvedWeapon', effect: '마력탄이 관통 후 유성 파편을 남깁니다.' },
+      { id: 'sentinelHuntingHawk', title: '파수꾼 사냥매', weaponId: 'arrow', passiveId: 'sentinelMarkPassive', type: 'evolvedWeapon', effect: '검은 화살이 동료 매 표식과 함께 보스와 엘리트를 추적합니다.' },
+    ],
+  };
+
+  window.DungeonworldSurvivorsContent = {
+    scenes,
+    standardScenes,
+    balance,
+    enemyTypes,
+    wavePatterns,
+    standardWavePatterns,
+    itemCatalog,
+    playbooks,
+    upgrades,
+    runGoals,
+  };
 })();
