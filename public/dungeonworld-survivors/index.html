@@ -31,6 +31,10 @@
           <h2 id="stage-title">마른 참나무 여관 앞</h2>
           <p id="scene-copy">시작을 누르면 토른의 방패 뒤에서 첫 웨이브가 다가옵니다.</p>
         </div>
+        <div class="feedback-strip" aria-live="polite">
+          <span id="wave-value">정찰 웨이브</span>
+          <span id="objective-value">4분을 버티고 마지막 문을 확인하세요</span>
+        </div>
         <div class="canvas-frame">
           <canvas
             id="game-canvas"
@@ -53,13 +57,14 @@
             <div><dt>레벨</dt><dd id="level-value">1</dd></div>
             <div><dt>경험치</dt><dd id="xp-value">0 / 6</dd></div>
             <div><dt>처치</dt><dd id="kill-value">0</dd></div>
+            <div><dt>목표</dt><dd id="goal-value">버티기</dd></div>
           </dl>
         </section>
 
         <section class="status-card">
           <h2>조작</h2>
-          <p>방향키 또는 WASD로 이동합니다. 공격은 가장 가까운 적에게 자동으로 발동합니다.</p>
-          <p>경험치를 모으면 시간이 멈추고 업그레이드 3개 중 하나를 고릅니다.</p>
+          <p>방향키 또는 WASD로 이동합니다. 단검, 창, 잎 고리, 종파는 자동으로 발동합니다.</p>
+          <p>경험치를 모으면 시간이 멈추고 레벨이 남은 업그레이드 3개 중 하나를 고릅니다.</p>
         </section>
 
         <section class="status-card">
@@ -76,7 +81,7 @@
         <p id="modal-kicker" class="kicker">준비</p>
         <h2 id="modal-title">검은 종이 울립니다</h2>
         <p id="modal-copy">
-          4분 동안 버티면 검은탑의 마지막 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.
+          마지막 웨이브의 검은 종 파수꾼을 쓰러뜨리면 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.
         </p>
         <div id="upgrade-options" class="upgrade-options"></div>
         <div class="modal-actions">

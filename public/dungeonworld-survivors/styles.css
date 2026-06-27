@@ -170,6 +170,24 @@ h2 {
   color: var(--text-secondary);
 }
 
+.feedback-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.feedback-strip span:first-child {
+  color: var(--accent-ember);
+  font-weight: 700;
+}
+
 .canvas-frame {
   position: relative;
   overflow: hidden;
@@ -294,6 +312,10 @@ canvas {
 
   .header-actions {
     margin-top: var(--space-4);
+  }
+
+  .feedback-strip {
+    display: grid;
   }
 
   .game-layout {

@@ -11,6 +11,7 @@
       accentPrimary: token('--accent-primary'),
       accentEmber: token('--accent-ember'),
       accentBell: token('--accent-bell'),
+      statusSuccess: token('--status-success'),
       statusError: token('--status-error'),
       statusInfo: token('--status-info'),
     };
@@ -21,6 +22,7 @@
       '--accent-primary': palette.accentPrimary,
       '--accent-ember': palette.accentEmber,
       '--accent-bell': palette.accentBell,
+      '--status-success': palette.statusSuccess,
       '--status-error': palette.statusError,
       '--status-info': palette.statusInfo,
       '--text-secondary': palette.textSecondary,
@@ -70,14 +72,31 @@
       ctx.strokeStyle = withAlpha(palette.accentPrimary, 0.26);
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(0, 0, 118, 0, Math.PI * 2);
+      ctx.arc(0, 0, player.auraRange, 0, Math.PI * 2);
       ctx.stroke();
+    }
+    if (player.orbitingSpears > 0) {
+      const count = player.orbitingSpears + 1;
+      const radius = 48 + player.orbitingSpears * 10;
+      ctx.strokeStyle = withAlpha(palette.accentEmber, 0.26);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = palette.accentEmber;
+      for (let index = 0; index < count; index += 1) {
+        const angle = player.orbitTimer * 3.2 + index * (Math.PI * 2 / count);
+        ctx.save();
+        ctx.translate(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        ctx.rotate(angle);
+        ctx.fillRect(-3, -10, 6, 20);
+        ctx.restore();
+      }
     }
     ctx.restore();
   }
 
   function drawEnemy(ctx, enemy, palette) {
-    ctx.fillStyle = resolveColor(palette, enemy.colorToken);
+    ctx.fillStyle = enemy.hitFlash > 0 ? palette.textPrimary : resolveColor(palette, enemy.colorToken);
     ctx.beginPath();
     ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
     ctx.fill();
@@ -93,10 +112,17 @@
   }
 
   function drawProjectile(ctx, projectile, palette) {
-    ctx.fillStyle = palette.accentEmber;
+    ctx.fillStyle = projectile.kind === 'bell' ? palette.accentBell : palette.accentEmber;
     ctx.beginPath();
     ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
     ctx.fill();
+    if (projectile.kind === 'bell') {
+      ctx.strokeStyle = withAlpha(palette.accentBell, 0.45);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(projectile.x, projectile.y, projectile.radius + 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   function drawGem(ctx, gem, palette) {
@@ -127,7 +153,7 @@
     ctx.fillText(`HP ${Math.ceil(player.health)}/${player.maxHealth}`, 32, 58);
     ctx.fillText(`LV ${player.level}`, 158, 58);
     ctx.textAlign = 'right';
-    ctx.fillText(formatTime(Math.max(0, state.duration - state.elapsed)), world.width - 24, 38);
+    ctx.fillText(state.bossSpawned ? '파수꾼 처치' : formatTime(Math.max(0, state.duration - state.elapsed)), world.width - 24, 38);
     ctx.textAlign = 'left';
   }
 
@@ -135,7 +161,7 @@
     ctx.font = '700 13px Arial, sans-serif';
     ctx.textAlign = 'center';
     floaters.forEach((floater) => {
-      ctx.globalAlpha = Math.max(0, floater.life);
+      ctx.globalAlpha = Math.max(0, floater.life / floater.maxLife);
       ctx.fillStyle = resolveColor(palette, floater.color);
       ctx.fillText(floater.text, floater.x, floater.y);
     });
@@ -152,6 +178,10 @@
 
   function render(ctx, state, world) {
     const palette = getPalette();
+    ctx.save();
+    if (state.effects.shake > 0) {
+      ctx.translate((Math.random() - 0.5) * state.effects.shake * 12, (Math.random() - 0.5) * state.effects.shake * 12);
+    }
     drawBackground(ctx, world, state.elapsed, palette);
     state.gems.forEach((gem) => drawGem(ctx, gem, palette));
     state.projectiles.forEach((projectile) => drawProjectile(ctx, projectile, palette));
@@ -159,6 +189,16 @@
     drawPlayer(ctx, state.player, palette);
     drawFloaters(ctx, state.floaters, palette);
     drawHud(ctx, state, world, palette);
+    if (state.effects.pulse > 0) {
+      ctx.strokeStyle = withAlpha(palette.accentEmber, state.effects.pulse);
+      ctx.lineWidth = 6;
+      ctx.strokeRect(8, 8, world.width - 16, world.height - 16);
+    }
+    if (state.effects.flash > 0) {
+      ctx.fillStyle = withAlpha(palette.accentBell, state.effects.flash * 0.25);
+      ctx.fillRect(0, 0, world.width, world.height);
+    }
+    ctx.restore();
   }
 
   window.DungeonworldSurvivorsRenderer = {

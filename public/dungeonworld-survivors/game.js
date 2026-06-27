@@ -15,6 +15,9 @@
     level: document.getElementById('level-value'),
     xp: document.getElementById('xp-value'),
     kills: document.getElementById('kill-value'),
+    goal: document.getElementById('goal-value'),
+    wave: document.getElementById('wave-value'),
+    objective: document.getElementById('objective-value'),
     upgrades: document.getElementById('upgrade-list'),
     modal: document.getElementById('modal'),
     modalKicker: document.getElementById('modal-kicker'),
@@ -86,8 +89,7 @@
     elements.modalTitle.textContent = '어떤 도움을 붙잡을까요?';
     elements.modalCopy.textContent = '전투가 잠깐 멈췄습니다. 다음 웨이브를 버틸 방법을 하나 선택해 주세요.';
     elements.modalPrimary.classList.add('hidden');
-    elements.modalSecondary.textContent = '잠시 보기';
-    elements.modalSecondary.onclick = hideModalOnly;
+    elements.modalSecondary.classList.add('hidden');
     renderUpgradeOptions();
     showModal();
   }
@@ -95,18 +97,21 @@
   function renderUpgradeOptions() {
     elements.upgradeOptions.innerHTML = '';
     pendingUpgrades.forEach((upgrade) => {
+      const nextLevel = (state.upgradeLevels[upgrade.id] || 0) + 1;
       const button = document.createElement('button');
       button.className = 'upgrade-option';
       button.type = 'button';
-      button.innerHTML = `<strong>${upgrade.title}</strong><span>${upgrade.text}</span>`;
+      button.innerHTML = `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong><span>${upgrade.text}</span>`;
       button.addEventListener('click', () => chooseUpgrade(upgrade));
       elements.upgradeOptions.appendChild(button);
     });
   }
 
   function chooseUpgrade(upgrade) {
-    upgrade.apply(state.player);
-    state.learnedUpgrades.push(upgrade.title);
+    const nextLevel = (state.upgradeLevels[upgrade.id] || 0) + 1;
+    state.upgradeLevels[upgrade.id] = nextLevel;
+    upgrade.apply(state.player, nextLevel);
+    state.learnedUpgrades.push(`${upgrade.title} ${formatLevel(nextLevel)}`);
     hideModal();
     state.status = 'running';
     lastFrame = performance.now();
@@ -120,9 +125,10 @@
     elements.modalKicker.textContent = won ? '생존 성공' : '다시 정비';
     elements.modalTitle.textContent = won ? '마지막 문이 열렸습니다' : '검은 종소리에 밀렸습니다';
     elements.modalCopy.textContent = won
-      ? `처치 ${state.kills}회, 레벨 ${state.player.level}. 포인트 지급 없이 브라우저 안에서만 끝나는 기록입니다.`
+      ? `검은 종 파수꾼을 쓰러뜨렸습니다. 처치 ${state.kills}회, 레벨 ${state.player.level}. 포인트 지급 없이 브라우저 안에서만 끝나는 기록입니다.`
       : '여관으로 물러나 숨을 고릅니다. 다시 시작해도 포인트나 Discord 기록은 남지 않습니다.';
     elements.modalPrimary.classList.remove('hidden');
+    elements.modalSecondary.classList.remove('hidden');
     elements.modalPrimary.textContent = '다시 시작';
     elements.modalPrimary.onclick = startGame;
     elements.modalSecondary.textContent = '닫기';
@@ -140,6 +146,12 @@
     elements.level.textContent = String(state.player.level);
     elements.xp.textContent = `${state.player.xp} / ${state.player.nextXp}`;
     elements.kills.textContent = String(state.kills);
+    const wave = content.wavePatterns[state.waveIndex];
+    elements.wave.textContent = wave.title;
+    elements.objective.textContent = state.bossSpawned
+      ? '검은 종 파수꾼을 쓰러뜨리세요'
+      : wave.copy;
+    elements.goal.textContent = state.bossSpawned ? '보스전' : '생존';
     elements.upgrades.innerHTML = state.learnedUpgrades.map((name) => `<li>${name}</li>`).join('');
   }
 
@@ -149,6 +161,7 @@
     elements.modalCopy.textContent = copy;
     elements.upgradeOptions.innerHTML = '';
     elements.modalPrimary.classList.remove('hidden');
+    elements.modalSecondary.classList.remove('hidden');
     elements.modalPrimary.textContent = primaryLabel;
     elements.modalPrimary.onclick = primaryAction;
     elements.modalSecondary.textContent = '닫기';
@@ -159,10 +172,14 @@
   function showIntro() {
     showMessage(
       '검은 종이 울립니다',
-      '4분 동안 버티면 검은탑의 마지막 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.',
+      '웨이브를 넘기고 마지막에 나타나는 검은 종 파수꾼을 쓰러뜨리면 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.',
       '시작',
       startGame
     );
+  }
+
+  function formatLevel(level) {
+    return ['I', 'II', 'III', 'IV'][level - 1] || String(level);
   }
 
   function showModal() {
@@ -172,6 +189,7 @@
   function hideModal() {
     elements.modal.classList.add('hidden');
     elements.modalPrimary.classList.remove('hidden');
+    elements.modalSecondary.classList.remove('hidden');
   }
 
   function hideModalOnly() {
