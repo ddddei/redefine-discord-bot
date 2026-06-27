@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="프로젝트 리디파인 던전월드 세계관을 바탕으로 한 짧은 브라우저 액션 미니게임입니다."
+    >
+    <title>검은 종 생존전</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <p class="kicker">Dungeon World browser prototype</p>
+        <h1>검은 종 생존전</h1>
+        <p class="lede">
+          변방 여관에서 검은탑까지 밀려오는 적을 버티는 4분짜리 실시간 액션 프로토타입입니다.
+        </p>
+      </div>
+      <div class="header-actions">
+        <button id="start-button" class="button primary" type="button">시작</button>
+        <button id="pause-button" class="button secondary" type="button" disabled>일시정지</button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <section class="stage-panel" aria-labelledby="stage-title">
+        <div class="stage-topline">
+          <h2 id="stage-title">마른 참나무 여관 앞</h2>
+          <p id="scene-copy">시작을 누르면 토른의 방패 뒤에서 첫 웨이브가 다가옵니다.</p>
+        </div>
+        <div class="canvas-frame">
+          <canvas
+            id="game-canvas"
+            width="960"
+            height="540"
+            tabindex="0"
+            aria-label="검은 종 생존전 플레이 영역"
+          >
+            이 게임은 HTML canvas를 지원하는 브라우저에서 플레이할 수 있습니다.
+          </canvas>
+        </div>
+      </section>
+
+      <aside class="side-panel" aria-label="게임 상태">
+        <section class="status-card">
+          <h2>상태</h2>
+          <dl class="stat-list">
+            <div><dt>시간</dt><dd id="time-value">04:00</dd></div>
+            <div><dt>체력</dt><dd id="health-value">100</dd></div>
+            <div><dt>레벨</dt><dd id="level-value">1</dd></div>
+            <div><dt>경험치</dt><dd id="xp-value">0 / 6</dd></div>
+            <div><dt>처치</dt><dd id="kill-value">0</dd></div>
+          </dl>
+        </section>
+
+        <section class="status-card">
+          <h2>조작</h2>
+          <p>방향키 또는 WASD로 이동합니다. 공격은 가장 가까운 적에게 자동으로 발동합니다.</p>
+          <p>경험치를 모으면 시간이 멈추고 업그레이드 3개 중 하나를 고릅니다.</p>
+        </section>
+
+        <section class="status-card">
+          <h2>현재 장비</h2>
+          <ul id="upgrade-list" class="upgrade-list">
+            <li>토른의 방패: 기본 이동과 자동 단검</li>
+          </ul>
+        </section>
+      </aside>
+    </main>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-card">
+        <p id="modal-kicker" class="kicker">준비</p>
+        <h2 id="modal-title">검은 종이 울립니다</h2>
+        <p id="modal-copy">
+          4분 동안 버티면 검은탑의 마지막 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.
+        </p>
+        <div id="upgrade-options" class="upgrade-options"></div>
+        <div class="modal-actions">
+          <button id="modal-primary" class="button primary" type="button">시작</button>
+          <button id="modal-secondary" class="button secondary" type="button">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./content.js"></script>
+    <script src="./systems.js"></script>
+    <script src="./renderer.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

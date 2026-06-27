@@ -58,6 +58,17 @@ Knowledge로 매칭되어야 하는 질문이 FAQ로 엉뚱하게 잡히면, 해
 - `/공지 종류:봇사용안내`
 - `/채널안내`
 
+## 브라우저 던전월드 미니게임 확인
+
+`검은 종 생존전`은 Discord 버튼형 게임이 아니라 `public/dungeonworld-survivors/` 정적 웹게임입니다. 포인트 지급, Discord 계정 연동, 운영 데이터 저장이 없으므로 기존 미니게임 보상 상한과 중복 지급 정책을 건드리지 않습니다.
+
+```bash
+node scripts/test-dungeonworld-survivors-static.js
+python3 -m http.server 4173 --directory public
+```
+
+브라우저에서 `http://127.0.0.1:4173/dungeonworld-survivors/`를 열고 시작, 이동, 자동 공격, 경험치 획득, 레벨업 업그레이드 선택, 일시정지/재개를 확인합니다. 화면에 포인트 지급이나 Discord 계정 연결 안내가 나오면 안 됩니다.
+
 ## Railway 배포 전후 확인 루틴
 
 배포 전에는 `node --check src/index.js`, `node --check src/deploy-commands.js`, `npm run validate:data`, `npm run test:questions`를 실행합니다. 배포 후에는 Railway에서 봇 상태가 Online인지 확인하고, 디스코드에서 `/안내`, `/질문`, `/채널안내`, `/공지` 응답을 확인합니다.

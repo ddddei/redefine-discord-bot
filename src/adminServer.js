@@ -16,6 +16,7 @@ const {
 } = require('./adminApi');
 
 const ADMIN_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'admin');
+const DUNGEONWORLD_SURVIVORS_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'dungeonworld-survivors');
 
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -57,12 +58,21 @@ function resolveAdminAsset(pathname) {
   return filePath;
 }
 
-function serveAdminAsset(req, res, pathname) {
-  if (!requireAdminAuth(req, res)) {
-    return;
+function resolveDungeonworldSurvivorsAsset(pathname) {
+  const relativePath = pathname === '/game/dungeonworld-survivors' || pathname === '/game/dungeonworld-survivors/'
+    ? 'index.html'
+    : pathname.replace(/^\/game\/dungeonworld-survivors\//, '');
+  const normalized = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');
+  const filePath = path.join(DUNGEONWORLD_SURVIVORS_PUBLIC_DIR, normalized);
+
+  if (!filePath.startsWith(DUNGEONWORLD_SURVIVORS_PUBLIC_DIR)) {
+    return null;
   }
 
-  const filePath = resolveAdminAsset(pathname);
+  return filePath;
+}
+
+function servePublicAsset(res, filePath) {
   if (!filePath || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     sendNotFound(res);
     return;
@@ -72,6 +82,18 @@ function serveAdminAsset(req, res, pathname) {
   res.statusCode = 200;
   res.setHeader('Content-Type', CONTENT_TYPES[ext] || 'application/octet-stream');
   fs.createReadStream(filePath).pipe(res);
+}
+
+function serveAdminAsset(req, res, pathname) {
+  if (!requireAdminAuth(req, res)) {
+    return;
+  }
+
+  servePublicAsset(res, resolveAdminAsset(pathname));
+}
+
+function serveDungeonworldSurvivorsAsset(res, pathname) {
+  servePublicAsset(res, resolveDungeonworldSurvivorsAsset(pathname));
 }
 
 function handleAdminApi(req, res, pathname, searchParams, repository) {
@@ -142,6 +164,14 @@ function createAdminRequestHandler(repository) {
 
     if (requestUrl.pathname === '/admin' || requestUrl.pathname.startsWith('/admin/')) {
       serveAdminAsset(req, res, requestUrl.pathname);
+      return;
+    }
+
+    if (
+      requestUrl.pathname === '/game/dungeonworld-survivors'
+      || requestUrl.pathname.startsWith('/game/dungeonworld-survivors/')
+    ) {
+      serveDungeonworldSurvivorsAsset(res, requestUrl.pathname);
       return;
     }
 

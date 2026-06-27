@@ -453,6 +453,16 @@ async function main() {
     assert.strictEqual(page.statusCode, 200);
     assert.ok(page.body.includes('summary-cards'));
     assert.ok(page.body.includes('submission-status-card'));
+
+    const gamePage = await invokeHandler(handler, '/game/dungeonworld-survivors');
+    assert.strictEqual(gamePage.statusCode, 200);
+    assert.strictEqual(gamePage.headers['content-type'], 'text/html; charset=utf-8');
+    assert.ok(gamePage.body.includes('검은 종 생존전'));
+
+    const gameScript = await invokeHandler(handler, '/game/dungeonworld-survivors/game.js');
+    assert.strictEqual(gameScript.statusCode, 200);
+    assert.strictEqual(gameScript.headers['content-type'], 'application/javascript; charset=utf-8');
+    assert.ok(gameScript.body.includes('DungeonworldSurvivorsRenderer'));
   } finally {
     if (originalEnabled === undefined) {
       delete process.env.ADMIN_DASHBOARD_ENABLED;

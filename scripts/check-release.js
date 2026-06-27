@@ -124,6 +124,26 @@ const checks = [
     args: ['--check', 'public/admin/admin.js'],
   },
   {
+    label: 'public/dungeonworld-survivors/content.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/dungeonworld-survivors/content.js'],
+  },
+  {
+    label: 'public/dungeonworld-survivors/systems.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/dungeonworld-survivors/systems.js'],
+  },
+  {
+    label: 'public/dungeonworld-survivors/renderer.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/dungeonworld-survivors/renderer.js'],
+  },
+  {
+    label: 'public/dungeonworld-survivors/game.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/dungeonworld-survivors/game.js'],
+  },
+  {
     label: 'src/exportUtils.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/exportUtils.js'],
@@ -362,6 +382,11 @@ const checks = [
     label: 'dungeonworld flow smoke test',
     command: 'node',
     args: ['scripts/test-dungeonworld-flow.js'],
+  },
+  {
+    label: 'dungeonworld survivors static smoke test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-survivors-static.js'],
   },
   {
     label: 'dungeonworld session 02 content test',
