@@ -18,6 +18,18 @@
   --status-warning: #d09a4a;
   --status-error: #d36f61;
   --status-info: #80a8bd;
+  --class-fighter: #d7c18a;
+  --class-fighter-soft: #514534;
+  --class-cleric: #d8d08f;
+  --class-cleric-soft: #4f4a30;
+  --class-thief: #d9a15f;
+  --class-thief-soft: #533a25;
+  --class-druid: #8fbd78;
+  --class-druid-soft: #31452e;
+  --class-wizard: #9a89df;
+  --class-wizard-soft: #342b54;
+  --class-ranger: #b7c777;
+  --class-ranger-soft: #44492c;
   --shadow-ritual: 0 24px 80px rgba(0, 0, 0, 0.52);
   --space-1: 4px;
   --space-2: 8px;
@@ -75,7 +87,7 @@ canvas {
   gap: var(--space-6);
   width: min(1440px, 100%);
   margin: 0 auto;
-  padding: var(--space-10) clamp(var(--space-4), 4vw, var(--space-10)) var(--space-5);
+  padding: var(--space-8) clamp(var(--space-4), 4vw, var(--space-10)) var(--space-4);
 }
 
 .kicker {
@@ -159,7 +171,7 @@ h2 {
 
 .game-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
   gap: var(--space-5);
   width: min(1440px, 100%);
   margin: 0 auto;
@@ -179,7 +191,7 @@ h2 {
 
 .stage-panel {
   min-width: 0;
-  padding: var(--space-4);
+  padding: var(--space-3);
 }
 
 .stage-topline {
@@ -229,6 +241,63 @@ h2 {
   min-height: 360px;
 }
 
+.canvas-frame::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--surface-canvas) 60%, transparent),
+    inset 0 0 80px color-mix(in srgb, var(--accent-bell) 16%, transparent);
+}
+
+.hud-rail {
+  position: absolute;
+  z-index: 2;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.hud-chip {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--border-default) 80%, transparent);
+  border-radius: 4px;
+  padding: var(--space-2);
+  background: color-mix(in srgb, var(--surface-primary) 78%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.hud-chip span,
+.hud-chip strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-chip span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hud-chip strong {
+  color: var(--text-primary);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.boss-chip strong {
+  color: var(--accent-bell);
+}
+
 canvas {
   display: block;
   width: 100%;
@@ -243,12 +312,26 @@ canvas {
 }
 
 .status-card {
-  padding: var(--space-5);
+  padding: var(--space-4);
 }
 
 .status-card h2 {
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: var(--space-2);
+  font-size: 18px;
+}
+
+.compact-card p {
+  margin-bottom: var(--space-2);
+  font-size: 13px;
+}
+
+.sheet-card {
+  border-color: color-mix(in srgb, var(--active-class, var(--accent-primary)) 56%, var(--border-default));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--active-class-soft, var(--surface-parchment)) 44%, transparent), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 72%, transparent), color-mix(in srgb, var(--surface-secondary) 92%, transparent)),
+    var(--surface-secondary);
 }
 
 .stat-list {
@@ -312,11 +395,24 @@ canvas {
 }
 
 .modal-card {
-  width: min(720px, 100%);
+  width: min(920px, 100%);
   max-height: calc(100dvh - var(--space-8));
   overflow: auto;
+  overflow-x: hidden;
   padding: var(--space-6);
   box-shadow: var(--shadow-ritual);
+}
+
+.modal-card h2,
+.modal-card p,
+.upgrade-option,
+.upgrade-option * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.modal-card h2 {
+  text-wrap: balance;
 }
 
 .modal-card p {
@@ -330,15 +426,17 @@ canvas {
 }
 
 .upgrade-option {
+  --option-accent: var(--accent-ember);
+  --option-soft: var(--surface-parchment);
   display: grid;
   gap: var(--space-1);
   width: 100%;
-  border: 1px solid var(--border-default);
+  border: 1px solid color-mix(in srgb, var(--option-accent) 54%, var(--border-default));
   border-radius: 5px;
   padding: var(--space-4);
   text-align: left;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--surface-parchment) 52%, transparent), transparent),
+    linear-gradient(135deg, color-mix(in srgb, var(--option-soft) 74%, transparent), transparent 64%),
     var(--surface-elevated);
   color: var(--text-primary);
   cursor: pointer;
@@ -347,16 +445,18 @@ canvas {
 
 .upgrade-option:hover,
 .upgrade-option:focus-visible {
-  border-color: var(--accent-hover);
-  outline: 2px solid var(--accent-primary);
+  border-color: var(--option-accent);
+  outline: 2px solid var(--option-accent);
   outline-offset: 2px;
   transform: translateY(-1px);
 }
 
 .upgrade-option strong {
-  color: var(--text-primary);
+  color: var(--option-accent);
   font-size: 18px;
   font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .upgrade-option span {
@@ -365,7 +465,7 @@ canvas {
 }
 
 .upgrade-option .option-meta {
-  color: var(--accent-ember);
+  color: var(--option-accent);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   font-weight: 700;
@@ -373,6 +473,55 @@ canvas {
 
 .playbook-option {
   gap: var(--space-2);
+  min-height: 168px;
+}
+
+.playbook-option::before {
+  width: 42px;
+  height: 7px;
+  content: "";
+  background: var(--option-accent);
+}
+
+.playbook-option .visual-cue {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.playbook-option.fighter,
+.playbook-option[data-playbook="fighter"] {
+  --option-accent: var(--class-fighter);
+  --option-soft: var(--class-fighter-soft);
+}
+
+.playbook-option.cleric,
+.playbook-option[data-playbook="cleric"] {
+  --option-accent: var(--class-cleric);
+  --option-soft: var(--class-cleric-soft);
+}
+
+.playbook-option.thief,
+.playbook-option[data-playbook="thief"] {
+  --option-accent: var(--class-thief);
+  --option-soft: var(--class-thief-soft);
+}
+
+.playbook-option.druid,
+.playbook-option[data-playbook="druid"] {
+  --option-accent: var(--class-druid);
+  --option-soft: var(--class-druid-soft);
+}
+
+.playbook-option.wizard,
+.playbook-option[data-playbook="wizard"] {
+  --option-accent: var(--class-wizard);
+  --option-soft: var(--class-wizard-soft);
+}
+
+.playbook-option.ranger,
+.playbook-option[data-playbook="ranger"] {
+  --option-accent: var(--class-ranger);
+  --option-soft: var(--class-ranger-soft);
 }
 
 @media (max-width: 980px) {
@@ -396,6 +545,10 @@ canvas {
   .canvas-frame {
     min-height: 0;
   }
+
+  .side-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 520px) {
@@ -409,6 +562,26 @@ canvas {
     grid-template-columns: 1fr;
   }
 
+  .stage-topline h2 {
+    font-size: 20px;
+  }
+
+  .modal-card h2 {
+    font-size: clamp(24px, 8vw, 28px);
+  }
+
+  .upgrade-option strong {
+    font-size: clamp(17px, 5.2vw, 20px);
+    line-height: 1.35;
+  }
+
+  .hud-rail {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--space-2);
+    background: var(--surface-primary);
+  }
+
   .button {
     width: 100%;
   }
@@ -417,6 +590,10 @@ canvas {
   .status-card,
   .modal-card {
     padding: var(--space-4);
+  }
+
+  .side-panel {
+    grid-template-columns: 1fr;
   }
 
   .stat-list div {

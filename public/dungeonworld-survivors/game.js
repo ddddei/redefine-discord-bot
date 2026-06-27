@@ -19,6 +19,7 @@
     wave: document.getElementById('wave-value'),
     objective: document.getElementById('objective-value'),
     upgrades: document.getElementById('upgrade-list'),
+    sheetCard: document.getElementById('sheet-card'),
     role: document.getElementById('role-value'),
     attack: document.getElementById('attack-value'),
     survival: document.getElementById('survival-value'),
@@ -114,13 +115,15 @@
     elements.upgradeOptions.innerHTML = '';
     content.playbooks.forEach((playbook) => {
       const button = document.createElement('button');
-      button.className = 'upgrade-option playbook-option';
+      button.className = `upgrade-option playbook-option ${playbook.id}`;
       button.type = 'button';
+      button.dataset.playbook = playbook.id;
       button.innerHTML = [
         `<strong>${playbook.title}</strong>`,
-        `<span class="option-meta">${playbook.role}</span>`,
+        `<span class="option-meta">${playbook.role} · ${playbook.combatMood}</span>`,
         `<span>${playbook.sheetLine}</span>`,
         `<span>${playbook.text}</span>`,
+        `<span class="visual-cue">${playbook.visualCue}</span>`,
         `<span>${playbook.survival}</span>`,
       ].join('');
       button.addEventListener('click', () => startGame(playbook.id));
@@ -170,6 +173,8 @@
     document.getElementById('tension-value').textContent = `${Math.ceil(state.player.tension)} / ${state.player.maxTension}`;
     document.getElementById('move-result-value').textContent = state.lastMoveResult;
     document.getElementById('playbook-value').textContent = state.playbook.title;
+    elements.sheetCard.style.setProperty('--active-class', `var(${state.playbook.accentToken || '--accent-primary'})`);
+    elements.sheetCard.style.setProperty('--active-class-soft', `var(${state.playbook.secondaryToken || '--surface-parchment'})`);
     elements.role.textContent = state.playbook.role;
     elements.attack.textContent = formatAttack(state.playbook.attack);
     elements.survival.textContent = state.playbook.survival.split(':')[0];
@@ -202,7 +207,7 @@
 
   function showIntro() {
     elements.modalKicker.textContent = '플레이북 선택';
-    elements.modalTitle.textContent = '누구의 방식으로 버틸까요?';
+    elements.modalTitle.textContent = '누구로 버틸까요?';
     elements.modalCopy.textContent = '웨이브가 바뀔 때 던전월드식 2d6 판정이 일어나고, 결과에 따라 회복이나 긴장, 추가 압박이 생깁니다. 포인트나 Discord 계정 연동은 없습니다.';
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.remove('hidden');

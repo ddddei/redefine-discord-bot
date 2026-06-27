@@ -94,6 +94,13 @@ function testEveryPlaybookStartsAndAttacks() {
     assert.strictEqual(state.player.attackStyle, expectedAttacks[playbook.id]);
     assert.ok(playbook.role);
     assert.ok(playbook.survival);
+    assert.ok(playbook.accentToken);
+    assert.ok(playbook.secondaryToken);
+    assert.ok(playbook.crest);
+    assert.ok(playbook.combatMood);
+    assert.ok(playbook.visualCue);
+    assert.strictEqual(state.player.playbookId, playbook.id);
+    assert.strictEqual(state.player.accentToken, playbook.accentToken);
 
     const result = systems.tick(state, { up: false, down: false, left: false, right: false }, 0.016);
     assert.match(result, /running|level/);
@@ -107,6 +114,11 @@ function testEveryPlaybookStartsAndAttacks() {
         || state.enemies[0].hp < state.enemies[0].maxHp,
         `${playbook.title} should fire or damage with ${expectedAttacks[playbook.id]}`
       );
+      state.projectiles.forEach((projectile) => {
+        assert.ok(projectile.maxLife);
+        assert.ok(projectile.trail);
+        assert.ok(projectile.impactKind);
+      });
     }
 
     const choices = systems.pickUpgrades(state);
@@ -115,6 +127,29 @@ function testEveryPlaybookStartsAndAttacks() {
       assert.ok(upgrade.pools.some((pool) => playbook.upgradePool.includes(pool)));
     });
   });
+}
+
+function testLargeWorldAndMovementClamp() {
+  const { content, systems } = loadGameRuntime();
+  assert.ok(systems.WORLD.width > 960);
+  assert.ok(systems.WORLD.height > 540);
+  assert.ok(systems.WORLD.towerX > systems.WORLD.startX);
+
+  const state = systems.createState(content, 'ranger');
+  assert.ok(state.player.x > 0 && state.player.x < systems.WORLD.width);
+  assert.ok(state.player.y > 0 && state.player.y < systems.WORLD.height);
+
+  state.player.x = 29;
+  state.player.y = 29;
+  systems.tick(state, { up: true, down: false, left: true, right: false }, 0.6);
+  assert.ok(state.player.x >= 28);
+  assert.ok(state.player.y >= 28);
+
+  state.player.x = systems.WORLD.width - 29;
+  state.player.y = systems.WORLD.height - 29;
+  systems.tick(state, { up: false, down: true, left: false, right: true }, 0.6);
+  assert.ok(state.player.x <= systems.WORLD.width - 28);
+  assert.ok(state.player.y <= systems.WORLD.height - 28);
 }
 
 function testBossFlowCanSpawnAndResolveWin() {
@@ -184,6 +219,8 @@ function main() {
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('const GAME_DURATION = 240;'));
+  assert.ok(systems.includes('width: 2400'));
+  assert.ok(systems.includes('height: 1600'));
   assert.ok(systems.includes('function resolveDungeonMove'));
   assert.ok(systems.includes('function updateTension'));
   assert.ok(systems.includes('lastMoveResult'));
@@ -194,6 +231,8 @@ function main() {
   assert.ok(systems.includes('function fireFanKnives'));
   assert.ok(systems.includes('function fireBellWave'));
   assert.ok(systems.includes('function updateOrbitingSpears'));
+  assert.ok(systems.includes('function getAttackTrail'));
+  assert.ok(systems.includes('impactKind'));
   assert.ok(systems.includes('function consumeLevelUps'));
   assert.ok(systems.includes('function updateWave'));
   assert.ok(systems.includes('bossDefeated'));
@@ -204,16 +243,29 @@ function main() {
   assert.ok(game.includes('플레이북 선택'));
   assert.ok(game.includes('formatStat'));
   assert.ok(game.includes('function formatAttack'));
+  assert.ok(game.includes('visualCue'));
+  assert.ok(game.includes('accentToken'));
+
+  const renderer = readGameFile('renderer.js');
+  assert.ok(renderer.includes('function createCamera'));
+  assert.ok(renderer.includes('function applyCamera'));
+  assert.ok(renderer.includes('drawScreenOverlays'));
+  assert.ok(renderer.includes('drawTower'));
+  assert.ok(renderer.includes('drawRoad'));
+  assert.ok(renderer.includes('drawProjectileTrail'));
 
   const styles = readGameFile('styles.css');
   assert.ok(styles.includes('--surface-parchment: #2a241c;'));
+  assert.ok(styles.includes('--class-fighter'));
   assert.ok(styles.includes('aspect-ratio: 16 / 9;'));
   assert.ok(styles.includes('.feedback-strip'));
+  assert.ok(styles.includes('.hud-rail'));
   assert.ok(styles.includes('.sheet-list'));
   assert.ok(styles.includes('.playbook-option'));
   assert.ok(styles.includes('@media (max-width: 980px)'));
 
   testWaveRollBehavior();
+  testLargeWorldAndMovementClamp();
   testEveryPlaybookStartsAndAttacks();
   testBossFlowCanSpawnAndResolveWin();
 

@@ -28,12 +28,19 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 | Status/warning | --status-warning | #A85F24 | #D09A4A | Caution, upgrade available |
 | Status/error | --status-error | #A53C3C | #D36F61 | Low health, game over |
 | Status/info | --status-info | #315E7C | #80A8BD | Help and hints |
+| Class/fighter | --class-fighter | #8B6F3B | #D7C18A | Fighter cards, player, cleave |
+| Class/cleric | --class-cleric | #8D8238 | #D8D08F | Cleric cards, pulse, healing light |
+| Class/thief | --class-thief | #8E552C | #D9A15F | Thief cards, blade trails |
+| Class/druid | --class-druid | #4F7A44 | #8FBD78 | Druid cards, roots, wild aura |
+| Class/wizard | --class-wizard | #5E4DB2 | #9A89DF | Wizard cards, runes, shield |
+| Class/ranger | --class-ranger | #687839 | #B7C777 | Ranger cards, arrows, hawk marks |
 
 ### Rules
 
 - Game UI uses the dark palette by default.
 - Accent/primary is reserved for the player, start/retry controls, focus rings, and positive progress.
 - Accent/bell is only for the black bell, tower, boss, arcane shield, or special wave language.
+- Class colors are scoped to Dungeon World survivor playbook identity and should stay less dominant than health, XP, enemy, and boss readability colors.
 - No raw color values in UI files outside this table.
 
 ## 3. Typography
@@ -105,6 +112,8 @@ All spacing derives from 4px.
 - **States**: ready, running, paused, win, game over.
 - **Accessibility**: canvas has a text fallback and keyboard focus instructions are visible.
 - **Motion**: canvas motion is real-time; DOM transitions use opacity and transform only.
+- **Map language**: the game field may use procedural canvas art for road, ruins, forest, basin, black tower, fog, and vignette; those are visual-only and do not create collision unless movement rules and tests change.
+- **HUD**: health, XP, timer, level, kills, and boss goal sit close to or over the canvas; character sheet panels are secondary.
 
 ### Playbook Option
 

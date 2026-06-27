@@ -1,6 +1,13 @@
 (function () {
   const GAME_DURATION = 240;
-  const WORLD = { width: 960, height: 540 };
+  const WORLD = {
+    width: 2400,
+    height: 1600,
+    startX: 420,
+    startY: 1060,
+    towerX: 2060,
+    towerY: 300,
+  };
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -17,7 +24,7 @@
 
   function createPlayer(playbook) {
     const player = {
-      x: WORLD.width / 2, y: WORLD.height / 2,
+      x: WORLD.startX, y: WORLD.startY,
       radius: 15, maxHealth: 100, health: 100, speed: 168,
       armor: 0, damage: 18, attackCooldown: 0.62, attackTimer: 0,
       invulnerableTimer: 0, magnet: 74, level: 1, xp: 0, nextXp: 6,
@@ -55,6 +62,11 @@
       companionStrike: 0,
       companionTimer: 0,
       spawnPressure: 0,
+      facing: 0,
+      playbookId: playbook ? playbook.id : 'fighter',
+      accentToken: playbook ? playbook.accentToken : '--accent-primary',
+      secondaryToken: playbook ? playbook.secondaryToken : '--accent-primary',
+      crest: playbook ? playbook.crest : 'shield',
     };
     if (playbook) {
       player.stats = { ...player.stats, ...playbook.stats };
@@ -88,7 +100,7 @@
       projectiles: [],
       gems: [],
       floaters: [],
-      effects: { flash: 0, shake: 0, pulse: 0 },
+      effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0 },
       upgradeLevels: {},
       learnedUpgrades: [playbook.learned, playbook.loadout],
       status: 'ready',
@@ -142,7 +154,7 @@
     const nextWaveIndex = state.content.wavePatterns.indexOf(wave);
     if (nextWaveIndex !== state.waveIndex) {
       state.waveIndex = nextWaveIndex;
-      addFloater(state, wave.title, WORLD.width / 2, 78, '--accent-ember', 1.8);
+      addFloater(state, wave.title, state.player.x, state.player.y - 96, '--accent-ember', 1.8, true);
       state.effects.pulse = 0.5;
       resolveDungeonMove(state, wave);
     }
@@ -155,11 +167,12 @@
     }
 
     if (!state.bossSpawned && state.elapsed > 205) {
-      spawnEnemy(state, state.content.enemyTypes.sentinel, { x: WORLD.width + 42, y: WORLD.height / 2 });
+      spawnEnemy(state, state.content.enemyTypes.sentinel, { x: WORLD.towerX, y: WORLD.towerY + 170 });
       state.bossSpawned = true;
       state.effects.flash = 0.45;
       state.effects.shake = 0.7;
-      addFloater(state, '검은 종 파수꾼이 문을 밀고 나옵니다', WORLD.width / 2, 82, '--accent-bell', 2.1);
+      state.effects.bossPulse = 1;
+      addFloater(state, '검은 종 파수꾼이 문을 밀고 나옵니다', state.player.x, state.player.y - 110, '--accent-bell', 2.1, true);
     }
   }
 
@@ -174,18 +187,18 @@
       state.player.tension = Math.max(0, state.player.tension - 2);
       state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
       state.lastMoveResult = `${wave.moveName} 10+: 흐름을 잡았습니다`;
-      addFloater(state, '10+ 문제 없이 해냅니다', WORLD.width / 2, 112, '--status-success', 1.7);
+      addFloater(state, '10+ 문제 없이 해냅니다', state.player.x, state.player.y - 112, '--status-success', 1.7, true);
       return;
     }
     if (total >= 7) {
       state.player.tension = clamp(state.player.tension + 1, 0, state.player.maxTension);
       state.lastMoveResult = `${wave.moveName} 7-9: 대가를 치릅니다`;
-      addFloater(state, '7-9 해내지만 대가가 생깁니다', WORLD.width / 2, 112, '--accent-ember', 1.7);
+      addFloater(state, '7-9 해내지만 대가가 생깁니다', state.player.x, state.player.y - 112, '--accent-ember', 1.7, true);
       return;
     }
     state.player.tension = clamp(state.player.tension + Math.max(1, 3 - state.player.moveGrace), 0, state.player.maxTension);
     state.lastMoveResult = `${wave.moveName} 6-: 마스터가 움직입니다`;
-    addFloater(state, '6- 예상 밖의 전개', WORLD.width / 2, 112, '--status-error', 1.7);
+    addFloater(state, '6- 예상 밖의 전개', state.player.x, state.player.y - 112, '--status-error', 1.7, true);
     wave.packs.slice(0, 1).forEach((pack) => spawnPack(state, pack));
     state.effects.shake = 0.45;
   }
@@ -198,8 +211,9 @@
     const moving = dx !== 0 || dy !== 0;
     const tensionScale = 1 + player.tension * player.tensionSpeed;
     const speed = player.speed * tensionScale;
-    player.x = clamp(player.x + (moving ? direction.x * speed * dt : 0), 18, WORLD.width - 18);
-    player.y = clamp(player.y + (moving ? direction.y * speed * dt : 0), 18, WORLD.height - 18);
+    if (moving) player.facing = Math.atan2(direction.y, direction.x);
+    player.x = clamp(player.x + (moving ? direction.x * speed * dt : 0), 28, WORLD.width - 28);
+    player.y = clamp(player.y + (moving ? direction.y * speed * dt : 0), 28, WORLD.height - 28);
     player.attackTimer = Math.max(0, player.attackTimer - dt);
     player.invulnerableTimer = Math.max(0, player.invulnerableTimer - dt);
     player.arcaneShieldTimer = Math.max(0, player.arcaneShieldTimer - dt);
@@ -250,6 +264,8 @@
       y: target.y,
       radius: 22 + player.companionStrike * 2,
       kind: 'hawk',
+      angle: -0.82,
+      impactKind: 'hawk',
       life: 0.34,
       maxLife: 0.34,
     });
@@ -285,13 +301,20 @@
       state.projectiles.push({
         x: player.x,
         y: player.y,
+        originX: player.x,
+        originY: player.y,
         vx: vx * player.projectileSpeed,
         vy: vy * player.projectileSpeed,
         radius: player.attackStyle === 'radiance' ? 8 : player.projectileRadius,
         damage: player.damage,
         pierce: player.attackStyle === 'arrow' ? player.pierce + 1 : player.pierce,
         life: player.projectileLife,
+        maxLife: player.projectileLife,
         kind: player.attackStyle,
+        source: player.playbookId,
+        angle: Math.atan2(vy, vx),
+        trail: getAttackTrail(player.attackStyle),
+        impactKind: player.attackStyle,
       });
     });
     player.attackTimer = player.attackCooldown;
@@ -323,6 +346,9 @@
       angle: Math.atan2(facing.y, facing.x),
       arc: player.cleaveArc,
       kind: 'cleave',
+      source: player.playbookId,
+      windup: 0.1,
+      impactKind: 'metal',
       life: 0.18,
       maxLife: 0.18,
     });
@@ -341,13 +367,20 @@
       state.projectiles.push({
         x: player.x,
         y: player.y,
+        originX: player.x,
+        originY: player.y,
         vx: Math.cos(angle) * 360,
         vy: Math.sin(angle) * 360,
         radius: 4,
         damage: 10 + player.fanKnives * 4,
         pierce: 0,
         life: 0.85,
+        maxLife: 0.85,
         kind: 'fan',
+        source: 'thief',
+        angle,
+        trail: 'knife',
+        impactKind: 'blade',
       });
     }
     player.fanTimer = Math.max(0.45, 1.35 - player.fanKnives * 0.18 - player.fanCooldownBonus);
@@ -363,13 +396,20 @@
     state.projectiles.push({
       x: player.x,
       y: player.y,
+      originX: player.x,
+      originY: player.y,
       vx: direction.x * 245,
       vy: direction.y * 245,
       radius: 13 + player.bellWave * 4,
       damage: 24 + player.bellWave * 10,
       pierce: 4 + player.bellWave,
       life: 1.9,
+      maxLife: 1.9,
       kind: 'bell',
+      source: player.playbookId,
+      angle: Math.atan2(direction.y, direction.x),
+      trail: 'bell',
+      impactKind: 'bell',
     });
     player.bellTimer = Math.max(2.1, 3.4 - player.bellWave * 0.35);
   }
@@ -382,10 +422,10 @@
     });
     state.projectiles = state.projectiles.filter((projectile) => (
       projectile.life > 0
-      && projectile.x > -40
-      && projectile.x < WORLD.width + 40
-      && projectile.y > -40
-      && projectile.y < WORLD.height + 40
+      && projectile.x > -120
+      && projectile.x < WORLD.width + 120
+      && projectile.y > -120
+      && projectile.y < WORLD.height + 120
     ));
   }
 
@@ -478,6 +518,16 @@
         if (projectile.life <= 0 || distance(projectile, enemy) > projectile.radius + enemy.radius) return;
         enemy.hp -= projectile.damage;
         enemy.hitFlash = 0.13;
+        state.attackMarks.push({
+          x: enemy.x,
+          y: enemy.y,
+          radius: Math.max(14, projectile.radius + enemy.radius * 0.45),
+          kind: projectile.impactKind || projectile.kind,
+          angle: projectile.angle || 0,
+          source: projectile.source,
+          life: 0.22,
+          maxLife: 0.22,
+        });
         if (projectile.kind === 'roots') enemy.slowTimer = Math.max(enemy.slowTimer, state.player.rootSlow);
         if (projectile.kind === 'radiance') {
           state.player.health = Math.min(state.player.maxHealth, state.player.health + 1.2);
@@ -495,7 +545,7 @@
         state.bossDefeated = true;
         state.effects.flash = 0.65;
         state.effects.shake = 0.55;
-        addFloater(state, '마지막 문이 열립니다', WORLD.width / 2, 92, '--status-success', 2);
+        addFloater(state, '마지막 문이 열립니다', state.player.x, state.player.y - 100, '--status-success', 2, true);
       } else {
         addFloater(state, enemy.name, enemy.x, enemy.y - 12, enemy.colorToken);
       }
@@ -534,6 +584,7 @@
     state.effects.flash = Math.max(0, state.effects.flash - dt);
     state.effects.shake = Math.max(0, state.effects.shake - dt);
     state.effects.pulse = Math.max(0, state.effects.pulse - dt);
+    state.effects.bossPulse = Math.max(0, state.effects.bossPulse - dt * 0.5);
   }
 
   function updateTension(state) {
@@ -546,8 +597,21 @@
     addFloater(state, '긴장이 한계에 닿았습니다', player.x, player.y - 42, '--status-error', 1.5);
   }
 
-  function addFloater(state, text, x, y, color, life = 1.1) {
-    state.floaters.push({ text, x, y, color, life, maxLife: life });
+  function getAttackTrail(kind) {
+    const trails = {
+      arrow: 'arrow',
+      bell: 'bell',
+      fan: 'knife',
+      knives: 'knife',
+      missile: 'rune',
+      radiance: 'halo',
+      roots: 'root',
+    };
+    return trails[kind] || 'ember';
+  }
+
+  function addFloater(state, text, x, y, color, life = 1.1, screenSpace = false) {
+    state.floaters.push({ text, x, y, color, life, maxLife: life, screenSpace });
   }
 
   function consumeLevelUps(state) {
@@ -616,5 +680,6 @@
     createState,
     pickUpgrades,
     tick,
+    clamp,
   };
 })();
