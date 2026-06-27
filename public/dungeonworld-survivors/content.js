@@ -87,6 +87,8 @@
       until: 45,
       title: '정찰 웨이브',
       copy: '고블린 정찰병이 좌우 가장자리에서 얇게 파고듭니다.',
+      moveName: '위험 돌파',
+      checkStat: 'dex',
       cadence: 1.05,
       pressure: 1,
       packs: [
@@ -99,6 +101,8 @@
       until: 90,
       title: '뿌리 매복',
       copy: '고블린은 옆으로 흔들고 슬라임은 느린 덩어리로 길을 막습니다.',
+      moveName: '상황 파악',
+      checkStat: 'wis',
       cadence: 1.18,
       pressure: 1.18,
       packs: [
@@ -112,6 +116,8 @@
       until: 135,
       title: '물그릇 압박',
       copy: '슬라임 무리가 중앙을 누르고 빈 갑옷이 느리게 길목을 닫습니다.',
+      moveName: '정면 방어',
+      checkStat: 'str',
       cadence: 1.34,
       pressure: 1.28,
       packs: [
@@ -125,6 +131,8 @@
       until: 205,
       title: '숲의 추격',
       copy: '그림자 늑대가 돌진하고 빈 갑옷이 뒤에서 압박합니다.',
+      moveName: '의지 유지',
+      checkStat: 'will',
       cadence: 1.42,
       pressure: 1.42,
       packs: [
@@ -138,12 +146,59 @@
       until: 999,
       title: '마지막 문',
       copy: '검은 종 파수꾼을 쓰러뜨려야 문이 열립니다.',
+      moveName: '마지막 문 돌파',
+      checkStat: 'str',
       cadence: 1.55,
       pressure: 1.5,
       packs: [
         { type: 'wolf', count: 2, formation: 'split' },
         { type: 'armor', count: 1, formation: 'arc' },
       ],
+    },
+  ];
+
+  const playbooks = [
+    {
+      id: 'fighter',
+      title: '전사',
+      sheetLine: '근력 +2, 정신력 +1',
+      text: '방패벽을 세우고 정면에서 버팁니다. 피해와 방어가 높고 긴장이 천천히 오릅니다.',
+      learned: '전사 플레이북: 방패벽과 강한 일격',
+      stats: { str: 2, dex: 0, wis: 0, will: 1 },
+      apply: (player) => {
+        player.maxHealth += 16;
+        player.health = player.maxHealth;
+        player.damage += 8;
+        player.armor += 2;
+        player.tensionResist += 0.35;
+      },
+    },
+    {
+      id: 'thief',
+      title: '도적',
+      sheetLine: '민첩 +2, 지혜 +1',
+      text: '위험한 틈을 읽고 빠져나갑니다. 이동, 자석 범위, 부채꼴 단검이 강합니다.',
+      learned: '도적 플레이북: 빠른 발과 숨은 칼',
+      stats: { str: 0, dex: 2, wis: 1, will: 0 },
+      apply: (player) => {
+        player.speed *= 1.16;
+        player.magnet += 44;
+        player.fanKnives = 1;
+      },
+    },
+    {
+      id: 'cleric',
+      title: '사제',
+      sheetLine: '지혜 +2, 정신력 +1',
+      text: '검은 종소리를 의식으로 눌러 둡니다. 잎 고리와 회복, 판정 안정성이 좋습니다.',
+      learned: '사제 플레이북: 축복과 잎 표식',
+      stats: { str: 0, dex: 0, wis: 2, will: 1 },
+      apply: (player) => {
+        player.aura = true;
+        player.auraDamage += 8;
+        player.auraRange += 18;
+        player.health = Math.min(player.maxHealth, player.health + 14);
+      },
     },
   ];
 
@@ -247,5 +302,5 @@
     },
   ];
 
-  window.DungeonworldSurvivorsContent = { scenes, enemyTypes, wavePatterns, upgrades };
+  window.DungeonworldSurvivorsContent = { scenes, enemyTypes, wavePatterns, playbooks, upgrades };
 })();

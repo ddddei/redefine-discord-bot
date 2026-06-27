@@ -31,8 +31,8 @@
   let lastFrame = 0;
   let pendingUpgrades = [];
 
-  function resetGame() {
-    state = systems.createState(content);
+  function resetGame(playbookId) {
+    state = systems.createState(content, playbookId);
     lastFrame = performance.now();
     elements.pause.disabled = false;
     elements.pause.textContent = '일시정지';
@@ -58,8 +58,8 @@
     }
   }
 
-  function startGame() {
-    resetGame();
+  function startGame(playbookId) {
+    resetGame(typeof playbookId === 'string' ? playbookId : state.playbook.id);
     state.status = 'running';
   }
 
@@ -107,6 +107,18 @@
     });
   }
 
+  function renderPlaybookOptions() {
+    elements.upgradeOptions.innerHTML = '';
+    content.playbooks.forEach((playbook) => {
+      const button = document.createElement('button');
+      button.className = 'upgrade-option';
+      button.type = 'button';
+      button.innerHTML = `<strong>${playbook.title}</strong><span>${playbook.sheetLine}</span><span>${playbook.text}</span>`;
+      button.addEventListener('click', () => startGame(playbook.id));
+      elements.upgradeOptions.appendChild(button);
+    });
+  }
+
   function chooseUpgrade(upgrade) {
     const nextLevel = (state.upgradeLevels[upgrade.id] || 0) + 1;
     state.upgradeLevels[upgrade.id] = nextLevel;
@@ -146,6 +158,13 @@
     elements.level.textContent = String(state.player.level);
     elements.xp.textContent = `${state.player.xp} / ${state.player.nextXp}`;
     elements.kills.textContent = String(state.kills);
+    document.getElementById('tension-value').textContent = `${Math.ceil(state.player.tension)} / ${state.player.maxTension}`;
+    document.getElementById('move-result-value').textContent = state.lastMoveResult;
+    document.getElementById('playbook-value').textContent = state.playbook.title;
+    document.getElementById('stat-str-value').textContent = formatStat(state.player.stats.str);
+    document.getElementById('stat-dex-value').textContent = formatStat(state.player.stats.dex);
+    document.getElementById('stat-wis-value').textContent = formatStat(state.player.stats.wis);
+    document.getElementById('stat-will-value').textContent = formatStat(state.player.stats.will);
     const wave = content.wavePatterns[state.waveIndex];
     elements.wave.textContent = wave.title;
     elements.objective.textContent = state.bossSpawned
@@ -170,16 +189,23 @@
   }
 
   function showIntro() {
-    showMessage(
-      '검은 종이 울립니다',
-      '웨이브를 넘기고 마지막에 나타나는 검은 종 파수꾼을 쓰러뜨리면 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.',
-      '시작',
-      startGame
-    );
+    elements.modalKicker.textContent = '플레이북 선택';
+    elements.modalTitle.textContent = '누구의 방식으로 버틸까요?';
+    elements.modalCopy.textContent = '웨이브가 바뀔 때 던전월드식 2d6 판정이 일어나고, 결과에 따라 회복이나 긴장, 추가 압박이 생깁니다. 포인트나 Discord 계정 연동은 없습니다.';
+    elements.modalPrimary.classList.add('hidden');
+    elements.modalSecondary.classList.remove('hidden');
+    elements.modalSecondary.textContent = '닫기';
+    elements.modalSecondary.onclick = hideModalOnly;
+    renderPlaybookOptions();
+    showModal();
   }
 
   function formatLevel(level) {
     return ['I', 'II', 'III', 'IV'][level - 1] || String(level);
+  }
+
+  function formatStat(value) {
+    return value > 0 ? `+${value}` : String(value);
   }
 
   function showModal() {
@@ -217,7 +243,7 @@
 
   window.addEventListener('keydown', (event) => setKey(event, true));
   window.addEventListener('keyup', (event) => setKey(event, false));
-  elements.start.addEventListener('click', startGame);
+  elements.start.addEventListener('click', showIntro);
   elements.pause.addEventListener('click', togglePause);
   elements.modalPrimary.onclick = startGame;
   elements.modalSecondary.onclick = hideModalOnly;

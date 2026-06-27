@@ -238,6 +238,13 @@ canvas {
   color: var(--accent-ember);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-weight: 700;
+  text-align: right;
+}
+
+.sheet-list dd {
+  max-width: 58%;
+  color: var(--accent-primary);
+  white-space: normal;
 }
 
 .upgrade-list {

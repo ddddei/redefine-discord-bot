@@ -15,12 +15,16 @@
     return { x: x / length, y: y / length };
   }
 
-  function createPlayer() {
-    return {
+  function createPlayer(playbook) {
+    const player = {
       x: WORLD.width / 2, y: WORLD.height / 2,
       radius: 15, maxHealth: 100, health: 100, speed: 168,
       armor: 0, damage: 18, attackCooldown: 0.62, attackTimer: 0,
       invulnerableTimer: 0, magnet: 74, level: 1, xp: 0, nextXp: 6,
+      stats: { str: 0, dex: 0, wis: 0, will: 0 },
+      tension: 0,
+      maxTension: 12,
+      tensionResist: 0,
       shots: 1, pierce: 0,
       aura: false,
       auraDamage: 0,
@@ -34,11 +38,22 @@
       bellTimer: 0,
       spawnPressure: 0,
     };
+    if (playbook) {
+      player.stats = { ...player.stats, ...playbook.stats };
+      playbook.apply(player);
+    }
+    return player;
   }
 
-  function createState(content) {
+  function findPlaybook(content, playbookId) {
+    return content.playbooks.find((playbook) => playbook.id === playbookId) || content.playbooks[0];
+  }
+
+  function createState(content, playbookId = 'fighter') {
+    const playbook = findPlaybook(content, playbookId);
     return {
       content,
+      playbook,
       duration: GAME_DURATION,
       elapsed: 0,
       sceneIndex: 0,
@@ -46,15 +61,16 @@
       spawnTimer: 0,
       bossSpawned: false,
       bossDefeated: false,
+      lastMoveResult: '아직 판정 없음',
       kills: 0,
-      player: createPlayer(),
+      player: createPlayer(playbook),
       enemies: [],
       projectiles: [],
       gems: [],
       floaters: [],
       effects: { flash: 0, shake: 0, pulse: 0 },
       upgradeLevels: {},
-      learnedUpgrades: ['토른의 방패: 기본 이동과 자동 단검'],
+      learnedUpgrades: [playbook.learned, '토른의 방패: 기본 이동과 자동 단검'],
       status: 'ready',
     };
   }
@@ -108,9 +124,10 @@
       state.waveIndex = nextWaveIndex;
       addFloater(state, wave.title, WORLD.width / 2, 78, '--accent-ember', 1.8);
       state.effects.pulse = 0.5;
+      resolveDungeonMove(state, wave);
     }
 
-    const pressure = wave.pressure + state.elapsed / 210 + state.player.spawnPressure;
+    const pressure = wave.pressure + state.elapsed / 210 + state.player.spawnPressure + state.player.tension * 0.025;
     state.spawnTimer -= dt * pressure;
     if (state.spawnTimer <= 0) {
       wave.packs.forEach((pack) => spawnPack(state, pack));
@@ -124,6 +141,33 @@
       state.effects.shake = 0.7;
       addFloater(state, '검은 종 파수꾼이 문을 밀고 나옵니다', WORLD.width / 2, 82, '--accent-bell', 2.1);
     }
+  }
+
+  function rollD6() {
+    return Math.floor(Math.random() * 6) + 1;
+  }
+
+  function resolveDungeonMove(state, wave) {
+    const stat = state.player.stats[wave.checkStat] || 0;
+    const total = rollD6() + rollD6() + stat;
+    if (total >= 10) {
+      state.player.tension = Math.max(0, state.player.tension - 2);
+      state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
+      state.lastMoveResult = `${wave.moveName} 10+: 흐름을 잡았습니다`;
+      addFloater(state, '10+ 문제 없이 해냅니다', WORLD.width / 2, 112, '--status-success', 1.7);
+      return;
+    }
+    if (total >= 7) {
+      state.player.tension = clamp(state.player.tension + 1, 0, state.player.maxTension);
+      state.lastMoveResult = `${wave.moveName} 7-9: 대가를 치릅니다`;
+      addFloater(state, '7-9 해내지만 대가가 생깁니다', WORLD.width / 2, 112, '--accent-ember', 1.7);
+      return;
+    }
+    state.player.tension = clamp(state.player.tension + 3, 0, state.player.maxTension);
+    state.lastMoveResult = `${wave.moveName} 6-: 마스터가 움직입니다`;
+    addFloater(state, '6- 예상 밖의 전개', WORLD.width / 2, 112, '--status-error', 1.7);
+    wave.packs.slice(0, 1).forEach((pack) => spawnPack(state, pack));
+    state.effects.shake = 0.45;
   }
 
   function updatePlayer(state, input, dt) {
@@ -281,6 +325,7 @@
       enemy.hitFlash = Math.max(0, enemy.hitFlash - dt);
       if (distance(player, enemy) < player.radius + enemy.radius && player.invulnerableTimer <= 0) {
         player.health -= Math.max(3, enemy.damage - player.armor);
+        player.tension = clamp(player.tension + Math.max(0.35, 1 - player.tensionResist), 0, player.maxTension);
         player.invulnerableTimer = 0.7;
         state.effects.flash = 0.2;
         state.effects.shake = 0.28;
@@ -370,6 +415,16 @@
     state.effects.pulse = Math.max(0, state.effects.pulse - dt);
   }
 
+  function updateTension(state) {
+    const player = state.player;
+    if (player.tension < player.maxTension) return;
+    player.tension = player.maxTension - 3;
+    player.health -= 6;
+    state.effects.flash = 0.28;
+    state.effects.shake = 0.34;
+    addFloater(state, '긴장이 한계에 닿았습니다', player.x, player.y - 42, '--status-error', 1.5);
+  }
+
   function addFloater(state, text, x, y, color, life = 1.1) {
     state.floaters.push({ text, x, y, color, life, maxLife: life });
   }
@@ -426,6 +481,7 @@
     updateGems(state, dt);
     updateFloaters(state, dt);
     updateEffects(state, dt);
+    updateTension(state);
     if (state.player.health <= 0) return 'lost';
     if (state.bossDefeated) return 'won';
     if (consumeLevelUps(state)) return 'level';
