@@ -235,6 +235,11 @@ h2 {
   font-weight: 700;
 }
 
+.feedback-strip span:last-child {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .canvas-frame {
   position: relative;
   overflow: hidden;
@@ -308,6 +313,18 @@ h2 {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
+.hud-chip.mode-demo {
+  border-color: color-mix(in srgb, var(--status-info) 70%, var(--border-default));
+}
+
+.hud-chip.mode-quick {
+  border-color: color-mix(in srgb, var(--status-warning) 72%, var(--border-default));
+}
+
+.hud-chip.mode-standard {
+  border-color: color-mix(in srgb, var(--accent-primary) 62%, var(--border-default));
+}
+
 .hud-chip span,
 .hud-chip strong {
   display: block;
@@ -331,6 +348,25 @@ h2 {
 
 .boss-chip strong {
   color: var(--accent-bell);
+}
+
+.boss-chip.boss-active,
+.boss-chip.evolution-ready-chip {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-bell) 22%, var(--surface-primary)), color-mix(in srgb, var(--surface-primary) 84%, transparent)),
+    var(--surface-primary);
+}
+
+.boss-chip.boss-active {
+  border-color: var(--accent-bell);
+}
+
+.boss-chip.evolution-ready-chip {
+  border-color: var(--status-warning);
+}
+
+.boss-chip.evolution-ready-chip strong {
+  color: var(--status-warning);
 }
 
 canvas {
@@ -605,6 +641,17 @@ canvas {
 .chest-reward-option {
   --option-accent: var(--accent-ember);
   --option-soft: color-mix(in srgb, var(--accent-bell) 24%, var(--surface-parchment));
+}
+
+.upgrade-option.evolution-ready {
+  --option-accent: var(--status-warning);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--status-warning) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.upgrade-option.evolution-ready .evolution-line {
+  color: var(--status-warning);
 }
 
 .upgrade-option.rarity-class {

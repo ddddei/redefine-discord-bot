@@ -202,6 +202,7 @@
       player: createPlayer(playbook, content.balance),
       enemies: [],
       projectiles: [],
+      particles: [],
       gems: [],
       chests: [],
       pendingChestRewards: [],
@@ -209,7 +210,7 @@
       hazards: [],
       enemyWarnings: [],
       bossWarnings: [],
-      effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0 },
+      effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0, levelShockwave: 0 },
       upgradeLevels: {},
       inventory: createInventory(content, playbook),
       learnedUpgrades: [playbook.learned, playbook.loadout],
@@ -393,6 +394,7 @@
     elite.radius += 5;
     elite.xp += 12;
     state.effects.pulse = 0.55;
+    state.effects.bossPulse = Math.max(state.effects.bossPulse, 0.46);
     addFloater(state, `${minute}분 엘리트 등장`, state.player.x, state.player.y - 112, '--accent-ember', 1.8, true);
   }
 
@@ -983,6 +985,7 @@
         enemy.hp -= projectile.damage * (1 + bossBonus);
         if (enemy.behavior === 'boss' && bossBonus > 0) recordBossBonusDamage(state, projectile.damage * bossBonus);
         enemy.hitFlash = 0.13;
+        spawnImpactSparks(state, enemy, projectile.impactKind || projectile.kind, 4);
         state.attackMarks.push({
           x: enemy.x,
           y: enemy.y,
@@ -1008,6 +1011,7 @@
       const wave = getCurrentWave(state);
       state.waveKills[wave.id] = (state.waveKills[wave.id] || 0) + 1;
       state.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 6, age: 0 });
+      spawnDeathParticles(state, enemy);
       if (enemy.elite) {
         dropChest(state, enemy);
       }
@@ -1066,8 +1070,10 @@
     state.gems.forEach((gem) => {
       gem.age += dt;
       const attractionRange = gem.age > 2.4 ? 900 : player.magnet;
+      gem.pullMode = distance(player, gem) < player.magnet ? 'magnet' : gem.age > 2.4 ? 'late' : null;
       if (distance(player, gem) < attractionRange) {
         const direction = normalize(player.x - gem.x, player.y - gem.y);
+        gem.trail = { x: gem.x, y: gem.y };
         gem.x += direction.x * 260 * dt;
         gem.y += direction.y * 260 * dt;
       }
@@ -1075,6 +1081,7 @@
     const collected = state.gems.filter((gem) => distance(player, gem) < player.radius + gem.radius);
     collected.forEach((gem) => {
       player.xp += gem.value;
+      spawnXpAbsorbParticles(state, gem, player);
       addFloater(state, `+${gem.value}`, gem.x, gem.y - 10, '--status-info', 0.8);
     });
     state.gems = state.gems.filter((gem) => distance(player, gem) >= player.radius + gem.radius);
@@ -1131,6 +1138,18 @@
     state.effects.shake = Math.max(0, state.effects.shake - dt);
     state.effects.pulse = Math.max(0, state.effects.pulse - dt);
     state.effects.bossPulse = Math.max(0, state.effects.bossPulse - dt * 0.5);
+    state.effects.levelShockwave = Math.max(0, state.effects.levelShockwave - dt * 1.3);
+  }
+
+  function updateParticles(state, dt) {
+    state.particles.forEach((particle) => {
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.vx *= 0.92;
+      particle.vy *= 0.92;
+      particle.life -= dt;
+    });
+    state.particles = state.particles.filter((particle) => particle.life > 0);
   }
 
   function updateHazards(state, dt) {
@@ -1265,9 +1284,66 @@
     }
     if (leveled) {
       state.effects.pulse = 0.45;
+      state.effects.levelShockwave = 1;
       addFloater(state, `레벨 ${player.level}`, player.x, player.y - 36, '--accent-ember', 1.5);
     }
     return leveled;
+  }
+
+  function spawnDeathParticles(state, enemy) {
+    const count = enemy.behavior === 'boss' ? 26 : enemy.elite ? 18 : 9;
+    const baseSpeed = enemy.behavior === 'boss' ? 135 : enemy.elite ? 105 : 72;
+    for (let index = 0; index < count; index += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = baseSpeed * (0.38 + Math.random() * 0.78);
+      state.particles.push({
+        kind: enemy.behavior === 'boss' ? 'bellShard' : enemy.elite ? 'eliteShard' : 'deathSmoke',
+        x: enemy.x,
+        y: enemy.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: Math.max(3, enemy.radius * (0.1 + Math.random() * 0.12)),
+        colorToken: enemy.behavior === 'boss' ? '--accent-bell' : enemy.elite ? '--accent-ember' : enemy.colorToken,
+        life: 0.45 + Math.random() * 0.35,
+        maxLife: 0.8,
+      });
+    }
+  }
+
+  function spawnImpactSparks(state, enemy, kind, count) {
+    for (let index = 0; index < count; index += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 38 + Math.random() * 72;
+      state.particles.push({
+        kind: 'impactSpark',
+        x: enemy.x + Math.cos(angle) * enemy.radius * 0.35,
+        y: enemy.y + Math.sin(angle) * enemy.radius * 0.35,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 2.5 + Math.random() * 2.5,
+        colorToken: kind === 'bell' ? '--accent-bell' : kind === 'roots' ? '--class-druid' : '--accent-ember',
+        life: 0.18 + Math.random() * 0.12,
+        maxLife: 0.32,
+      });
+    }
+  }
+
+  function spawnXpAbsorbParticles(state, gem, player) {
+    const pull = normalize(player.x - gem.x, player.y - gem.y);
+    for (let index = 0; index < 3; index += 1) {
+      const side = index - 1;
+      state.particles.push({
+        kind: 'xpAbsorb',
+        x: gem.x,
+        y: gem.y,
+        vx: pull.x * (90 + index * 24) - pull.y * side * 36,
+        vy: pull.y * (90 + index * 24) + pull.x * side * 36,
+        radius: 2.5 + index,
+        colorToken: '--status-info',
+        life: 0.28 + index * 0.06,
+        maxLife: 0.42,
+      });
+    }
   }
 
   function pickUpgrades(state) {
@@ -1634,6 +1710,7 @@
     fireProjectiles(state);
     updateProjectiles(state, dt);
     updateAttackMarks(state, dt);
+    updateParticles(state, dt);
     updateOrbitingSpears(state, dt);
     updateEnemies(state, dt);
     resolveHits(state);

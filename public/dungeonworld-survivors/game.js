@@ -116,7 +116,10 @@
     pendingUpgrades.forEach((upgrade) => {
       const nextLevel = (state.upgradeLevels[upgrade.id] || 0) + 1;
       const button = document.createElement('button');
-      button.className = `upgrade-option rarity-${upgrade.rarity || 'common'}`;
+      const evolutionReady = systems.getEligibleEvolutions(state).length > 0
+        && upgrade.evolutionCondition
+        && !upgrade.evolutionCondition.includes('무기 Lv.8 + 지정 패시브 + 엘리트 상자');
+      button.className = `upgrade-option rarity-${upgrade.rarity || 'common'}${evolutionReady ? ' evolution-ready' : ''}`;
       button.type = 'button';
       button.innerHTML = [
         '<span class="card-seal" aria-hidden="true"></span>',
@@ -186,7 +189,7 @@
   function renderChestReward() {
     elements.upgradeOptions.innerHTML = '';
     const button = document.createElement('button');
-    button.className = 'upgrade-option rarity-rare chest-reward-option';
+    button.className = `upgrade-option rarity-rare chest-reward-option${pendingChestReward && pendingChestReward.type === 'evolution' ? ' evolution-ready' : ''}`;
     button.type = 'button';
     const title = formatChestRewardTitle(pendingChestReward);
     const copy = formatChestRewardCopy(pendingChestReward);
@@ -241,6 +244,8 @@
     elements.level.textContent = String(state.player.level);
     elements.xp.textContent = `${state.player.xp} / ${state.player.nextXp}`;
     elements.kills.textContent = String(state.kills);
+    const hasEvolutionReady = systems.getEligibleEvolutions(state).length > 0;
+    elements.goal.parentElement.className = `hud-chip boss-chip mode-${state.mode.id}${state.bossSpawned ? ' boss-active' : ''}${hasEvolutionReady ? ' evolution-ready-chip' : ''}`;
     document.getElementById('tension-value').textContent = `${Math.ceil(state.player.tension)} / ${state.player.maxTension}`;
     document.getElementById('move-result-value').textContent = state.lastMoveResult;
     document.getElementById('playbook-value').textContent = state.playbook.title;
@@ -257,8 +262,10 @@
     elements.wave.textContent = wave.title;
     elements.objective.textContent = state.bossSpawned
       ? '검은 종 파수꾼을 쓰러뜨리세요'
-      : (wave.objective || wave.copy);
-    elements.goal.textContent = state.bossSpawned ? '보스전' : `${state.mode.title}`;
+      : hasEvolutionReady
+        ? '진화 가능: 다음 엘리트 상자를 노리세요'
+        : (wave.objective || wave.copy);
+    elements.goal.textContent = state.bossSpawned ? '보스전' : hasEvolutionReady ? '진화 가능' : `MODE ${state.mode.id.toUpperCase()}`;
     elements.upgrades.innerHTML = state.learnedUpgrades.map((name) => `<li>${name}</li>`).join('');
     elements.runGoals.innerHTML = systems.evaluateRunGoals(state).map((goal) => (
       `<li><strong>${goal.title}</strong><span>${goal.progress}</span></li>`
