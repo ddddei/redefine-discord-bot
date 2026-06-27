@@ -34,6 +34,7 @@
   let state = systems.createState(content);
   let lastFrame = 0;
   let pendingUpgrades = [];
+  let previousFocus = null;
 
   function resetGame(playbookId) {
     state = systems.createState(content, playbookId);
@@ -95,7 +96,7 @@
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.add('hidden');
     renderUpgradeOptions();
-    showModal();
+    showModal('upgrade');
   }
 
   function renderUpgradeOptions() {
@@ -103,9 +104,15 @@
     pendingUpgrades.forEach((upgrade) => {
       const nextLevel = (state.upgradeLevels[upgrade.id] || 0) + 1;
       const button = document.createElement('button');
-      button.className = 'upgrade-option';
+      button.className = `upgrade-option rarity-${upgrade.rarity || 'common'}`;
       button.type = 'button';
-      button.innerHTML = `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong><span>${upgrade.text}</span>`;
+      button.innerHTML = [
+        `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${upgrade.family} · ${formatTags(upgrade.tags)}</span>`,
+        `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong>`,
+        `<span>${upgrade.text}</span>`,
+        `<span class="synergy-hint">${upgrade.classHint}</span>`,
+        `<span class="synergy-hint">${upgrade.synergyText}</span>`,
+      ].join('');
       button.addEventListener('click', () => chooseUpgrade(upgrade));
       elements.upgradeOptions.appendChild(button);
     });
@@ -132,10 +139,7 @@
   }
 
   function chooseUpgrade(upgrade) {
-    const nextLevel = (state.upgradeLevels[upgrade.id] || 0) + 1;
-    state.upgradeLevels[upgrade.id] = nextLevel;
-    upgrade.apply(state.player, nextLevel);
-    state.learnedUpgrades.push(`${upgrade.title} ${formatLevel(nextLevel)}`);
+    systems.applyUpgrade(state, upgrade);
     hideModal();
     state.status = 'running';
     lastFrame = performance.now();
@@ -145,11 +149,12 @@
 
   function finishGame(won) {
     state.status = won ? 'won' : 'lost';
+    state.runSummary = systems.getRunSummary(state);
     elements.pause.disabled = true;
     elements.modalKicker.textContent = won ? '생존 성공' : '다시 정비';
     elements.modalTitle.textContent = won ? '마지막 문이 열렸습니다' : '검은 종소리에 밀렸습니다';
     elements.modalCopy.textContent = won
-      ? `검은 종 파수꾼을 쓰러뜨렸습니다. 처치 ${state.kills}회, 레벨 ${state.player.level}. 포인트 지급 없이 브라우저 안에서만 끝나는 기록입니다.`
+      ? '검은 종 파수꾼을 쓰러뜨렸습니다. 아래 기록은 브라우저 안에서만 끝나며 포인트 지급은 없습니다.'
       : '여관으로 물러나 숨을 고릅니다. 다시 시작해도 포인트나 Discord 기록은 남지 않습니다.';
     elements.modalPrimary.classList.remove('hidden');
     elements.modalSecondary.classList.remove('hidden');
@@ -157,8 +162,8 @@
     elements.modalPrimary.onclick = startGame;
     elements.modalSecondary.textContent = '닫기';
     elements.modalSecondary.onclick = hideModalOnly;
-    elements.upgradeOptions.innerHTML = '';
-    showModal();
+    renderResultSummary(state.runSummary);
+    showModal('result');
   }
 
   function updateDom() {
@@ -186,7 +191,7 @@
     elements.wave.textContent = wave.title;
     elements.objective.textContent = state.bossSpawned
       ? '검은 종 파수꾼을 쓰러뜨리세요'
-      : wave.copy;
+      : (wave.objective || wave.copy);
     elements.goal.textContent = state.bossSpawned ? '보스전' : '생존';
     elements.upgrades.innerHTML = state.learnedUpgrades.map((name) => `<li>${name}</li>`).join('');
   }
@@ -202,7 +207,7 @@
     elements.modalPrimary.onclick = primaryAction;
     elements.modalSecondary.textContent = '닫기';
     elements.modalSecondary.onclick = hideModalOnly;
-    showModal();
+    showModal('pause');
   }
 
   function showIntro() {
@@ -214,7 +219,7 @@
     elements.modalSecondary.textContent = '닫기';
     elements.modalSecondary.onclick = hideModalOnly;
     renderPlaybookOptions();
-    showModal();
+    showModal('intro');
   }
 
   function formatLevel(level) {
@@ -237,19 +242,72 @@
     return attackNames[attack] || '자동 공격';
   }
 
-  function showModal() {
+  function formatRarity(rarity) {
+    const labels = {
+      class: '전용',
+      common: '일반',
+      rare: '희귀',
+      uncommon: '비범',
+    };
+    return labels[rarity] || '일반';
+  }
+
+  function formatTags(tags) {
+    return (tags || []).map((tag) => `#${tag}`).join(' ');
+  }
+
+  function renderResultSummary(summary) {
+    const upgrades = summary.selectedUpgrades.length > 0
+      ? summary.selectedUpgrades.map((upgrade) => (
+        `<li><strong>${upgrade.title} ${formatLevel(upgrade.level)}</strong><span>${formatRarity(upgrade.rarity)} · ${formatTags(upgrade.tags)}</span></li>`
+      )).join('')
+      : '<li><strong>선택한 업그레이드 없음</strong><span>첫 레벨업 전에 런이 끝났습니다.</span></li>';
+    const tags = summary.buildTags.length > 0
+      ? summary.buildTags.map((entry) => `<span class="result-tag">#${entry.tag} ${entry.count}</span>`).join('')
+      : '<span class="result-tag">태그 없음</span>';
+    const synergies = summary.synergies.length > 0
+      ? summary.synergies.map((synergy) => `<li><strong>${synergy.title}</strong><span>${synergy.text}</span></li>`).join('')
+      : '<li><strong>시너지 미발동</strong><span>같은 태그의 선택지를 더 모으면 빌드 효과가 열립니다.</span></li>';
+    elements.upgradeOptions.innerHTML = [
+      '<div class="result-grid">',
+      `<article><span>생존 시간</span><strong>${renderer.formatTime(summary.survivalTime)}</strong></article>`,
+      `<article><span>플레이북</span><strong>${summary.playbook}</strong></article>`,
+      `<article><span>처치</span><strong>${summary.kills}</strong></article>`,
+      `<article><span>레벨</span><strong>${summary.level}</strong></article>`,
+      '</div>',
+      `<div class="result-tags">${tags}</div>`,
+      `<h3 class="result-heading">선택한 업그레이드</h3><ul class="result-list">${upgrades}</ul>`,
+      `<h3 class="result-heading">빌드 시너지</h3><ul class="result-list">${synergies}</ul>`,
+    ].join('');
+  }
+
+  function showModal(mode) {
+    previousFocus = document.activeElement;
+    elements.modal.dataset.mode = mode || 'message';
     elements.modal.classList.remove('hidden');
+    const firstAction = elements.upgradeOptions.querySelector('button')
+      || (!elements.modalPrimary.classList.contains('hidden') ? elements.modalPrimary : elements.modalSecondary);
+    window.setTimeout(() => {
+      if (firstAction) firstAction.focus();
+    }, 0);
   }
 
   function hideModal() {
     elements.modal.classList.add('hidden');
     elements.modalPrimary.classList.remove('hidden');
     elements.modalSecondary.classList.remove('hidden');
+    delete elements.modal.dataset.mode;
   }
 
   function hideModalOnly() {
     elements.modal.classList.add('hidden');
-    canvas.focus();
+    delete elements.modal.dataset.mode;
+    if (state.status === 'running' || state.status === 'level') {
+      canvas.focus();
+      return;
+    }
+    if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+    else canvas.focus();
   }
 
   function setKey(event, pressed) {
@@ -270,8 +328,51 @@
     event.preventDefault();
   }
 
-  window.addEventListener('keydown', (event) => setKey(event, true));
+  function qaModeEnabled() {
+    return (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+      && window.location.search.includes('qa=1');
+  }
+
+  function handleQaShortcut(event) {
+    if (!qaModeEnabled() || !event.shiftKey || state.status !== 'running') return false;
+    const key = event.key.toLowerCase();
+    if (key === 'b') {
+      state.elapsed = 205.1;
+      state.spawnTimer = 99;
+      state.enemies = [];
+      systems.tick(state, input, 0.02);
+      renderer.render(ctx, state, systems.WORLD);
+      updateDom();
+      event.preventDefault();
+      return true;
+    }
+    if (key === 'n') {
+      const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
+      if (!boss) return false;
+      boss.hp = 0;
+      const result = systems.tick(state, input, 0.016);
+      if (result === 'won') finishGame(true);
+      renderer.render(ctx, state, systems.WORLD);
+      updateDom();
+      event.preventDefault();
+      return true;
+    }
+    return false;
+  }
+
+  window.addEventListener('keydown', (event) => {
+    if (handleQaShortcut(event)) return;
+    setKey(event, true);
+  });
   window.addEventListener('keyup', (event) => setKey(event, false));
+  window.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || elements.modal.classList.contains('hidden')) return;
+    if (state.status === 'paused') {
+      resumeGame();
+      return;
+    }
+    if (state.status === 'ready' || state.status === 'won' || state.status === 'lost') hideModalOnly();
+  });
   elements.start.addEventListener('click', showIntro);
   elements.pause.addEventListener('click', togglePause);
   elements.modalPrimary.onclick = startGame;

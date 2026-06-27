@@ -471,6 +471,23 @@ canvas {
   font-weight: 700;
 }
 
+.upgrade-option.rarity-class {
+  --option-accent: var(--accent-bell);
+}
+
+.upgrade-option.rarity-rare {
+  --option-accent: var(--accent-ember);
+}
+
+.upgrade-option.rarity-uncommon {
+  --option-accent: var(--status-info);
+}
+
+.synergy-hint {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-2);
+}
+
 .playbook-option {
   gap: var(--space-2);
   min-height: 168px;
@@ -522,6 +539,75 @@ canvas {
 .playbook-option[data-playbook="ranger"] {
   --option-accent: var(--class-ranger);
   --option-soft: var(--class-ranger-soft);
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-5) 0 var(--space-3);
+}
+
+.result-grid article {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--surface-primary) 52%, transparent);
+}
+
+.result-grid span,
+.result-list span {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.result-grid strong {
+  color: var(--accent-ember);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 15px;
+}
+
+.result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.result-tag {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: var(--space-1) var(--space-2);
+  color: var(--accent-hover);
+  background: color-mix(in srgb, var(--surface-parchment) 42%, transparent);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.result-heading {
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--text-primary);
+  font-size: 18px;
+  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
+}
+
+.result-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result-list li {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+}
+
+.result-list strong {
+  display: block;
+  color: var(--text-primary);
 }
 
 @media (max-width: 980px) {
@@ -594,6 +680,10 @@ canvas {
 
   .side-panel {
     grid-template-columns: 1fr;
+  }
+
+  .result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stat-list div {

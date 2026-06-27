@@ -69,6 +69,136 @@ function createTrainingEnemy(state, distanceFromPlayer = 96) {
   };
 }
 
+function createRuntimeEnemy(state, typeId, distanceFromPlayer = 72) {
+  const type = state.content.enemyTypes[typeId];
+  return {
+    ...type,
+    x: state.player.x + distanceFromPlayer,
+    y: state.player.y,
+    maxHp: type.hp,
+    hp: type.hp,
+    slowTimer: 0,
+    behaviorTimer: 0,
+    hitFlash: 0,
+    attackCooldown: 0,
+    attackWindup: 0,
+    attackRecovery: 0,
+    attackTarget: null,
+    warning: null,
+    attackProfile: type.attackProfile,
+  };
+}
+
+function testEnemyProfilesAndTelegraphs() {
+  const { content, systems } = loadGameRuntime();
+  Object.keys(content.enemyTypes).forEach((typeId) => {
+    const profile = content.enemyTypes[typeId].attackProfile;
+    assert.ok(profile, `${typeId} should have attackProfile`);
+    assert.ok(profile.range > 0, `${typeId} profile should have range`);
+    assert.ok(profile.windup > 0, `${typeId} profile should have windup`);
+    assert.ok(profile.recovery > 0, `${typeId} profile should have recovery`);
+    assert.ok(profile.shape, `${typeId} profile should have shape`);
+    assert.ok(profile.warningLabel, `${typeId} profile should have warningLabel`);
+  });
+  assert.ok(content.enemyTypes.sentinel.bossPhases.length >= 3);
+
+  const state = systems.createState(content, 'fighter');
+  state.spawnTimer = 99;
+  state.player.attackTimer = 99;
+  state.enemies = [createRuntimeEnemy(state, 'goblin', 46)];
+  const beforeHealth = state.player.health;
+
+  systems.tick(state, { up: false, down: false, left: false, right: false }, 0.1);
+  assert.strictEqual(state.player.health, beforeHealth);
+  assert.ok(state.enemyWarnings.length > 0);
+
+  systems.tick(state, { up: false, down: false, left: false, right: false }, 0.5);
+  assert.ok(state.player.health < beforeHealth);
+
+  const avoided = systems.createState(content, 'fighter');
+  avoided.spawnTimer = 99;
+  avoided.player.attackTimer = 99;
+  avoided.enemies = [createRuntimeEnemy(avoided, 'slime', 58)];
+  const safeHealth = avoided.player.health;
+  systems.tick(avoided, { up: false, down: false, left: false, right: false }, 0.1);
+  avoided.player.x += 240;
+  systems.tick(avoided, { up: false, down: false, left: false, right: false }, 0.7);
+  assert.strictEqual(avoided.player.health, safeHealth);
+}
+
+function testWaveHazardsAffectOnlyInsideArea() {
+  const { content, systems } = loadGameRuntime();
+  content.wavePatterns.slice(1).forEach((wave) => {
+    assert.ok(wave.objective, `${wave.id} should have objective`);
+    assert.ok(wave.hazards.length > 0, `${wave.id} should have hazards`);
+  });
+
+  const state = systems.createState(content, 'cleric');
+  state.spawnTimer = 99;
+  state.player.attackTimer = 99;
+  state.hazards.push({
+    kind: 'basinPool',
+    x: state.player.x,
+    y: state.player.y,
+    radius: 70,
+    warningLeft: 0,
+    life: 1,
+    maxLife: 1,
+    damage: 4,
+    colorToken: '--status-info',
+    label: '테스트 웅덩이',
+    pulseTimer: 0,
+  });
+  const beforeHealth = state.player.health;
+  systems.tick(state, { up: false, down: false, left: false, right: false }, 0.1);
+  assert.ok(state.player.health < beforeHealth);
+
+  const outside = systems.createState(content, 'cleric');
+  outside.spawnTimer = 99;
+  outside.player.attackTimer = 99;
+  outside.hazards.push({
+    kind: 'basinPool',
+    x: outside.player.x + 240,
+    y: outside.player.y,
+    radius: 70,
+    warningLeft: 0,
+    life: 1,
+    maxLife: 1,
+    damage: 4,
+    colorToken: '--status-info',
+    label: '테스트 웅덩이',
+    pulseTimer: 0,
+  });
+  const safeHealth = outside.player.health;
+  systems.tick(outside, { up: false, down: false, left: false, right: false }, 0.1);
+  assert.strictEqual(outside.player.health, safeHealth);
+}
+
+function testUpgradeMetadataAndSynergies() {
+  const { content, systems } = loadGameRuntime();
+  content.upgrades.forEach((upgrade) => {
+    assert.ok(upgrade.rarity, `${upgrade.id} should have rarity`);
+    assert.ok(Array.isArray(upgrade.tags) && upgrade.tags.length > 0, `${upgrade.id} should have tags`);
+    assert.ok(upgrade.classHint, `${upgrade.id} should have classHint`);
+    assert.ok(upgrade.synergyText, `${upgrade.id} should have synergyText`);
+  });
+
+  const state = systems.createState(content, 'fighter');
+  const thornShield = content.upgrades.find((upgrade) => upgrade.id === 'thornShield');
+  const shieldBash = content.upgrades.find((upgrade) => upgrade.id === 'shieldBash');
+  systems.applyUpgrade(state, thornShield);
+  systems.applyUpgrade(state, shieldBash);
+  assert.strictEqual(state.selectedUpgrades.length, 2);
+  assert.ok(state.buildTags.shield >= 2);
+  assert.ok(state.synergies.some((synergy) => synergy.id === 'shieldLine'));
+
+  const summary = systems.getRunSummary(state);
+  assert.strictEqual(summary.playbook, '전사');
+  assert.strictEqual(summary.selectedUpgrades.length, 2);
+  assert.ok(summary.buildTags.some((entry) => entry.tag === 'shield'));
+  assert.ok(summary.synergies.some((synergy) => synergy.title === '방패선'));
+}
+
 function testEveryPlaybookStartsAndAttacks() {
   const { content, systems } = loadGameRuntime();
   const expectedAttacks = {
@@ -166,6 +296,13 @@ function testBossFlowCanSpawnAndResolveWin() {
   assert.strictEqual(content.wavePatterns[state.waveIndex].id, 'finalGate');
 
   const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
+  assert.strictEqual(state.bossPhase.id, 'gateBell');
+  boss.hp = boss.maxHp * 0.32;
+  systems.tick(state, { up: false, down: false, left: false, right: false }, 0.016);
+  assert.strictEqual(state.bossPhase.id, 'lastToll');
+  state.bossPatternTimer = 0;
+  systems.tick(state, { up: false, down: false, left: false, right: false }, 0.016);
+  assert.ok(state.bossWarnings.length > 0);
   boss.hp = 0;
   const winResult = systems.tick(state, { up: false, down: false, left: false, right: false }, 0.016);
   assert.strictEqual(winResult, 'won');
@@ -216,6 +353,11 @@ function main() {
   assert.ok(content.includes('behavior: \'bulwark\''));
   assert.ok(content.includes('maxLevel'));
   assert.ok(content.includes('토른의 방패 II'));
+  assert.ok(content.includes('attackProfile'));
+  assert.ok(content.includes('bossPhases'));
+  assert.ok(content.includes('pressureRule'));
+  assert.ok(content.includes('upgradeMeta'));
+  assert.ok(content.includes('synergyText'));
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('const GAME_DURATION = 240;'));
@@ -237,6 +379,11 @@ function main() {
   assert.ok(systems.includes('function updateWave'));
   assert.ok(systems.includes('bossDefeated'));
   assert.ok(systems.includes('return \'won\''));
+  assert.ok(systems.includes('function updateEnemyAttackState'));
+  assert.ok(systems.includes('function updateHazards'));
+  assert.ok(systems.includes('function updateBossPatterns'));
+  assert.ok(systems.includes('function applyUpgrade'));
+  assert.ok(systems.includes('function getRunSummary'));
 
   const game = readGameFile('game.js');
   assert.ok(game.includes('function renderPlaybookOptions'));
@@ -245,6 +392,9 @@ function main() {
   assert.ok(game.includes('function formatAttack'));
   assert.ok(game.includes('visualCue'));
   assert.ok(game.includes('accentToken'));
+  assert.ok(game.includes('function renderResultSummary'));
+  assert.ok(game.includes('function formatRarity'));
+  assert.ok(game.includes('dataset.mode'));
 
   const renderer = readGameFile('renderer.js');
   assert.ok(renderer.includes('function createCamera'));
@@ -253,6 +403,9 @@ function main() {
   assert.ok(renderer.includes('drawTower'));
   assert.ok(renderer.includes('drawRoad'));
   assert.ok(renderer.includes('drawProjectileTrail'));
+  assert.ok(renderer.includes('function drawHazard'));
+  assert.ok(renderer.includes('function drawWarning'));
+  assert.ok(renderer.includes('drawLaneShape'));
 
   const styles = readGameFile('styles.css');
   assert.ok(styles.includes('--surface-parchment: #2a241c;'));
@@ -262,11 +415,17 @@ function main() {
   assert.ok(styles.includes('.hud-rail'));
   assert.ok(styles.includes('.sheet-list'));
   assert.ok(styles.includes('.playbook-option'));
+  assert.ok(styles.includes('.rarity-rare'));
+  assert.ok(styles.includes('.result-grid'));
+  assert.ok(styles.includes('.synergy-hint'));
   assert.ok(styles.includes('@media (max-width: 980px)'));
 
   testWaveRollBehavior();
   testLargeWorldAndMovementClamp();
   testEveryPlaybookStartsAndAttacks();
+  testEnemyProfilesAndTelegraphs();
+  testWaveHazardsAffectOnlyInsideArea();
+  testUpgradeMetadataAndSynergies();
   testBossFlowCanSpawnAndResolveWin();
 
   console.log('dungeonworld survivors static test passed');

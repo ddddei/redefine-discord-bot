@@ -361,6 +361,81 @@
     ctx.fillRect(enemy.x - width / 2, enemy.y - enemy.radius - 12, width * hpRatio, 4);
   }
 
+  function drawHazard(ctx, hazard, palette) {
+    const color = resolveColor(palette, hazard.colorToken);
+    const armed = hazard.warningLeft <= 0;
+    const alpha = armed ? 0.34 : 0.2 + Math.sin(hazard.life * 18) * 0.07;
+    ctx.save();
+    ctx.translate(hazard.x, hazard.y);
+    ctx.rotate(hazard.angle || 0);
+    ctx.strokeStyle = withAlpha(color, alpha + 0.2);
+    ctx.fillStyle = withAlpha(color, alpha * 0.34);
+    ctx.lineWidth = armed ? 4 : 2;
+    ctx.setLineDash(armed ? [] : [10, 8]);
+    if (hazard.kind === 'wolfLane') {
+      drawLaneShape(ctx, hazard.length || 240, hazard.width || 38);
+    } else if (hazard.kind === 'bellRing') {
+      ctx.beginPath();
+      ctx.arc(0, 0, hazard.radius || 110, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, (hazard.radius || 110) - (hazard.width || 34), 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, hazard.radius || 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawWarning(ctx, warning, palette) {
+    const color = resolveColor(palette, warning.colorToken);
+    const progress = warning.maxLife ? warning.warningLeft / warning.maxLife : 0.5;
+    ctx.save();
+    ctx.translate(warning.x, warning.y);
+    ctx.rotate(warning.angle || 0);
+    ctx.strokeStyle = withAlpha(color, 0.72);
+    ctx.fillStyle = withAlpha(color, 0.1 + (1 - progress) * 0.13);
+    ctx.lineWidth = 3 + (1 - progress) * 2;
+    ctx.setLineDash([12, 8]);
+    if (warning.kind === 'line') {
+      drawLaneShape(ctx, warning.length || warning.reach || 130, warning.width || 30);
+    } else if (warning.kind === 'cone' || warning.kind === 'arc') {
+      const reach = warning.reach || warning.radius || 70;
+      const arc = warning.arc || Math.PI * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, reach, -arc / 2, arc / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (warning.kind === 'ring') {
+      ctx.beginPath();
+      ctx.arc(0, 0, warning.radius || 110, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, (warning.radius || 110) - (warning.width || 32), 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, warning.radius || 50, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawLaneShape(ctx, length, width) {
+    ctx.beginPath();
+    ctx.rect(0, -width / 2, length, width);
+    ctx.fill();
+    ctx.stroke();
+  }
+
   function drawProjectile(ctx, projectile, palette) {
     const colors = {
       bell: palette.accentBell,
@@ -624,6 +699,9 @@
     }
     applyCamera(ctx, camera);
     drawBackground(ctx, world, camera, state.elapsed, palette);
+    state.hazards.forEach((hazard) => drawHazard(ctx, hazard, palette));
+    state.bossWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
+    state.enemyWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
     state.gems.forEach((gem) => drawGem(ctx, gem, palette));
     state.projectiles.forEach((projectile) => drawProjectile(ctx, projectile, palette));
     state.attackMarks.forEach((mark) => drawAttackMark(ctx, mark, palette));

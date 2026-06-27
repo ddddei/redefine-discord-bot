@@ -37,6 +37,17 @@
       radius: 12,
       damage: 8,
       xp: 2,
+      attackProfile: {
+        range: 58,
+        windup: 0.38,
+        recovery: 1.1,
+        shape: 'cone',
+        arc: Math.PI * 0.45,
+        reach: 68,
+        damageScale: 0.75,
+        warningColorToken: '--accent-ember',
+        warningLabel: '비껴 찌르기',
+      },
     },
     slime: {
       name: '물그릇 슬라임',
@@ -47,6 +58,16 @@
       radius: 15,
       damage: 10,
       xp: 3,
+      attackProfile: {
+        range: 76,
+        windup: 0.62,
+        recovery: 1.45,
+        shape: 'circle',
+        radius: 58,
+        damageScale: 0.85,
+        warningColorToken: '--status-info',
+        warningLabel: '점액 분출',
+      },
     },
     armor: {
       name: '빈 갑옷',
@@ -57,6 +78,17 @@
       radius: 17,
       damage: 14,
       xp: 5,
+      attackProfile: {
+        range: 88,
+        windup: 0.74,
+        recovery: 1.65,
+        shape: 'arc',
+        arc: Math.PI * 0.7,
+        reach: 86,
+        damageScale: 1,
+        warningColorToken: '--text-secondary',
+        warningLabel: '녹슨 휘두르기',
+      },
     },
     wolf: {
       name: '그림자 늑대',
@@ -67,6 +99,17 @@
       radius: 13,
       damage: 11,
       xp: 4,
+      attackProfile: {
+        range: 128,
+        windup: 0.45,
+        recovery: 1.3,
+        shape: 'line',
+        length: 150,
+        width: 28,
+        damageScale: 0.95,
+        warningColorToken: '--status-error',
+        warningLabel: '그림자 돌진',
+      },
     },
     sentinel: {
       name: '검은 종 파수꾼',
@@ -77,6 +120,43 @@
       radius: 28,
       damage: 18,
       xp: 18,
+      attackProfile: {
+        range: 145,
+        windup: 0.78,
+        recovery: 1.55,
+        shape: 'ring',
+        radius: 118,
+        width: 34,
+        damageScale: 1.1,
+        warningColorToken: '--accent-bell',
+        warningLabel: '검은 종 울림',
+      },
+      bossPhases: [
+        {
+          id: 'gateBell',
+          threshold: 1,
+          title: '문 앞의 종',
+          warning: '검은 종 원형 파동',
+          pattern: 'ring',
+          cadence: 3.2,
+        },
+        {
+          id: 'towerGaze',
+          threshold: 0.66,
+          title: '탑의 시선',
+          warning: '탑 그림자 직선 예고',
+          pattern: 'line',
+          cadence: 2.7,
+        },
+        {
+          id: 'lastToll',
+          threshold: 0.33,
+          title: '마지막 종소리',
+          warning: '협공 소환과 넓은 종파',
+          pattern: 'summon',
+          cadence: 2.4,
+        },
+      ],
     },
   };
 
@@ -89,6 +169,9 @@
       copy: '고블린 정찰병이 좌우 가장자리에서 얇게 파고듭니다.',
       moveName: '위험 돌파',
       checkStat: 'dex',
+      objective: '정찰병의 얇은 포위를 뚫고 길을 여세요.',
+      pressureRule: 'edge-skirmish',
+      hazards: [],
       cadence: 1.05,
       pressure: 1,
       packs: [
@@ -103,6 +186,11 @@
       copy: '고블린은 옆으로 흔들고 슬라임은 느린 덩어리로 길을 막습니다.',
       moveName: '상황 파악',
       checkStat: 'wis',
+      objective: '뿌리 표식이 빛나기 전에 안전한 길을 골라 움직이세요.',
+      pressureRule: 'snare-circles',
+      hazards: [
+        { kind: 'rootSnare', cadence: 5.4, warning: 0.9, duration: 2.2, radius: 62, slow: 1.2, tension: 0.5, colorToken: '--class-druid', label: '뿌리 매듭' },
+      ],
       cadence: 1.18,
       pressure: 1.18,
       packs: [
@@ -118,6 +206,11 @@
       copy: '슬라임 무리가 중앙을 누르고 빈 갑옷이 느리게 길목을 닫습니다.',
       moveName: '정면 방어',
       checkStat: 'str',
+      objective: '물그릇 주변의 느린 웅덩이를 피해 갑옷의 길목 봉쇄를 버티세요.',
+      pressureRule: 'basin-pools',
+      hazards: [
+        { kind: 'basinPool', cadence: 4.8, warning: 0.8, duration: 2.8, radius: 74, damage: 2.6, slow: 1.6, colorToken: '--status-info', label: '물그릇 웅덩이' },
+      ],
       cadence: 1.34,
       pressure: 1.28,
       packs: [
@@ -133,6 +226,11 @@
       copy: '그림자 늑대가 돌진하고 빈 갑옷이 뒤에서 압박합니다.',
       moveName: '의지 유지',
       checkStat: 'will',
+      objective: '늑대의 직선 돌진로를 읽고 빈 갑옷 사이를 빠져나가세요.',
+      pressureRule: 'charge-lanes',
+      hazards: [
+        { kind: 'wolfLane', cadence: 4.2, warning: 0.72, duration: 1.25, length: 280, width: 42, damage: 7, tension: 0.7, colorToken: '--status-error', label: '늑대 돌진로' },
+      ],
       cadence: 1.42,
       pressure: 1.42,
       packs: [
@@ -148,6 +246,11 @@
       copy: '검은 종 파수꾼을 쓰러뜨려야 문이 열립니다.',
       moveName: '마지막 문 돌파',
       checkStat: 'str',
+      objective: '파수꾼의 종파와 탑 그림자를 읽고 보스를 쓰러뜨리세요.',
+      pressureRule: 'bell-rings',
+      hazards: [
+        { kind: 'bellRing', cadence: 4.6, warning: 0.95, duration: 1.7, radius: 112, width: 34, damage: 8, tension: 0.9, colorToken: '--accent-bell', label: '검은 종파' },
+      ],
       cadence: 1.55,
       pressure: 1.5,
       packs: [
@@ -536,6 +639,34 @@
       },
     },
   ];
+
+  const upgradeMeta = {
+    thornShield: { rarity: 'common', tags: ['shield', 'survival'], classHint: '전사와 근접 직업에게 안정적입니다.', synergyText: 'shield 2개부터 접촉 피해를 추가로 줄입니다.' },
+    pickShortcut: { rarity: 'common', tags: ['mobility', 'hunt'], classHint: '도적과 레인저가 경험치 흐름을 빠르게 잡습니다.', synergyText: 'mobility 2개부터 위험 구역 둔화 시간이 짧아집니다.' },
+    basinRune: { rarity: 'rare', tags: ['arcane', 'control'], classHint: '마법사, 사제, 드루이드의 자동 공격 주기를 당깁니다.', synergyText: 'control 2개부터 적 경고 시간이 조금 길어집니다.' },
+    barukLine: { rarity: 'uncommon', tags: ['martial', 'pierce'], classHint: '레인저와 전사가 단단한 적을 빨리 정리합니다.', synergyText: 'pierce 2개부터 투사체가 첫 명중 후 피해를 덜 잃습니다.' },
+    rameLeaves: { rarity: 'uncommon', tags: ['root', 'faith', 'control'], classHint: '사제와 드루이드가 포위망을 늦춥니다.', synergyText: 'root/faith가 함께 있으면 치유와 둔화가 같이 강화됩니다.' },
+    blackBell: { rarity: 'rare', tags: ['bell', 'risk', 'arcane'], classHint: '화력을 올리지만 웨이브 압박도 커집니다.', synergyText: 'bell 2개부터 보스에게 주는 피해가 조금 오릅니다.' },
+    fanKnives: { rarity: 'uncommon', tags: ['blade', 'trick'], classHint: '도적의 가까운 무리 정리에 잘 맞습니다.', synergyText: 'blade 2개부터 부채꼴 단검이 더 자주 나갑니다.' },
+    oathSpear: { rarity: 'rare', tags: ['spear', 'martial', 'shield'], classHint: '전사가 적 안쪽에서 버틸 때 강합니다.', synergyText: 'martial 2개부터 회전 무기 피해가 상승합니다.' },
+    bellWave: { rarity: 'rare', tags: ['bell', 'faith', 'arcane'], classHint: '사제와 마법사가 넓은 보스 압박을 만듭니다.', synergyText: 'bell 2개부터 종파 반경이 넓어집니다.' },
+    shieldBash: { rarity: 'class', tags: ['shield', 'martial'], classHint: '전사 전용 핵심 강화입니다.', synergyText: 'shield 2개부터 피격 긴장 증가가 줄어듭니다.' },
+    shadowStep: { rarity: 'class', tags: ['blade', 'mobility', 'trick'], classHint: '도적 전용 생존 강화입니다.', synergyText: 'mobility와 blade가 함께 있으면 회피 후 짧게 가속합니다.' },
+    healingLitany: { rarity: 'class', tags: ['faith', 'survival'], classHint: '사제 전용 회복 강화입니다.', synergyText: 'faith 2개부터 치유 파동이 긴장을 낮춥니다.' },
+    beastForm: { rarity: 'class', tags: ['wild', 'root', 'mobility'], classHint: '드루이드 전용 변신 강화입니다.', synergyText: 'wild/root가 함께 있으면 위험 구역에서 빠져나오기 쉬워집니다.' },
+    grimGrimoire: { rarity: 'class', tags: ['arcane', 'bell', 'risk'], classHint: '마법사 전용 고위험 화력 강화입니다.', synergyText: 'arcane 2개부터 보호막 재사용 시간이 줄어듭니다.' },
+    hawkCompanion: { rarity: 'class', tags: ['hunt', 'pierce'], classHint: '레인저 전용 추적 강화입니다.', synergyText: 'hunt 2개부터 매가 보스도 표시합니다.' },
+    farShot: { rarity: 'uncommon', tags: ['hunt', 'pierce', 'mobility'], classHint: '레인저와 원거리 빌드가 먼 위협을 먼저 지웁니다.', synergyText: 'hunt/pierce가 함께 있으면 첫 명중 피해가 상승합니다.' },
+    wildThicket: { rarity: 'uncommon', tags: ['root', 'wild', 'control'], classHint: '드루이드의 둔화와 피해를 함께 올립니다.', synergyText: 'root 2개부터 가시뿌리 명중 시 작은 균열을 남깁니다.' },
+  };
+
+  upgrades.forEach((upgrade) => {
+    const meta = upgradeMeta[upgrade.id] || {};
+    upgrade.rarity = meta.rarity || 'common';
+    upgrade.tags = meta.tags || [upgrade.family];
+    upgrade.classHint = meta.classHint || '현재 플레이북의 성장 방향과 맞습니다.';
+    upgrade.synergyText = meta.synergyText || `${upgrade.family} 선택을 이어가면 빌드 정체성이 강해집니다.`;
+  });
 
   window.DungeonworldSurvivorsContent = { scenes, enemyTypes, wavePatterns, playbooks, upgrades };
 })();
