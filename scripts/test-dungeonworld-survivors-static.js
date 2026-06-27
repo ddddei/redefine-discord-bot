@@ -44,16 +44,26 @@ function testWaveRollBehavior() {
 
 function testRunModesAndStandardTimeline() {
   const { content, systems } = loadGameRuntime();
-  const demo = systems.createState(content, 'fighter');
+  const defaultRun = systems.createState(content, 'fighter');
+  const demo = systems.createState(content, 'fighter', { mode: 'demo' });
   const quick = systems.createState(content, 'fighter', { mode: 'quick' });
   const standard = systems.createState(content, 'fighter', { mode: 'standard' });
 
+  assert.strictEqual(defaultRun.mode.id, 'standard');
   assert.strictEqual(demo.mode.id, 'demo');
+  assert.strictEqual(demo.mode.label, '4분 데모');
   assert.strictEqual(demo.duration, 240);
   assert.strictEqual(quick.mode.id, 'quick');
+  assert.strictEqual(quick.mode.label, '10분 빠른 런');
   assert.strictEqual(quick.duration, 600);
+  assert.strictEqual(JSON.stringify(quick.mode.eliteSchedule), JSON.stringify([300]));
+  assert.strictEqual(quick.mode.bossSpawnAt, 540);
   assert.strictEqual(standard.mode.id, 'standard');
+  assert.strictEqual(standard.mode.label, '30분 정식');
   assert.strictEqual(standard.duration, 1800);
+  assert.strictEqual(JSON.stringify(standard.mode.eliteSchedule), JSON.stringify([300, 600, 900, 1200, 1500]));
+  assert.strictEqual(JSON.stringify(standard.mode.eliteMinutes), JSON.stringify([5, 10, 15, 20, 25]));
+  assert.strictEqual(standard.mode.bossSpawnAt, 1740);
   assert.strictEqual(demo.waves[demo.waves.length - 1].id, 'finalGate');
   assert.strictEqual(standard.waves[0].at, 0);
   assert.strictEqual(standard.waves[standard.waves.length - 1].at, 1740);
@@ -471,7 +481,7 @@ function testLargeWorldAndMovementClamp() {
 
 function testBossFlowCanSpawnAndResolveWin() {
   const { content, systems } = loadGameRuntime();
-  const state = systems.createState(content, 'fighter');
+  const state = systems.createState(content, 'fighter', { mode: 'demo' });
   state.spawnTimer = 99;
   state.elapsed = 204.99;
   state.enemies = [];
@@ -504,6 +514,7 @@ function main() {
   const html = readGameFile('index.html');
   assert.ok(html.includes('검은 종 생존전'));
   assert.ok(html.includes('id="game-canvas"'));
+  assert.ok(html.includes('30분을 버티고 마지막 문을 여세요'));
   assert.ok(html.includes('./content.js'));
   assert.ok(html.includes('./systems.js'));
   assert.ok(html.includes('./renderer.js'));
@@ -567,6 +578,8 @@ function main() {
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('RUN_MODES'));
+  assert.ok(systems.includes("DEFAULT_RUN_MODE = 'standard'"));
+  assert.ok(systems.includes('eliteSchedule: [300, 600, 900, 1200, 1500]'));
   assert.ok(systems.includes('width: 2400'));
   assert.ok(systems.includes('height: 1600'));
   assert.ok(systems.includes('function resolveDungeonMove'));
@@ -614,6 +627,8 @@ function main() {
   assert.ok(game.includes('describeBuildDirection'));
   assert.ok(game.includes('function formatRarity'));
   assert.ok(game.includes('dataset.mode'));
+  assert.ok(game.includes("params.get('qa') === '1'"));
+  assert.ok(game.includes('quick 모드에서는 10분 빠른 런'));
   assert.ok(game.includes('recommendation-reason'));
   assert.ok(game.includes('런 목표'));
   assert.ok(game.includes('보스전 기여'));

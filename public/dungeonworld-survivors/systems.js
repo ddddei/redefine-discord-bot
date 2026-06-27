@@ -1,10 +1,43 @@
 (function () {
   const RUN_MODES = {
-    demo: { id: 'demo', title: '4분 데모', duration: 240, wavesKey: 'wavePatterns', scenesKey: 'scenes', bossAt: 198, eliteMinutes: [] },
-    quick: { id: 'quick', title: '10분 퀵 런', duration: 600, wavesKey: 'standardWavePatterns', scenesKey: 'standardScenes', bossAt: 570, eliteMinutes: [5] },
-    standard: { id: 'standard', title: '30분 정식 런', duration: 1800, wavesKey: 'standardWavePatterns', scenesKey: 'standardScenes', bossAt: 1740, eliteMinutes: [5, 10, 15, 20, 25] },
+    demo: {
+      id: 'demo',
+      title: '4분 데모',
+      label: '4분 데모',
+      duration: 240,
+      wavesKey: 'wavePatterns',
+      scenesKey: 'scenes',
+      bossAt: 198,
+      bossSpawnAt: 198,
+      eliteMinutes: [],
+      eliteSchedule: [],
+    },
+    quick: {
+      id: 'quick',
+      title: '10분 퀵 런',
+      label: '10분 빠른 런',
+      duration: 600,
+      wavesKey: 'standardWavePatterns',
+      scenesKey: 'standardScenes',
+      bossAt: 540,
+      bossSpawnAt: 540,
+      eliteMinutes: [5],
+      eliteSchedule: [300],
+    },
+    standard: {
+      id: 'standard',
+      title: '30분 정식 런',
+      label: '30분 정식',
+      duration: 1800,
+      wavesKey: 'standardWavePatterns',
+      scenesKey: 'standardScenes',
+      bossAt: 1740,
+      bossSpawnAt: 1740,
+      eliteMinutes: [5, 10, 15, 20, 25],
+      eliteSchedule: [300, 600, 900, 1200, 1500],
+    },
   };
-  const DEFAULT_RUN_MODE = 'demo';
+  const DEFAULT_RUN_MODE = 'standard';
   const UPGRADE_ITEM_LINKS = {
     shieldBash: { type: 'weapon', id: 'cleave' },
     ironVow: { type: 'passive', id: 'shieldLine' },

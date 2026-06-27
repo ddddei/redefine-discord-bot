@@ -41,7 +41,10 @@
 
   function getRequestedMode() {
     const params = new URLSearchParams(window.location.search);
-    return params.get('mode') || 'demo';
+    const requestedMode = params.get('mode');
+    if (requestedMode) return requestedMode;
+    if (params.get('qa') === '1') return 'demo';
+    return 'standard';
   }
 
   function resetGame(playbookId) {
@@ -280,7 +283,12 @@
   function showIntro() {
     elements.modalKicker.textContent = '플레이북 선택';
     elements.modalTitle.textContent = '누구로 버틸까요?';
-    elements.modalCopy.textContent = '보석을 먹으면 경험치가 오르고, 레벨업하면 무기나 패시브를 고릅니다. 같은 무기를 여러 번 고르면 강해지며, 무기 Lv.8과 특정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화할 수 있습니다. 30분 정식 런에서는 엘리트를 잡아 상자를 얻고, 30분까지 버티면 마지막 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.';
+    const modeCopy = state.mode.id === 'demo'
+      ? '현재는 4분 데모/QA 흐름입니다. 보스까지 빠르게 확인할 수 있습니다.'
+      : state.mode.id === 'quick'
+        ? 'quick 모드에서는 10분 빠른 런으로 엘리트와 마지막 문 흐름을 압축해 확인합니다.'
+        : 'standard 모드에서는 30분까지 버티면 마지막 문이 열립니다.';
+    elements.modalCopy.textContent = `보석을 먹으면 경험치가 오르고, 레벨업하면 무기나 패시브를 고릅니다. 같은 무기를 여러 번 고르면 강해지며, 무기 Lv.8과 특정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화할 수 있습니다. 엘리트를 잡으면 상자가 나오고, ${modeCopy} 포인트나 Discord 계정 연동은 없습니다.`;
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.remove('hidden');
     elements.modalSecondary.textContent = '닫기';

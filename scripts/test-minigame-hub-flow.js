@@ -512,20 +512,34 @@ async function run() {
   assert.strictEqual(getEmbedTitle(duplicateRogueExit.replyPayload), '🗺️ 세 칸 탐험');
   assert.match(duplicateRogueExit.replyPayload.embeds[0].data.description, /같은 게임 보상은 같은 날짜에 중복 지급되지 않아요/);
 
-  const capCard = createButtonInteraction('participant_minigame_card:1', 'cap_user', '상한 테스트 사용자');
-  const capDice = createButtonInteraction('participant_minigame_dice', 'cap_user', '상한 테스트 사용자');
-  const capNumber = createButtonInteraction('participant_minigame_number:5', 'cap_user', '상한 테스트 사용자');
-  await handleInteractionCreate(capCard);
-  await handleInteractionCreate(capDice);
-  await handleInteractionCreate(capNumber);
+  const repo = require('../src/pointsRepository').createPointsRepository();
+  const capUserFixture = { userId: 'cap_user', displayName: '상한 테스트 사용자' };
+  const capResults = [
+    ['cap_a', 15],
+    ['cap_b', 15],
+    ['cap_c', 15],
+  ].map(([gameId, rewardPoints]) => {
+    return repo.awardMinigameReward({
+      user: capUserFixture,
+      gameId,
+      gameTitle: gameId,
+      playDate,
+      rewardPoints,
+      reason: `미니게임 보상: ${gameId}`,
+    });
+  });
+  assert.deepStrictEqual(capResults.map((result) => result.awardedPoints), [15, 15, 10]);
   const capData = readJson(paths.points);
   const capUser = capData.users.find((user) => user.userId === 'cap_user');
   const capEarned = capUser.totalPoints - 50;
   assert.ok(capEarned <= 40, `daily minigame cap exceeded: ${capEarned}`);
+  assert.strictEqual(
+    capData.pointTransactions.filter((transaction) => transaction.userId === 'cap_user').length,
+    3
+  );
   assert.ok(capData.pointTransactions.every((transaction) => transaction.amount >= 0));
   assert.ok(capData.pointTransactions.every((transaction) => transaction.relatedType === 'minigameReward'));
 
-  const repo = require('../src/pointsRepository').createPointsRepository();
   const highRewardUser = { userId: 'high_reward_user', displayName: '상한 사용자' };
   const highRewardGames = [
     ['bonus_a', 15],
@@ -590,7 +604,7 @@ async function run() {
   assert.match(rankingDescription, /재미용 기록/);
   assert.match(rankingDescription, /상위 5명/);
   assert.match(rankingDescription, /상한 사용자 - 40P \(4회\)/);
-  assert.match(rankingDescription, /상한 테스트 사용자 - \d+P \(3회\)/);
+  assert.match(rankingDescription, /상한 테스트 사용자 - 40P \(3회\)/);
   assert.match(rankingDescription, /하루 미니게임은 최대 4회, 보상 합계는 최대 40P/);
   assert.doesNotMatch(rankingDescription, /0P 사용자/);
 
