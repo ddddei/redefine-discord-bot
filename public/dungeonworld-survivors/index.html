@@ -16,7 +16,7 @@
         <p class="kicker">Dungeon World browser prototype</p>
         <h1>검은 종 생존전</h1>
         <p class="lede">
-          변방 여관에서 검은탑까지 밀려오는 적을 버티는 4분짜리 실시간 액션 프로토타입입니다.
+          플레이북을 고르고, 캐릭터 시트의 빈칸을 채우듯 검은탑까지 밀려오는 적을 버티는 4분짜리 실시간 액션 프로토타입입니다.
         </p>
       </div>
       <div class="header-actions">
@@ -64,14 +64,17 @@
 
         <section class="status-card">
           <h2>조작</h2>
-          <p>방향키 또는 WASD로 이동합니다. 단검, 창, 잎 고리, 종파는 자동으로 발동합니다.</p>
-          <p>시작할 때 플레이북을 고르고, 웨이브가 바뀔 때 2d6 판정 결과가 전투에 반영됩니다.</p>
+          <p>방향키 또는 WASD로 이동합니다. 기본 공격과 플레이북 장비는 자동으로 발동합니다.</p>
+          <p>시작할 때 직업을 고르고, 웨이브가 바뀔 때 2d6 판정 결과가 전투에 반영됩니다.</p>
         </section>
 
         <section class="status-card">
           <h2>캐릭터 시트</h2>
           <dl class="stat-list sheet-list">
             <div><dt>플레이북</dt><dd id="playbook-value">전사</dd></div>
+            <div><dt>역할</dt><dd id="role-value">근접 방어</dd></div>
+            <div><dt>기본 공격</dt><dd id="attack-value">철의 베기</dd></div>
+            <div><dt>생존 방식</dt><dd id="survival-value">방패벽</dd></div>
             <div><dt>근력</dt><dd id="stat-str-value">+2</dd></div>
             <div><dt>민첩</dt><dd id="stat-dex-value">0</dd></div>
             <div><dt>지혜</dt><dd id="stat-wis-value">0</dd></div>
@@ -83,7 +86,8 @@
         <section class="status-card">
           <h2>현재 장비</h2>
           <ul id="upgrade-list" class="upgrade-list">
-            <li>토른의 방패: 기본 이동과 자동 단검</li>
+            <li>전사 플레이북: 철의 베기와 방패벽</li>
+            <li>시작 장비: 낡은 검, 방패벽, 철의 베기</li>
           </ul>
         </section>
       </aside>

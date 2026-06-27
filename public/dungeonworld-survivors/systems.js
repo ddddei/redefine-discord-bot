@@ -25,21 +25,40 @@
       tension: 0,
       maxTension: 12,
       tensionResist: 0,
+      tensionSpeed: 0,
+      moveGrace: 0,
+      attackStyle: 'knife',
       shots: 1, pierce: 0,
+      projectileSpeed: 420,
+      projectileRadius: 5,
+      projectileLife: 1.4,
+      cleaveRange: 0,
+      cleaveArc: Math.PI * 0.62,
+      cleaveSlow: 0,
+      rootSlow: 0,
+      dodgeChance: 0,
       aura: false,
       auraDamage: 0,
       auraRange: 106,
       auraTimer: 0,
+      healPulse: 0,
+      healTimer: 0,
       fanKnives: 0,
       fanTimer: 0,
+      fanCooldownBonus: 0,
       orbitingSpears: 0,
       orbitTimer: 0,
       bellWave: 0,
       bellTimer: 0,
+      arcaneShield: 0,
+      arcaneShieldTimer: 0,
+      companionStrike: 0,
+      companionTimer: 0,
       spawnPressure: 0,
     };
     if (playbook) {
       player.stats = { ...player.stats, ...playbook.stats };
+      player.attackStyle = playbook.attack || player.attackStyle;
       playbook.apply(player);
     }
     return player;
@@ -63,6 +82,7 @@
       bossDefeated: false,
       lastMoveResult: '아직 판정 없음',
       kills: 0,
+      attackMarks: [],
       player: createPlayer(playbook),
       enemies: [],
       projectiles: [],
@@ -70,7 +90,7 @@
       floaters: [],
       effects: { flash: 0, shake: 0, pulse: 0 },
       upgradeLevels: {},
-      learnedUpgrades: [playbook.learned, '토른의 방패: 기본 이동과 자동 단검'],
+      learnedUpgrades: [playbook.learned, playbook.loadout],
       status: 'ready',
     };
   }
@@ -163,7 +183,7 @@
       addFloater(state, '7-9 해내지만 대가가 생깁니다', WORLD.width / 2, 112, '--accent-ember', 1.7);
       return;
     }
-    state.player.tension = clamp(state.player.tension + 3, 0, state.player.maxTension);
+    state.player.tension = clamp(state.player.tension + Math.max(1, 3 - state.player.moveGrace), 0, state.player.maxTension);
     state.lastMoveResult = `${wave.moveName} 6-: 마스터가 움직입니다`;
     addFloater(state, '6- 예상 밖의 전개', WORLD.width / 2, 112, '--status-error', 1.7);
     wave.packs.slice(0, 1).forEach((pack) => spawnPack(state, pack));
@@ -176,11 +196,17 @@
     const dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
     const direction = normalize(dx, dy);
     const moving = dx !== 0 || dy !== 0;
-    player.x = clamp(player.x + (moving ? direction.x * player.speed * dt : 0), 18, WORLD.width - 18);
-    player.y = clamp(player.y + (moving ? direction.y * player.speed * dt : 0), 18, WORLD.height - 18);
+    const tensionScale = 1 + player.tension * player.tensionSpeed;
+    const speed = player.speed * tensionScale;
+    player.x = clamp(player.x + (moving ? direction.x * speed * dt : 0), 18, WORLD.width - 18);
+    player.y = clamp(player.y + (moving ? direction.y * speed * dt : 0), 18, WORLD.height - 18);
     player.attackTimer = Math.max(0, player.attackTimer - dt);
     player.invulnerableTimer = Math.max(0, player.invulnerableTimer - dt);
+    player.arcaneShieldTimer = Math.max(0, player.arcaneShieldTimer - dt);
+    player.companionTimer = Math.max(0, player.companionTimer - dt);
     updateAura(state, dt);
+    updateHealPulse(state, dt);
+    updateCompanionStrike(state);
     updateWeaponTimers(state, dt);
   }
 
@@ -199,6 +225,38 @@
     addFloater(state, '라메의 잎 표식', player.x, player.y - 28, '--accent-primary');
   }
 
+  function updateHealPulse(state, dt) {
+    const player = state.player;
+    if (player.healPulse <= 0) return;
+    player.healTimer -= dt;
+    if (player.healTimer > 0) return;
+    player.healTimer = Math.max(3.2, 5.4 - player.healPulse * 0.46);
+    const amount = 3 + player.healPulse * 2;
+    player.health = Math.min(player.maxHealth, player.health + amount);
+    addFloater(state, `기도 +${amount}`, player.x, player.y - 34, '--status-success', 1);
+  }
+
+  function updateCompanionStrike(state) {
+    const player = state.player;
+    if (player.companionStrike <= 0 || player.companionTimer > 0 || state.enemies.length === 0) return;
+    const target = state.enemies
+      .slice()
+      .sort((a, b) => a.hp - b.hp)[0];
+    target.hp -= 12 + player.companionStrike * 8;
+    target.hitFlash = 0.2;
+    target.slowTimer = Math.max(target.slowTimer, 0.42);
+    state.attackMarks.push({
+      x: target.x,
+      y: target.y,
+      radius: 22 + player.companionStrike * 2,
+      kind: 'hawk',
+      life: 0.34,
+      maxLife: 0.34,
+    });
+    addFloater(state, '동료 매', target.x, target.y - 16, '--accent-ember', 0.9);
+    player.companionTimer = Math.max(1.8, 3.4 - player.companionStrike * 0.34);
+  }
+
   function updateWeaponTimers(state, dt) {
     const player = state.player;
     player.fanTimer = Math.max(0, player.fanTimer - dt);
@@ -208,26 +266,68 @@
   function fireProjectiles(state) {
     const player = state.player;
     if (player.attackTimer > 0 || state.enemies.length === 0) return;
+    if (player.attackStyle === 'cleave') {
+      fireCleave(state);
+      return;
+    }
     const targets = state.enemies
       .slice()
-      .sort((a, b) => distance(player, a) - distance(player, b))
+      .sort((a, b) => {
+        if (player.attackStyle === 'arrow') return distance(player, b) - distance(player, a);
+        return distance(player, a) - distance(player, b);
+      })
       .slice(0, player.shots);
     targets.forEach((target) => {
       const direction = normalize(target.x - player.x, target.y - player.y);
+      const spread = player.attackStyle === 'missile' ? (Math.random() - 0.5) * 0.14 : 0;
+      const vx = direction.x * Math.cos(spread) - direction.y * Math.sin(spread);
+      const vy = direction.x * Math.sin(spread) + direction.y * Math.cos(spread);
       state.projectiles.push({
         x: player.x,
         y: player.y,
-        vx: direction.x * 420,
-        vy: direction.y * 420,
-        radius: 5,
+        vx: vx * player.projectileSpeed,
+        vy: vy * player.projectileSpeed,
+        radius: player.attackStyle === 'radiance' ? 8 : player.projectileRadius,
         damage: player.damage,
-        pierce: player.pierce,
-        life: 1.4,
-        kind: 'knife',
+        pierce: player.attackStyle === 'arrow' ? player.pierce + 1 : player.pierce,
+        life: player.projectileLife,
+        kind: player.attackStyle,
       });
     });
     player.attackTimer = player.attackCooldown;
     fireFanKnives(state);
+    fireBellWave(state);
+  }
+
+  function fireCleave(state) {
+    const player = state.player;
+    const target = state.enemies
+      .slice()
+      .sort((a, b) => distance(player, a) - distance(player, b))[0];
+    const facing = normalize(target.x - player.x, target.y - player.y);
+    let hits = 0;
+    state.enemies.forEach((enemy) => {
+      const toEnemy = normalize(enemy.x - player.x, enemy.y - player.y);
+      const angle = Math.acos(clamp(facing.x * toEnemy.x + facing.y * toEnemy.y, -1, 1));
+      if (distance(player, enemy) <= player.cleaveRange + enemy.radius && angle <= player.cleaveArc / 2) {
+        enemy.hp -= player.damage + 8;
+        enemy.hitFlash = 0.16;
+        enemy.slowTimer = Math.max(enemy.slowTimer, player.cleaveSlow);
+        hits += 1;
+      }
+    });
+    state.attackMarks.push({
+      x: player.x + facing.x * (player.cleaveRange * 0.48),
+      y: player.y + facing.y * (player.cleaveRange * 0.48),
+      radius: player.cleaveRange,
+      angle: Math.atan2(facing.y, facing.x),
+      arc: player.cleaveArc,
+      kind: 'cleave',
+      life: 0.18,
+      maxLife: 0.18,
+    });
+    if (hits > 1) addFloater(state, `베기 x${hits}`, player.x, player.y - 34, '--accent-ember', 0.8);
+    player.attackTimer = player.attackCooldown;
     fireBellWave(state);
   }
 
@@ -250,7 +350,7 @@
         kind: 'fan',
       });
     }
-    player.fanTimer = Math.max(0.55, 1.35 - player.fanKnives * 0.18);
+    player.fanTimer = Math.max(0.45, 1.35 - player.fanKnives * 0.18 - player.fanCooldownBonus);
   }
 
   function fireBellWave(state) {
@@ -289,6 +389,13 @@
     ));
   }
 
+  function updateAttackMarks(state, dt) {
+    state.attackMarks.forEach((mark) => {
+      mark.life -= dt;
+    });
+    state.attackMarks = state.attackMarks.filter((mark) => mark.life > 0);
+  }
+
   function updateOrbitingSpears(state, dt) {
     const player = state.player;
     if (player.orbitingSpears <= 0) return;
@@ -324,7 +431,17 @@
       enemy.slowTimer = Math.max(0, enemy.slowTimer - dt);
       enemy.hitFlash = Math.max(0, enemy.hitFlash - dt);
       if (distance(player, enemy) < player.radius + enemy.radius && player.invulnerableTimer <= 0) {
-        player.health -= Math.max(3, enemy.damage - player.armor);
+        if (player.dodgeChance > 0 && Math.random() < player.dodgeChance) {
+          player.invulnerableTimer = 0.36;
+          addFloater(state, '회피', player.x, player.y - 22, '--status-info');
+          return;
+        }
+        const shieldReduction = player.arcaneShield > 0 && player.arcaneShieldTimer <= 0 ? 0.45 : 1;
+        if (shieldReduction < 1) {
+          player.arcaneShieldTimer = 4.8;
+          addFloater(state, '비전 보호막', player.x, player.y - 24, '--accent-bell');
+        }
+        player.health -= Math.max(3, enemy.damage - player.armor) * shieldReduction;
         player.tension = clamp(player.tension + Math.max(0.35, 1 - player.tensionResist), 0, player.maxTension);
         player.invulnerableTimer = 0.7;
         state.effects.flash = 0.2;
@@ -361,6 +478,10 @@
         if (projectile.life <= 0 || distance(projectile, enemy) > projectile.radius + enemy.radius) return;
         enemy.hp -= projectile.damage;
         enemy.hitFlash = 0.13;
+        if (projectile.kind === 'roots') enemy.slowTimer = Math.max(enemy.slowTimer, state.player.rootSlow);
+        if (projectile.kind === 'radiance') {
+          state.player.health = Math.min(state.player.maxHealth, state.player.health + 1.2);
+        }
         projectile.pierce -= 1;
         if (projectile.pierce < 0) projectile.life = 0;
       });
@@ -448,6 +569,7 @@
   function pickUpgrades(state) {
     const available = state.content.upgrades.filter((upgrade) => (
       (state.upgradeLevels[upgrade.id] || 0) < upgrade.maxLevel
+      && (upgrade.pools || []).some((pool) => state.playbook.upgradePool.includes(pool))
     ));
     const byFamily = available.reduce((groups, upgrade) => {
       if (!groups[upgrade.family]) groups[upgrade.family] = [];
@@ -475,6 +597,7 @@
     updatePlayer(state, input, dt);
     fireProjectiles(state);
     updateProjectiles(state, dt);
+    updateAttackMarks(state, dt);
     updateOrbitingSpears(state, dt);
     updateEnemies(state, dt);
     resolveHits(state);

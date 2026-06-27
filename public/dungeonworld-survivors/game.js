@@ -19,6 +19,9 @@
     wave: document.getElementById('wave-value'),
     objective: document.getElementById('objective-value'),
     upgrades: document.getElementById('upgrade-list'),
+    role: document.getElementById('role-value'),
+    attack: document.getElementById('attack-value'),
+    survival: document.getElementById('survival-value'),
     modal: document.getElementById('modal'),
     modalKicker: document.getElementById('modal-kicker'),
     modalTitle: document.getElementById('modal-title'),
@@ -111,9 +114,15 @@
     elements.upgradeOptions.innerHTML = '';
     content.playbooks.forEach((playbook) => {
       const button = document.createElement('button');
-      button.className = 'upgrade-option';
+      button.className = 'upgrade-option playbook-option';
       button.type = 'button';
-      button.innerHTML = `<strong>${playbook.title}</strong><span>${playbook.sheetLine}</span><span>${playbook.text}</span>`;
+      button.innerHTML = [
+        `<strong>${playbook.title}</strong>`,
+        `<span class="option-meta">${playbook.role}</span>`,
+        `<span>${playbook.sheetLine}</span>`,
+        `<span>${playbook.text}</span>`,
+        `<span>${playbook.survival}</span>`,
+      ].join('');
       button.addEventListener('click', () => startGame(playbook.id));
       elements.upgradeOptions.appendChild(button);
     });
@@ -161,6 +170,9 @@
     document.getElementById('tension-value').textContent = `${Math.ceil(state.player.tension)} / ${state.player.maxTension}`;
     document.getElementById('move-result-value').textContent = state.lastMoveResult;
     document.getElementById('playbook-value').textContent = state.playbook.title;
+    elements.role.textContent = state.playbook.role;
+    elements.attack.textContent = formatAttack(state.playbook.attack);
+    elements.survival.textContent = state.playbook.survival.split(':')[0];
     document.getElementById('stat-str-value').textContent = formatStat(state.player.stats.str);
     document.getElementById('stat-dex-value').textContent = formatStat(state.player.stats.dex);
     document.getElementById('stat-wis-value').textContent = formatStat(state.player.stats.wis);
@@ -206,6 +218,18 @@
 
   function formatStat(value) {
     return value > 0 ? `+${value}` : String(value);
+  }
+
+  function formatAttack(attack) {
+    const attackNames = {
+      cleave: '철의 베기',
+      knives: '숨은 칼',
+      radiance: '축성의 빛',
+      roots: '가시뿌리',
+      missile: '마력탄',
+      arrow: '검은 화살',
+    };
+    return attackNames[attack] || '자동 공격';
   }
 
   function showModal() {

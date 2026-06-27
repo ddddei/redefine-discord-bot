@@ -2,7 +2,7 @@
 
 ## 1. Atmosphere & Identity
 
-Project Redefine interfaces should feel like a quiet operations room: clear, calm, and grounded even when the content is playful. The Dungeon World browser game adds a darker campfire-and-black-tower tone, but it still avoids pressure, ranking language, or reward hooks. The signature is restrained adventure: ink-dark surfaces, moss-green action, amber warnings, and Korean copy that sounds like an operator gently opening a scene.
+Project Redefine interfaces should feel like a quiet operations room: clear, calm, and grounded even when the content is playful. The Dungeon World browser game adds a darker campfire-and-black-tower tone, but it still avoids pressure, ranking language, or reward hooks. The signature is restrained adventure: ink-dark surfaces, parchment rule lines, moss-green action, amber warnings, and Korean copy that sounds like an operator gently opening a scene.
 
 ## 2. Color
 
@@ -10,29 +10,30 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 
 | Role | Token | Light | Dark | Usage |
 | --- | --- | --- | --- | --- |
-| Surface/primary | --surface-primary | #F7F5EF | #101417 | Page background |
-| Surface/secondary | --surface-secondary | #ECE7D8 | #171E22 | Panels, canvas shell |
-| Surface/elevated | --surface-elevated | #FFFFFF | #202A2F | Modals, upgrade cards |
-| Surface/canvas | --surface-canvas | #D7D0BA | #0B1012 | Game field |
-| Text/primary | --text-primary | #1C2425 | #F1EEE4 | Main Korean text |
-| Text/secondary | --text-secondary | #526060 | #B8C2B6 | Supporting text |
-| Text/tertiary | --text-tertiary | #717B78 | #7E8A82 | Metadata |
-| Border/default | --border-default | #B9B19D | #39464A | Panels and controls |
-| Border/subtle | --border-subtle | #D8D1C0 | #263136 | Soft dividers |
-| Accent/primary | --accent-primary | #256F5A | #76D0A4 | Primary action, player |
-| Accent/hover | --accent-hover | #1D5948 | #9EE2BF | Hover/focus |
-| Accent/ember | --accent-ember | #A85F24 | #E4A84F | XP, timers, warnings |
-| Accent/bell | --accent-bell | #5E4DB2 | #A795FF | Boss, black-bell motif |
-| Status/success | --status-success | #1F7A4A | #7AD28C | Win, cleared state |
-| Status/warning | --status-warning | #A85F24 | #E4A84F | Caution, upgrade available |
-| Status/error | --status-error | #A53C3C | #FF8A8A | Low health, game over |
-| Status/info | --status-info | #315E7C | #83BDE8 | Help and hints |
+| Surface/primary | --surface-primary | #F7F5EF | #0D0F10 | Page background |
+| Surface/secondary | --surface-secondary | #ECE7D8 | #151311 | Panels, canvas shell |
+| Surface/elevated | --surface-elevated | #FFFFFF | #1D1A16 | Modals, upgrade cards |
+| Surface/canvas | --surface-canvas | #D7D0BA | #090A0A | Game field |
+| Surface/parchment | --surface-parchment | #D8C7A8 | #2A241C | Character-sheet bands, option cards |
+| Text/primary | --text-primary | #1C2425 | #F2EAD9 | Main Korean text |
+| Text/secondary | --text-secondary | #526060 | #C6B99F | Supporting text |
+| Text/tertiary | --text-tertiary | #717B78 | #8F8069 | Metadata |
+| Border/default | --border-default | #B9B19D | #5B4A34 | Panels and controls |
+| Border/subtle | --border-subtle | #D8D1C0 | #342A20 | Soft dividers |
+| Accent/primary | --accent-primary | #256F5A | #83BD83 | Primary action, player |
+| Accent/hover | --accent-hover | #1D5948 | #B7D99C | Hover/focus |
+| Accent/ember | --accent-ember | #A85F24 | #D09A4A | XP, timers, warnings |
+| Accent/bell | --accent-bell | #5E4DB2 | #8F7BD6 | Boss, black-bell motif |
+| Status/success | --status-success | #1F7A4A | #8BCF83 | Win, cleared state |
+| Status/warning | --status-warning | #A85F24 | #D09A4A | Caution, upgrade available |
+| Status/error | --status-error | #A53C3C | #D36F61 | Low health, game over |
+| Status/info | --status-info | #315E7C | #80A8BD | Help and hints |
 
 ### Rules
 
 - Game UI uses the dark palette by default.
 - Accent/primary is reserved for the player, start/retry controls, focus rings, and positive progress.
-- Accent/bell is only for the black bell, tower, boss, or special wave language.
+- Accent/bell is only for the black bell, tower, boss, arcane shield, or special wave language.
 - No raw color values in UI files outside this table.
 
 ## 3. Typography
@@ -53,9 +54,9 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 
 ### Font Stack
 
-- Primary: Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif
+- Primary: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif
 - Mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace
-- Serif: not used
+- Serif headings: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif
 
 ### Rules
 
@@ -105,6 +106,15 @@ All spacing derives from 4px.
 - **Accessibility**: canvas has a text fallback and keyboard focus instructions are visible.
 - **Motion**: canvas motion is real-time; DOM transitions use opacity and transform only.
 
+### Playbook Option
+
+- **Structure**: native button with title, role metadata, sheet line, tactical description, and survival method.
+- **Variants**: fighter, cleric, thief, druid, wizard, ranger content; same component shell.
+- **Spacing**: --space-2 internal rhythm, --space-4 padding.
+- **States**: hover, focus, selected-by-click.
+- **Accessibility**: full button target, visible focus outline, Korean text wraps by phrase rather than by character where possible.
+- **Motion**: 120ms transform lift only.
+
 ### Command Button
 
 - **Structure**: native `button` with concise label.
@@ -141,4 +151,5 @@ Use borders plus tonal shifts. Shadows are reserved for the modal only.
 | --- | --- | --- |
 | Default | 1px solid var(--border-default) | Panels, canvas shell |
 | Subtle | 1px solid var(--border-subtle) | Inner HUD separators |
-| Modal shadow | 0 24px 80px rgba(0, 0, 0, 0.45) | Upgrade/result modal only |
+| Modal shadow | --shadow-ritual | Upgrade/result modal only |
+| Grain overlay | token-mixed text color at low opacity | Fixed decorative overlay and panel texture |

@@ -61,8 +61,13 @@
     ctx.globalAlpha = player.invulnerableTimer > 0 ? 0.62 : 1;
     ctx.fillStyle = palette.accentPrimary;
     ctx.beginPath();
-    ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
-    ctx.fill();
+    if (player.arcaneShield > 0) {
+      ctx.rect(-player.radius * 0.75, -player.radius * 0.75, player.radius * 1.5, player.radius * 1.5);
+      ctx.fill();
+    } else {
+      ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.strokeStyle = palette.textPrimary;
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -112,17 +117,65 @@
   }
 
   function drawProjectile(ctx, projectile, palette) {
-    ctx.fillStyle = projectile.kind === 'bell' ? palette.accentBell : palette.accentEmber;
+    const projectileColors = {
+      bell: palette.accentBell,
+      missile: palette.accentBell,
+      radiance: palette.statusSuccess,
+      roots: palette.accentPrimary,
+      arrow: palette.accentEmber,
+      knives: palette.accentEmber,
+      fan: palette.accentEmber,
+    };
+    ctx.fillStyle = projectileColors[projectile.kind] || palette.accentEmber;
     ctx.beginPath();
-    ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
-    ctx.fill();
-    if (projectile.kind === 'bell') {
+    if (projectile.kind === 'arrow') {
+      const angle = Math.atan2(projectile.vy, projectile.vx);
+      ctx.save();
+      ctx.translate(projectile.x, projectile.y);
+      ctx.rotate(angle);
+      ctx.fillRect(-10, -2, 20, 4);
+      ctx.restore();
+    } else {
+      ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (projectile.kind === 'bell' || projectile.kind === 'missile') {
       ctx.strokeStyle = withAlpha(palette.accentBell, 0.45);
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(projectile.x, projectile.y, projectile.radius + 8, 0, Math.PI * 2);
       ctx.stroke();
     }
+    if (projectile.kind === 'roots') {
+      ctx.strokeStyle = withAlpha(palette.accentPrimary, 0.36);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(projectile.x - 12, projectile.y + 8);
+      ctx.lineTo(projectile.x, projectile.y - 10);
+      ctx.lineTo(projectile.x + 12, projectile.y + 8);
+      ctx.stroke();
+    }
+  }
+
+  function drawAttackMark(ctx, mark, palette) {
+    const alpha = Math.max(0, mark.life / mark.maxLife);
+    if (mark.kind === 'cleave') {
+      ctx.save();
+      ctx.translate(mark.x, mark.y);
+      ctx.rotate(mark.angle);
+      ctx.strokeStyle = withAlpha(palette.accentEmber, alpha * 0.72);
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, mark.radius * 0.48, -mark.arc / 2, mark.arc / 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    ctx.strokeStyle = withAlpha(palette.accentEmber, alpha * 0.68);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(mark.x, mark.y, mark.radius * (1 + (1 - alpha) * 0.4), 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   function drawGem(ctx, gem, palette) {
@@ -185,6 +238,7 @@
     drawBackground(ctx, world, state.elapsed, palette);
     state.gems.forEach((gem) => drawGem(ctx, gem, palette));
     state.projectiles.forEach((projectile) => drawProjectile(ctx, projectile, palette));
+    state.attackMarks.forEach((mark) => drawAttackMark(ctx, mark, palette));
     state.enemies.forEach((enemy) => drawEnemy(ctx, enemy, palette));
     drawPlayer(ctx, state.player, palette);
     drawFloaters(ctx, state.floaters, palette);

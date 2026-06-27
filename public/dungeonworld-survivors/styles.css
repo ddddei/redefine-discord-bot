@@ -1,22 +1,24 @@
 :root {
   color-scheme: dark;
-  --surface-primary: #101417;
-  --surface-secondary: #171e22;
-  --surface-elevated: #202a2f;
-  --surface-canvas: #0b1012;
-  --text-primary: #f1eee4;
-  --text-secondary: #b8c2b6;
-  --text-tertiary: #7e8a82;
-  --border-default: #39464a;
-  --border-subtle: #263136;
-  --accent-primary: #76d0a4;
-  --accent-hover: #9ee2bf;
-  --accent-ember: #e4a84f;
-  --accent-bell: #a795ff;
-  --status-success: #7ad28c;
-  --status-warning: #e4a84f;
-  --status-error: #ff8a8a;
-  --status-info: #83bde8;
+  --surface-primary: #0d0f10;
+  --surface-secondary: #151311;
+  --surface-elevated: #1d1a16;
+  --surface-canvas: #090a0a;
+  --surface-parchment: #2a241c;
+  --text-primary: #f2ead9;
+  --text-secondary: #c6b99f;
+  --text-tertiary: #8f8069;
+  --border-default: #5b4a34;
+  --border-subtle: #342a20;
+  --accent-primary: #83bd83;
+  --accent-hover: #b7d99c;
+  --accent-ember: #d09a4a;
+  --accent-bell: #8f7bd6;
+  --status-success: #8bcf83;
+  --status-warning: #d09a4a;
+  --status-error: #d36f61;
+  --status-info: #80a8bd;
+  --shadow-ritual: 0 24px 80px rgba(0, 0, 0, 0.52);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -37,12 +39,28 @@ body {
   min-height: 100dvh;
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(118, 208, 164, 0.08), transparent 280px),
-    radial-gradient(circle at 85% 10%, rgba(167, 149, 255, 0.16), transparent 260px),
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent-ember) 14%, transparent), transparent 280px),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--accent-bell) 16%, transparent), transparent 320px),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-secondary) 72%, var(--surface-primary)), var(--surface-primary) 420px),
     var(--surface-primary);
   color: var(--text-primary);
-  font-family: Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-family: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
   line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  content: "";
+  opacity: 0.13;
+  mix-blend-mode: overlay;
+  background-image:
+    repeating-radial-gradient(circle at 18% 24%, color-mix(in srgb, var(--text-primary) 20%, transparent) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(115deg, color-mix(in srgb, var(--text-primary) 8%, transparent) 0 1px, transparent 1px 7px);
 }
 
 button,
@@ -57,12 +75,12 @@ canvas {
   gap: var(--space-6);
   width: min(1440px, 100%);
   margin: 0 auto;
-  padding: var(--space-8) clamp(var(--space-4), 4vw, var(--space-10)) var(--space-5);
+  padding: var(--space-10) clamp(var(--space-4), 4vw, var(--space-10)) var(--space-5);
 }
 
 .kicker {
   margin: 0 0 var(--space-2);
-  color: var(--accent-primary);
+  color: var(--accent-ember);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
@@ -79,12 +97,15 @@ h1 {
   margin-bottom: var(--space-2);
   font-size: clamp(32px, 6vw, 40px);
   line-height: 1.15;
+  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
+  font-weight: 800;
 }
 
 h2 {
   margin-bottom: var(--space-3);
   font-size: 24px;
   line-height: 1.3;
+  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
 }
 
 .lede {
@@ -107,10 +128,11 @@ h2 {
   border-radius: 8px;
   padding: var(--space-3) var(--space-4);
   color: var(--text-primary);
-  background: var(--surface-elevated);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 88%, var(--surface-parchment)), var(--surface-elevated));
   font-weight: 700;
   cursor: pointer;
-  transition: transform 120ms ease-out, border-color 120ms ease-out, background 120ms ease-out;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 12%, transparent);
+  transition: transform 120ms ease-out, border-color 120ms ease-out, background 120ms ease-out, color 120ms ease-out;
 }
 
 .button:hover:not(:disabled),
@@ -131,8 +153,8 @@ h2 {
 
 .button.primary {
   border-color: var(--accent-primary);
-  background: var(--accent-primary);
-  color: #102018;
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent-primary));
+  color: var(--surface-canvas);
 }
 
 .game-layout {
@@ -148,8 +170,11 @@ h2 {
 .status-card,
 .modal-card {
   border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: rgba(23, 30, 34, 0.94);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 72%, transparent), color-mix(in srgb, var(--surface-secondary) 92%, transparent)),
+    var(--surface-secondary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 .stage-panel {
@@ -163,6 +188,8 @@ h2 {
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-3);
 }
 
 .stage-topline p,
@@ -176,9 +203,11 @@ h2 {
   gap: var(--space-3);
   margin-bottom: var(--space-3);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: var(--space-2) var(--space-3);
-  background: var(--surface-elevated);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--surface-parchment) 62%, transparent), color-mix(in srgb, var(--surface-elevated) 72%, transparent)),
+    var(--surface-elevated);
   color: var(--text-secondary);
   font-size: 13px;
 }
@@ -192,8 +221,10 @@ h2 {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface-canvas);
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-bell) 7%, transparent), transparent 36%),
+    var(--surface-canvas);
   aspect-ratio: 16 / 9;
   min-height: 360px;
 }
@@ -215,6 +246,11 @@ canvas {
   padding: var(--space-5);
 }
 
+.status-card h2 {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+}
+
 .stat-list {
   display: grid;
   gap: var(--space-2);
@@ -231,6 +267,7 @@ canvas {
 
 .stat-list dt {
   color: var(--text-secondary);
+  flex: 0 0 auto;
 }
 
 .stat-list dd {
@@ -242,7 +279,7 @@ canvas {
 }
 
 .sheet-list dd {
-  max-width: 58%;
+  max-width: 64%;
   color: var(--accent-primary);
   white-space: normal;
 }
@@ -258,8 +295,9 @@ canvas {
   inset: 0;
   display: grid;
   place-items: center;
+  overflow: auto;
   padding: var(--space-4);
-  background: rgba(6, 9, 10, 0.72);
+  background: color-mix(in srgb, var(--surface-canvas) 82%, transparent);
   opacity: 1;
   transition: opacity 220ms ease-in-out;
 }
@@ -275,8 +313,10 @@ canvas {
 
 .modal-card {
   width: min(720px, 100%);
+  max-height: calc(100dvh - var(--space-8));
+  overflow: auto;
   padding: var(--space-6);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-ritual);
 }
 
 .modal-card p {
@@ -294,21 +334,45 @@ canvas {
   gap: var(--space-1);
   width: 100%;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: 5px;
   padding: var(--space-4);
   text-align: left;
-  background: var(--surface-elevated);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-parchment) 52%, transparent), transparent),
+    var(--surface-elevated);
   color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 120ms ease-out, border-color 120ms ease-out, background 120ms ease-out;
+}
+
+.upgrade-option:hover,
+.upgrade-option:focus-visible {
+  border-color: var(--accent-hover);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  transform: translateY(-1px);
 }
 
 .upgrade-option strong {
-  color: var(--accent-primary);
+  color: var(--text-primary);
   font-size: 18px;
+  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
 }
 
 .upgrade-option span {
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+.upgrade-option .option-meta {
+  color: var(--accent-ember);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.playbook-option {
+  gap: var(--space-2);
 }
 
 @media (max-width: 980px) {
@@ -334,9 +398,43 @@ canvas {
   }
 }
 
+@media (max-width: 520px) {
+  .page-header {
+    padding-top: var(--space-6);
+  }
+
+  .header-actions,
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .stage-panel,
+  .status-card,
+  .modal-card {
+    padding: var(--space-4);
+  }
+
+  .stat-list div {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .stat-list dd,
+  .sheet-list dd {
+    max-width: none;
+    text-align: left;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .button,
-  .modal {
+  .modal,
+  .upgrade-option {
     transition: none;
   }
 }
