@@ -224,7 +224,7 @@
     ctx.translate(player.x, player.y);
     ctx.rotate(player.facing || 0);
     ctx.globalAlpha = player.invulnerableTimer > 0 ? 0.62 : 1;
-    ctx.fillStyle = accent;
+    ctx.fillStyle = withAlpha(accent, 0.88);
     ctx.strokeStyle = palette.textPrimary;
     ctx.lineWidth = 3;
     if (player.crest === 'shield') drawShieldCrest(ctx, player.radius);
@@ -233,79 +233,151 @@
     else if (player.crest === 'root') drawRootCrest(ctx, player.radius);
     else if (player.crest === 'rune') drawRuneCrest(ctx, player.radius);
     else drawHawkCrest(ctx, player.radius);
-    ctx.strokeStyle = withAlpha(accent, 0.56);
-    ctx.beginPath();
-    ctx.arc(0, 0, player.radius + 8, -0.9, 0.9);
-    ctx.stroke();
+    drawFacingNotch(ctx, player.radius, accent);
     ctx.restore();
     drawPlayerAuras(ctx, player, accent, palette);
   }
 
   function drawShieldCrest(ctx, radius) {
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.fillRect(-radius * 0.48, -radius * 0.72, radius * 0.76, radius * 1.44);
+    ctx.strokeRect(-radius * 0.48, -radius * 0.72, radius * 0.76, radius * 1.44);
     ctx.beginPath();
-    ctx.moveTo(radius, 0);
-    ctx.lineTo(-radius * 0.3, -radius * 0.85);
-    ctx.lineTo(-radius, 0);
-    ctx.lineTo(-radius * 0.25, radius * 0.9);
+    ctx.moveTo(radius * 0.08, -radius * 1.08);
+    ctx.lineTo(radius * 1.08, -radius * 0.7);
+    ctx.lineTo(radius * 1.08, radius * 0.7);
+    ctx.lineTo(radius * 0.06, radius * 1.1);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    ctx.strokeStyle = withAlpha(ctx.strokeStyle, 0.72);
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.38, -radius * 0.58);
+    ctx.lineTo(radius * 0.72, 0);
+    ctx.lineTo(radius * 0.38, radius * 0.58);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawBladeCrest(ctx, radius) {
+    ctx.save();
+    ctx.scale(1.18, 0.68);
     ctx.beginPath();
-    ctx.moveTo(radius * 1.05, 0);
-    ctx.lineTo(-radius * 0.5, -radius * 0.58);
-    ctx.lineTo(-radius * 0.22, 0);
-    ctx.lineTo(-radius * 0.5, radius * 0.58);
+    ctx.moveTo(radius * 0.98, 0);
+    ctx.lineTo(-radius * 0.66, -radius * 0.74);
+    ctx.lineTo(-radius * 1.08, 0);
+    ctx.lineTo(-radius * 0.66, radius * 0.74);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = withAlpha(ctx.strokeStyle, 0.72);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.2, -radius * 0.88);
+    ctx.lineTo(radius * 1.32, -radius * 0.34);
+    ctx.moveTo(-radius * 0.24, radius * 0.88);
+    ctx.lineTo(radius * 1.28, radius * 0.34);
     ctx.stroke();
   }
 
   function drawHaloCrest(ctx, radius) {
+    ctx.save();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = withAlpha(ctx.strokeStyle, 0.8);
     ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius * 1.35, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(radius * 0.35, 0, radius * 0.86, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.55, 0, Math.PI * 2);
+    ctx.moveTo(radius * 0.35, -radius * 0.54);
+    ctx.lineTo(radius * 0.35, radius * 0.54);
+    ctx.moveTo(-radius * 0.08, 0);
+    ctx.lineTo(radius * 0.78, 0);
     ctx.stroke();
+    ctx.restore();
   }
 
   function drawRootCrest(ctx, radius) {
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.moveTo(radius * 0.86, -radius * 0.18);
+    ctx.lineTo(radius * 0.26, -radius * 0.92);
+    ctx.lineTo(-radius * 0.68, -radius * 0.68);
+    ctx.lineTo(-radius * 1.02, radius * 0.08);
+    ctx.lineTo(-radius * 0.28, radius * 0.94);
+    ctx.lineTo(radius * 0.68, radius * 0.62);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    ctx.strokeStyle = withAlpha(ctx.strokeStyle, 0.76);
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-radius, radius * 0.7);
-    ctx.lineTo(-radius * 0.2, 0);
-    ctx.lineTo(radius * 0.3, radius * 0.85);
-    ctx.lineTo(radius, -radius * 0.1);
+    ctx.moveTo(-radius * 1.08, radius * 0.86);
+    ctx.lineTo(-radius * 0.22, radius * 0.12);
+    ctx.lineTo(radius * 0.46, radius * 1.04);
+    ctx.moveTo(-radius * 0.42, radius * 0.46);
+    ctx.lineTo(-radius * 0.92, radius * 1.18);
+    ctx.moveTo(radius * 0.04, radius * 0.48);
+    ctx.lineTo(radius * 0.86, radius * 1.08);
     ctx.stroke();
+    ctx.restore();
   }
 
   function drawRuneCrest(ctx, radius) {
+    ctx.save();
     ctx.beginPath();
-    ctx.rect(-radius * 0.72, -radius * 0.72, radius * 1.44, radius * 1.44);
+    ctx.moveTo(radius * 0.7, 0);
+    ctx.lineTo(radius * 0.18, -radius * 1.15);
+    ctx.lineTo(-radius * 0.54, -radius * 0.78);
+    ctx.lineTo(-radius * 0.78, radius * 0.78);
+    ctx.lineTo(radius * 0.14, radius * 1.06);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    ctx.strokeStyle = withAlpha(ctx.strokeStyle, 0.82);
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-radius * 0.4, radius * 0.2);
-    ctx.lineTo(0, -radius * 0.45);
-    ctx.lineTo(radius * 0.42, radius * 0.2);
+    ctx.rect(-radius * 0.5, -radius * 0.5, radius, radius);
+    ctx.moveTo(-radius * 0.66, radius * 0.12);
+    ctx.lineTo(0, -radius * 0.72);
+    ctx.lineTo(radius * 0.58, radius * 0.18);
     ctx.stroke();
+    ctx.restore();
   }
 
   function drawHawkCrest(ctx, radius) {
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(radius, 0);
-    ctx.lineTo(-radius * 0.8, -radius * 0.72);
-    ctx.lineTo(-radius * 0.32, 0);
-    ctx.lineTo(-radius * 0.8, radius * 0.72);
+    ctx.moveTo(radius * 0.95, -radius * 0.08);
+    ctx.lineTo(-radius * 0.42, -radius * 0.92);
+    ctx.lineTo(-radius * 0.18, -radius * 0.18);
+    ctx.lineTo(-radius * 1.04, radius * 0.28);
+    ctx.lineTo(-radius * 0.16, radius * 0.34);
+    ctx.lineTo(-radius * 0.42, radius * 0.96);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(ctx.strokeStyle, 0.78);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.62, -radius * 1.1);
+    ctx.quadraticCurveTo(-radius * 0.08, -radius * 1.44, radius * 0.62, -radius * 1.05);
+    ctx.moveTo(-radius * 1.08, radius * 0.76);
+    ctx.lineTo(radius * 0.9, radius * 0.76);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFacingNotch(ctx, radius, accent) {
+    ctx.strokeStyle = withAlpha(accent, 0.58);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 9, -0.58, 0.58);
     ctx.stroke();
   }
 
@@ -345,31 +417,26 @@
 
   function drawEnemy(ctx, enemy, palette) {
     const color = enemy.hitFlash > 0 ? palette.textPrimary : resolveColor(palette, enemy.colorToken);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    if (enemy.behavior === 'bulwark') ctx.rect(enemy.x - enemy.radius, enemy.y - enemy.radius, enemy.radius * 2, enemy.radius * 2);
-    else if (enemy.behavior === 'ambusher') {
-      ctx.moveTo(enemy.x, enemy.y - enemy.radius);
-      ctx.lineTo(enemy.x + enemy.radius, enemy.y);
-      ctx.lineTo(enemy.x, enemy.y + enemy.radius);
-      ctx.lineTo(enemy.x - enemy.radius, enemy.y);
-      ctx.closePath();
-    } else if (enemy.behavior === 'caster') {
-      for (let index = 0; index < 6; index += 1) {
-        const angle = index * Math.PI * 2 / 6;
-        const radius = index % 2 === 0 ? enemy.radius : enemy.radius * 0.62;
-        const x = enemy.x + Math.cos(angle) * radius;
-        const y = enemy.y + Math.sin(angle) * radius;
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-    }
-    else ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y);
+    const wobble = Math.sin(enemy.behaviorTimer * 5) * enemy.radius * 0.12;
+    ctx.fillStyle = withAlpha(color, enemy.behavior === 'boss' ? 0.9 : 0.86);
     ctx.strokeStyle = enemy.slowTimer > 0 ? palette.accentPrimary : palette.surfacePrimary;
     ctx.lineWidth = enemy.behavior === 'boss' ? 4 : 2;
-    ctx.stroke();
+    if (enemy.behavior === 'skirmisher') drawGoblinEnemy(ctx, enemy.radius, wobble, palette);
+    else if (enemy.behavior === 'lurcher') drawSlimeEnemy(ctx, enemy.radius, wobble, palette);
+    else if (enemy.behavior === 'bulwark') drawArmorEnemy(ctx, enemy.radius, palette);
+    else if (enemy.behavior === 'charger') drawWolfEnemy(ctx, enemy.radius, enemy.behaviorTimer, palette);
+    else if (enemy.behavior === 'ambusher') drawMimicEnemy(ctx, enemy.radius, palette);
+    else if (enemy.behavior === 'caster') drawCultistEnemy(ctx, enemy.radius, palette);
+    else if (enemy.behavior === 'boss') drawSentinelEnemy(ctx, enemy, palette);
+    else {
+      ctx.beginPath();
+      ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
     const width = enemy.radius * 2.2;
     const hpRatio = Math.max(0, enemy.hp / enemy.maxHp);
     ctx.fillStyle = palette.borderSubtle;
@@ -378,23 +445,202 @@
     ctx.fillRect(enemy.x - width / 2, enemy.y - enemy.radius - 12, width * hpRatio, 4);
   }
 
+  function drawGoblinEnemy(ctx, radius, wobble, palette) {
+    ctx.save();
+    ctx.translate(wobble, 0);
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.7, 0);
+    ctx.lineTo(-radius * 0.34, -radius * 0.78);
+    ctx.lineTo(-radius * 0.9, -radius * 0.22);
+    ctx.lineTo(-radius * 0.36, radius * 0.82);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = withAlpha(palette.textPrimary, 0.72);
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.5, -radius * 0.5);
+    ctx.lineTo(-radius * 1.28, -radius * 0.96);
+    ctx.lineTo(-radius * 0.78, -radius * 0.18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.4, radius * 0.46);
+    ctx.lineTo(-radius * 1.18, radius * 0.76);
+    ctx.lineTo(-radius * 0.72, radius * 0.08);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = palette.borderDefault;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.32, -radius * 0.96);
+    ctx.lineTo(radius * 1.55, radius * 0.62);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSlimeEnemy(ctx, radius, wobble, palette) {
+    ctx.save();
+    ctx.scale(1.22, 0.78 + Math.sin(wobble) * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(0, -radius);
+    ctx.bezierCurveTo(radius * 0.95, -radius * 0.82, radius * 1.1, radius * 0.46, radius * 0.36, radius * 0.88);
+    ctx.bezierCurveTo(-radius * 0.5, radius * 1.16, -radius * 1.14, radius * 0.54, -radius * 0.88, -radius * 0.18);
+    ctx.bezierCurveTo(-radius * 0.58, -radius * 0.7, -radius * 0.22, -radius * 0.88, 0, -radius);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = withAlpha(palette.textPrimary, 0.28);
+    ctx.fillRect(-radius * 0.4, -radius * 0.08, radius * 0.28, radius * 0.12);
+    ctx.fillRect(radius * 0.12, -radius * 0.18, radius * 0.22, radius * 0.1);
+  }
+
+  function drawArmorEnemy(ctx, radius, palette) {
+    ctx.fillRect(-radius * 0.82, -radius * 0.72, radius * 1.64, radius * 1.48);
+    ctx.strokeRect(-radius * 0.82, -radius * 0.72, radius * 1.64, radius * 1.48);
+    ctx.strokeStyle = withAlpha(palette.textPrimary, 0.5);
+    ctx.strokeRect(-radius * 0.5, -radius * 1.24, radius, radius * 0.62);
+    ctx.fillStyle = palette.surfaceCanvas;
+    ctx.fillRect(-radius * 0.34, -radius * 1.03, radius * 0.68, radius * 0.18);
+    ctx.strokeStyle = palette.borderDefault;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.82, -radius * 0.08);
+    ctx.lineTo(radius * 0.82, -radius * 0.08);
+    ctx.moveTo(0, -radius * 0.72);
+    ctx.lineTo(0, radius * 0.76);
+    ctx.stroke();
+  }
+
+  function drawWolfEnemy(ctx, radius, timer, palette) {
+    const dash = Math.sin(timer * 2.7) > 0.68;
+    if (dash) {
+      ctx.strokeStyle = withAlpha(palette.statusError, 0.24);
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(-radius * 2.6, radius * 0.46);
+      ctx.lineTo(-radius * 0.8, radius * 0.2);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.ellipse(-radius * 0.12, radius * 0.2, radius * 1.34, radius * 0.58, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.88, -radius * 0.1);
+    ctx.lineTo(radius * 1.48, -radius * 0.42);
+    ctx.lineTo(radius * 1.36, radius * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(palette.textPrimary, 0.56);
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.4, radius * 0.68);
+    ctx.lineTo(radius * 0.74, radius * 1.3);
+    ctx.moveTo(-radius * 0.4, radius * 0.68);
+    ctx.lineTo(-radius * 0.82, radius * 1.28);
+    ctx.stroke();
+  }
+
+  function drawMimicEnemy(ctx, radius, palette) {
+    ctx.save();
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-radius * 0.78, -radius * 0.78, radius * 1.56, radius * 1.56);
+    ctx.strokeRect(-radius * 0.78, -radius * 0.78, radius * 1.56, radius * 1.56);
+    ctx.restore();
+    ctx.fillStyle = palette.surfaceCanvas;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.88, radius * 0.1);
+    ctx.lineTo(0, radius * 0.72);
+    ctx.lineTo(radius * 0.88, radius * 0.1);
+    ctx.lineTo(0, radius * 0.32);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = withAlpha(palette.textPrimary, 0.7);
+    for (let index = -2; index <= 2; index += 1) {
+      ctx.beginPath();
+      ctx.moveTo(index * radius * 0.28, radius * 0.2);
+      ctx.lineTo(index * radius * 0.28 + radius * 0.12, radius * 0.48);
+      ctx.lineTo(index * radius * 0.28 - radius * 0.12, radius * 0.48);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawCultistEnemy(ctx, radius, palette) {
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 1.28);
+    ctx.quadraticCurveTo(radius * 1.05, -radius * 0.64, radius * 0.72, radius * 1.02);
+    ctx.lineTo(-radius * 0.72, radius * 1.02);
+    ctx.quadraticCurveTo(-radius * 1.05, -radius * 0.64, 0, -radius * 1.28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = palette.surfaceCanvas;
+    ctx.beginPath();
+    ctx.arc(0, -radius * 0.42, radius * 0.36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(palette.accentBell, 0.72);
+    ctx.beginPath();
+    ctx.arc(0, radius * 0.24, radius * 0.36, 0.18, Math.PI * 1.24);
+    ctx.stroke();
+    ctx.fillStyle = withAlpha(palette.accentBell, 0.58);
+    ctx.fillRect(-radius * 0.1, radius * 0.48, radius * 0.2, radius * 0.24);
+  }
+
+  function drawSentinelEnemy(ctx, enemy, palette) {
+    const hpRatio = Math.max(0, enemy.hp / enemy.maxHp);
+    ctx.fillRect(-enemy.radius * 0.92, -enemy.radius * 1.12, enemy.radius * 1.84, enemy.radius * 2.1);
+    ctx.strokeRect(-enemy.radius * 0.92, -enemy.radius * 1.12, enemy.radius * 1.84, enemy.radius * 2.1);
+    ctx.beginPath();
+    ctx.moveTo(-enemy.radius * 1.18, -enemy.radius * 1.12);
+    ctx.lineTo(0, -enemy.radius * 1.82);
+    ctx.lineTo(enemy.radius * 1.18, -enemy.radius * 1.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = palette.surfaceCanvas;
+    ctx.fillRect(-enemy.radius * 0.48, -enemy.radius * 0.58, enemy.radius * 0.96, enemy.radius * 0.32);
+    ctx.strokeStyle = withAlpha(palette.accentBell, 0.78);
+    ctx.beginPath();
+    ctx.arc(0, enemy.radius * 0.22, enemy.radius * 0.5, 0.1, Math.PI * 1.36);
+    ctx.stroke();
+    if (hpRatio < 0.66) {
+      ctx.beginPath();
+      ctx.moveTo(-enemy.radius * 0.44, -enemy.radius * 1.04);
+      ctx.lineTo(enemy.radius * 0.08, -enemy.radius * 0.1);
+      ctx.lineTo(-enemy.radius * 0.22, enemy.radius * 0.92);
+      ctx.stroke();
+    }
+    if (hpRatio < 0.33) {
+      ctx.strokeStyle = withAlpha(palette.accentBell, 0.95);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(enemy.radius * 0.5, -enemy.radius * 1.18);
+      ctx.lineTo(enemy.radius * 0.06, -enemy.radius * 0.32);
+      ctx.lineTo(enemy.radius * 0.5, enemy.radius * 0.96);
+      ctx.stroke();
+    }
+  }
+
   function drawHazard(ctx, hazard, palette) {
     const color = resolveColor(palette, hazard.colorToken);
     const armed = hazard.warningLeft <= 0;
-    const alpha = armed ? 0.34 : 0.2 + Math.sin(hazard.life * 18) * 0.07;
+    const alpha = armed ? 0.25 : 0.12 + Math.sin(hazard.life * 18) * 0.05;
     ctx.save();
     ctx.translate(hazard.x, hazard.y);
     ctx.rotate(hazard.angle || 0);
-    ctx.strokeStyle = withAlpha(color, alpha + 0.2);
-    ctx.fillStyle = withAlpha(color, alpha * 0.34);
-    ctx.lineWidth = armed ? 4 : 2;
-    ctx.setLineDash(armed ? [] : [10, 8]);
+    ctx.strokeStyle = withAlpha(color, alpha + 0.18);
+    ctx.fillStyle = withAlpha(color, alpha * 0.26);
+    ctx.lineWidth = armed ? 3 : 1.5;
+    ctx.setLineDash(armed ? [18, 10] : [4, 10]);
     if (hazard.kind === 'wolfLane' || hazard.kind === 'towerGaze') {
       drawLaneShape(ctx, hazard.length || 240, hazard.width || 38);
     } else if (hazard.kind === 'thornCross') {
       drawLaneShape(ctx, hazard.length || 210, hazard.width || 34);
       ctx.rotate(Math.PI / 2);
       drawLaneShape(ctx, hazard.length || 210, hazard.width || 34);
+    } else if (hazard.kind === 'mimicBite') {
+      drawJawWarning(ctx, hazard.radius || 58, Math.PI * 0.68);
     } else if (hazard.kind === 'bellRing') {
       ctx.beginPath();
       ctx.arc(0, 0, hazard.radius || 110, 0, Math.PI * 2);
@@ -415,24 +661,21 @@
   function drawWarning(ctx, warning, palette) {
     const color = resolveColor(palette, warning.colorToken);
     const progress = warning.maxLife ? warning.warningLeft / warning.maxLife : 0.5;
+    const isBoss = Boolean(warning.phase);
     ctx.save();
     ctx.translate(warning.x, warning.y);
     ctx.rotate(warning.angle || 0);
-    ctx.strokeStyle = withAlpha(color, 0.72);
-    ctx.fillStyle = withAlpha(color, 0.1 + (1 - progress) * 0.13);
-    ctx.lineWidth = 3 + (1 - progress) * 2;
-    ctx.setLineDash([12, 8]);
+    ctx.strokeStyle = withAlpha(color, isBoss ? 0.86 : 0.64);
+    ctx.fillStyle = withAlpha(color, (isBoss ? 0.08 : 0.05) + (1 - progress) * (isBoss ? 0.13 : 0.09));
+    ctx.lineWidth = (isBoss ? 4 : 2) + (1 - progress) * 2;
+    ctx.setLineDash(isBoss ? [16, 8] : [8, 10]);
     if (warning.kind === 'line') {
       drawLaneShape(ctx, warning.length || warning.reach || 130, warning.width || 30);
     } else if (warning.kind === 'cone' || warning.kind === 'arc') {
       const reach = warning.reach || warning.radius || 70;
       const arc = warning.arc || Math.PI * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, reach, -arc / 2, arc / 2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      if (warning.label && warning.label.includes('이빨')) drawJawWarning(ctx, reach, arc);
+      else drawConeWarning(ctx, reach, arc);
     } else if (warning.kind === 'ring') {
       ctx.beginPath();
       ctx.arc(0, 0, warning.radius || 110, 0, Math.PI * 2);
@@ -440,6 +683,15 @@
       ctx.beginPath();
       ctx.arc(0, 0, (warning.radius || 110) - (warning.width || 32), 0, Math.PI * 2);
       ctx.stroke();
+      if (isBoss) {
+        for (let index = 0; index < 8; index += 1) {
+          const angle = index * Math.PI * 2 / 8;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * ((warning.radius || 110) - 10), Math.sin(angle) * ((warning.radius || 110) - 10));
+          ctx.lineTo(Math.cos(angle) * ((warning.radius || 110) + 12), Math.sin(angle) * ((warning.radius || 110) + 12));
+          ctx.stroke();
+        }
+      }
     } else {
       ctx.beginPath();
       ctx.arc(0, 0, warning.radius || 50, 0, Math.PI * 2);
@@ -448,6 +700,31 @@
     }
     ctx.setLineDash([]);
     ctx.restore();
+  }
+
+  function drawConeWarning(ctx, reach, arc) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, reach, -arc / 2, arc / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function drawJawWarning(ctx, reach, arc) {
+    drawConeWarning(ctx, reach, arc);
+    for (let index = -3; index <= 3; index += 1) {
+      const angle = index * arc / 7;
+      const inner = reach * 0.62;
+      const outer = reach * 0.9;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      ctx.lineTo(Math.cos(angle - 0.04) * inner, Math.sin(angle - 0.04) * inner);
+      ctx.lineTo(Math.cos(angle + 0.04) * inner, Math.sin(angle + 0.04) * inner);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
   function drawLaneShape(ctx, length, width) {
@@ -578,6 +855,17 @@
       ctx.beginPath();
       ctx.arc(0, 0, mark.radius * 0.28, -mark.arc / 2, mark.arc / 2);
       ctx.stroke();
+      ctx.fillStyle = withAlpha(color, alpha * 0.16);
+      ctx.beginPath();
+      ctx.moveTo(mark.radius * 0.16, 0);
+      ctx.arc(0, 0, mark.radius * 0.55, -mark.arc / 2, mark.arc / 2);
+      ctx.lineTo(mark.radius * 0.16, 0);
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(palette.textPrimary, alpha * 0.42);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, mark.radius * 0.5, -mark.arc / 2, mark.arc / 2);
+      ctx.stroke();
     } else if (mark.kind === 'roots') {
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -586,6 +874,13 @@
       ctx.lineTo(mark.radius * 0.15, mark.radius * 0.25);
       ctx.lineTo(mark.radius, -mark.radius * 0.18);
       ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-mark.radius * 0.54, mark.radius * 0.18);
+      ctx.lineTo(-mark.radius * 0.82, mark.radius * 0.46);
+      ctx.moveTo(mark.radius * 0.14, mark.radius * 0.24);
+      ctx.lineTo(mark.radius * 0.52, mark.radius * 0.56);
+      ctx.stroke();
     } else if (mark.kind === 'hawk') {
       ctx.beginPath();
       ctx.moveTo(0, -mark.radius);
@@ -593,6 +888,33 @@
       ctx.lineTo(0, mark.radius * 0.2);
       ctx.lineTo(-mark.radius, mark.radius * 0.6);
       ctx.closePath();
+      ctx.stroke();
+    } else if (mark.kind === 'radiance' || mark.kind === 'halo') {
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, mark.radius * (1 + (1 - alpha) * 0.5), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-mark.radius * 0.7, 0);
+      ctx.lineTo(mark.radius * 0.7, 0);
+      ctx.moveTo(0, -mark.radius * 0.7);
+      ctx.lineTo(0, mark.radius * 0.7);
+      ctx.stroke();
+    } else if (mark.kind === 'missile') {
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-mark.radius, -mark.radius, mark.radius * 2, mark.radius * 2);
+      ctx.beginPath();
+      ctx.moveTo(-mark.radius * 0.7, mark.radius * 0.25);
+      ctx.lineTo(0, -mark.radius * 0.82);
+      ctx.lineTo(mark.radius * 0.78, mark.radius * 0.3);
+      ctx.stroke();
+    } else if (mark.kind === 'blade') {
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-mark.radius, -mark.radius * 0.24);
+      ctx.lineTo(mark.radius, mark.radius * 0.18);
+      ctx.moveTo(-mark.radius * 0.72, mark.radius * 0.34);
+      ctx.lineTo(mark.radius * 0.7, -mark.radius * 0.28);
       ctx.stroke();
     } else {
       ctx.lineWidth = mark.kind === 'bell' ? 5 : 3;

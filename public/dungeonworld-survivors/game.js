@@ -109,9 +109,11 @@
       button.className = `upgrade-option rarity-${upgrade.rarity || 'common'}`;
       button.type = 'button';
       button.innerHTML = [
+        '<span class="card-seal" aria-hidden="true"></span>',
         `<span class="recommendation-pill">${upgrade.recommendationRole || '추천'}</span>`,
-        `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${upgrade.family} · ${formatTags(upgrade.tags)}</span>`,
+        `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${upgrade.family}</span>`,
         `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong>`,
+        `<span class="rune-badges">${formatTagBadges(upgrade.tags)}</span>`,
         `<span>${upgrade.text}</span>`,
         `<span class="recommendation-reason">${upgrade.recommendationReason || '현재 런의 선택지를 넓힙니다.'}</span>`,
         `<span class="build-line">${describeBuildDirection(upgrade)}</span>`,
@@ -131,9 +133,11 @@
       button.type = 'button';
       button.dataset.playbook = playbook.id;
       button.innerHTML = [
+        '<span class="card-seal" aria-hidden="true"></span>',
         `<span class="playbook-role">${playbook.role}</span>`,
         `<strong>${playbook.title}</strong>`,
-        `<span class="option-meta">${playbook.combatMood} · ${playbook.upgradePool.map((pool) => `#${pool}`).join(' ')}</span>`,
+        `<span class="option-meta">${playbook.combatMood}</span>`,
+        `<span class="rune-badges">${formatTagBadges(playbook.upgradePool)}</span>`,
         `<span>${playbook.sheetLine}</span>`,
         `<span>${playbook.text}</span>`,
         `<span class="visual-cue">${playbook.visualCue}</span>`,
@@ -266,6 +270,10 @@
     return (tags || []).map((tag) => `#${tag}`).join(' ');
   }
 
+  function formatTagBadges(tags) {
+    return (tags || []).map((tag) => `<span class="rune-badge">${tag}</span>`).join('');
+  }
+
   function formatGoalStatus(status) {
     if (status === 'achieved') return '달성';
     if (status === 'close') return '아까움';
@@ -286,12 +294,12 @@
   function renderResultSummary(summary) {
     const upgrades = summary.selectedUpgrades.length > 0
       ? summary.selectedUpgrades.map((upgrade) => (
-        `<li><strong>${upgrade.title} ${formatLevel(upgrade.level)}</strong><span>${formatRarity(upgrade.rarity)} · ${formatTags(upgrade.tags)}</span></li>`
+        `<li><strong>${upgrade.title} ${formatLevel(upgrade.level)}</strong><span>${formatRarity(upgrade.rarity)} · ${upgrade.family}</span><span class="rune-badges">${formatTagBadges(upgrade.tags)}</span></li>`
       )).join('')
       : '<li><strong>선택한 업그레이드 없음</strong><span>첫 레벨업 전에 런이 끝났습니다.</span></li>';
     const tags = summary.buildTags.length > 0
-      ? summary.buildTags.map((entry) => `<span class="result-tag">#${entry.tag} ${entry.count}</span>`).join('')
-      : '<span class="result-tag">태그 없음</span>';
+      ? summary.buildTags.map((entry) => `<span class="result-tag">${entry.tag}<strong>${entry.count}</strong></span>`).join('')
+      : '<span class="result-tag">태그 없음<strong>0</strong></span>';
     const synergies = summary.synergies.length > 0
       ? summary.synergies.map((synergy) => `<li><strong>${synergy.title}</strong><span>${synergy.text}</span></li>`).join('')
       : '<li><strong>시너지 미발동</strong><span>같은 태그의 선택지를 더 모으면 빌드 효과가 열립니다.</span></li>';
@@ -300,7 +308,10 @@
     )).join('');
     const contribution = summary.bossContribution;
     elements.upgradeOptions.innerHTML = [
-      '<p class="retry-copy">다음 런에서는 같은 태그를 두 번 이상 모아 시너지를 먼저 여는 쪽이 보스 도달이 안정적입니다.</p>',
+      '<section class="result-ledger-head">',
+      `<span class="card-seal" aria-hidden="true"></span><div><p class="retry-copy">${summary.buildVerdict}</p>`,
+      `<h3>${summary.buildName}</h3><span>${summary.buildSummary}</span></div>`,
+      '</section>',
       '<div class="result-grid">',
       `<article><span>생존 시간</span><strong>${renderer.formatTime(summary.survivalTime)}</strong></article>`,
       `<article><span>플레이북</span><strong>${summary.playbook}</strong></article>`,
@@ -308,6 +319,7 @@
       `<article><span>레벨</span><strong>${summary.level}</strong></article>`,
       '</div>',
       `<div class="result-tags">${tags}</div>`,
+      '<p class="retry-copy">다음 런에서는 같은 룬 배지를 두 장 이상 모아 시너지를 먼저 여는 쪽이 보스 도달이 안정적입니다.</p>',
       `<h3 class="result-heading">런 목표</h3><ul class="result-list goal-result-list">${goals}</ul>`,
       `<h3 class="result-heading">보스전 기여</h3><ul class="result-list"><li><strong>${contribution.label}</strong><span>${contribution.text}</span><span>발동 ${contribution.triggers}회 · 추가 피해 ${contribution.bonusDamage} · 완화 ${contribution.preventedDamage} · 회복 ${contribution.recoveredHealth} · 제어 ${contribution.controlTime}초</span></li></ul>`,
       `<h3 class="result-heading">선택한 업그레이드</h3><ul class="result-list">${upgrades}</ul>`,
@@ -319,10 +331,15 @@
     previousFocus = document.activeElement;
     elements.modal.dataset.mode = mode || 'message';
     elements.modal.classList.remove('hidden');
+    const modalCard = elements.modal.querySelector('.modal-card');
+    if (modalCard) modalCard.scrollTop = 0;
+    elements.upgradeOptions.scrollTop = 0;
     const firstAction = elements.upgradeOptions.querySelector('button')
       || (!elements.modalPrimary.classList.contains('hidden') ? elements.modalPrimary : elements.modalSecondary);
+    const focusTarget = mode === 'result' ? elements.modalTitle : firstAction;
+    if (mode === 'result') elements.modalTitle.setAttribute('tabindex', '-1');
     window.setTimeout(() => {
-      if (firstAction) firstAction.focus();
+      if (focusTarget) focusTarget.focus();
     }, 0);
   }
 

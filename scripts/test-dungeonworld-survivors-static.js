@@ -208,6 +208,9 @@ function testUpgradeMetadataAndSynergies() {
 
   const summary = systems.getRunSummary(state);
   assert.strictEqual(summary.playbook, '전사');
+  assert.match(summary.buildName, /방패선 전사|생존선 전사/);
+  assert.ok(summary.buildVerdict);
+  assert.ok(summary.buildSummary.includes('시너지'));
   assert.strictEqual(summary.selectedUpgrades.length, 2);
   assert.ok(summary.buildTags.some((entry) => entry.tag === 'shield'));
   assert.ok(summary.synergies.some((synergy) => synergy.title === '방패선'));
@@ -514,6 +517,10 @@ function main() {
   assert.ok(game.includes('recommendation-reason'));
   assert.ok(game.includes('런 목표'));
   assert.ok(game.includes('보스전 기여'));
+  assert.ok(game.includes('formatTagBadges'));
+  assert.ok(game.includes('result-ledger-head'));
+  assert.ok(game.includes('buildName'));
+  assert.ok(game.includes('buildVerdict'));
 
   const renderer = readGameFile('renderer.js');
   assert.ok(renderer.includes('function createCamera'));
@@ -527,9 +534,17 @@ function main() {
   assert.ok(renderer.includes('drawLaneShape'));
   assert.ok(renderer.includes('thornCross'));
   assert.ok(renderer.includes('ambusher'));
+  assert.ok(renderer.includes('drawGoblinEnemy'));
+  assert.ok(renderer.includes('drawSlimeEnemy'));
+  assert.ok(renderer.includes('drawArmorEnemy'));
+  assert.ok(renderer.includes('drawWolfEnemy'));
+  assert.ok(renderer.includes('drawMimicEnemy'));
+  assert.ok(renderer.includes('drawCultistEnemy'));
+  assert.ok(renderer.includes('drawSentinelEnemy'));
+  assert.ok(renderer.includes('drawJawWarning'));
 
   const styles = readGameFile('styles.css');
-  assert.ok(styles.includes('--surface-parchment: #2a241c;'));
+  assert.ok(styles.includes('--surface-parchment: #2b2116;'));
   assert.ok(styles.includes('--class-fighter'));
   assert.ok(styles.includes('aspect-ratio: 16 / 9;'));
   assert.ok(styles.includes('.feedback-strip'));
@@ -545,6 +560,9 @@ function main() {
   assert.ok(styles.includes('.recommendation-pill'));
   assert.ok(styles.includes('.run-goal-list'));
   assert.ok(styles.includes('.goal-result-list'));
+  assert.ok(styles.includes('.card-seal'));
+  assert.ok(styles.includes('.rune-badge'));
+  assert.ok(styles.includes('.result-ledger-head'));
   assert.ok(styles.includes('@media (max-width: 980px)'));
 
   testWaveRollBehavior();

@@ -2,7 +2,7 @@
 
 ## 1. Atmosphere & Identity
 
-Project Redefine interfaces should feel like a quiet operations room: clear, calm, and grounded even when the content is playful. The Dungeon World browser game adds a darker campfire-and-black-tower tone, but it still avoids pressure, ranking language, or reward hooks. The signature is restrained adventure: ink-dark surfaces, parchment rule lines, moss-green action, amber warnings, and Korean copy that sounds like an operator gently opening a scene.
+Project Redefine interfaces should feel like a quiet operations room: clear, calm, and grounded even when the content is playful. The Dungeon World browser game adds a darker campfire-and-black-tower tone, but it still avoids pressure, ranking language, or reward hooks. The signature is restrained adventure: ink-dark surfaces, aged parchment, rusty metal rules, dark forest greens, black-bell violet, and Korean copy that sounds like an operator gently opening a scene.
 
 ## 2. Color
 
@@ -11,33 +11,34 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 | Role | Token | Light | Dark | Usage |
 | --- | --- | --- | --- | --- |
 | Surface/primary | --surface-primary | #F7F5EF | #0D0F10 | Page background |
-| Surface/secondary | --surface-secondary | #ECE7D8 | #151311 | Panels, canvas shell |
-| Surface/elevated | --surface-elevated | #FFFFFF | #1D1A16 | Modals, upgrade cards |
-| Surface/canvas | --surface-canvas | #D7D0BA | #090A0A | Game field |
-| Surface/parchment | --surface-parchment | #D8C7A8 | #2A241C | Character-sheet bands, option cards |
+| Surface/secondary | --surface-secondary | #ECE7D8 | #12100D | Panels, canvas shell |
+| Surface/elevated | --surface-elevated | #FFFFFF | #1B1711 | Modals, upgrade cards |
+| Surface/canvas | --surface-canvas | #D7D0BA | #070808 | Game field |
+| Surface/parchment | --surface-parchment | #D8C7A8 | #2B2116 | Character-sheet bands, option cards |
 | Text/primary | --text-primary | #1C2425 | #F2EAD9 | Main Korean text |
 | Text/secondary | --text-secondary | #526060 | #C6B99F | Supporting text |
 | Text/tertiary | --text-tertiary | #717B78 | #8F8069 | Metadata |
-| Border/default | --border-default | #B9B19D | #5B4A34 | Panels and controls |
-| Border/subtle | --border-subtle | #D8D1C0 | #342A20 | Soft dividers |
-| Accent/primary | --accent-primary | #256F5A | #83BD83 | Primary action, player |
-| Accent/hover | --accent-hover | #1D5948 | #B7D99C | Hover/focus |
-| Accent/ember | --accent-ember | #A85F24 | #D09A4A | XP, timers, warnings |
-| Accent/bell | --accent-bell | #5E4DB2 | #8F7BD6 | Boss, black-bell motif |
+| Border/default | --border-default | #B9B19D | #6B5436 | Panels and controls |
+| Border/subtle | --border-subtle | #D8D1C0 | #3A2B1D | Soft dividers |
+| Accent/primary | --accent-primary | #256F5A | #6F9B65 | Primary action, player |
+| Accent/hover | --accent-hover | #1D5948 | #A6BE86 | Hover/focus |
+| Accent/ember | --accent-ember | #A85F24 | #B8793C | XP, timers, warnings |
+| Accent/bell | --accent-bell | #5E4DB2 | #75629B | Boss, black-bell motif |
 | Status/success | --status-success | #1F7A4A | #8BCF83 | Win, cleared state |
 | Status/warning | --status-warning | #A85F24 | #D09A4A | Caution, upgrade available |
 | Status/error | --status-error | #A53C3C | #D36F61 | Low health, game over |
 | Status/info | --status-info | #315E7C | #80A8BD | Help and hints |
-| Class/fighter | --class-fighter | #8B6F3B | #D7C18A | Fighter cards, player, cleave |
-| Class/cleric | --class-cleric | #8D8238 | #D8D08F | Cleric cards, pulse, healing light |
-| Class/thief | --class-thief | #8E552C | #D9A15F | Thief cards, blade trails |
-| Class/druid | --class-druid | #4F7A44 | #8FBD78 | Druid cards, roots, wild aura |
-| Class/wizard | --class-wizard | #5E4DB2 | #9A89DF | Wizard cards, runes, shield |
-| Class/ranger | --class-ranger | #687839 | #B7C777 | Ranger cards, arrows, hawk marks |
+| Class/fighter | --class-fighter | #8B6F3B | #BBA16F | Fighter cards, player, cleave |
+| Class/cleric | --class-cleric | #8D8238 | #C3BC79 | Cleric cards, pulse, healing light |
+| Class/thief | --class-thief | #8E552C | #BD7F45 | Thief cards, blade trails |
+| Class/druid | --class-druid | #4F7A44 | #799F63 | Druid cards, roots, wild aura |
+| Class/wizard | --class-wizard | #5E4DB2 | #8170B8 | Wizard cards, runes, shield |
+| Class/ranger | --class-ranger | #687839 | #9EAA62 | Ranger cards, arrows, hawk marks |
 
 ### Rules
 
 - Game UI uses the dark palette by default.
+- Dungeon World surfaces must avoid neon glow and dashboard glass. Prefer ink wash, worn parchment, rusted rules, stitched borders, and low-saturation class marks.
 - Accent/primary is reserved for the player, start/retry controls, focus rings, and positive progress.
 - Accent/bell is only for the black bell, tower, boss, arcane shield, or special wave language.
 - Class colors are scoped to Dungeon World survivor playbook identity and should stay less dominant than health, XP, enemy, and boss readability colors.
@@ -114,6 +115,7 @@ All spacing derives from 4px.
 - **Motion**: canvas motion is real-time; DOM transitions use opacity and transform only.
 - **Map language**: the game field may use procedural canvas art for road, ruins, forest, basin, black tower, fog, and vignette; those are visual-only and do not create collision unless movement rules and tests change.
 - **HUD**: health, XP, timer, level, kills, and boss goal sit close to or over the canvas; character sheet panels are secondary.
+- **Silhouette language**: playbooks and monsters must be readable by shape before color. Fighter shows shield/shoulders, thief a low blade stance, cleric a halo/sanctuary, druid a root cloak, wizard an angular rune body, ranger bow/cloak/hawk mark. Enemies use ears/spear, droplet mass, empty armor blocks, low wolf body, toothed mimic, hooded cultist, and cracked bell-gate boss forms.
 
 ### Playbook Option
 
@@ -123,6 +125,21 @@ All spacing derives from 4px.
 - **States**: hover, focus, selected-by-click.
 - **Accessibility**: full button target, visible focus outline, Korean text wraps by phrase rather than by character where possible.
 - **Motion**: 120ms transform lift only.
+- **Visual motif**: each option uses a small rulebook seal/crest and compact rune badges, not long hashtag ribbons.
+
+### Loot/Upgrade Card
+
+- **Structure**: recommendation role seal, rarity/family line, title, effect, reason, build direction, class/synergy notes.
+- **Variants**: class, rare, uncommon, common.
+- **Spacing**: compact on 375px; roomy enough on tablet/desktop for scan order.
+- **States**: hover, focus, selected-by-click.
+- **Accessibility**: all text remains phrase-wrapped and no tag line may force horizontal scroll.
+
+### Result Ledger
+
+- **Structure**: automatic build name and verdict, run stat strip, run goals, boss contribution, selected upgrades, synergy ledger.
+- **Tone**: looks like a run record in a worn playbook, not a dashboard report.
+- **Tags**: use small rune/seal badges with short tag names and counts.
 
 ### Command Button
 

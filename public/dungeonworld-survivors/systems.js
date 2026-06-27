@@ -1273,8 +1273,12 @@
     const sortedTags = Object.keys(state.buildTags)
       .sort((a, b) => state.buildTags[b] - state.buildTags[a])
       .map((tag) => ({ tag, count: state.buildTags[tag] }));
+    const buildIdentity = createBuildIdentity(state, sortedTags);
     return {
       playbook: state.playbook.title,
+      buildName: buildIdentity.name,
+      buildVerdict: buildIdentity.verdict,
+      buildSummary: buildIdentity.summary,
       survivalTime: Math.min(state.elapsed, state.duration),
       kills: state.kills,
       level: state.player.level,
@@ -1290,6 +1294,48 @@
         recoveredHealth: Math.round(state.bossContribution.recoveredHealth),
         controlTime: Math.round(state.bossContribution.controlTime * 10) / 10,
       },
+    };
+  }
+
+  function createBuildIdentity(state, sortedTags) {
+    const primaryTag = sortedTags[0] ? sortedTags[0].tag : null;
+    const playbookNames = {
+      fighter: '전사',
+      thief: '도적',
+      cleric: '사제',
+      druid: '드루이드',
+      wizard: '주문사',
+      ranger: '레인저',
+    };
+    const tagNames = {
+      arcane: '검은 종',
+      bell: '검은 종',
+      blade: '칼날 박자',
+      boss: '문턱 압박',
+      control: '판정의 틈',
+      faith: '기도 닻',
+      hunt: '추적 표식',
+      mobility: '빠른 발',
+      pierce: '관통 사격',
+      root: '뿌리 고리',
+      shield: '방패선',
+      survival: '생존선',
+      wild: '야수 형상',
+    };
+    const playbookName = playbookNames[state.playbook.id] || state.playbook.title;
+    const theme = tagNames[primaryTag] || state.playbook.role;
+    const verdict = state.bossDefeated
+      ? '마지막 문 돌파'
+      : state.player.level >= 7
+        ? '보스전 준비 완료'
+        : '초반 생존 보강 필요';
+    const synergyText = state.synergies.length > 0
+      ? `${state.synergies.length}개 시너지 발동`
+      : '시너지 미발동';
+    return {
+      name: `${theme} ${playbookName}`,
+      verdict,
+      summary: `${state.kills}체 처치, 레벨 ${state.player.level}, ${synergyText}`,
     };
   }
 
