@@ -4,9 +4,9 @@
 
 ## 요약 verdict: 조건부 가능
 
-참여자 온보딩, 포인트, 상점/교환, 미션/인증, 반응 승인, 운영자 허브, 운영 내보내기, 관리자 대시보드의 로컬 smoke test는 모두 통과했습니다. 데이터 검증과 질문 매칭 테스트도 통과했습니다.
+참여자 온보딩, 포인트, 상점/교환, 미션/인증, 반응 승인, 운영자 허브, 운영 내보내기, 관리자 대시보드의 로컬 smoke test는 모두 통과했습니다. 데이터 검증, 질문 매칭 테스트, release gate도 통과했습니다.
 
-다만 `npm run check:release`가 `scripts/test-minigame-hub-flow.js`에서 실패했습니다. 실패 지점은 미니게임 가위바위보 테스트의 날짜 의존 assertion이며, 이번 QA 범위의 핵심 운영 흐름은 개별 smoke test에서 통과했습니다. 그래도 운영 릴리즈 체크리스트 기준으로는 release gate가 녹색이 아니므로, 운영 시작 전에는 이 release gate 실패를 해결하거나 운영진이 위험을 명시적으로 승인해야 합니다.
+초기 감사에서는 `npm run check:release`가 `scripts/test-minigame-hub-flow.js`의 날짜 의존 가위바위보 무승부 assertion에서 실패했습니다. 후속 수정으로 현재 날짜 기준에서 무승부가 나는 RPS fixture 사용자를 테스트가 동적으로 찾도록 바꿨고, `node scripts/test-minigame-hub-flow.js`와 `npm run check:release`가 모두 통과했습니다.
 
 실제 Discord 서버, Railway, Slash Command 등록, 채널 권한, DM 수신, `/admin` 실서비스 접속은 로컬에서 완전히 검증할 수 없어 수동 확인 필요 항목으로 분리했습니다.
 
@@ -29,8 +29,8 @@
 | `node scripts/test-admin-dashboard-flow.js` | 통과 | 인증, example 제외, 빈 상태, read-only 요약 검증 |
 | `npm run validate:data` | 통과 | FAQ, knowledge, notices, channels, test questions 정상 |
 | `npm run test:questions` | 통과 | 전체 153개, FAQ 136개, Knowledge 7개, Fallback 10개 |
-| `npm run check:release` | 실패 | `test-minigame-hub-flow`의 deterministic RPS draw assertion 실패 |
-| `node scripts/test-minigame-hub-flow.js` | 실패 | release gate 실패 단독 재현 |
+| `npm run check:release` | 통과 | 후속 수정 후 전체 릴리즈 기본 점검 완료 |
+| `node scripts/test-minigame-hub-flow.js` | 통과 | 후속 수정 후 `minigame hub flow smoke test passed` |
 
 ## 자동 테스트로 확인된 항목
 
@@ -73,7 +73,7 @@
 ### 데이터/릴리즈 점검
 
 - `npm run validate:data`와 `npm run test:questions`는 통과했습니다.
-- `npm run check:release`는 실패했습니다. 실패 원인은 아래 이슈 목록의 Blocker 항목에 정리했습니다.
+- `npm run check:release`는 후속 수정 후 통과했습니다.
 
 ## 수동 Discord 서버에서 확인해야 하는 항목
 
@@ -90,15 +90,17 @@
 
 ## 발견한 이슈 목록
 
-### Blocker: `npm run check:release` 실패
+### 해결됨: `npm run check:release` 날짜 의존 실패
 
-- 영향: 운영 릴리즈 체크리스트의 필수 release gate가 실패합니다. 핵심 QA 범위의 개별 smoke test는 통과했지만, 운영 전 최종 점검 기준으로는 녹색 빌드 상태가 아닙니다.
+- 심각도: Blocker였으나 후속 수정으로 해결됨.
+- 영향: 수정 전에는 운영 릴리즈 체크리스트의 필수 release gate가 실패했습니다. 핵심 QA 범위의 개별 smoke test는 통과했지만, 운영 전 최종 점검 기준으로는 녹색 빌드 상태가 아니었습니다.
 - 재현 방법:
   1. `npm run check:release`를 실행합니다.
   2. `minigame hub flow smoke test` 단계에서 `expected at least one deterministic RPS draw choice` assertion이 실패합니다.
   3. `node scripts/test-minigame-hub-flow.js` 단독 실행으로도 같은 실패가 재현됩니다.
 - 원인: `scripts/test-minigame-hub-flow.js`가 현재 KST 날짜와 고정 사용자 `rps_draw_user` 기준으로 가위바위보 선택지 3개 중 최소 1개는 무승부가 나온다고 가정합니다. 2026-06-27 KST에는 세 선택 모두 무승부가 아니어서 실패합니다.
-- 권장 조치: 테스트가 날짜에 의존하지 않도록 고정 날짜를 주입하거나, 무승부가 보장되는 fixture 사용자/날짜를 사용하도록 수정합니다. 운영 코드 수정이 필요할 수 있으므로 이 QA에서는 변경하지 않았습니다.
+- 조치: 테스트가 현재 날짜 기준에서 무승부가 나는 fixture 사용자와 선택지를 동적으로 찾도록 수정했습니다.
+- 확인: `node scripts/test-minigame-hub-flow.js`, `npm run check:release` 통과.
 
 ### Low: 질문 매칭 Fallback 10개 존재
 
@@ -108,7 +110,7 @@
 
 ## 운영 전 체크리스트
 
-- [ ] `npm run check:release` 실패를 해결하거나, 운영진이 해당 실패의 범위와 위험을 승인했습니다.
+- [x] `npm run check:release`가 통과했습니다.
 - [ ] 실제 Discord 서버에서 참여자 전체 흐름을 테스트 계정으로 완료했습니다.
 - [ ] 실제 Discord 서버에서 운영자 전체 흐름을 운영자 계정으로 완료했습니다.
 - [ ] 일반 참여자 권한으로 운영자 명령어와 운영자 채널 접근이 차단됨을 확인했습니다.
@@ -122,16 +124,13 @@
 
 ## 수정하지 않고 남긴 이유가 있는 항목
 
-- `scripts/test-minigame-hub-flow.js`의 날짜 의존 실패는 release gate를 막는 이슈지만, 사용자가 코드 수정 전 원인과 영향도 정리를 요청했습니다. 따라서 이 리포트에서는 원인과 권장 조치만 남기고 수정하지 않았습니다.
 - 실제 Discord 서버, Railway Variables, 실제 `/admin` URL, 실제 채널 권한은 로컬 smoke test로 검증할 수 없습니다. 토큰과 실제 ID를 출력하지 않는 조건도 있어 수동 확인 항목으로 분리했습니다.
 - `npm run test:questions`의 Fallback 질문 중 운영 정책 미확정 항목은 프로젝트 규칙상 단정 답변으로 하드코딩하지 않는 것이 안전하므로 수정하지 않았습니다.
 
 ## 다음 작업 추천 순서
 
-1. `test-minigame-hub-flow`의 날짜 의존 assertion을 수정해 `npm run check:release`가 항상 통과하도록 만듭니다.
-2. 수정 후 `npm run check:release`를 다시 실행합니다.
-3. 실제 Discord 테스트 서버에서 참여자 리허설 흐름을 완료합니다.
-4. 실제 Discord 테스트 서버에서 운영자 리허설 흐름과 반응 승인 흐름을 완료합니다.
-5. Railway `/admin`과 `/api/admin/*` 인증 보호, read-only 상태, example 제외를 실제 URL에서 확인합니다.
-6. 운영용 active 미션/상점 상태와 테스트 데이터 정리 여부를 확정합니다.
-7. 운영 시작 직전 `/운영내보내기 종류:전체 형식:JSON`으로 백업을 남깁니다.
+1. 실제 Discord 테스트 서버에서 참여자 리허설 흐름을 완료합니다.
+2. 실제 Discord 테스트 서버에서 운영자 리허설 흐름과 반응 승인 흐름을 완료합니다.
+3. Railway `/admin`과 `/api/admin/*` 인증 보호, read-only 상태, example 제외를 실제 URL에서 확인합니다.
+4. 운영용 active 미션/상점 상태와 테스트 데이터 정리 여부를 확정합니다.
+5. 운영 시작 직전 `/운영내보내기 종류:전체 형식:JSON`으로 백업을 남깁니다.

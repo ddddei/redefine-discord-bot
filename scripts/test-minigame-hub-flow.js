@@ -183,6 +183,7 @@ async function run() {
   const { paths, tempDir } = setupTempState();
   const { handleInteractionCreate } = require('../src/handlers');
   const { RPS_CHOICES, createMinigameResult } = require('../src/minigames');
+  const { getKoreanDateString } = require('../src/pointsRepository');
 
   const guideCommand = createChatInputInteraction('안내', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(guideCommand);
@@ -305,7 +306,27 @@ async function run() {
   assert.strictEqual(getEmbedTitle(duplicateCard.replyPayload), '🎴 행운 카드 뒤집기');
   assert.match(duplicateCard.replyPayload.embeds[0].data.description, /이미 오늘 보상을 확인했어요|중복 지급되지 않아요/);
 
-  const rpsSelect = createButtonInteraction('participant_minigame_select:rps', 'rps_draw_user', '가위바위보 사용자');
+  const playDate = getKoreanDateString();
+  let drawUserId = null;
+  let drawChoice = null;
+  for (let index = 0; index < 1000 && !drawChoice; index += 1) {
+    const candidateUserId = `rps_draw_user_${index}`;
+    drawChoice = Object.keys(RPS_CHOICES).find((choice) => {
+      const result = createMinigameResult({
+        gameId: 'rps',
+        choice,
+        userId: candidateUserId,
+        dateString: playDate,
+      });
+      return result && result.isDraw;
+    });
+    if (drawChoice) {
+      drawUserId = candidateUserId;
+    }
+  }
+  assert.ok(drawUserId && drawChoice, 'expected at least one deterministic RPS draw fixture');
+
+  const rpsSelect = createButtonInteraction('participant_minigame_select:rps', drawUserId, '가위바위보 사용자');
   await handleInteractionCreate(rpsSelect);
   assert.strictEqual(rpsSelect.replyPayload.ephemeral, true);
   assert.strictEqual(getEmbedTitle(rpsSelect.replyPayload), '✊ 가위바위보');
@@ -317,18 +338,7 @@ async function run() {
   assertMaxButtonsPerRow(rpsSelect.replyPayload);
   assert.ok(getButtons(rpsSelect.replyPayload).every((button) => button.style === ButtonStyle.Secondary));
 
-  const playDate = require('../src/pointsRepository').getKoreanDateString();
-  const drawChoice = Object.keys(RPS_CHOICES).find((choice) => {
-    const result = createMinigameResult({
-      gameId: 'rps',
-      choice,
-      userId: 'rps_draw_user',
-      dateString: playDate,
-    });
-    return result && result.isDraw;
-  });
-  assert.ok(drawChoice, 'expected at least one deterministic RPS draw choice');
-  const rpsDraw = createButtonInteraction(`participant_minigame_rps:${drawChoice}`, 'rps_draw_user', '가위바위보 사용자');
+  const rpsDraw = createButtonInteraction(`participant_minigame_rps:${drawChoice}`, drawUserId, '가위바위보 사용자');
   await handleInteractionCreate(rpsDraw);
   assert.strictEqual(rpsDraw.replyPayload.ephemeral, true);
   assert.strictEqual(getEmbedTitle(rpsDraw.replyPayload), '✊ 가위바위보');
@@ -340,7 +350,7 @@ async function run() {
     'participant_minigame_rps:paper',
   ]);
   assert.ok(!readJson(paths.points).pointTransactions.some((transaction) => {
-    return transaction.userId === 'rps_draw_user' && transaction.relatedId.endsWith(':rps');
+    return transaction.userId === drawUserId && transaction.relatedId.endsWith(':rps');
   }));
 
   const diceSelect = createButtonInteraction('participant_minigame_select:dice', 'mini_user', '미니게임 사용자');
