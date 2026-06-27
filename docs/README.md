@@ -26,6 +26,7 @@
 | [participant-command-guide.md](participant-command-guide.md) | 참여자 명령어 가이드 | 참여자 안내문이나 운영진 응대 문구를 정리할 때 | 참여자 명령어 목적, 공개 범위, 안내 톤, 교환/인증 주의사항 |
 | [first-time-participant-guide.md](first-time-participant-guide.md) | 처음 참여자 시작 가이드 | 참여자가 입장 직후 무엇부터 보면 되는지 안내할 때 | `/안내` 시작 가이드 버튼, 참여동의 확인, 이름표/색상, 오늘의 미션, 포인트/미니게임/상점 선택 활동 |
 | [prelaunch-qa-checklist.md](prelaunch-qa-checklist.md) | 실제 운영 전 QA 체크리스트 | 실제 참여자 입장 전 운영 환경과 명령어 흐름을 점검할 때 | 환경변수, Discord 권한, 참여자/운영자 명령어, 포인트/인증 흐름, 백업, 배포 확인 |
+| [qa-full-audit-2026-06-27.md](qa-full-audit-2026-06-27.md) | 운영 전 전체 QA 감사 리포트 | 2026-06-27 기준 로컬 smoke/release 점검 결과와 수동 확인 항목을 볼 때 | 실행 명령어 결과, 자동 확인 범위, 수동 Discord 확인 항목, 발견 이슈, 운영 전 체크리스트 |
 | [prelaunch-automation-audit.md](prelaunch-automation-audit.md) | 운영 전 자동 점검 리포트 | 참여자 입장 전 자동화에 맡길 작업과 수동 확인 작업을 구분할 때 | 구현 기능 요약, 운영 문서 현황, 남은 작업, 자동화 적합/위험 작업, 다음 개발 후보 |
 | [operator-check-command-plan.md](operator-check-command-plan.md) | 운영진용 `/점검` 명령어 설계안 | Discord 안에서 운영 전 점검 항목과 운영진 전용 권한 기준을 검토할 때 | 봇 상태 확인 항목, 로그/민감 질문 알림 확인, 권한 원칙, 수동 확인 항목 |
 | [journey-point-system-plan.md](journey-point-system-plan.md) | 여정 포인트 시스템 기능개발문서 | 여정 포인트, 청년동 포인트 전환, 상점, 교환, 운영자 처리 흐름을 설계할 때 | 봇 역할 분리, 한글 명령어, 수동 전환 및 환불 흐름, 저장 방식, 정산 원칙 |
