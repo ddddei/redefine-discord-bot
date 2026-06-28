@@ -17,6 +17,10 @@ function readGameFile(fileName) {
   return fs.readFileSync(path.join(GAME_DIR, fileName), 'utf8');
 }
 
+function readProjectFile(fileName) {
+  return fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8');
+}
+
 function testWaveRollBehavior() {
   const context = { window: {}, Math: Object.create(Math) };
   context.Math.random = () => 0.5;
@@ -668,12 +672,14 @@ function main() {
   assert.ok(renderer.includes('drawRoad'));
   assert.ok(renderer.includes('drawProjectileTrail'));
   assert.ok(renderer.includes('function drawPlayerAnchor'));
+  assert.ok(renderer.includes('function drawPlayerMiniatureBody'));
   assert.ok(renderer.includes('function drawInvulnerabilityShell'));
   assert.ok(renderer.includes('function drawLevelShockwave'));
   assert.ok(renderer.includes('function drawHazard'));
   assert.ok(renderer.includes('function drawWarning'));
   assert.ok(renderer.includes('function drawArmedHazardTicks'));
   assert.ok(renderer.includes('function drawWarningPhaseTicks'));
+  assert.ok(renderer.includes('function drawCrackRunes'));
   assert.ok(renderer.includes('drawLaneShape'));
   assert.ok(renderer.includes('thornCross'));
   assert.ok(renderer.includes('ambusher'));
@@ -692,9 +698,15 @@ function main() {
   assert.ok(renderer.includes('state.particles.forEach'));
   assert.ok(renderer.includes('function drawBossStatusHud'));
   assert.ok(renderer.includes('MODE ${modeLabel}'));
+  assert.ok(renderer.includes('surfaceTower'));
+  assert.ok(renderer.includes('accentBrass'));
 
   const styles = readGameFile('styles.css');
-  assert.ok(styles.includes('--surface-parchment: #2b2116;'));
+  assert.ok(styles.includes('--surface-parchment: #241b12;'));
+  assert.ok(styles.includes('--surface-iron: #171717;'));
+  assert.ok(styles.includes('--surface-tower: #070706;'));
+  assert.ok(styles.includes('--accent-brass: #9c7b45;'));
+  assert.ok(styles.includes('--accent-bell: #5d527d;'));
   assert.ok(styles.includes('--class-fighter'));
   assert.ok(styles.includes('aspect-ratio: 16 / 9;'));
   assert.ok(styles.includes('.feedback-strip'));
@@ -720,6 +732,18 @@ function main() {
   assert.ok(styles.includes('.result-ledger-head'));
   assert.ok(styles.includes('.upgrade-option.evolution-ready'));
   assert.ok(styles.includes('@media (max-width: 980px)'));
+
+  const designDirection = readProjectFile('docs/dungeonworld-survivors-design-direction.md');
+  assert.ok(designDirection.includes('검은탑은 게임의 중심 목적지'));
+  assert.ok(designDirection.includes('마지막 문'));
+  assert.ok(designDirection.includes('검은 종은 탑의 저주와 보스 패턴을 상징하는 서브 모티프'));
+  assert.ok(designDirection.includes('## 4. 네온/아기자기함 제거 기준'));
+  assert.ok(designDirection.includes('## 5. 피해야 할 디자인 방향'));
+
+  const webGameDoc = readProjectFile('docs/dungeonworld-survivors-web-game.md');
+  assert.ok(webGameDoc.includes('중심 목표는 검은탑의 마지막 문'));
+  assert.ok(webGameDoc.includes('검은 종은 탑에서 울리는 저주와 보스 패턴의 신호'));
+  assert.ok(webGameDoc.includes('네온 장판이 아니라 낮은 투명도의 피빛 의식선'));
 
   testWaveRollBehavior();
   testRunModesAndStandardTimeline();

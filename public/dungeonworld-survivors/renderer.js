@@ -6,6 +6,8 @@
       surfacePrimary: token('--surface-primary'),
       surfaceCanvas: token('--surface-canvas'),
       surfaceParchment: token('--surface-parchment'),
+      surfaceIron: token('--surface-iron'),
+      surfaceTower: token('--surface-tower'),
       textPrimary: token('--text-primary'),
       textSecondary: token('--text-secondary'),
       textTertiary: token('--text-tertiary'),
@@ -13,6 +15,7 @@
       borderSubtle: token('--border-subtle'),
       accentPrimary: token('--accent-primary'),
       accentEmber: token('--accent-ember'),
+      accentBrass: token('--accent-brass'),
       accentBell: token('--accent-bell'),
       statusWarning: token('--status-warning'),
       statusSuccess: token('--status-success'),
@@ -31,6 +34,7 @@
     const map = {
       '--accent-primary': palette.accentPrimary,
       '--accent-ember': palette.accentEmber,
+      '--accent-brass': palette.accentBrass,
       '--accent-bell': palette.accentBell,
       '--status-success': palette.statusSuccess,
       '--status-error': palette.statusError,
@@ -79,7 +83,7 @@
   }
 
   function drawBackground(ctx, world, camera, elapsed, palette) {
-    ctx.fillStyle = palette.surfaceCanvas;
+    ctx.fillStyle = palette.surfaceTower || palette.surfaceCanvas;
     ctx.fillRect(0, 0, world.width, world.height);
     drawGroundTexture(ctx, world, camera, palette);
     drawRoad(ctx, world, elapsed, palette);
@@ -91,15 +95,23 @@
   }
 
   function drawGroundTexture(ctx, world, camera, palette) {
-    ctx.fillStyle = withAlpha(palette.borderSubtle, 0.32);
+    ctx.fillStyle = withAlpha(palette.borderSubtle, 0.24);
     const startX = Math.floor(camera.x / 80) * 80;
     const startY = Math.floor(camera.y / 80) * 80;
     for (let y = startY; y < camera.y + camera.height + 90; y += 80) {
       for (let x = startX; x < camera.x + camera.width + 90; x += 80) {
         const noise = seededNoise(x, y);
-        ctx.globalAlpha = 0.08 + noise * 0.08;
+        ctx.globalAlpha = 0.06 + noise * 0.06;
         ctx.fillRect(x + noise * 26, y + (1 - noise) * 22, 34 + noise * 28, 2);
         ctx.fillRect(x + 18, y + 42, 2, 18 + noise * 20);
+        if (noise > 0.72) {
+          ctx.strokeStyle = withAlpha(palette.textTertiary, 0.08);
+          ctx.beginPath();
+          ctx.moveTo(x + 8, y + 66);
+          ctx.lineTo(x + 34, y + 50);
+          ctx.lineTo(x + 66, y + 70);
+          ctx.stroke();
+        }
       }
     }
     ctx.globalAlpha = 1;
@@ -114,7 +126,7 @@
   function drawRoad(ctx, world, elapsed, palette) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = withAlpha(palette.surfaceParchment, 0.5);
+    ctx.strokeStyle = withAlpha(palette.surfaceParchment, 0.36);
     ctx.lineWidth = 92;
     ctx.beginPath();
     for (let index = 0; index <= 34; index += 1) {
@@ -123,7 +135,7 @@
       else ctx.lineTo(point.x, point.y);
     }
     ctx.stroke();
-    ctx.strokeStyle = withAlpha(palette.borderDefault, 0.52);
+    ctx.strokeStyle = withAlpha(palette.borderDefault, 0.44);
     ctx.lineWidth = 2;
     ctx.setLineDash([18, 18]);
     ctx.lineDashOffset = -elapsed * 8;
@@ -153,8 +165,8 @@
   }
 
   function drawForest(ctx, world, camera, palette) {
-    ctx.strokeStyle = withAlpha(palette.accentPrimary, 0.22);
-    ctx.fillStyle = withAlpha(palette.accentPrimary, 0.08);
+    ctx.strokeStyle = withAlpha(palette.accentPrimary, 0.16);
+    ctx.fillStyle = withAlpha(palette.accentPrimary, 0.055);
     for (let index = 0; index < 90; index += 1) {
       const x = 130 + seededNoise(index, 4) * (world.width - 260);
       const y = 170 + seededNoise(index, 8) * (world.height - 340);
@@ -173,8 +185,8 @@
   function drawBasin(ctx, palette) {
     ctx.save();
     ctx.translate(1260, 830);
-    ctx.strokeStyle = withAlpha(palette.statusInfo, 0.44);
-    ctx.fillStyle = withAlpha(palette.statusInfo, 0.12);
+    ctx.strokeStyle = withAlpha(palette.statusInfo, 0.3);
+    ctx.fillStyle = withAlpha(palette.statusInfo, 0.07);
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.ellipse(0, 0, 150, 74, -0.16, 0, Math.PI * 2);
@@ -193,11 +205,11 @@
   function drawTower(ctx, world, elapsed, palette) {
     ctx.save();
     ctx.translate(world.towerX, world.towerY);
-    ctx.fillStyle = withAlpha(palette.accentBell, 0.08 + Math.sin(elapsed * 1.4) * 0.025);
+    ctx.fillStyle = withAlpha(palette.surfaceIron || palette.surfaceCanvas, 0.38);
     ctx.beginPath();
     ctx.arc(0, 80, 250, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = withAlpha(palette.textPrimary, 0.16);
+    ctx.fillStyle = withAlpha(palette.textPrimary, 0.12);
     ctx.beginPath();
     ctx.moveTo(-68, 210);
     ctx.lineTo(-34, -74);
@@ -205,10 +217,17 @@
     ctx.lineTo(70, 210);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = withAlpha(palette.accentBell, 0.5);
-    ctx.lineWidth = 6;
+    ctx.strokeStyle = withAlpha(palette.accentBrass || palette.accentEmber, 0.42);
+    ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(0, -32, 36 + Math.sin(elapsed * 2) * 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(palette.accentBell, 0.22 + Math.sin(elapsed * 1.4) * 0.04);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-44, 126);
+    ctx.lineTo(-12, 10);
+    ctx.lineTo(22, 112);
     ctx.stroke();
     ctx.restore();
   }
@@ -227,18 +246,78 @@
     ctx.rotate(player.facing || 0);
     if (player.invulnerableTimer > 0) drawInvulnerabilityShell(ctx, player.radius, accent, palette);
     ctx.globalAlpha = player.invulnerableTimer > 0 ? 0.78 : 1;
-    ctx.fillStyle = withAlpha(accent, 0.88);
-    ctx.strokeStyle = palette.textPrimary;
-    ctx.lineWidth = 3;
+    drawPlayerMiniatureBody(ctx, player, accent, palette);
+    ctx.fillStyle = withAlpha(accent, 0.72);
+    ctx.strokeStyle = withAlpha(palette.textPrimary, 0.78);
+    ctx.lineWidth = 2.2;
+    ctx.save();
+    ctx.scale(0.78, 0.78);
     if (player.crest === 'shield') drawShieldCrest(ctx, player.radius);
     else if (player.crest === 'blade') drawBladeCrest(ctx, player.radius);
     else if (player.crest === 'halo') drawHaloCrest(ctx, player.radius);
     else if (player.crest === 'root') drawRootCrest(ctx, player.radius);
     else if (player.crest === 'rune') drawRuneCrest(ctx, player.radius);
     else drawHawkCrest(ctx, player.radius);
+    ctx.restore();
     drawFacingNotch(ctx, player.radius, accent);
     ctx.restore();
     drawPlayerAuras(ctx, player, accent, palette);
+  }
+
+  function drawPlayerMiniatureBody(ctx, player, accent, palette) {
+    const radius = player.radius;
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = withAlpha(palette.surfaceIron || palette.surfaceCanvas, 0.9);
+    ctx.strokeStyle = withAlpha(palette.textPrimary, 0.58);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.82, radius * 0.95);
+    ctx.lineTo(-radius * 0.48, -radius * 0.54);
+    ctx.quadraticCurveTo(0, -radius * 1.1, radius * 0.52, -radius * 0.54);
+    ctx.lineTo(radius * 0.84, radius * 0.95);
+    ctx.quadraticCurveTo(0, radius * 1.24, -radius * 0.82, radius * 0.95);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = withAlpha(accent, 0.34);
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.42, -radius * 0.16);
+    ctx.lineTo(0, -radius * 0.72);
+    ctx.lineTo(radius * 0.42, -radius * 0.16);
+    ctx.lineTo(radius * 0.22, radius * 0.72);
+    ctx.lineTo(-radius * 0.22, radius * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(palette.accentBrass || palette.borderDefault, 0.62);
+    ctx.lineWidth = 1.6;
+    if (player.crest === 'shield') {
+      ctx.strokeRect(radius * 0.42, -radius * 0.18, radius * 0.42, radius * 0.72);
+    } else if (player.crest === 'blade') {
+      ctx.beginPath();
+      ctx.moveTo(radius * 0.28, -radius * 0.72);
+      ctx.lineTo(radius * 1.04, radius * 0.5);
+      ctx.stroke();
+    } else if (player.crest === 'halo') {
+      ctx.beginPath();
+      ctx.arc(0, -radius * 0.78, radius * 0.52, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (player.crest === 'root') {
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.3, radius * 0.28);
+      ctx.lineTo(-radius * 0.72, radius * 0.92);
+      ctx.moveTo(radius * 0.2, radius * 0.28);
+      ctx.lineTo(radius * 0.72, radius * 0.92);
+      ctx.stroke();
+    } else if (player.crest === 'rune') {
+      ctx.strokeRect(-radius * 0.34, -radius * 0.34, radius * 0.68, radius * 0.68);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(radius * 0.42, -radius * 0.62);
+      ctx.lineTo(radius * 1.02, -radius * 0.18);
+      ctx.lineTo(radius * 0.42, radius * 0.12);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawPlayerAnchor(ctx, player, accent, palette) {
@@ -436,12 +515,12 @@
     if (state.effects.levelShockwave <= 0) return;
     const progress = 1 - state.effects.levelShockwave;
     ctx.save();
-    ctx.strokeStyle = withAlpha(palette.statusWarning, state.effects.levelShockwave * 0.82);
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = withAlpha(palette.statusWarning, state.effects.levelShockwave * 0.68);
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
     ctx.arc(state.player.x, state.player.y, 34 + progress * 180, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = withAlpha(palette.textPrimary, state.effects.levelShockwave * 0.38);
+    ctx.strokeStyle = withAlpha(palette.accentBell, state.effects.levelShockwave * 0.28);
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(state.player.x, state.player.y, 18 + progress * 110, 0, Math.PI * 2);
@@ -473,7 +552,7 @@
     ctx.translate(enemy.x, enemy.y);
     const wobble = Math.sin(enemy.behaviorTimer * 5) * enemy.radius * 0.12;
     drawEnemyThreatRing(ctx, enemy, palette);
-    ctx.fillStyle = withAlpha(color, enemy.behavior === 'boss' ? 0.9 : 0.86);
+    ctx.fillStyle = withAlpha(color, enemy.behavior === 'boss' ? 0.82 : 0.72);
     ctx.strokeStyle = getEnemyOutline(enemy, palette);
     ctx.lineWidth = enemy.behavior === 'boss' ? 5 : enemy.elite ? 3.5 : 2;
     if (enemy.behavior === 'skirmisher') drawGoblinEnemy(ctx, enemy.radius, wobble, palette);
@@ -502,7 +581,7 @@
     if (!enemy.elite && enemy.behavior !== 'boss') return;
     const radius = enemy.radius + (enemy.behavior === 'boss' ? 17 : 10);
     ctx.save();
-    ctx.strokeStyle = enemy.behavior === 'boss' ? withAlpha(palette.accentBell, 0.74) : withAlpha(palette.accentEmber, 0.78);
+    ctx.strokeStyle = enemy.behavior === 'boss' ? withAlpha(palette.accentBrass || palette.accentBell, 0.72) : withAlpha(palette.accentEmber, 0.68);
     ctx.lineWidth = enemy.behavior === 'boss' ? 4 : 2.5;
     ctx.setLineDash(enemy.behavior === 'boss' ? [18, 8] : [9, 6]);
     ctx.beginPath();
@@ -510,7 +589,7 @@
     ctx.stroke();
     ctx.setLineDash([]);
     if (enemy.elite) {
-      ctx.fillStyle = withAlpha(palette.accentEmber, 0.16);
+      ctx.fillStyle = withAlpha(palette.accentEmber, 0.12);
       for (let index = 0; index < 6; index += 1) {
         const angle = index * Math.PI * 2 / 6;
         ctx.beginPath();
@@ -523,7 +602,7 @@
 
   function getEnemyOutline(enemy, palette) {
     if (enemy.slowTimer > 0) return palette.accentPrimary;
-    if (enemy.behavior === 'boss') return palette.accentBell;
+    if (enemy.behavior === 'boss') return palette.accentBrass || palette.accentBell;
     if (enemy.elite) return palette.accentEmber;
     return palette.surfacePrimary;
   }
@@ -555,8 +634,11 @@
     ctx.strokeStyle = palette.borderDefault;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(radius * 0.32, -radius * 0.96);
-    ctx.lineTo(radius * 1.55, radius * 0.62);
+    ctx.moveTo(radius * 0.16, -radius * 1.08);
+    ctx.lineTo(radius * 1.72, radius * 0.72);
+    ctx.moveTo(radius * 1.42, radius * 0.36);
+    ctx.lineTo(radius * 1.72, radius * 0.72);
+    ctx.lineTo(radius * 1.3, radius * 0.64);
     ctx.stroke();
     ctx.restore();
   }
@@ -578,6 +660,8 @@
   }
 
   function drawArmorEnemy(ctx, radius, palette) {
+    ctx.save();
+    ctx.lineJoin = 'miter';
     ctx.fillRect(-radius * 0.82, -radius * 0.72, radius * 1.64, radius * 1.48);
     ctx.strokeRect(-radius * 0.82, -radius * 0.72, radius * 1.64, radius * 1.48);
     ctx.strokeStyle = withAlpha(palette.textPrimary, 0.5);
@@ -591,13 +675,16 @@
     ctx.moveTo(0, -radius * 0.72);
     ctx.lineTo(0, radius * 0.76);
     ctx.stroke();
+    ctx.strokeStyle = withAlpha(palette.accentBrass || palette.borderDefault, 0.58);
+    ctx.strokeRect(-radius * 0.62, -radius * 0.5, radius * 1.24, radius * 1.04);
+    ctx.restore();
   }
 
   function drawWolfEnemy(ctx, radius, timer, palette) {
     const dash = Math.sin(timer * 2.7) > 0.68;
     if (dash) {
-      ctx.strokeStyle = withAlpha(palette.statusError, 0.24);
-      ctx.lineWidth = 7;
+      ctx.strokeStyle = withAlpha(palette.statusError, 0.18);
+      ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(-radius * 2.6, radius * 0.46);
       ctx.lineTo(-radius * 0.8, radius * 0.2);
@@ -662,17 +749,17 @@
     ctx.beginPath();
     ctx.arc(0, -radius * 0.42, radius * 0.36, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = withAlpha(palette.accentBell, 0.72);
+    ctx.strokeStyle = withAlpha(palette.accentBell, 0.56);
     ctx.beginPath();
     ctx.arc(0, radius * 0.24, radius * 0.36, 0.18, Math.PI * 1.24);
     ctx.stroke();
-    ctx.fillStyle = withAlpha(palette.accentBell, 0.58);
+    ctx.fillStyle = withAlpha(palette.accentBrass || palette.accentBell, 0.62);
     ctx.fillRect(-radius * 0.1, radius * 0.48, radius * 0.2, radius * 0.24);
   }
 
   function drawSentinelEnemy(ctx, enemy, palette) {
     const hpRatio = Math.max(0, enemy.hp / enemy.maxHp);
-    ctx.fillStyle = withAlpha(palette.accentBell, 0.18);
+    ctx.fillStyle = withAlpha(palette.surfaceTower || palette.surfaceCanvas, 0.74);
     ctx.beginPath();
     ctx.moveTo(-enemy.radius * 1.55, -enemy.radius * 0.76);
     ctx.lineTo(-enemy.radius * 0.96, enemy.radius * 1.22);
@@ -682,9 +769,11 @@
     ctx.lineTo(enemy.radius * 1.55, -enemy.radius * 0.76);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = withAlpha(palette.accentBell, 0.9);
+    ctx.fillStyle = withAlpha(palette.surfaceIron || palette.surfaceCanvas, 0.92);
     ctx.fillRect(-enemy.radius * 0.92, -enemy.radius * 1.12, enemy.radius * 1.84, enemy.radius * 2.1);
     ctx.strokeRect(-enemy.radius * 0.92, -enemy.radius * 1.12, enemy.radius * 1.84, enemy.radius * 2.1);
+    ctx.strokeStyle = withAlpha(palette.accentBrass || palette.borderDefault, 0.72);
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(-enemy.radius * 1.18, -enemy.radius * 1.12);
     ctx.lineTo(0, -enemy.radius * 1.82);
@@ -694,9 +783,16 @@
     ctx.stroke();
     ctx.fillStyle = palette.surfaceCanvas;
     ctx.fillRect(-enemy.radius * 0.48, -enemy.radius * 0.58, enemy.radius * 0.96, enemy.radius * 0.32);
-    ctx.strokeStyle = withAlpha(palette.accentBell, 0.78);
+    ctx.strokeStyle = withAlpha(palette.accentBrass || palette.accentBell, 0.82);
     ctx.beginPath();
     ctx.arc(0, enemy.radius * 0.22, enemy.radius * 0.5, 0.1, Math.PI * 1.36);
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(palette.accentBell, 0.58);
+    ctx.beginPath();
+    ctx.moveTo(-enemy.radius * 1.16, -enemy.radius * 0.2);
+    ctx.lineTo(-enemy.radius * 1.62, enemy.radius * 0.72);
+    ctx.moveTo(enemy.radius * 1.16, -enemy.radius * 0.2);
+    ctx.lineTo(enemy.radius * 1.62, enemy.radius * 0.72);
     ctx.stroke();
     if (hpRatio < 0.66) {
       ctx.beginPath();
@@ -706,7 +802,7 @@
       ctx.stroke();
     }
     if (hpRatio < 0.33) {
-      ctx.strokeStyle = withAlpha(palette.accentBell, 0.95);
+      ctx.strokeStyle = withAlpha(palette.accentBell, 0.72);
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(enemy.radius * 0.5, -enemy.radius * 1.18);
@@ -719,14 +815,14 @@
   function drawHazard(ctx, hazard, palette) {
     const color = resolveColor(palette, hazard.colorToken);
     const armed = hazard.warningLeft <= 0;
-    const alpha = armed ? 0.34 : 0.18 + Math.sin(hazard.life * 18) * 0.06;
+    const alpha = armed ? 0.26 : 0.12 + Math.sin(hazard.life * 18) * 0.04;
     ctx.save();
     ctx.translate(hazard.x, hazard.y);
     ctx.rotate(hazard.angle || 0);
-    ctx.strokeStyle = withAlpha(color, armed ? 0.78 : 0.62);
-    ctx.fillStyle = withAlpha(color, armed ? alpha * 0.36 : alpha * 0.18);
-    ctx.lineWidth = armed ? 4 : 2;
-    ctx.setLineDash(armed ? [18, 7] : [4, 9]);
+    ctx.strokeStyle = withAlpha(color, armed ? 0.78 : 0.54);
+    ctx.fillStyle = withAlpha(color, armed ? alpha * 0.18 : alpha * 0.08);
+    ctx.lineWidth = armed ? 3 : 1.6;
+    ctx.setLineDash(armed ? [16, 9] : [3, 12]);
     if (hazard.kind === 'wolfLane' || hazard.kind === 'towerGaze') {
       drawLaneShape(ctx, hazard.length || 240, hazard.width || 38);
     } else if (hazard.kind === 'thornCross') {
@@ -749,7 +845,36 @@
       ctx.stroke();
     }
     ctx.setLineDash([]);
+    drawCrackRunes(ctx, hazard, color);
     if (armed) drawArmedHazardTicks(ctx, hazard, color);
+    ctx.restore();
+  }
+
+  function drawCrackRunes(ctx, hazard, color) {
+    ctx.save();
+    ctx.strokeStyle = withAlpha(color, 0.34);
+    ctx.lineWidth = 1.2;
+    const radius = hazard.radius || hazard.reach || 64;
+    if (hazard.kind === 'wolfLane' || hazard.kind === 'towerGaze' || hazard.kind === 'thornCross') {
+      const length = hazard.length || 220;
+      const width = hazard.width || 36;
+      for (let x = 18; x < length; x += 42) {
+        ctx.beginPath();
+        ctx.moveTo(x, -width * 0.44);
+        ctx.lineTo(x + 10, -width * 0.1);
+        ctx.lineTo(x + 4, width * 0.42);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+    for (let index = 0; index < 6; index += 1) {
+      const angle = index * Math.PI * 2 / 6;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * radius * 0.34, Math.sin(angle) * radius * 0.34);
+      ctx.lineTo(Math.cos(angle + 0.08) * radius * 0.78, Math.sin(angle + 0.08) * radius * 0.78);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -787,10 +912,10 @@
     ctx.save();
     ctx.translate(warning.x, warning.y);
     ctx.rotate(warning.angle || 0);
-    ctx.strokeStyle = withAlpha(color, armed ? 0.96 : isBoss ? 0.82 : 0.68);
-    ctx.fillStyle = withAlpha(color, (isBoss ? 0.08 : 0.05) + (1 - progress) * (isBoss ? 0.15 : 0.1));
-    ctx.lineWidth = (isBoss ? 4 : 2.25) + (1 - progress) * 2.2;
-    ctx.setLineDash(armed ? [] : isBoss ? [16, 8] : [8, 10]);
+    ctx.strokeStyle = withAlpha(color, armed ? 0.92 : isBoss ? 0.72 : 0.58);
+    ctx.fillStyle = withAlpha(color, (isBoss ? 0.04 : 0.025) + (1 - progress) * (isBoss ? 0.09 : 0.055));
+    ctx.lineWidth = (isBoss ? 3 : 1.8) + (1 - progress) * 1.7;
+    ctx.setLineDash(armed ? [] : isBoss ? [14, 10] : [5, 12]);
     if (warning.kind === 'line') {
       drawLaneShape(ctx, warning.length || warning.reach || 130, warning.width || 30);
     } else if (warning.kind === 'cone' || warning.kind === 'arc') {
@@ -821,13 +946,14 @@
       ctx.stroke();
     }
     ctx.setLineDash([]);
+    drawCrackRunes(ctx, warning, color);
     drawWarningPhaseTicks(ctx, warning, color, progress, armed);
     ctx.restore();
   }
 
   function drawWarningPhaseTicks(ctx, warning, color, progress, armed) {
-    ctx.strokeStyle = withAlpha(color, armed ? 0.92 : 0.58);
-    ctx.lineWidth = armed ? 3 : 1.5;
+    ctx.strokeStyle = withAlpha(color, armed ? 0.86 : 0.5);
+    ctx.lineWidth = armed ? 2.4 : 1.2;
     const radius = warning.radius || warning.reach || 70;
     const tickCount = warning.phase ? 12 : 8;
     for (let index = 0; index < tickCount; index += 1) {
@@ -1130,7 +1256,7 @@
     ctx.translate(gem.x, gem.y);
     ctx.scale(pulse, pulse);
     ctx.fillStyle = palette.statusInfo;
-    ctx.strokeStyle = withAlpha(palette.textPrimary, 0.62);
+    ctx.strokeStyle = withAlpha(palette.textPrimary, 0.5);
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(0, -gem.radius * 1.35);
@@ -1140,7 +1266,7 @@
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.strokeStyle = withAlpha(palette.statusInfo, gem.pullMode === 'magnet' ? 0.72 : 0.44);
+    ctx.strokeStyle = withAlpha(palette.statusInfo, gem.pullMode === 'magnet' ? 0.66 : 0.34);
     ctx.beginPath();
     ctx.arc(0, 0, gem.radius + (gem.pullMode === 'magnet' ? 6 : 3), 0, Math.PI * 2);
     ctx.stroke();
@@ -1149,8 +1275,8 @@
 
   function drawGemPullTrail(ctx, gem, palette) {
     const color = gem.pullMode === 'magnet' ? palette.statusInfo : palette.accentPrimary;
-    ctx.strokeStyle = withAlpha(color, gem.pullMode === 'magnet' ? 0.66 : 0.42);
-    ctx.lineWidth = gem.pullMode === 'magnet' ? 3 : 2;
+    ctx.strokeStyle = withAlpha(color, gem.pullMode === 'magnet' ? 0.58 : 0.34);
+    ctx.lineWidth = gem.pullMode === 'magnet' ? 2.4 : 1.6;
     ctx.lineCap = 'round';
     ctx.beginPath();
     const controlX = (gem.trail.x + gem.x) / 2 + Math.sin(gem.age * 8) * 14;
@@ -1161,12 +1287,12 @@
   }
 
   function drawChest(ctx, chest, palette) {
-    const pulse = 1 + Math.sin((chest.age || 0) * 5) * 0.06;
+    const pulse = 1 + Math.sin((chest.age || 0) * 4) * 0.035;
     ctx.save();
     ctx.translate(chest.x, chest.y);
     ctx.scale(pulse, pulse);
-    ctx.fillStyle = palette.surfaceParchment;
-    ctx.strokeStyle = palette.accentEmber;
+    ctx.fillStyle = palette.surfaceIron || palette.surfaceParchment;
+    ctx.strokeStyle = palette.accentBrass || palette.accentEmber;
     ctx.lineWidth = 2;
     ctx.fillRect(-13, -8, 26, 18);
     ctx.strokeRect(-13, -8, 26, 18);
@@ -1178,8 +1304,15 @@
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = palette.accentBell;
+    ctx.fillStyle = withAlpha(palette.accentBell, 0.82);
     ctx.fillRect(-2, -3, 4, 8);
+    ctx.strokeStyle = withAlpha(palette.accentBrass || palette.accentEmber, 0.54);
+    ctx.beginPath();
+    ctx.moveTo(-9, 2);
+    ctx.lineTo(9, 2);
+    ctx.moveTo(-7, 7);
+    ctx.lineTo(7, 7);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -1277,12 +1410,12 @@
       ctx.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
     }
     if (state.effects.bossPulse > 0) {
-      ctx.strokeStyle = withAlpha(palette.accentBell, state.effects.bossPulse * 0.65);
-      ctx.lineWidth = 10;
+      ctx.strokeStyle = withAlpha(palette.accentBell, state.effects.bossPulse * 0.42);
+      ctx.lineWidth = 7;
       ctx.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
     }
     if (state.effects.flash > 0) {
-      ctx.fillStyle = withAlpha(palette.accentBell, state.effects.flash * 0.22);
+      ctx.fillStyle = withAlpha(palette.accentBell, state.effects.flash * 0.14);
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
   }
