@@ -2,6 +2,7 @@
   const CLASS_SPRITE_PATH_PREFIX = 'assets/classes/';
   const CLASS_SPRITE_IDS = ['fighter', 'cleric', 'thief', 'druid', 'wizard', 'ranger'];
   const ENEMY_SPRITE_PATH_PREFIX = 'assets/enemies/';
+  const BACKGROUND_SPRITE_PATH_PREFIX = 'assets/backgrounds/';
   const ENEMY_SPRITE_SPECS = {
     goblin: { file: 'goblin.png', width: 48, height: 48 },
     slime: { file: 'slime.png', width: 48, height: 48 },
@@ -20,6 +21,13 @@
     caster: 'cultist',
     boss: 'warden',
   };
+  const BACKGROUND_SPRITE_SPECS = {
+    inn: { file: 'inn-ground.png', kind: 'ground' },
+    ruins: { file: 'ruins-ground.png', kind: 'ground' },
+    forest: { file: 'forest-ground.png', kind: 'ground' },
+    basinSetpiece: { file: 'basin-setpiece.png', kind: 'setpiece' },
+    towerGate: { file: 'tower-gate-setpiece.png', kind: 'setpiece' },
+  };
   const CREST_CLASS_MAP = {
     shield: 'fighter',
     halo: 'cleric',
@@ -30,8 +38,10 @@
   };
   const classSprites = Object.create(null);
   const enemySprites = Object.create(null);
+  const backgroundSprites = Object.create(null);
   let classSpritesPreload = null;
   let enemySpritesPreload = null;
+  let backgroundSpritesPreload = null;
 
   function normalizeClassId(value) {
     if (!value) return '';
@@ -94,6 +104,29 @@
     return enemySpritesPreload;
   }
 
+  function preloadBackgroundSprites() {
+    if (backgroundSpritesPreload) return backgroundSpritesPreload;
+    if (typeof window.Image !== 'function') {
+      backgroundSpritesPreload = Promise.resolve(backgroundSprites);
+      return backgroundSpritesPreload;
+    }
+    backgroundSpritesPreload = Promise.all(Object.keys(BACKGROUND_SPRITE_SPECS).map((spriteId) => new Promise((resolve) => {
+      const image = new window.Image();
+      const spec = BACKGROUND_SPRITE_SPECS[spriteId];
+      backgroundSprites[spriteId] = { image, loaded: false, failed: false, spec };
+      image.onload = () => {
+        backgroundSprites[spriteId].loaded = true;
+        resolve(backgroundSprites[spriteId]);
+      };
+      image.onerror = () => {
+        backgroundSprites[spriteId].failed = true;
+        resolve(backgroundSprites[spriteId]);
+      };
+      image.src = `${BACKGROUND_SPRITE_PATH_PREFIX}${spec.file}`;
+    }))).then(() => backgroundSprites);
+    return backgroundSpritesPreload;
+  }
+
   function getPlayerClassSprite(player) {
     const classId = resolvePlayerClassId(player);
     const sprite = classId ? classSprites[classId] : null;
@@ -109,6 +142,11 @@
   function getEnemySprite(enemy) {
     const spriteId = resolveEnemySpriteId(enemy);
     const sprite = spriteId ? enemySprites[spriteId] : null;
+    return sprite && sprite.loaded && !sprite.failed ? sprite : null;
+  }
+
+  function getBackgroundSprite(spriteId) {
+    const sprite = spriteId ? backgroundSprites[spriteId] : null;
     return sprite && sprite.loaded && !sprite.failed ? sprite : null;
   }
 
@@ -195,7 +233,55 @@
     return value - Math.floor(value);
   }
 
-  function drawBackground(ctx, world, camera, elapsed, palette) {
+  function resolveGroundBackgroundId(state) {
+    const wave = state.waves && state.waves[state.waveIndex] ? state.waves[state.waveIndex] : null;
+    const waveId = wave && wave.id ? wave.id : '';
+    if (state.bossSpawned || waveId === 'finalGate' || waveId.includes('29-30')) return 'forest';
+    if (waveId.includes('forest') || waveId.includes('15-20') || waveId.includes('20-25') || waveId.includes('25-29')) return 'forest';
+    if (waveId.includes('ruin') || waveId.includes('basin') || waveId.includes('6-9') || waveId.includes('9-12') || waveId.includes('12-15')) return 'ruins';
+    return 'inn';
+  }
+
+  function withPixelSprites(ctx, draw) {
+    const previousSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    draw();
+    ctx.imageSmoothingEnabled = previousSmoothing;
+  }
+
+  function drawGroundBackgroundSprite(ctx, sprite, world) {
+    withPixelSprites(ctx, () => {
+      ctx.drawImage(sprite.image, 0, 0, world.width, world.height);
+    });
+  }
+
+  function drawSetpieceSprite(ctx, sprite, x, y, width, height) {
+    withPixelSprites(ctx, () => {
+      ctx.drawImage(sprite.image, Math.round(x), Math.round(y), Math.round(width), Math.round(height));
+    });
+  }
+
+  function drawTowerGateSetpiece(ctx, world, camera) {
+    const sprite = getBackgroundSprite('towerGate');
+    if (!sprite) return false;
+    const width = 1540;
+    const height = Math.round(width * sprite.image.height / sprite.image.width);
+    const x = camera.x + camera.width / 2 - width / 2;
+    const y = camera.y - height * 0.42;
+    if (!isVisible(camera, x + width / 2, y + height / 2, Math.max(width, height) / 2)) return true;
+    drawSetpieceSprite(ctx, sprite, x, y, width, height);
+    return true;
+  }
+
+  function drawBackgroundSprites(ctx, world, camera, state, palette) {
+    const groundSprite = getBackgroundSprite(resolveGroundBackgroundId(state));
+    if (!groundSprite) return false;
+    drawGroundBackgroundSprite(ctx, groundSprite, world);
+    if (state.bossSpawned && !drawTowerGateSetpiece(ctx, world, camera)) drawTower(ctx, world, state.elapsed, palette);
+    return true;
+  }
+
+  function drawProceduralBackground(ctx, world, camera, elapsed, palette) {
     ctx.fillStyle = palette.surfaceTower || palette.surfaceCanvas;
     ctx.fillRect(0, 0, world.width, world.height);
     drawGroundTexture(ctx, world, camera, palette);
@@ -205,6 +291,14 @@
     drawBasin(ctx, palette);
     drawTower(ctx, world, elapsed, palette);
     drawWorldEdges(ctx, world, palette);
+  }
+
+  function drawBackground(ctx, world, camera, state, palette) {
+    if (drawBackgroundSprites(ctx, world, camera, state, palette)) {
+      drawWorldEdges(ctx, world, palette);
+      return;
+    }
+    drawProceduralBackground(ctx, world, camera, state.elapsed, palette);
   }
 
   function drawGroundTexture(ctx, world, camera, palette) {
@@ -1603,7 +1697,7 @@
       ctx.translate((Math.random() - 0.5) * state.effects.shake * 12, (Math.random() - 0.5) * state.effects.shake * 12);
     }
     applyCamera(ctx, camera);
-    drawBackground(ctx, world, camera, state.elapsed, palette);
+    drawBackground(ctx, world, camera, state, palette);
     state.hazards.forEach((hazard) => drawHazard(ctx, hazard, palette));
     state.bossWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
     state.enemyWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
@@ -1627,6 +1721,7 @@
     formatTime,
     preloadClassSprites,
     preloadEnemySprites,
+    preloadBackgroundSprites,
     render,
   };
 })();

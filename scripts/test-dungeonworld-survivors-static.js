@@ -22,6 +22,13 @@ const ENEMY_SPRITES = {
   'cultist.png': [56, 56],
   'warden.png': [128, 128],
 };
+const BACKGROUND_SPRITES = {
+  'inn-ground.png': [1832, 859],
+  'ruins-ground.png': [1832, 859],
+  'forest-ground.png': [1832, 859],
+  'basin-setpiece.png': [1832, 859],
+  'tower-gate-setpiece.png': [1942, 809],
+};
 
 function readGameFile(fileName) {
   return fs.readFileSync(path.join(GAME_DIR, fileName), 'utf8');
@@ -47,6 +54,19 @@ function testEnemySpriteAssets() {
     assert.ok(fs.existsSync(filePath), `${fileName} should exist`);
     assert.deepStrictEqual(readPngSize(filePath), expectedSize, `${fileName} should be ${expectedSize.join('x')}`);
   });
+}
+
+function testBackgroundSpriteAssets() {
+  Object.entries(BACKGROUND_SPRITES).forEach(([fileName, expectedSize]) => {
+    const filePath = path.join(GAME_DIR, 'assets', 'backgrounds', fileName);
+    assert.ok(fs.existsSync(filePath), `${fileName} should exist`);
+    assert.deepStrictEqual(readPngSize(filePath), expectedSize, `${fileName} should be ${expectedSize.join('x')}`);
+  });
+  assert.strictEqual(
+    fs.existsSync(path.join(GAME_DIR, 'assets', 'backgrounds', 'basin-ground.png')),
+    false,
+    'basin-ground.png should not be required in background asset v1'
+  );
 }
 
 function testDesignReferenceBoards() {
@@ -736,6 +756,7 @@ function main() {
   assert.ok(game.includes('function shortenRecommendation'));
   assert.ok(game.includes('function formatEvolutionComparison'));
   assert.ok(game.includes('renderer.preloadEnemySprites();'));
+  assert.ok(game.includes('renderer.preloadBackgroundSprites();'));
   assert.ok(game.includes('런 목표'));
   assert.ok(game.includes('보스전 기여'));
   assert.ok(game.includes('formatTagBadges'));
@@ -754,12 +775,27 @@ function main() {
   assert.ok(renderer.includes('function drawPlayerMiniatureBody'));
   assert.ok(renderer.includes('classSprites'));
   assert.ok(renderer.includes('enemySprites'));
+  assert.ok(renderer.includes('backgroundSprites'));
   assert.ok(renderer.includes('assets/classes/'));
   assert.ok(renderer.includes('assets/enemies/'));
+  assert.ok(renderer.includes('assets/backgrounds/'));
+  assert.ok(renderer.includes('BACKGROUND_SPRITE_SPECS'));
   assert.ok(renderer.includes('function preloadClassSprites'));
   assert.ok(renderer.includes('function preloadEnemySprites'));
+  assert.ok(renderer.includes('function preloadBackgroundSprites'));
   assert.ok(renderer.includes('function getPlayerClassSprite'));
   assert.ok(renderer.includes('function getEnemySprite'));
+  assert.ok(renderer.includes('function getBackgroundSprite'));
+  assert.ok(renderer.includes("inn: { file: 'inn-ground.png', kind: 'ground' }"));
+  assert.ok(renderer.includes("basinSetpiece: { file: 'basin-setpiece.png', kind: 'setpiece' }"));
+  assert.ok(renderer.includes("towerGate: { file: 'tower-gate-setpiece.png', kind: 'setpiece' }"));
+  assert.ok(renderer.includes('function resolveGroundBackgroundId'));
+  assert.ok(renderer.includes('function drawBackgroundSprites'));
+  assert.ok(renderer.includes('function drawGroundBackgroundSprite'));
+  assert.ok(renderer.includes('function drawTowerGateSetpiece'));
+  assert.ok(renderer.includes('function drawProceduralBackground'));
+  assert.ok(renderer.includes('if (!groundSprite) return false;'));
+  assert.ok(renderer.includes('drawProceduralBackground(ctx, world, camera, state.elapsed, palette);'));
   assert.ok(renderer.includes('function drawPlayerClassSprite'));
   assert.ok(renderer.includes('function drawEnemySprite'));
   assert.ok(renderer.includes('function drawProceduralEnemy'));
@@ -769,6 +805,7 @@ function main() {
   assert.ok(renderer.includes('} else {'));
   assert.ok(renderer.includes('ctx.drawImage(image'));
   assert.ok(renderer.includes('ctx.imageSmoothingEnabled = false'));
+  assert.ok(renderer.includes('ctx.imageSmoothingEnabled = previousSmoothing;'));
   assert.ok(renderer.includes('Math.round(wobble)'));
   assert.ok(renderer.includes('function drawInvulnerabilityShell'));
   assert.ok(renderer.includes('function drawLevelShockwave'));
@@ -797,6 +834,7 @@ function main() {
   assert.ok(renderer.includes('MODE ${modeLabel}'));
   assert.ok(renderer.includes('surfaceTower'));
   assert.ok(renderer.includes('accentBrass'));
+  assert.ok(renderer.includes('preloadBackgroundSprites,'));
 
   const styles = readGameFile('styles.css');
   assert.ok(styles.includes('--surface-parchment: #241b12;'));
@@ -848,16 +886,21 @@ function main() {
   assert.ok(webGameDoc.includes('docs/design/dungeonworld-survivors-background-concept-board.dc.html'));
   assert.ok(webGameDoc.includes('배경 시안 보드는 `docs/design/dungeonworld-survivors-background-concept-board.dc.html`에 보관'));
   assert.ok(webGameDoc.includes('bg-sprites.js` 의존성이 필요'));
-  assert.ok(webGameDoc.includes('B1~B4는 바닥/존 배경 후보'));
-  assert.ok(webGameDoc.includes('B5는 타일이 아니라 검은탑과 마지막 문을 위한 대형 세트피스 후보'));
+  assert.ok(webGameDoc.includes('B1~B3는 낮은 채도/낮은 대비의 바닥/존 배경으로 사용'));
+  assert.ok(webGameDoc.includes('B4는 현재 `basin-setpiece.png`만 있으며, 반복 가능한 `basin-ground.png`는 추후 제작 예정'));
+  assert.ok(webGameDoc.includes('B5는 반복 배경이 아니라 검은탑과 마지막 문을 위한 대형 세트피스로 사용'));
   assert.ok(webGameDoc.includes('public/dungeonworld-survivors/assets/backgrounds/inn-ground.png'));
   assert.ok(webGameDoc.includes('public/dungeonworld-survivors/assets/backgrounds/tower-gate-setpiece.png'));
+  assert.ok(webGameDoc.includes('`basin-ground.png`는 추후 반복 가능한 젖은 석재 바닥으로 별도 제작 예정'));
+  assert.ok(webGameDoc.includes('현재 `basin-setpiece.png`는 중앙 물그릇/웅덩이 세트피스로 사용'));
+  assert.ok(webGameDoc.includes('배경 스프라이트가 없거나 로드 실패하면 기존 절차형 배경으로 폴백'));
   assert.ok(webGameDoc.includes('XP, 공격 전조, 위험선, HUD, 보스 체력바는 이미지화하지 않고 기존 엔진 렌더를 유지'));
   assert.ok(webGameDoc.includes('XP 보석, 공격 전조, 위험선, HUD, 체력바, 보스 체력바는 배경 이미지에 넣지 않고 기존 엔진 렌더를 유지'));
 
   testDesignReferenceBoards();
   testEnemySpriteRendererSharpness();
   testEnemySpriteAssets();
+  testBackgroundSpriteAssets();
   testWaveRollBehavior();
   testRunModesAndStandardTimeline();
   testLargeWorldAndMovementClamp();

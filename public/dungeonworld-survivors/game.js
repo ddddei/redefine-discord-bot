@@ -41,6 +41,7 @@
 
   renderer.preloadClassSprites();
   renderer.preloadEnemySprites();
+  renderer.preloadBackgroundSprites();
 
   function getRequestedMode() {
     const params = new URLSearchParams(window.location.search);
