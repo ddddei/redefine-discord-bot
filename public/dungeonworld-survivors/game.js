@@ -104,7 +104,7 @@
     pendingUpgrades = systems.pickUpgrades(state);
     elements.modalKicker.textContent = `레벨 ${state.player.level}`;
     elements.modalTitle.textContent = '어떤 도움을 붙잡을까요?';
-    elements.modalCopy.textContent = '무기와 패시브를 반복해서 고르면 레벨이 오릅니다. 무기 Lv.8과 지정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화가 열립니다.';
+    elements.modalCopy.textContent = '종류, 레벨 변화, 진화 상태를 먼저 보고 고르세요. 추천 이유는 한 줄만 남겼습니다.';
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.add('hidden');
     renderUpgradeOptions();
@@ -114,26 +114,32 @@
   function renderUpgradeOptions() {
     elements.upgradeOptions.innerHTML = '';
     pendingUpgrades.forEach((upgrade) => {
+      const currentLevel = state.upgradeLevels[upgrade.id] || 0;
       const nextLevel = (state.upgradeLevels[upgrade.id] || 0) + 1;
+      const itemType = formatItemType(upgrade);
+      const evolutionState = systems.getUpgradeEvolutionState(state, upgrade);
       const button = document.createElement('button');
-      const evolutionReady = systems.getEligibleEvolutions(state).length > 0
-        && upgrade.evolutionCondition
-        && !upgrade.evolutionCondition.includes('무기 Lv.8 + 지정 패시브 + 엘리트 상자');
-      button.className = `upgrade-option rarity-${upgrade.rarity || 'common'}${evolutionReady ? ' evolution-ready' : ''}`;
+      const evolutionReady = evolutionState.status === 'ready' || evolutionState.status === 'will-ready';
+      const evolutionMaterial = evolutionState.status === 'material' || evolutionState.status === 'progress';
+      button.className = [
+        `upgrade-option rarity-${upgrade.rarity || 'common'}`,
+        evolutionReady ? 'evolution-ready' : '',
+        evolutionMaterial ? 'evolution-linked' : '',
+      ].filter(Boolean).join(' ');
       button.type = 'button';
       button.innerHTML = [
         '<span class="card-seal" aria-hidden="true"></span>',
-        `<span class="recommendation-pill">${upgrade.recommendationRole || '추천'}</span>`,
-        `<span class="option-meta">${formatRarity(upgrade.rarity)} · ${formatItemType(upgrade)}</span>`,
-        `<strong>${upgrade.title} ${formatLevel(nextLevel)}</strong>`,
+        '<span class="reward-card-main">',
+        `<span class="reward-topline"><span class="recommendation-pill">${upgrade.recommendationRole || '추천'}</span><span class="option-meta">${formatRarity(upgrade.rarity)} · ${itemType}</span></span>`,
+        `<strong>${upgrade.title}</strong>`,
+        `<span class="level-shift" aria-label="현재 레벨 ${currentLevel}, 다음 레벨 ${nextLevel}, 최대 레벨 ${upgrade.maxLevel}"><span>Lv.${currentLevel}</span><b>→</b><strong>Lv.${nextLevel}</strong><em>/ ${upgrade.maxLevel}</em></span>`,
+        `<span class="effect-line"><b>효과</b>${upgrade.effectPreview || upgrade.text}</span>`,
+        `<span class="reward-quick-grid"><span><b>추천</b>${shortenRecommendation(upgrade.recommendationReason)}</span><span><b>방향</b>${shortenBuildDirection(upgrade)}</span></span>`,
+        `<span class="evolution-line evolution-${evolutionState.status}"><b>${evolutionState.label}</b>${evolutionState.text}</span>`,
         `<span class="rune-badges">${formatTagBadges(upgrade.tags)}</span>`,
-        `<span class="level-line">현재 레벨 ${nextLevel - 1} → 다음 레벨 ${nextLevel} / 최대 ${upgrade.maxLevel}</span>`,
-        `<span class="effect-line">이번 선택: ${upgrade.effectPreview || upgrade.text}</span>`,
-        `<span class="evolution-line">${upgrade.evolutionCondition || '진화 조건: 무기 Lv.8 + 지정 패시브 + 엘리트 상자'}</span>`,
-        `<span class="recommendation-reason">추천 이유: ${upgrade.recommendationReason || '현재 런의 선택지를 넓힙니다.'}</span>`,
-        `<span class="build-line">${describeBuildDirection(upgrade)}</span>`,
-        `<span class="synergy-hint">역할/태그: ${upgrade.classHint}</span>`,
-        `<span class="synergy-hint">시너지 힌트: ${upgrade.synergyText}</span>`,
+        `<span class="synergy-hint"><b>적합</b>${upgrade.classHint}</span>`,
+        `<span class="synergy-hint"><b>시너지</b>${upgrade.synergyText}</span>`,
+        '</span>',
       ].join('');
       button.addEventListener('click', () => chooseUpgrade(upgrade));
       elements.upgradeOptions.appendChild(button);
@@ -179,7 +185,9 @@
     elements.modalTitle.textContent = pendingChestReward && pendingChestReward.type === 'evolution'
       ? '무기가 진화합니다'
       : '상자 보상을 고릅니다';
-    elements.modalCopy.textContent = '엘리트를 쓰러뜨려 상자가 열렸습니다. 진화 조건을 만족한 무기가 있으면 진화가 먼저 적용됩니다.';
+    elements.modalCopy.textContent = pendingChestReward && pendingChestReward.type === 'evolution'
+      ? '진화 조건을 만족해 일반 강화보다 진화 보상이 먼저 열렸습니다.'
+      : '진화 조건이 없어서 보유 무기, 패시브, 강화 중 하나를 즉시 올립니다.';
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.add('hidden');
     renderChestReward();
@@ -193,14 +201,18 @@
     button.type = 'button';
     const title = formatChestRewardTitle(pendingChestReward);
     const copy = formatChestRewardCopy(pendingChestReward);
+    const rewardType = pendingChestReward ? formatChestRewardType(pendingChestReward.type) : '보상';
+    const evolutionComparison = formatEvolutionComparison(pendingChestReward);
     button.innerHTML = [
       '<span class="card-seal" aria-hidden="true"></span>',
-      '<span class="recommendation-pill">상자 보상</span>',
-      `<span class="option-meta">${pendingChestReward ? formatChestRewardType(pendingChestReward.type) : '보상'}</span>`,
+      '<span class="reward-card-main">',
+      `<span class="reward-topline"><span class="recommendation-pill">${pendingChestReward && pendingChestReward.type === 'evolution' ? '진화 획득' : '상자 강화'}</span><span class="option-meta">${rewardType}</span></span>`,
       `<strong>${title}</strong>`,
-      `<span class="effect-line">${copy}</span>`,
-      '<span class="evolution-line">진화 우선 규칙: 무기 Lv.8 + 지정 패시브 보유 + 상자 획득</span>',
-      '<span class="recommendation-reason">추천 이유: 상자 보상은 즉시 적용되어 다음 웨이브를 버틸 힘을 만듭니다.</span>',
+      evolutionComparison,
+      `<span class="effect-line"><b>${pendingChestReward && pendingChestReward.type === 'evolution' ? '진화 효과' : '즉시 효과'}</b>${copy}</span>`,
+      '<span class="evolution-line evolution-ready"><b>상자 규칙</b>진화 가능 무기가 있으면 일반 강화보다 먼저 지급</span>',
+      '<span class="reward-quick-grid"><span><b>추천</b>다음 웨이브 생존력 즉시 상승</span><span><b>방향</b>엘리트 처치 보상 확정</span></span>',
+      '</span>',
     ].join('');
     button.addEventListener('click', claimChestReward);
     elements.upgradeOptions.appendChild(button);
@@ -349,9 +361,27 @@
   function formatChestRewardCopy(reward) {
     if (!reward) return '상자 보상을 확인합니다.';
     if (reward.type === 'evolution') return reward.evolution.effect;
-    if (reward.item) return `${reward.item.title}을 한 단계 강화합니다. 현재 Lv.${reward.item.level}에서 Lv.${reward.item.level + 1}이 됩니다.`;
+    if (reward.item) return `${reward.item.title}을 한 단계 강화합니다. 현재 Lv.${reward.item.level}에서 Lv.${reward.item.level + 1}로 오릅니다.`;
     if (reward.upgrade) return reward.upgrade.text;
     return '보유 무기나 패시브를 강화합니다.';
+  }
+
+  function formatEvolutionComparison(reward) {
+    if (!reward || reward.type !== 'evolution') {
+      if (reward && reward.item) {
+        return `<span class="chest-level-compare"><span>현재 Lv.${reward.item.level}</span><b>→</b><strong>다음 Lv.${reward.item.level + 1}</strong></span>`;
+      }
+      return '<span class="chest-level-compare"><span>상자</span><b>→</b><strong>즉시 강화</strong></span>';
+    }
+    const plan = systems.getEvolutionPlan(state, reward.evolution);
+    if (!plan) return '<span class="chest-level-compare evolution-compare"><span>진화 전</span><b>→</b><strong>진화 무기</strong></span>';
+    return [
+      '<span class="chest-level-compare evolution-compare">',
+      `<span>${plan.weaponTitle} Lv.${plan.weaponLevel} + ${plan.passiveTitle}</span>`,
+      '<b>→</b>',
+      `<strong>${plan.evolvedTitle}</strong>`,
+      '</span>',
+    ].join('');
   }
 
   function formatRarity(rarity) {
@@ -387,6 +417,27 @@
     if (tags.includes('bell') || tags.includes('arcane')) return '빌드 방향: 고위험 화력과 보스 압박을 키웁니다.';
     if (tags.includes('hunt') || tags.includes('mobility')) return '빌드 방향: 거리 유지와 보석 회수로 성장 속도를 냅니다.';
     return '빌드 방향: 현재 플레이북의 빈틈을 메웁니다.';
+  }
+
+  function shortenRecommendation(reason) {
+    const compact = {
+      '현재 태그와 플레이북 강점을 이어갑니다.': '강점 유지',
+      '같은 태그만 밀지 않고 다른 승리 조건을 엽니다.': '승리 조건 확장',
+      '체력, 전조, 기동 보정으로 런을 덜 흔들리게 합니다.': '런 안정화',
+      '남은 빌드 빈칸을 메우는 선택입니다.': '빈칸 보완',
+    };
+    return compact[reason] || (reason || '선택지 확장').replace(/^추천 이유:\s*/, '');
+  }
+
+  function shortenBuildDirection(upgrade) {
+    const tags = upgrade.tags || [];
+    if (tags.includes('boss')) return '보스 화력';
+    if (tags.includes('shield') || tags.includes('survival')) return '생존 안정';
+    if (tags.includes('blade') || tags.includes('pierce')) return '처치 속도';
+    if (tags.includes('control') || tags.includes('root')) return '제어';
+    if (tags.includes('bell') || tags.includes('arcane')) return '고위험 화력';
+    if (tags.includes('hunt') || tags.includes('mobility')) return '거리 유지';
+    return '빈틈 보완';
   }
 
   function renderResultSummary(summary) {
@@ -532,6 +583,29 @@
       boss.hp = 0;
       const result = systems.tick(state, input, 0.016);
       if (result === 'won') finishGame(true);
+      renderer.render(ctx, state, systems.WORLD);
+      updateDom();
+      event.preventDefault();
+      return true;
+    }
+    if (key === 'l') {
+      state.player.xp = state.player.nextXp;
+      const result = systems.tick(state, input, 0.016);
+      if (result === 'level') openUpgradeModal();
+      renderer.render(ctx, state, systems.WORLD);
+      updateDom();
+      event.preventDefault();
+      return true;
+    }
+    if (key === 'c' || key === 'e') {
+      if (key === 'e') {
+        systems.setInventoryItemLevel(state, 'weapon', state.playbook.attack, 8);
+        const evolution = state.content.itemCatalog.evolutions.find((item) => item.weaponId === state.playbook.attack);
+        if (evolution) systems.setInventoryItemLevel(state, 'passive', evolution.passiveId, 1);
+      }
+      systems.dropChest(state, { x: state.player.x, y: state.player.y });
+      systems.collectChests(state);
+      openChestModal();
       renderer.render(ctx, state, systems.WORLD);
       updateDom();
       event.preventDefault();

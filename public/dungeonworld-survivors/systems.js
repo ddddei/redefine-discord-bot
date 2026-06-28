@@ -1466,6 +1466,79 @@
     return item ? item.level : 0;
   }
 
+  function getEvolutionPlan(state, evolution) {
+    if (!evolution) return null;
+    const catalog = state.content.itemCatalog || { weapons: [], passives: [] };
+    const weapon = catalog.weapons.find((item) => item.id === evolution.weaponId);
+    const passive = catalog.passives.find((item) => item.id === evolution.passiveId);
+    const inventoryWeapon = findInventoryItem(state, 'weapon', evolution.weaponId);
+    const inventoryPassive = findInventoryItem(state, 'passive', evolution.passiveId);
+    const weaponMaxLevel = weapon ? weapon.maxLevel : 8;
+    const weaponLevel = inventoryWeapon ? inventoryWeapon.level : 0;
+    return {
+      weaponTitle: weapon ? weapon.title : '지정 무기',
+      weaponLevel,
+      weaponMaxLevel,
+      passiveTitle: passive ? passive.title : '지정 패시브',
+      hasPassive: Boolean(inventoryPassive),
+      evolvedTitle: evolution.title,
+      effect: evolution.effect,
+      ready: weaponLevel >= weaponMaxLevel && Boolean(inventoryPassive),
+    };
+  }
+
+  function getUpgradeEvolutionState(state, upgrade) {
+    const link = UPGRADE_ITEM_LINKS[upgrade.id];
+    if (!link) {
+      return {
+        status: 'generic',
+        label: '진화 조건',
+        text: '무기 Lv.8 + 지정 패시브 + 상자',
+      };
+    }
+    const catalog = state.content.itemCatalog || { weapons: [], passives: [], evolutions: [] };
+    const evolution = (catalog.evolutions || []).find((item) => (
+      item.weaponId === link.id || item.passiveId === link.id
+    ));
+    const plan = getEvolutionPlan(state, evolution);
+    if (!plan) {
+      return {
+        status: 'generic',
+        label: '진화 조건',
+        text: '무기 Lv.8 + 지정 패시브 + 상자',
+      };
+    }
+    const currentLinkedLevel = getInventoryItemLevel(state, link.type, link.id);
+    const linkedCatalog = getCatalogItem(state, link.type, link.id);
+    const linkedMaxLevel = linkedCatalog ? linkedCatalog.maxLevel : plan.weaponMaxLevel;
+    const nextLinkedLevel = clamp(currentLinkedLevel + 1, 1, linkedMaxLevel);
+    const weaponLevelAfterPick = link.type === 'weapon' ? nextLinkedLevel : plan.weaponLevel;
+    const hasPassiveAfterPick = link.type === 'passive' ? true : plan.hasPassive;
+    const readyAfterPick = weaponLevelAfterPick >= plan.weaponMaxLevel && hasPassiveAfterPick;
+    const missing = [];
+    if (weaponLevelAfterPick < plan.weaponMaxLevel) missing.push(`${plan.weaponTitle} Lv.${plan.weaponMaxLevel}`);
+    if (!hasPassiveAfterPick) missing.push(`${plan.passiveTitle} 보유`);
+    if (plan.ready) {
+      return {
+        status: 'ready',
+        label: '진화 가능',
+        text: `${plan.weaponTitle} + ${plan.passiveTitle} 완료. 다음 상자에서 ${plan.evolvedTitle}`,
+      };
+    }
+    if (readyAfterPick) {
+      return {
+        status: 'will-ready',
+        label: '선택 후 진화 가능',
+        text: `이 선택으로 조건 완료. 다음 상자에서 ${plan.evolvedTitle}`,
+      };
+    }
+    return {
+      status: link.type === 'passive' ? 'material' : 'progress',
+      label: link.type === 'passive' ? '진화 재료' : '진화 진행',
+      text: `${plan.evolvedTitle}: ${missing.join(' + ')} + 상자`,
+    };
+  }
+
   function setInventoryItemLevel(state, itemType, itemId, level) {
     const collection = getInventoryCollection(state, itemType);
     const catalogItem = getCatalogItem(state, itemType, itemId);
@@ -1739,7 +1812,9 @@
     evaluateRunGoals,
     getCurrentWave,
     getEligibleEvolutions,
+    getEvolutionPlan,
     getRunSummary,
+    getUpgradeEvolutionState,
     pickUpgrades,
     setInventoryItemLevel,
     tick,

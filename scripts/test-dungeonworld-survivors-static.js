@@ -292,10 +292,20 @@ function testInventoryEvolutionAndChestRewards() {
   assert.strictEqual(systems.getEligibleEvolutions(state).length, 0);
 
   systems.setInventoryItemLevel(state, 'weapon', 'cleave', 8);
+  let shieldBashState = systems.getUpgradeEvolutionState(state, content.upgrades.find((upgrade) => upgrade.id === 'shieldBash'));
+  assert.strictEqual(shieldBashState.status, 'progress');
+  assert.match(shieldBashState.text, /방패선/);
   systems.setInventoryItemLevel(state, 'passive', 'shieldLine', 1);
   const eligible = systems.getEligibleEvolutions(state);
   assert.strictEqual(eligible.length, 1);
   assert.strictEqual(eligible[0].title, '방패선의 회전검');
+  shieldBashState = systems.getUpgradeEvolutionState(state, content.upgrades.find((upgrade) => upgrade.id === 'shieldBash'));
+  assert.strictEqual(shieldBashState.status, 'ready');
+  assert.match(shieldBashState.text, /다음 상자/);
+  const evolutionPlan = systems.getEvolutionPlan(state, eligible[0]);
+  assert.strictEqual(evolutionPlan.weaponTitle, '철의 베기');
+  assert.strictEqual(evolutionPlan.passiveTitle, '방패선');
+  assert.strictEqual(evolutionPlan.ready, true);
 
   const chest = systems.dropChest(state, { x: state.player.x + 1, y: state.player.y });
   assert.strictEqual(state.chests.length, 1);
@@ -640,7 +650,9 @@ function main() {
   assert.ok(game.includes('MODE ${state.mode.id.toUpperCase()}'));
   assert.ok(game.includes('evolution-ready-chip'));
   assert.ok(game.includes('진화 가능: 다음 엘리트 상자를 노리세요'));
-  assert.ok(game.includes('recommendation-reason'));
+  assert.ok(game.includes('reward-quick-grid'));
+  assert.ok(game.includes('function shortenRecommendation'));
+  assert.ok(game.includes('function formatEvolutionComparison'));
   assert.ok(game.includes('런 목표'));
   assert.ok(game.includes('보스전 기여'));
   assert.ok(game.includes('formatTagBadges'));
