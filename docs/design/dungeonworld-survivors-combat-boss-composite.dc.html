@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin:0; }
+  @keyframes evoGlow { 0%,100%{ box-shadow:0 0 0 1px #9c7b45, 0 0 14px 1px rgba(156,123,69,.45);} 50%{ box-shadow:0 0 0 1px #c79a55, 0 0 26px 4px rgba(199,154,85,.75);} }
+  @keyframes bossPulse { 0%,100%{ opacity:.55;} 50%{ opacity:1;} }
+  @keyframes tellPulse { 0%{ transform:translate(-50%,-50%) scale(.86); opacity:.15;} 70%{ opacity:.55;} 100%{ transform:translate(-50%,-50%) scale(1.04); opacity:0;} }
+</style>
+</helmet>
+
+<!-- how-to note -->
+<div style="position:absolute; left:80px; top:40px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:12px; font-family:'Spline Sans Mono',monospace; color:#7f715b; font-size:13px; letter-spacing:.1em;">
+    <span style="color:#9c7b45;">합본</span><span style="text-transform:uppercase; letter-spacing:.14em;">Composite · 슬롯 합성</span>
+    <span style="color:#4a4234; letter-spacing:.02em;">— 아트 보드와 같은 슬롯을 공유 · 거기 떨군 스프라이트가 여기 자동 반영 · XP/전조는 엔진(CSS)</span>
+  </div>
+</div>
+
+<!-- ===================== 전투 합본 ===================== -->
+<div style="position:absolute; left:80px; top:84px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:14px; margin-bottom:12px; font-family:'Spline Sans Mono',monospace; color:#7f715b; font-size:13px; letter-spacing:.14em; text-transform:uppercase;">
+    <span style="color:#9c7b45;">01</span><span>전투 화면 합본</span>
+  </div>
+  <div style="position:relative; width:1180px; height:680px; background:#050605; border:1px solid #5d4a2f; box-shadow:0 1px 3px rgba(0,0,0,.6), 0 24px 70px rgba(0,0,0,.5); overflow:hidden; font-family:'Noto Sans KR',sans-serif;">
+
+    <!-- CSS mood scene (base layer, shows when bg slot empty) -->
+    <div style="position:absolute; inset:0; background:
+        radial-gradient(120% 90% at 78% 18%, rgba(93,82,125,.10), transparent 55%),
+        radial-gradient(90% 70% at 30% 80%, rgba(95,118,80,.06), transparent 60%),
+        linear-gradient(180deg,#0a0b0a,#060706 70%,#040504);"></div>
+    <div style="position:absolute; left:-60px; top:300px; width:1300px; height:150px; transform:rotate(-7deg); background:linear-gradient(180deg, rgba(36,27,18,0), rgba(36,27,18,.5) 40%, rgba(36,27,18,.5) 60%, rgba(36,27,18,0)); filter:blur(1px);"></div>
+    <div style="position:absolute; right:90px; top:60px; width:120px; height:300px; background:linear-gradient(180deg, rgba(7,7,6,.9), rgba(20,16,11,.5)); clip-path:polygon(28% 100%, 22% 12%, 50% 0, 78% 12%, 72% 100%); opacity:.7;"></div>
+    <div style="position:absolute; right:118px; top:52px; width:64px; height:64px; border-radius:50%; background:radial-gradient(circle, rgba(93,82,125,.22), transparent 70%);"></div>
+
+    <!-- background slot (full bleed) — covers the CSS scene once filled -->
+    <image-slot id="bg-forest" shape="rect" placeholder="배경: 숲의 추격 (B3) 드롭" style="position:absolute; inset:0; width:100%; height:100%;"></image-slot>
+    <div style="position:absolute; inset:0; box-shadow:inset 0 0 180px 40px rgba(0,0,0,.7); pointer-events:none;"></div>
+
+    <!-- danger tell (engine/CSS) -->
+    <div style="position:absolute; left:770px; top:430px; width:170px; height:170px;">
+      <div style="position:absolute; inset:0; border-radius:50%; border:2px solid rgba(168,82,73,.55); background:radial-gradient(circle, rgba(168,82,73,.10), transparent 70%);"></div>
+      <div style="position:absolute; left:50%; top:50%; width:100%; height:100%; border-radius:50%; border:1px dashed rgba(168,82,73,.45); animation:tellPulse 2.4s ease-out infinite;"></div>
+      <div style="position:absolute; left:50%; top:8px; width:1px; height:154px; background:rgba(168,82,73,.4); transform:translateX(-50%);"></div>
+      <div style="position:absolute; top:50%; left:8px; height:1px; width:154px; background:rgba(168,82,73,.4); transform:translateY(-50%);"></div>
+    </div>
+
+    <!-- XP gems + trail (engine/CSS) -->
+    <div style="position:absolute; left:520px; top:300px; width:11px; height:11px; background:#6fa7b5; transform:rotate(45deg); box-shadow:0 0 8px 1px rgba(111,167,181,.7);"></div>
+    <div style="position:absolute; left:470px; top:360px; width:9px; height:9px; background:#6fa7b5; transform:rotate(45deg); box-shadow:0 0 7px 1px rgba(111,167,181,.6);"></div>
+    <div style="position:absolute; left:560px; top:250px; width:8px; height:8px; background:#6fa7b5; transform:rotate(45deg); box-shadow:0 0 6px 1px rgba(111,167,181,.55);"></div>
+    <div style="position:absolute; left:540px; top:320px; width:120px; height:1px; background:linear-gradient(90deg, rgba(111,167,181,0), rgba(111,167,181,.8)); transform:rotate(20deg);"></div>
+
+    <!-- monster slots -->
+    <image-slot id="mon-goblin" shape="rect" placeholder="고블린" style="position:absolute; left:758px; top:398px; width:40px; height:40px;"></image-slot>
+    <image-slot id="mon-slime" shape="rect" placeholder="슬라임" style="position:absolute; left:828px; top:450px; width:44px; height:34px;"></image-slot>
+    <image-slot id="mon-wolf" shape="rect" placeholder="늑대" style="position:absolute; left:286px; top:240px; width:62px; height:40px;"></image-slot>
+    <!-- elite = mimic with threat ring -->
+    <div style="position:absolute; left:874px; top:238px;">
+      <div style="position:absolute; left:50%; top:50%; width:70px; height:70px; transform:translate(-50%,-50%); border-radius:50%; border:1px solid rgba(156,123,69,.55);"></div>
+      <image-slot id="mon-mimic" shape="rect" placeholder="엘리트" style="display:block; width:52px; height:52px;"></image-slot>
+      <div style="position:absolute; left:50%; top:-16px; transform:translateX(-50%); font:600 9px 'Spline Sans Mono',monospace; color:#9c7b45; letter-spacing:.1em; white-space:nowrap;">ELITE</div>
+    </div>
+
+    <!-- player slot + position ring -->
+    <div style="position:absolute; left:600px; top:340px; transform:translate(-50%,-50%);">
+      <div style="position:absolute; left:50%; top:50%; width:78px; height:78px; transform:translate(-50%,-50%); border-radius:50%; border:1px solid #9d875d; opacity:.5;"></div>
+      <image-slot id="slot-fighter" shape="rect" placeholder="전사" style="display:block; width:56px; height:56px;"></image-slot>
+      <div style="position:absolute; left:50%; top:60px; transform:translateX(-50%); font:600 10px 'Spline Sans Mono',monospace; color:#9d875d; white-space:nowrap; letter-spacing:.08em;">전사</div>
+    </div>
+
+    <!-- ===== HUD overlay ===== -->
+    <div style="position:absolute; left:50%; top:18px; transform:translateX(-50%); text-align:center;">
+      <div style="padding:6px 26px 7px; background:linear-gradient(180deg,rgba(13,11,8,.92),rgba(7,7,6,.92)); border:1px solid #5d4a2f; box-shadow:inset 0 0 0 1px rgba(156,123,69,.18);">
+        <div style="font:500 10px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.32em;">생존 시간</div>
+        <div style="font:700 30px 'Noto Serif KR',serif; color:#e7ddc8; line-height:1.05;">28:14</div>
+      </div>
+      <div style="margin-top:6px; font:500 11px 'Noto Sans KR'; color:#b8aa8d;">숲의 추격 · 검은탑이 가까워진다</div>
+    </div>
+
+    <div style="position:absolute; left:18px; top:18px; width:280px; padding:12px 14px; background:linear-gradient(180deg,rgba(13,11,8,.9),rgba(7,7,6,.9)); border:1px solid #5d4a2f; box-shadow:inset 0 0 0 1px rgba(156,123,69,.14);">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;"><span style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.12em;">체력</span><span style="font:600 13px 'Noto Sans KR'; color:#e7ddc8;">186 <span style="color:#7f715b;">/ 240</span></span></div>
+      <div style="height:9px; background:#1a120f; border:1px solid #3a2622;"><div style="height:100%; width:77%; background:linear-gradient(180deg,#bf5d52,#8d3c32); box-shadow:0 0 8px rgba(168,82,73,.5);"></div></div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin:9px 0 5px;"><span style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.12em;">레벨 <span style="color:#e7ddc8; font-size:13px;">14</span></span><span style="font:500 11px 'Spline Sans Mono',monospace; color:#6fa7b5;">XP 42 / 70</span></div>
+      <div style="height:7px; background:#0e1518; border:1px solid #1f3a40;"><div style="height:100%; width:60%; background:linear-gradient(180deg,#7fbecb,#4d8693); box-shadow:0 0 8px rgba(111,167,181,.55);"></div></div>
+    </div>
+
+    <div style="position:absolute; right:18px; top:18px; width:210px;">
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-bottom:8px;">
+        <div style="padding:5px 10px; background:rgba(13,11,8,.9); border:1px solid #3a3228; font:500 11px 'Spline Sans Mono',monospace; color:#b8aa8d;">처치 <span style="color:#e7ddc8;">312</span></div>
+        <div style="padding:5px 10px; background:rgba(13,11,8,.9); border:1px solid #5d527d; font:500 11px 'Spline Sans Mono',monospace; color:#a59ac9;">STANDARD</div>
+      </div>
+      <div style="padding:10px 12px; background:linear-gradient(180deg,rgba(13,11,8,.9),rgba(7,7,6,.9)); border:1px solid #3a3228;">
+        <div style="font:600 10px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.18em; margin-bottom:7px;">런 목표</div>
+        <div style="display:flex; align-items:center; gap:7px; margin-bottom:5px; font:500 12px 'Noto Sans KR'; color:#cdbf9f;"><span style="width:6px; height:6px; background:#6d996b; flex:none;"></span>15분 생존 <span style="color:#6d996b; font-size:11px; margin-left:auto;">달성</span></div>
+        <div style="display:flex; align-items:center; gap:7px; margin-bottom:5px; font:500 12px 'Noto Sans KR'; color:#cdbf9f;"><span style="width:6px; height:6px; border:1px solid #b98a48; flex:none;"></span>방패선 태그 <span style="color:#7f715b; font-size:11px; margin-left:auto;">2/3</span></div>
+        <div style="display:flex; align-items:center; gap:7px; font:500 12px 'Noto Sans KR'; color:#8a7d64;"><span style="width:6px; height:6px; border:1px solid #5d4a2f; flex:none;"></span>파수꾼 조우</div>
+      </div>
+    </div>
+
+    <!-- weapon + passive slots -->
+    <div style="position:absolute; left:18px; bottom:18px;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.18em; margin-bottom:7px;">무기</div>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <div style="position:relative; width:52px; height:52px; background:linear-gradient(180deg,#241b12,#100c08); border:1px solid #9c7b45; display:grid; place-items:center; animation:evoGlow 2s ease-in-out infinite;">
+          <div style="width:4px; height:26px; background:linear-gradient(180deg,#d8c089,#9c7b45); transform:rotate(35deg);"></div>
+          <div style="position:absolute; right:2px; bottom:1px; font:700 10px 'Spline Sans Mono',monospace; color:#e7ddc8;">8</div>
+          <div style="position:absolute; left:50%; top:-15px; transform:translateX(-50%); font:700 8px 'Spline Sans Mono',monospace; color:#0c0d0c; background:#c79a55; padding:1px 5px; white-space:nowrap;">진화 가능</div>
+        </div>
+        <div style="position:relative; width:52px; height:52px; background:linear-gradient(180deg,#1a1610,#0d0a07); border:1px solid #4a3d28; display:grid; place-items:center;"><div style="width:18px; height:18px; border:2px solid #8a7350; border-radius:50%; clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%);"></div><div style="position:absolute; right:2px; bottom:1px; font:700 10px 'Spline Sans Mono',monospace; color:#cdbf9f;">5</div></div>
+        <div style="position:relative; width:52px; height:52px; background:linear-gradient(180deg,#1a1610,#0d0a07); border:1px solid #4a3d28; display:grid; place-items:center;"><div style="width:16px; height:16px; background:#7e8756; transform:rotate(45deg); clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); opacity:.85;"></div><div style="position:absolute; right:2px; bottom:1px; font:700 10px 'Spline Sans Mono',monospace; color:#cdbf9f;">3</div></div>
+        <div style="width:52px; height:52px; background:repeating-linear-gradient(45deg,#15110b 0 6px,#0f0c08 6px 12px); border:1px dashed #3a3228;"></div>
+      </div>
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.18em; margin-bottom:7px;">패시브</div>
+      <div style="display:flex; gap:8px;">
+        <div style="position:relative; width:44px; height:44px; background:linear-gradient(180deg,#161a14,#0b0d0a); border:1px solid #3a4a30; display:grid; place-items:center;"><div style="width:16px; height:16px; border:2px solid #7e9a66; border-radius:50%;"></div><div style="position:absolute; right:2px; bottom:1px; font:700 9px 'Spline Sans Mono',monospace; color:#cdbf9f;">4</div></div>
+        <div style="position:relative; width:44px; height:44px; background:linear-gradient(180deg,#1a1610,#0d0a07); border:1px solid #4a3d28; display:grid; place-items:center;"><div style="width:14px; height:14px; background:#9c7b45; clip-path:polygon(50% 0,100% 100%,0 100%);"></div><div style="position:absolute; right:2px; bottom:1px; font:700 9px 'Spline Sans Mono',monospace; color:#cdbf9f;">2</div></div>
+        <div style="width:44px; height:44px; background:repeating-linear-gradient(45deg,#15110b 0 6px,#0f0c08 6px 12px); border:1px dashed #3a3228;"></div>
+      </div>
+    </div>
+
+    <div style="position:absolute; right:16px; bottom:14px; font:400 10px 'Spline Sans Mono',monospace; color:#9a8e70; letter-spacing:.04em; text-shadow:0 1px 2px #000;">슬롯 합성 · 배경/캐릭터/몬스터 = 스프라이트 · XP·전조 = 엔진</div>
+    <div style="position:absolute; inset:0; pointer-events:none; mix-blend-mode:overlay; opacity:.45; background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/></filter><rect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/></svg>');"></div>
+  </div>
+</div>
+
+<!-- ===================== 보스 합본 ===================== -->
+<div style="position:absolute; left:80px; top:864px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:14px; margin-bottom:12px; font-family:'Spline Sans Mono',monospace; color:#7f715b; font-size:13px; letter-spacing:.14em; text-transform:uppercase;">
+    <span style="color:#9c7b45;">02</span><span>보스 강림 합본</span>
+  </div>
+  <div style="position:relative; width:1180px; height:560px; background:#040504; border:1px solid #5d4a2f; box-shadow:0 1px 3px rgba(0,0,0,.6), 0 24px 70px rgba(0,0,0,.5); overflow:hidden; font-family:'Noto Sans KR',sans-serif;">
+
+    <!-- CSS mood scene (base layer, shows when bg slot empty) -->
+    <div style="position:absolute; inset:0; background:
+        radial-gradient(80% 70% at 50% 30%, rgba(93,82,125,.16), transparent 60%),
+        linear-gradient(180deg,#0a0810,#060507 70%,#040406);"></div>
+    <div style="position:absolute; left:50%; top:90px; width:230px; height:380px; transform:translateX(-50%); background:linear-gradient(180deg,#171320,#0b0910); border:2px solid #2a2438; border-bottom:none; border-radius:115px 115px 0 0; box-shadow:inset 0 0 60px rgba(93,82,125,.25);"></div>
+    <div style="position:absolute; left:50%; top:120px; width:150px; height:350px; transform:translateX(-50%); background:radial-gradient(60% 50% at 50% 35%, rgba(93,82,125,.35), rgba(8,6,12,.9) 75%); border-radius:75px 75px 0 0;"></div>
+
+    <!-- background slot: tower / last door — covers the CSS scene once filled -->
+    <image-slot id="bg-tower" shape="rect" placeholder="배경: 검은탑·마지막 문 (B5) 드롭" style="position:absolute; inset:0; width:100%; height:100%;"></image-slot>
+    <div style="position:absolute; inset:0; box-shadow:inset 0 0 200px 60px rgba(0,0,0,.85); pointer-events:none;"></div>
+
+    <!-- boss danger tell rings (engine/CSS) -->
+    <div style="position:absolute; left:50%; top:330px; width:340px; height:340px; transform:translate(-50%,-50%);">
+      <div style="position:absolute; left:50%; top:50%; width:100%; height:100%; border-radius:50%; border:2px solid rgba(168,82,73,.4); animation:tellPulse 3s ease-out infinite;"></div>
+      <div style="position:absolute; inset:60px; border-radius:50%; border:1px solid rgba(93,82,125,.5);"></div>
+      <div style="position:absolute; inset:0; border-radius:50%; border:1px dashed rgba(168,82,73,.35);"></div>
+    </div>
+
+    <!-- boss slot -->
+    <div style="position:absolute; left:50%; top:300px; transform:translate(-50%,-50%);">
+      <div style="position:absolute; left:50%; top:50%; width:200px; height:200px; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle, rgba(93,82,125,.3), transparent 70%);"></div>
+      <image-slot id="mon-warden" shape="rect" placeholder="검은 종 파수꾼 (BOSS)" style="display:block; width:170px; height:170px;"></image-slot>
+      <div style="position:absolute; left:50%; top:178px; transform:translateX(-50%); font:600 11px 'Spline Sans Mono',monospace; color:#a59ac9; white-space:nowrap; letter-spacing:.1em;">검은 종 파수꾼</div>
+    </div>
+
+    <!-- player slot (small) -->
+    <image-slot id="slot-fighter" shape="rect" placeholder="전사" style="position:absolute; left:50%; top:470px; transform:translateX(-50%); width:40px; height:40px;"></image-slot>
+
+    <!-- warning banner -->
+    <div style="position:absolute; left:0; right:0; top:0; height:46px; background:linear-gradient(180deg,rgba(80,30,28,.85),rgba(40,12,12,0)); display:flex; align-items:center; justify-content:center; gap:14px;">
+      <span style="width:30px; height:1px; background:#a85249;"></span>
+      <span style="font:700 14px 'Noto Serif KR',serif; color:#e7c9c4; letter-spacing:.22em; animation:bossPulse 1.4s ease-in-out infinite;">마지막 문이 열린다 — 검은 종이 울린다</span>
+      <span style="width:30px; height:1px; background:#a85249;"></span>
+    </div>
+
+    <!-- boss health bar -->
+    <div style="position:absolute; left:50%; top:62px; transform:translateX(-50%); width:760px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
+        <span style="font:700 14px 'Noto Serif KR',serif; color:#cbb9d8; letter-spacing:.08em;">검은 종 파수꾼 <span style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b;">· 마지막 문의 문지기</span></span>
+        <span style="font:500 12px 'Spline Sans Mono',monospace; color:#a59ac9;">PHASE 2 / 3</span>
+      </div>
+      <div style="position:relative; height:16px; background:#140d14; border:1px solid #4a4060; box-shadow:inset 0 0 0 1px rgba(93,82,125,.2);">
+        <div style="height:100%; width:64%; background:linear-gradient(180deg,#7a6ca0,#4a3f6b); box-shadow:0 0 14px rgba(93,82,125,.6);"></div>
+        <div style="position:absolute; left:33%; top:-2px; bottom:-2px; width:2px; background:#0a070c;"></div>
+        <div style="position:absolute; left:66%; top:-2px; bottom:-2px; width:2px; background:#0a070c;"></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+        <span style="font:700 10px 'Spline Sans Mono',monospace; color:#0c0d0c; background:#a85249; padding:3px 9px; letter-spacing:.08em;">현재 패턴</span>
+        <span style="font:600 13px 'Noto Sans KR'; color:#e7c9c4;">원형 종파 — 사방으로 퍼지는 종소리 충격</span>
+        <span style="margin-left:auto; font:500 11px 'Spline Sans Mono',monospace; color:#7f715b;">다음: 십자형 종압</span>
+      </div>
+    </div>
+
+    <!-- player health -->
+    <div style="position:absolute; left:18px; bottom:18px; width:240px; padding:11px 13px; background:linear-gradient(180deg,rgba(13,11,8,.92),rgba(7,7,6,.92)); border:1px solid #5d4a2f;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;"><span style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.12em;">체력</span><span style="font:600 12px 'Noto Sans KR'; color:#e7ddc8;">94 <span style="color:#7f715b;">/ 240</span></span></div>
+      <div style="height:9px; background:#1a120f; border:1px solid #3a2622;"><div style="height:100%; width:39%; background:linear-gradient(180deg,#bf5d52,#8d3c32); box-shadow:0 0 8px rgba(168,82,73,.5);"></div></div>
+      <div style="margin-top:8px; font:500 11px 'Noto Sans KR'; color:#8a7d64;">전사 · 근접 유지로 피해 압박 <span style="color:#9d875d;">감소</span></div>
+    </div>
+
+    <!-- survival time -->
+    <div style="position:absolute; right:18px; bottom:18px; text-align:right; padding:9px 14px; background:linear-gradient(180deg,rgba(13,11,8,.92),rgba(7,7,6,.92)); border:1px solid #5d4a2f;">
+      <div style="font:500 10px 'Spline Sans Mono',monospace; color:#7f715b; letter-spacing:.2em;">생존 시간</div>
+      <div style="font:700 24px 'Noto Serif KR',serif; color:#e7ddc8; line-height:1.05;">29:42</div>
+    </div>
+
+    <div style="position:absolute; inset:0; pointer-events:none; mix-blend-mode:overlay; opacity:.4; background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%222%22/></filter><rect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/></svg>');"></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

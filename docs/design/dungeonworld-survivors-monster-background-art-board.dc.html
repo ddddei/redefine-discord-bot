@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin:0; background:#0a0807; }
+  ::selection { background:#9c7b45; color:#0a0807; }
+</style>
+</helmet>
+
+<div style="min-height:100vh; padding:56px 0 90px; font-family:'Noto Sans KR',sans-serif; color:#e7ddc8; background:
+    radial-gradient(120% 60% at 50% 0%, rgba(168,82,73,.06), transparent 55%),
+    repeating-linear-gradient(90deg, rgba(47,36,24,.10) 0 1px, transparent 1px 78px),
+    linear-gradient(180deg,#0c0a08,#070605 60%,#060505);">
+  <div style="max-width:1180px; margin:0 auto; padding:0 32px;">
+
+    <!-- header -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px; padding-bottom:22px; border-bottom:1px solid #2f2418;">
+      <div>
+        <div style="font:500 12px 'Spline Sans Mono',monospace; color:#9c7b45; letter-spacing:.28em; margin-bottom:12px;">MONSTER &amp; BACKGROUND BOARD · 픽셀</div>
+        <h1 style="margin:0; font:700 34px 'Noto Serif KR',serif; color:#f1e7cf;">검은 종 생존전 — 몬스터 · 배경 아트 디렉션</h1>
+        <p style="margin:10px 0 0; max-width:700px; font:400 13.5px 'Noto Sans KR'; color:#8a7d64; line-height:1.65;">적은 색이 아니라 <b style="color:#cdbf9f;">실루엣과 행동</b>으로 구분되고, 배경은 <b style="color:#cdbf9f;">낮은 채도·낮은 대비</b>로 가라앉아 위험 전조에 길을 내준다. 캐릭터 보드와 동일하게 슬롯에 생성 스프라이트를 떨구면 된다.</p>
+      </div>
+      <div style="flex:none; text-align:right; font:400 11px 'Spline Sans Mono',monospace; color:#5d5340; line-height:1.8;">적 = 어두운 몸 + 위협점<br>배경 = 분위기, 정보 아님<br>전조 = 의식선·종파</div>
+    </div>
+
+    <!-- section: monsters -->
+    <div style="margin-top:34px; display:flex; align-items:center; gap:14px;">
+      <span style="font:700 20px 'Noto Serif KR',serif; color:#c0726a;">몬스터</span>
+      <span style="flex:1; height:1px; background:#3a2422;"></span>
+      <span style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b;">어두운 몸체 · 붉은/보라 위협점 · 행동 전조</span>
+    </div>
+    <!-- 고블린 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#13100b,#0a0807); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #3a2e1c;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">M1</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">고블린 정찰병</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">근접 · 정찰 웨이브</span>
+        <span style="margin-left:auto; display:flex; align-items:center; gap:7px; font:500 10px 'Spline Sans Mono',monospace; color:#7f715b;">위협<span style="width:12px; height:12px; background:#a85249; border:1px solid #5d2f2a;"></span>근접</span>
+      </div>
+      <div style="display:grid; grid-template-columns:170px 1fr; gap:22px; padding:18px 20px;">
+        <div>
+          <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="mon-goblin" shape="rect" placeholder="고블린 48×48" style="display:block; width:100%; height:150px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/16px 16px;"></image-slot></div>
+          <div style="margin-top:8px; font:500 10.5px 'Spline Sans Mono',monospace; color:#7f715b; line-height:1.7;">스케일 ~32px · 작게<br>창 끝 여백 포함</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">실루엣</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">작은 몸 + 뾰족한 귀 두 개 + 짧은 창. 어두운 몸체.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">소품</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">창, 누더기, 붉은 눈 1점.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">행동 · 전조</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">좌우로 <b style="color:#e7ddc8;">흔들며 접근</b>. 접촉 직전 짧은 찌르기 예고.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">팔레트</div><div style="display:flex; gap:7px;"><span style="width:30px; height:18px; background:#1c1812; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#3a2e1c; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#a85249; border:1px solid #2f2418;"></span></div></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down 3/4 pixel art enemy sprite, small goblin scout, pointed ears, short spear, ragged cloth, dark body silhouette with a single red threatening eye, dark fantasy roguelike survivor (Halls of Torment / Vampire Survivors style), muted palette dark #1c1812 / #3a2e1c / blood red accent #a85249, single pose facing camera-down, centered, transparent background, 48x48, crisp clean pixels, 1px dark outline, no text, no UI</div></div>
+    </div>
+
+    <!-- 슬라임 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#0f120c,#080a07); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #2a3a22;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">M2</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">물그릇 슬라임</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">근접 · 물량 압박</span>
+        <span style="margin-left:auto; display:flex; align-items:center; gap:7px; font:500 10px 'Spline Sans Mono',monospace; color:#7f715b;">위협<span style="width:12px; height:12px; background:#a85249; border:1px solid #5d2f2a;"></span>접촉</span>
+      </div>
+      <div style="display:grid; grid-template-columns:170px 1fr; gap:22px; padding:18px 20px;">
+        <div>
+          <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="mon-slime" shape="rect" placeholder="슬라임 48×48" style="display:block; width:100%; height:150px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/16px 16px;"></image-slot></div>
+          <div style="margin-top:8px; font:500 10.5px 'Spline Sans Mono',monospace; color:#7f715b; line-height:1.7;">스케일 ~36px · 납작<br>흔들리는 외곽</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">실루엣</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">눌린 물방울 몸체. 폭이 넓고 낮음. 반투명한 느낌.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">소품</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">내부 붉은 핵 1점, 끈적한 외곽.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">행동 · 전조</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">느리게 <b style="color:#e7ddc8;">뭉쳐 밀고</b> 옴. 멈칫 후 부피 팽창.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">팔레트</div><div style="display:flex; gap:7px;"><span style="width:30px; height:18px; background:#16201a; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#2b3a2f; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#a85249; border:1px solid #2f2418;"></span></div></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down 3/4 pixel art enemy sprite, squashed teardrop slime, wide low blob body, translucent murky look, a single inner red core, dark fantasy roguelike survivor (Halls of Torment / Vampire Survivors style), muted palette dark green-grey #16201a / #2b3a2f / blood red core #a85249, single pose facing camera-down, centered, transparent background, 48x48, crisp clean pixels, 1px dark outline, no text, no UI</div></div>
+    </div>
+
+    <!-- 빈 갑옷 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#11100c,#080807); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #3a3228;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">M3</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">빈 갑옷</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">탱크 · 버티다 가속</span>
+        <span style="margin-left:auto; display:flex; align-items:center; gap:7px; font:500 10px 'Spline Sans Mono',monospace; color:#7f715b;">위협<span style="width:12px; height:12px; background:#a85249; border:1px solid #5d2f2a;"></span>돌진</span>
+      </div>
+      <div style="display:grid; grid-template-columns:170px 1fr; gap:22px; padding:18px 20px;">
+        <div>
+          <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="mon-armor" shape="rect" placeholder="빈 갑옷 48×48" style="display:block; width:100%; height:150px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/16px 16px;"></image-slot></div>
+          <div style="margin-top:8px; font:500 10.5px 'Spline Sans Mono',monospace; color:#7f715b; line-height:1.7;">스케일 ~40px · 각짐<br>투구 어둠 내부</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">실루엣</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">사각 갑주 + 비어 있는 투구. 단단하고 각진 덩어리.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">소품</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">투구 안쪽 붉은 틈, 녹슨 철 표면.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">행동 · 전조</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">초반엔 느리게 <b style="color:#e7ddc8;">버티다</b> 일정 거리에서 가속. 가속 전 투구 점멸.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">팔레트</div><div style="display:flex; gap:7px;"><span style="width:30px; height:18px; background:#1a1814; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#3a3228; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#a85249; border:1px solid #2f2418;"></span></div></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down 3/4 pixel art enemy sprite, empty haunted suit of armor, blocky square plate, hollow helmet with a glowing red slit inside, rusted iron, heavy angular silhouette, dark fantasy roguelike survivor (Halls of Torment / Vampire Survivors style), muted palette dark iron #1a1814 / #3a3228 / red slit #a85249, single pose facing camera-down, centered, transparent background, 48x48, crisp clean pixels, 1px dark outline, no text, no UI</div></div>
+    </div>
+
+    <!-- 그림자 늑대 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#0f0d10,#080709); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #2c2740;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">M4</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">그림자 늑대</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">돌진 · 숲의 추격</span>
+        <span style="margin-left:auto; display:flex; align-items:center; gap:7px; font:500 10px 'Spline Sans Mono',monospace; color:#7f715b;">위협<span style="width:12px; height:12px; background:#a85249; border:1px solid #5d2f2a;"></span>선형 돌진</span>
+      </div>
+      <div style="display:grid; grid-template-columns:170px 1fr; gap:22px; padding:18px 20px;">
+        <div>
+          <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="mon-wolf" shape="rect" placeholder="그림자 늑대 64×40" style="display:block; width:100%; height:150px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/16px 16px;"></image-slot></div>
+          <div style="margin-top:8px; font:500 10.5px 'Spline Sans Mono',monospace; color:#7f715b; line-height:1.7;">스케일 ~44px · 옆으로 김<br>돌진 잔상 별도</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">실루엣</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">낮고 긴 몸. 옆으로 길어 가장 빠르게 읽히는 형태.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">소품</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">붉은 눈, 그림자 꼬리 잔상.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">행동 · 전조</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">평소 배회하다 <b style="color:#e7ddc8;">짧게 돌진</b>. 돌진 전 몸 낮추고 직선 예고선.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c0726a; letter-spacing:.1em; margin-bottom:5px;">팔레트</div><div style="display:flex; gap:7px;"><span style="width:30px; height:18px; background:#15120d; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#26222c; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#a85249; border:1px solid #2f2418;"></span></div></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down 3/4 pixel art enemy sprite, low long shadow wolf, sleek elongated body lying low, faint smoky tail trail, glowing red eyes, dark fantasy roguelike survivor (Halls of Torment / Vampire Survivors style), muted palette near-black #15120d / dusk #26222c / red eyes #a85249, single crouched pose facing camera-down, centered, transparent background, 64x40, crisp clean pixels, 1px dark outline, no text, no UI</div></div>
+    </div>
+
+    <!-- 물그릇 미믹 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#13110b,#0a0807); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #3a2e1c;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">M5</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">물그릇 미믹</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">중후반 · 부채꼴 이빨</span>
+        <span style="margin-left:auto; display:flex; align-items:center; gap:7px; font:500 10px 'Spline Sans Mono',monospace; color:#7f715b;">위협<span style="width:12px; height:12px; background:#b98a48; border:1px solid #6e5226;"></span>부채꼴</span>
+      </div>
+      <div style="display:grid; grid-template-columns:170px 1fr; gap:22px; padding:18px 20px;">
+        <div>
+          <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="mon-mimic" shape="rect" placeholder="물그릇 미믹 56×56" style="display:block; width:100%; height:150px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/16px 16px;"></image-slot></div>
+          <div style="margin-top:8px; font:500 10.5px 'Spline Sans Mono',monospace; color:#7f715b; line-height:1.7;">스케일 ~48px · 마름모<br>이빨 부채꼴 별도</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#cf9a52; letter-spacing:.1em; margin-bottom:5px;">실루엣</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">마름모 상자 입 + 늘어선 이빨. 정지하면 그릇처럼 위장.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#cf9a52; letter-spacing:.1em; margin-bottom:5px;">소품</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">날카로운 이빨 줄, 안쪽 주황 빛.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#cf9a52; letter-spacing:.1em; margin-bottom:5px;">행동 · 전조</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">멈칫하다 <b style="color:#e7ddc8;">부채꼴 이빨</b> 공격. 입 벌리는 주황 예고 후 판정.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#cf9a52; letter-spacing:.1em; margin-bottom:5px;">팔레트</div><div style="display:flex; gap:7px;"><span style="width:30px; height:18px; background:#1a140d; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#3a2e1c; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#b98a48; border:1px solid #2f2418;"></span></div></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down 3/4 pixel art enemy sprite, water-basin mimic, rhombus box mouth lined with sharp teeth, disguised as a stone basin when idle, faint orange glow inside the maw, dark fantasy roguelike survivor (Halls of Torment / Vampire Survivors style), muted palette dark stone #1a140d / #3a2e1c / rusted orange #b98a48, single pose facing camera-down, centered, transparent background, 56x56, crisp clean pixels, 1px dark outline, no text, no UI</div></div>
+    </div>
+
+    <!-- 검은 종 신도 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#0f0d13,#08070a); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #2c2740;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">M6</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">검은 종 신도</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">원거리 · 종말 기도</span>
+        <span style="margin-left:auto; display:flex; align-items:center; gap:7px; font:500 10px 'Spline Sans Mono',monospace; color:#7f715b;">위협<span style="width:12px; height:12px; background:#5d527d; border:1px solid #3a3454;"></span>원형 종파</span>
+      </div>
+      <div style="display:grid; grid-template-columns:170px 1fr; gap:22px; padding:18px 20px;">
+        <div>
+          <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="mon-cultist" shape="rect" placeholder="검은 종 신도 56×56" style="display:block; width:100%; height:150px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/16px 16px;"></image-slot></div>
+          <div style="margin-top:8px; font:500 10.5px 'Spline Sans Mono',monospace; color:#7f715b; line-height:1.7;">스케일 ~46px · 별 실루엣<br>종 문양 발광 1점</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#a59ac9; letter-spacing:.1em; margin-bottom:5px;">실루엣</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">팔을 벌린 후드 사제 = 별 모양 실루엣. 일반 적과 확실히 다른 윤곽.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#a59ac9; letter-spacing:.1em; margin-bottom:5px;">소품</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">가슴의 종 문양(보라 발광), 긴 소매.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#a59ac9; letter-spacing:.1em; margin-bottom:5px;">행동 · 전조</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">멀리서 <b style="color:#e7ddc8;">원형 종말 기도</b> 예고. 보라 원이 차오른 뒤 종파 판정.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#a59ac9; letter-spacing:.1em; margin-bottom:5px;">팔레트</div><div style="display:flex; gap:7px;"><span style="width:30px; height:18px; background:#15131c; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#29253e; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#5d527d; border:1px solid #2f2418;"></span></div></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down 3/4 pixel art enemy sprite, hooded black-bell cultist with outstretched arms forming a star-shaped silhouette, a glowing purple bell sigil on the chest, long sleeves, dark fantasy roguelike survivor (Halls of Torment / Vampire Survivors style), muted palette dark #15131c / #29253e / dim purple #5d527d, single ritual pose facing camera-down, centered, transparent background, 56x56, crisp clean pixels, 1px dark outline, no text, no UI</div></div>
+    </div>
+
+    <!-- 검은 종 파수꾼 (보스) -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#120f17,#09070c); border:1px solid #9c7b45; box-shadow:0 0 0 1px rgba(156,123,69,.18), 0 0 24px rgba(93,82,125,.14);">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #4a4060; background:rgba(93,82,125,.08);">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#c79a55;">BOSS</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">검은 종 파수꾼</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#a59ac9;">마지막 문의 문지기 · 3페이즈</span>
+        <span style="margin-left:auto; display:flex; align-items:center; gap:7px; font:500 10px 'Spline Sans Mono',monospace; color:#7f715b;">위협<span style="width:12px; height:12px; background:#5d527d; border:1px solid #3a3454;"></span><span style="width:12px; height:12px; background:#9c7b45; border:1px solid #6b5b3c;"></span>페이즈 패턴</span>
+      </div>
+      <div style="display:grid; grid-template-columns:200px 1fr; gap:22px; padding:18px 20px;">
+        <div>
+          <div style="padding:5px; background:#0a0807; border:1px solid #9c7b45;"><image-slot id="mon-warden" shape="rect" placeholder="파수꾼 128×128" style="display:block; width:100%; height:180px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/18px 18px;"></image-slot></div>
+          <div style="margin-top:8px; font:500 10.5px 'Spline Sans Mono',monospace; color:#7f715b; line-height:1.7;">스케일 ~128px · 일반 적의 3배+<br>등장 경고·전용 체력바·패턴명 필수</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c79a55; letter-spacing:.1em; margin-bottom:5px;">실루엣</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">균열이 생긴 거대한 종탑 문지기. 황동 종 몸체 + 사슬. 일반 적과 완전히 다른 윤곽·크기.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c79a55; letter-spacing:.1em; margin-bottom:5px;">소품</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">황동 종, 사슬, 균열(붉은 빛), 쌍둥이 파수꾼 눈, 종추.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c79a55; letter-spacing:.1em; margin-bottom:5px;">페이즈 · 전조</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">원형 종파 → 직선 탑그림자 → 소환 압박 → 십자형 종압을 번갈아. 각 패턴 전 전용 예고선.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c79a55; letter-spacing:.1em; margin-bottom:5px;">팔레트</div><div style="display:flex; gap:7px;"><span style="width:30px; height:18px; background:#100c16; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#2a2236; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#5d527d; border:1px solid #2f2418;"></span><span style="width:30px; height:18px; background:#9c7b45; border:1px solid #2f2418;"></span></div></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #5d4a2f; font:400 11px 'Spline Sans Mono',monospace; color:#cbb9d8; line-height:1.6;">top-down 3/4 pixel art BOSS sprite, towering cracked bell-tower gatekeeper, massive brass bell body wrapped in chains, glowing red cracks, twin warden eyes, a heavy clapper, ornate and far larger than normal enemies, dark fantasy roguelike survivor boss (Halls of Torment style), muted palette near-black #100c16 / dusk purple #2a2236 / #5d527d / brass #9c7b45, single imposing pose facing camera-down, centered, transparent background, 128x128, crisp clean pixels, 1px dark outline, no text, no UI</div></div>
+    </div>
+
+    <div id="monster-rows"></div>
+
+    <!-- section: backgrounds -->
+    <div style="margin-top:42px; display:flex; align-items:center; gap:14px;">
+      <span style="font:700 20px 'Noto Serif KR',serif; color:#7e9a66;">배경 · 존</span>
+      <span style="flex:1; height:1px; background:#273625;"></span>
+      <span style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b;">낮은 채도 · 낮은 대비 · 검은탑으로 이어지는 길</span>
+    </div>
+    <!-- B1 여관 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#13110b,#0a0807); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #3a2e1c;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">B1</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">마른 참나무 여관</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">시작 지점 · 0~3분</span>
+      </div>
+      <div style="display:grid; grid-template-columns:320px 1fr; gap:22px; padding:18px 20px;">
+        <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="bg-inn" shape="rect" placeholder="여관 존 배경 320×150" style="display:block; width:100%; height:160px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/20px 20px;"></image-slot></div>
+        <div style="display:flex; flex-direction:column; gap:11px;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#b08a52; letter-spacing:.1em; margin-bottom:4px;">역할 · 분위기</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">출발의 안전감. 낡은 나무 여관, 처마에 걸린 검은 종, 흙길. 약간의 온기 — 단, 채도는 여전히 낮게.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#b08a52; letter-spacing:.1em; margin-bottom:4px;">위험 분리</div><div style="font:500 12px 'Noto Sans KR'; color:#9aae8f; line-height:1.5;">배경은 XP 청록·전조 붉은색을 절대 쓰지 않는다. 검은 종은 장식일 뿐 발광 금지.</div></div>
+          <div style="display:flex; align-items:center; gap:7px;"><span style="font:600 10px 'Spline Sans Mono'; color:#b08a52; letter-spacing:.1em;">팔레트</span><span style="width:26px; height:16px; background:#241b12; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#3a2e1c; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#5d4a2f; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#7f715b; border:1px solid #2f2418;"></span></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down pixel art background tile, dirt ground in front of a weathered old timber tavern, a small black bell hanging from the eaves, sparse worn props, dark fantasy roguelike survivor (Halls of Torment style), muted desaturated low-contrast palette dark brown #241b12 / #3a2e1c / iron #5d4a2f, atmospheric not informational, no bright glow, no characters, no text, no UI, seamless tileable ground</div></div>
+    </div>
+
+    <!-- B2 폐허 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#11100c,#080807); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #3a3228;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">B2</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">무너진 신전 폐허</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">중간 길 · 돌바닥</span>
+      </div>
+      <div style="display:grid; grid-template-columns:320px 1fr; gap:22px; padding:18px 20px;">
+        <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="bg-ruins" shape="rect" placeholder="폐허 존 배경 320×150" style="display:block; width:100%; height:160px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/20px 20px;"></image-slot></div>
+        <div style="display:flex; flex-direction:column; gap:11px;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#9a8e74; letter-spacing:.1em; margin-bottom:4px;">역할 · 분위기</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">균열 난 석재 바닥, 쓰러진 기둥, 희미한 정지 의식 문양. 황량하고 무겁게.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#9a8e74; letter-spacing:.1em; margin-bottom:4px;">위험 분리</div><div style="font:500 12px 'Noto Sans KR'; color:#9aae8f; line-height:1.5;">바닥 문양은 회색조로만. 실제 가시 십자로·예고선과 헷갈리지 않게 채도/대비를 낮춘다.</div></div>
+          <div style="display:flex; align-items:center; gap:7px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9a8e74; letter-spacing:.1em;">팔레트</span><span style="width:26px; height:16px; background:#15130f; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#2f2a22; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#4a4234; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#7f715b; border:1px solid #2f2418;"></span></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down pixel art background tile, cracked stone temple ruins floor, toppled columns, faint grey ritual seal markings carved in the ground, dark fantasy roguelike survivor (Halls of Torment style), muted desaturated low-contrast palette near-black #15130f / stone #2f2a22 / #4a4234, bleak and heavy, no bright glow, markings grey only, no characters, no text, no UI, seamless tileable ground</div></div>
+    </div>
+
+    <!-- B3 숲 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#0f120c,#080a07); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #2a3a22;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">B3</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">기억의 숲</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">추격 구간 · 시야 제한</span>
+      </div>
+      <div style="display:grid; grid-template-columns:320px 1fr; gap:22px; padding:18px 20px;">
+        <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="bg-forest" shape="rect" placeholder="숲 존 배경 320×150" style="display:block; width:100%; height:160px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/20px 20px;"></image-slot></div>
+        <div style="display:flex; flex-direction:column; gap:11px;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#7e9a66; letter-spacing:.1em; margin-bottom:4px;">역할 · 분위기</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">어두운 나무 실루엣, 잎 표식, 되감긴 길의 혼란. 시야가 좁아지는 압박.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#7e9a66; letter-spacing:.1em; margin-bottom:4px;">위험 분리</div><div style="font:500 12px 'Noto Sans KR'; color:#9aae8f; line-height:1.5;">나무는 외곽선만, 내부는 어둡게. 늑대 돌진로(붉은 선)가 나무에 묻히지 않게 배경 대비를 낮춘다.</div></div>
+          <div style="display:flex; align-items:center; gap:7px;"><span style="font:600 10px 'Spline Sans Mono'; color:#7e9a66; letter-spacing:.1em;">팔레트</span><span style="width:26px; height:16px; background:#0e130c; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#1e2a1a; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#3a4a30; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#667f54; border:1px solid #2f2418;"></span></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down pixel art background tile, dark dense forest floor, silhouetted tree canopies seen as outlines, scattered leaf markers, gloomy and disorienting, dark fantasy roguelike survivor (Halls of Torment style), muted desaturated low-contrast palette near-black green #0e130c / #1e2a1a / moss #3a4a30, low contrast so danger lines read on top, no bright glow, no characters, no text, no UI, seamless tileable ground</div></div>
+    </div>
+
+    <!-- B4 물그릇 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#0c1113,#070a0b); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #1f3a40;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">B4</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">잠긴 물그릇</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">중앙 압박 구간</span>
+      </div>
+      <div style="display:grid; grid-template-columns:320px 1fr; gap:22px; padding:18px 20px;">
+        <div style="padding:5px; background:#0a0807; border:1px solid #5d4a2f;"><image-slot id="bg-basin" shape="rect" placeholder="물그릇 존 배경 320×150" style="display:block; width:100%; height:160px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/20px 20px;"></image-slot></div>
+        <div style="display:flex; flex-direction:column; gap:11px;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#6fa7b5; letter-spacing:.1em; margin-bottom:4px;">역할 · 분위기</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">무너진 신전 중앙의 어두운 물웅덩이. 둘러싼 둔화 지대. 정적이고 압박감 있는 중심.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#6fa7b5; letter-spacing:.1em; margin-bottom:4px;">위험 분리</div><div style="font:500 12px 'Noto Sans KR'; color:#9aae8f; line-height:1.5;">물의 청록은 <b style="color:#e7ddc8;">매우 낮은 채도</b>로. XP 보석(밝은 청록)과 헷갈리면 안 되므로 물은 탁하게.</div></div>
+          <div style="display:flex; align-items:center; gap:7px;"><span style="font:600 10px 'Spline Sans Mono'; color:#6fa7b5; letter-spacing:.1em;">팔레트</span><span style="width:26px; height:16px; background:#0c1012; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#162226; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#2c4248; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#4d7780; border:1px solid #2f2418;"></span></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #3a2e1c; font:400 11px 'Spline Sans Mono',monospace; color:#9aae8f; line-height:1.6;">top-down pixel art background, dark murky water basin at the center of a ruined shrine, surrounding cracked stone slowing ground, still and oppressive, dark fantasy roguelike survivor (Halls of Torment style), muted desaturated palette near-black #0c1012 / #162226 / dull teal #2c4248 (very low saturation so it never reads like a bright xp gem), no bright glow, no characters, no text, no UI</div></div>
+    </div>
+
+    <!-- B5 검은탑 / 마지막 문 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#100d15,#08070c); border:1px solid #9c7b45; box-shadow:0 0 0 1px rgba(156,123,69,.16);">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #4a4060; background:rgba(93,82,125,.08);">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#c79a55;">B5</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">검은탑 · 마지막 문</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#a59ac9;">목적지 · 29~30분</span>
+      </div>
+      <div style="display:grid; grid-template-columns:320px 1fr; gap:22px; padding:18px 20px;">
+        <div style="padding:5px; background:#0a0807; border:1px solid #9c7b45;"><image-slot id="bg-tower" shape="rect" placeholder="검은탑/마지막 문 480×200 세트피스" style="display:block; width:100%; height:175px; background:repeating-conic-gradient(#0f0d0b 0% 25%, #131110 0% 50%) 0 0/20px 20px;"></image-slot></div>
+        <div style="display:flex; flex-direction:column; gap:11px;">
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c79a55; letter-spacing:.1em; margin-bottom:4px;">역할 · 분위기</div><div style="font:500 12px 'Noto Sans KR'; color:#cdbf9f; line-height:1.5;">맵의 최종 방향이자 도착점. 거대한 검은탑 실루엣과 그 아래 빛나는 마지막 문. 보라 저주 기운이 문틈에서 새어 나온다.</div></div>
+          <div><div style="font:600 10px 'Spline Sans Mono'; color:#c79a55; letter-spacing:.1em; margin-bottom:4px;">사용 · 위험 분리</div><div style="font:500 12px 'Noto Sans KR'; color:#9aae8f; line-height:1.5;">타일이 아니라 <b style="color:#e7ddc8;">대형 세트피스</b>(배경 고정). 마지막 문의 보라 발광은 분위기용 — 보스 전조선과는 형태(원/십자)로 구분.</div></div>
+          <div style="display:flex; align-items:center; gap:7px;"><span style="font:600 10px 'Spline Sans Mono'; color:#c79a55; letter-spacing:.1em;">팔레트</span><span style="width:26px; height:16px; background:#08060c; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#171320; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#5d527d; border:1px solid #2f2418;"></span><span style="width:26px; height:16px; background:#9c7b45; border:1px solid #2f2418;"></span></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="font:600 10px 'Spline Sans Mono'; color:#9c7b45; letter-spacing:.12em;">AI 프롬프트</span><span style="font:400 10px 'Noto Sans KR'; color:#5d5340;">클릭 → 선택+복사</span></div><div onClick="{{ selectPrompt }}" style="cursor:copy; padding:12px 14px; background:#080706; border:1px solid #5d4a2f; font:400 11px 'Spline Sans Mono',monospace; color:#cbb9d8; line-height:1.6;">top-down pixel art background set-piece (not tileable), a colossal black tower silhouette with a glowing arched last door at its base, dim purple curse light leaking from the door seam, brass trim, dark fantasy roguelike survivor destination (Halls of Torment style), muted palette near-black #08060c / #171320 / dim purple #5d527d / brass #9c7b45, ominous and grand, glow only at the door, no characters, no text, no UI</div></div>
+    </div>
+
+    <!-- B6 분위기 오버레이 -->
+    <div style="margin-top:18px; background:linear-gradient(180deg,#0e0d10,#08070a); border:1px solid #5d4a2f;">
+      <div style="display:flex; align-items:center; gap:13px; padding:13px 20px; border-bottom:1px solid #2c2740;">
+        <span style="font:700 11px 'Spline Sans Mono',monospace; color:#7f715b;">B6</span>
+        <span style="font:700 18px 'Noto Serif KR',serif; color:#f1e7cf;">분위기 오버레이</span>
+        <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">전 화면 공통 · 배경 위 레이어</span>
+      </div>
+      <div style="padding:18px 20px;">
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;">
+          <div style="padding:13px 14px; background:rgba(255,255,255,.02); border:1px solid #2f2418;"><div style="font:700 12px 'Noto Sans KR'; color:#cdbf9f; margin-bottom:5px;">안개</div><div style="font:500 11px 'Noto Sans KR'; color:#8a7d64; line-height:1.5;">화면 가장자리에서 옅게. 검은탑 쪽으로 갈수록 짙어짐. 전투 중앙은 비워둔다.</div></div>
+          <div style="padding:13px 14px; background:rgba(0,0,0,.25); border:1px solid #2f2418; box-shadow:inset 0 0 30px 6px rgba(0,0,0,.6);"><div style="font:700 12px 'Noto Sans KR'; color:#cdbf9f; margin-bottom:5px;">비네트</div><div style="font:500 11px 'Noto Sans KR'; color:#8a7d64; line-height:1.5;">네 모서리를 어둡게 눌러 플레이어 주변에 시선 집중. 이미 렌더에 존재 — 톤만 유지.</div></div>
+          <div style="padding:13px 14px; background:rgba(255,255,255,.02); border:1px solid #2f2418; background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22/></filter><rect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22 opacity=%220.05%22/></svg>');"><div style="font:700 12px 'Noto Sans KR'; color:#cdbf9f; margin-bottom:5px;">필름 그레인</div><div style="font:500 11px 'Noto Sans KR'; color:#8a7d64; line-height:1.5;">아주 옅은 그레인으로 픽셀에 질감. 가독성을 해칠 정도로 강하지 않게.</div></div>
+          <div style="padding:13px 14px; background:rgba(93,82,125,.08); border:1px solid #322c45;"><div style="font:700 12px 'Noto Sans KR'; color:#cdbf9f; margin-bottom:5px;">검은 종파 현상</div><div style="font:500 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.5;">마지막 문 구간에서 화면에 번지는 보라 종소리 파동. <b style="color:#e7ddc8;">분위기</b>이지 판정 아님 — 실제 전조와 형태로 구분.</div></div>
+        </div>
+        <div style="margin-top:14px; padding:11px 13px; background:rgba(168,82,73,.05); border:1px solid #3a2422; font:500 11.5px 'Noto Sans KR'; color:#b8aa8d; line-height:1.55;"><b style="color:#c0726a;">핵심 원칙</b> — 오버레이는 모두 <b style="color:#e7ddc8;">중앙 전투 영역을 비우고</b> 가장자리에서 작동한다. XP 청록·전조 붉은색·진화 황동만이 화면에서 강한 광원을 가질 수 있다.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:30px; padding-top:18px; border-top:1px solid #2f2418; display:flex; justify-content:space-between; align-items:center; gap:16px;">
+      <span style="font:400 11px 'Spline Sans Mono',monospace; color:#5d5340; line-height:1.6;">슬롯에 떨군 스프라이트/배경은 저장됨 · 동일 패턴으로 v2 코덱스 지시서(monster/background) 작성 가능</span>
+      <span style="font:600 12px 'Noto Sans KR'; color:#9c7b45;">다음 → 전투/보스 화면 슬롯 합본</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      selectPrompt: (e) => {
+        const el = e.currentTarget;
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        if (navigator.clipboard) navigator.clipboard.writeText(el.innerText).catch(() => {});
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ const path = require('path');
 const vm = require('vm');
 
 const GAME_DIR = path.join(__dirname, '..', 'public', 'dungeonworld-survivors');
+const DESIGN_DIR = path.join(__dirname, '..', 'docs', 'design');
 const REQUIRED_FILES = [
   'index.html',
   'styles.css',
@@ -30,6 +31,10 @@ function readProjectFile(fileName) {
   return fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8');
 }
 
+function readDesignFile(fileName) {
+  return fs.readFileSync(path.join(DESIGN_DIR, fileName), 'utf8');
+}
+
 function readPngSize(filePath) {
   const buffer = fs.readFileSync(filePath);
   assert.strictEqual(buffer.toString('ascii', 1, 4), 'PNG', `${filePath} should be a PNG`);
@@ -42,6 +47,41 @@ function testEnemySpriteAssets() {
     assert.ok(fs.existsSync(filePath), `${fileName} should exist`);
     assert.deepStrictEqual(readPngSize(filePath), expectedSize, `${fileName} should be ${expectedSize.join('x')}`);
   });
+}
+
+function testDesignReferenceBoards() {
+  const compositeFile = 'dungeonworld-survivors-combat-boss-composite.dc.html';
+  const monsterBoardFile = 'dungeonworld-survivors-monster-background-art-board.dc.html';
+  const characterBoardFile = 'dungeonworld-survivors-character-art-board.dc.html';
+  [compositeFile, monsterBoardFile, characterBoardFile].forEach((fileName) => {
+    assert.ok(fs.existsSync(path.join(DESIGN_DIR, fileName)), `${fileName} should exist`);
+  });
+
+  const composite = readDesignFile(compositeFile);
+  assert.ok(composite.includes('전투 화면 합본'));
+  assert.ok(composite.includes('보스 강림 합본'));
+  assert.ok(composite.includes('XP/전조는 엔진') || composite.includes('XP·전조 = 엔진'));
+
+  const monsterBoard = readDesignFile(monsterBoardFile);
+  assert.ok(monsterBoard.includes('몬스터'));
+  assert.ok(monsterBoard.includes('배경 · 존'));
+  assert.ok(monsterBoard.includes('검은 종 파수꾼'));
+
+  const characterBoard = readDesignFile(characterBoardFile);
+  assert.ok(characterBoard.includes('6직업'));
+  assert.ok(characterBoard.includes('전사'));
+  assert.ok(characterBoard.includes('레인저'));
+}
+
+function testEnemySpriteRendererSharpness() {
+  const renderer = readGameFile('renderer.js');
+  const drawEnemySprite = renderer.match(/function drawEnemySprite\([\s\S]+?\n  }\n\n  function getEnemySpriteMetrics/);
+  assert.ok(drawEnemySprite, 'drawEnemySprite should be present');
+  assert.ok(drawEnemySprite[0].includes('const previousSmoothing = ctx.imageSmoothingEnabled;'));
+  assert.ok(drawEnemySprite[0].includes('ctx.imageSmoothingEnabled = false;'));
+  assert.ok(drawEnemySprite[0].includes('ctx.imageSmoothingEnabled = previousSmoothing;'));
+  assert.ok(drawEnemySprite[0].includes("if (enemy.hitFlash > 0) ctx.filter = 'brightness(1.75)';"));
+  assert.ok(drawEnemySprite[0].includes('Math.round(wobble)'));
 }
 
 function testWaveRollBehavior() {
@@ -714,6 +754,7 @@ function main() {
   assert.ok(renderer.includes('} else {'));
   assert.ok(renderer.includes('ctx.drawImage(image'));
   assert.ok(renderer.includes('ctx.imageSmoothingEnabled = false'));
+  assert.ok(renderer.includes('Math.round(wobble)'));
   assert.ok(renderer.includes('function drawInvulnerabilityShell'));
   assert.ok(renderer.includes('function drawLevelShockwave'));
   assert.ok(renderer.includes('function drawHazard'));
@@ -787,7 +828,11 @@ function main() {
   assert.ok(webGameDoc.includes('네온 장판이 아니라 낮은 투명도의 피빛 의식선'));
   assert.ok(webGameDoc.includes('assets/enemies/<enemy>.png'));
   assert.ok(webGameDoc.includes('스프라이트가 없거나 로드에 실패하면 기존 절차형 적 렌더로 폴백'));
+  assert.ok(webGameDoc.includes('디자인 보드 HTML은 `docs/design/` 아래에 보관'));
+  assert.ok(webGameDoc.includes('XP, 공격 전조, 위험선, HUD, 보스 체력바는 이미지화하지 않고 기존 엔진 렌더를 유지'));
 
+  testDesignReferenceBoards();
+  testEnemySpriteRendererSharpness();
   testEnemySpriteAssets();
   testWaveRollBehavior();
   testRunModesAndStandardTimeline();

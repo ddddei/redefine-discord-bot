@@ -721,8 +721,8 @@
     const previousFilter = ctx.filter;
     const snapX = Math.round(enemy.x) - enemy.x;
     const snapY = Math.round(enemy.y) - enemy.y;
-    const offsetX = enemy.behavior === 'skirmisher' || enemy.behavior === 'lurcher' ? wobble : 0;
-    ctx.imageSmoothingEnabled = true;
+    const offsetX = enemy.behavior === 'skirmisher' || enemy.behavior === 'lurcher' ? Math.round(wobble) : 0;
+    ctx.imageSmoothingEnabled = false;
     if (enemy.hitFlash > 0) ctx.filter = 'brightness(1.75)';
     ctx.drawImage(
       sprite.image,
