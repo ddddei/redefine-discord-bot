@@ -53,7 +53,9 @@ function testDesignReferenceBoards() {
   const compositeFile = 'dungeonworld-survivors-combat-boss-composite.dc.html';
   const monsterBoardFile = 'dungeonworld-survivors-monster-background-art-board.dc.html';
   const characterBoardFile = 'dungeonworld-survivors-character-art-board.dc.html';
-  [compositeFile, monsterBoardFile, characterBoardFile].forEach((fileName) => {
+  const backgroundPromptsFile = 'dungeonworld-survivors-background-ai-prompts.dc.html';
+  const backgroundConceptBoardFile = 'dungeonworld-survivors-background-concept-board.dc.html';
+  [compositeFile, monsterBoardFile, characterBoardFile, backgroundPromptsFile, backgroundConceptBoardFile].forEach((fileName) => {
     assert.ok(fs.existsSync(path.join(DESIGN_DIR, fileName)), `${fileName} should exist`);
   });
 
@@ -71,6 +73,19 @@ function testDesignReferenceBoards() {
   assert.ok(characterBoard.includes('6직업'));
   assert.ok(characterBoard.includes('전사'));
   assert.ok(characterBoard.includes('레인저'));
+
+  const backgroundPrompts = readDesignFile(backgroundPromptsFile);
+  assert.ok(backgroundPrompts.includes('BACKGROUND AI PROMPTS'));
+  assert.ok(backgroundPrompts.includes('B1'));
+  assert.ok(backgroundPrompts.includes('B5'));
+  assert.ok(backgroundPrompts.includes('Avoid:'));
+
+  const backgroundConceptBoard = readDesignFile(backgroundConceptBoardFile);
+  assert.ok(backgroundConceptBoard.includes('배경 시안'));
+  assert.ok(backgroundConceptBoard.includes('Background Concepts'));
+  assert.ok(backgroundConceptBoard.includes('B1'));
+  assert.ok(backgroundConceptBoard.includes('B5'));
+  assert.ok(backgroundConceptBoard.includes('bg-sprites.js'));
 }
 
 function testEnemySpriteRendererSharpness() {
@@ -829,7 +844,16 @@ function main() {
   assert.ok(webGameDoc.includes('assets/enemies/<enemy>.png'));
   assert.ok(webGameDoc.includes('스프라이트가 없거나 로드에 실패하면 기존 절차형 적 렌더로 폴백'));
   assert.ok(webGameDoc.includes('디자인 보드 HTML은 `docs/design/` 아래에 보관'));
+  assert.ok(webGameDoc.includes('docs/design/dungeonworld-survivors-background-ai-prompts.dc.html'));
+  assert.ok(webGameDoc.includes('docs/design/dungeonworld-survivors-background-concept-board.dc.html'));
+  assert.ok(webGameDoc.includes('배경 시안 보드는 `docs/design/dungeonworld-survivors-background-concept-board.dc.html`에 보관'));
+  assert.ok(webGameDoc.includes('bg-sprites.js` 의존성이 필요'));
+  assert.ok(webGameDoc.includes('B1~B4는 바닥/존 배경 후보'));
+  assert.ok(webGameDoc.includes('B5는 타일이 아니라 검은탑과 마지막 문을 위한 대형 세트피스 후보'));
+  assert.ok(webGameDoc.includes('public/dungeonworld-survivors/assets/backgrounds/inn-ground.png'));
+  assert.ok(webGameDoc.includes('public/dungeonworld-survivors/assets/backgrounds/tower-gate-setpiece.png'));
   assert.ok(webGameDoc.includes('XP, 공격 전조, 위험선, HUD, 보스 체력바는 이미지화하지 않고 기존 엔진 렌더를 유지'));
+  assert.ok(webGameDoc.includes('XP 보석, 공격 전조, 위험선, HUD, 체력바, 보스 체력바는 배경 이미지에 넣지 않고 기존 엔진 렌더를 유지'));
 
   testDesignReferenceBoards();
   testEnemySpriteRendererSharpness();

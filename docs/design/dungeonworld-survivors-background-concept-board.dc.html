@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&family=Noto+Sans+KR:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="./bg-sprites.js"></script>
+<style>
+  body { margin:0; }
+  canvas.pix { image-rendering:pixelated; image-rendering:crisp-edges; display:block; width:100%; height:auto; background:#0a0807; }
+</style>
+</helmet>
+
+<!-- how-to note -->
+<div style="position:absolute; left:80px; top:40px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:12px; font-family:'Spline Sans Mono',monospace; color:#7f715b; font-size:13px; letter-spacing:.1em;">
+    <span style="color:#9c7b45;">배경 시안</span><span style="text-transform:uppercase; letter-spacing:.14em;">Background Concepts · 코드 픽셀아트</span>
+    <span style="color:#4a4234; letter-spacing:.02em;">— 5존 × 3시안 · 아트 보드 톤(낮은 채도·낮은 대비) · 존당 1안 선택 → 최종 PNG로 추출</span>
+  </div>
+</div>
+
+<!-- B1 inn -->
+<div style="position:absolute; left:80px; top:84px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:12px; margin-bottom:10px; font-family:'Spline Sans Mono',monospace; font-size:13px; letter-spacing:.06em;">
+    <span style="color:#b08a52; font-weight:500;">B1</span><span style="color:#f1e7cf; font-family:'Noto Serif KR',serif; font-size:16px; font-weight:700;">마른 참나무 여관</span><span style="color:#7f715b;">시작 0~3분 · 따뜻한 갈색 · 흙길 · 검은 종</span>
+  </div>
+  <div style="display:flex; gap:20px; padding:18px; background:linear-gradient(180deg,#13110b,#0a0807); border:1px solid #3a2e1c;">
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 A · 좌측 배치</div><canvas id="bgc-inn-0" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 B · 우측 길·처마</div><canvas id="bgc-inn-1" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 C · 넓은 처마·다물건</div><canvas id="bgc-inn-2" class="pix"></canvas></div>
+  </div>
+</div>
+
+<!-- B2 ruins -->
+<div style="position:absolute; left:80px; top:404px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:12px; margin-bottom:10px; font-family:'Spline Sans Mono',monospace; font-size:13px; letter-spacing:.06em;">
+    <span style="color:#9a8e74; font-weight:500;">B2</span><span style="color:#f1e7cf; font-family:'Noto Serif KR',serif; font-size:16px; font-weight:700;">무너진 신전 폐허</span><span style="color:#7f715b;">중간 길 · 균열 돌바닥 · 회색 의식 문양</span>
+  </div>
+  <div style="display:flex; gap:20px; padding:18px; background:linear-gradient(180deg,#11100c,#080807); border:1px solid #3a3228;">
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 A · 중앙 봉인·기둥1</div><canvas id="bgc-ruins-0" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 B · 기둥2·균열多</div><canvas id="bgc-ruins-1" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 C · 봉인 우측 치우침</div><canvas id="bgc-ruins-2" class="pix"></canvas></div>
+  </div>
+</div>
+
+<!-- B3 forest -->
+<div style="position:absolute; left:80px; top:724px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:12px; margin-bottom:10px; font-family:'Spline Sans Mono',monospace; font-size:13px; letter-spacing:.06em;">
+    <span style="color:#7e9a66; font-weight:500;">B3</span><span style="color:#f1e7cf; font-family:'Noto Serif KR',serif; font-size:16px; font-weight:700;">기억의 숲</span><span style="color:#7f715b;">추격 구간 · 나무 외곽선 · 시야 제한</span>
+  </div>
+  <div style="display:flex; gap:20px; padding:18px; background:linear-gradient(180deg,#0f120c,#080a07); border:1px solid #2a3a22;">
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 A · 성긴 숲·길</div><canvas id="bgc-forest-0" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 B · 중밀도·곡선 길</div><canvas id="bgc-forest-1" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 C · 빽빽·길 없음</div><canvas id="bgc-forest-2" class="pix"></canvas></div>
+  </div>
+</div>
+
+<!-- B4 basin -->
+<div style="position:absolute; left:80px; top:1044px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:12px; margin-bottom:10px; font-family:'Spline Sans Mono',monospace; font-size:13px; letter-spacing:.06em;">
+    <span style="color:#6fa7b5; font-weight:500;">B4</span><span style="color:#f1e7cf; font-family:'Noto Serif KR',serif; font-size:16px; font-weight:700;">잠긴 물그릇</span><span style="color:#7f715b;">중앙 압박 · 탁한 물(저채도) · 둔화 지대</span>
+  </div>
+  <div style="display:flex; gap:20px; padding:18px; background:linear-gradient(180deg,#0c1113,#070a0b); border:1px solid #1f3a40;">
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 A · 큰 중앙 웅덩이</div><canvas id="bgc-basin-0" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 B · 좌측 치우침</div><canvas id="bgc-basin-1" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#7f715b; margin-bottom:8px; letter-spacing:.08em;">시안 C · 하단·잔물결多</div><canvas id="bgc-basin-2" class="pix"></canvas></div>
+  </div>
+</div>
+
+<!-- B5 tower -->
+<div style="position:absolute; left:80px; top:1364px; width:1180px;">
+  <div data-drags-parent="1" style="display:flex; align-items:baseline; gap:12px; margin-bottom:10px; font-family:'Spline Sans Mono',monospace; font-size:13px; letter-spacing:.06em;">
+    <span style="color:#c79a55; font-weight:500;">B5</span><span style="color:#f1e7cf; font-family:'Noto Serif KR',serif; font-size:16px; font-weight:700;">검은탑 · 마지막 문</span><span style="color:#a59ac9;">목적지 29~30분 · 대형 세트피스 · 보라 발광</span>
+  </div>
+  <div style="display:flex; gap:20px; padding:18px; background:linear-gradient(180deg,#100d15,#08070c); border:1px solid #4a4060; box-shadow:0 0 0 1px rgba(156,123,69,.14);">
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#9a8ec0; margin-bottom:8px; letter-spacing:.08em;">시안 A · 강한 문 발광</div><canvas id="bgc-tower-0" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#9a8ec0; margin-bottom:8px; letter-spacing:.08em;">시안 B · 쌍탑 실루엣</div><canvas id="bgc-tower-1" class="pix"></canvas></div>
+    <div style="flex:1;"><div style="font:500 11px 'Spline Sans Mono',monospace; color:#9a8ec0; margin-bottom:8px; letter-spacing:.08em;">시안 C · 넓은 탑·잔해多</div><canvas id="bgc-tower-2" class="pix"></canvas></div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    this._paint();
+  }
+  _paint() {
+    if (!window.BGSprites) { setTimeout(() => this._paint(), 50); return; }
+    const specs = [
+      ['inn', 320, 152], ['ruins', 320, 152], ['forest', 320, 152],
+      ['basin', 320, 152], ['tower', 480, 200],
+    ];
+    specs.forEach(([zone, w, h]) => {
+      for (let v = 0; v < 3; v++) {
+        const cv = document.getElementById(`bgc-${zone}-${v}`);
+        if (!cv) continue;
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        try { window.BGSprites.draw(zone, v, ctx, w, h); }
+        catch (e) { console.warn('bg draw failed', zone, v, e); }
+      }
+    });
+  }
+}
+</script>
+</body>
+</html>

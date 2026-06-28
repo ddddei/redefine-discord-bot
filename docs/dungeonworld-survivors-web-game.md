@@ -59,7 +59,23 @@
 - 디자인 보드 HTML은 `docs/design/` 아래에 보관하며 실제 게임 런타임에서 로드하지 않습니다.
 - 캐릭터/몬스터/배경 아트 보드는 스프라이트 제작 기준입니다.
 - 전투/보스 합본은 실제 화면에서 스프라이트와 엔진 레이어가 겹치는 기준을 확인하기 위한 프리뷰입니다.
+- 배경 프롬프트 보드는 `docs/design/dungeonworld-survivors-background-ai-prompts.dc.html`에 보관합니다.
+- 배경 시안 보드는 `docs/design/dungeonworld-survivors-background-concept-board.dc.html`에 보관합니다. 이 보드는 `bg-sprites.js` 의존성이 필요하며, 해당 파일이 없는 환경에서는 프리뷰 스프라이트가 표시되지 않을 수 있습니다.
+- B1~B4는 바닥/존 배경 후보이고, B5는 타일이 아니라 검은탑과 마지막 문을 위한 대형 세트피스 후보입니다.
+- 배경 제작 메모에서는 `dark-fantasy roguelike survivors game`, `grim top-down pixel-art survivor game`, `dark fantasy survivor-like action roguelike background` 같은 일반화된 표현을 우선 사용합니다.
+- 배경은 낮은 채도와 낮은 대비로 유지합니다.
 - XP, 공격 전조, 위험선, HUD, 보스 체력바는 이미지화하지 않고 기존 엔진 렌더를 유지합니다.
+- XP 보석, 공격 전조, 위험선, HUD, 체력바, 보스 체력바는 배경 이미지에 넣지 않고 기존 엔진 렌더를 유지합니다.
+- 추후 선택된 최종 배경 이미지는 `public/dungeonworld-survivors/assets/backgrounds/` 아래에 별도 작업으로 연동할 예정입니다.
+
+향후 배경 에셋 연동 후보 파일명:
+
+- `public/dungeonworld-survivors/assets/backgrounds/inn-ground.png`
+- `public/dungeonworld-survivors/assets/backgrounds/ruins-ground.png`
+- `public/dungeonworld-survivors/assets/backgrounds/forest-ground.png`
+- `public/dungeonworld-survivors/assets/backgrounds/basin-ground.png`
+- `public/dungeonworld-survivors/assets/backgrounds/basin-setpiece.png`
+- `public/dungeonworld-survivors/assets/backgrounds/tower-gate-setpiece.png`
 
 보스전에서는 조작을 늘리지 않고 기존 이동, 자동 공격, 전조 회피 안에서 직업별 보정이 붙습니다. 전사는 파수꾼 가까이에 머물면 긴장과 피해 압박을 줄이고 근접 피해가 늘어납니다. 도적은 보스 패턴을 피한 직후 짧은 가속과 폭딜 창을 얻습니다. 사제는 보스 피해 뒤 치유 기도가 체력과 긴장을 일부 되돌립니다. 드루이드는 보스 패턴 뒤 뿌리 둔화와 이동 보상을 얻습니다. 마법사는 보호막으로 보스 피해를 받아내면 잠깐 주문 피해가 강화됩니다. 레인저는 거리를 유지한 표식 화살로 보스 피해를 올립니다.
 

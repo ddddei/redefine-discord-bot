@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&family=Noto+Sans+KR:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#0a0807; }
+  ::selection { background:#9c7b45; color:#0a0807; }
+</style>
+</helmet>
+
+<div style="min-height:100vh; padding:48px 0 80px; background:#0a0807; font-family:'Noto Sans KR',sans-serif;">
+<div style="max-width:900px; margin:0 auto; padding:0 28px;">
+
+  <!-- header -->
+  <div style="padding-bottom:22px; border-bottom:1px solid #2f2418;">
+    <div style="font:500 12px 'Spline Sans Mono',monospace; color:#9c7b45; letter-spacing:.28em; margin-bottom:12px;">BACKGROUND AI PROMPTS · DALL·E / ChatGPT</div>
+    <h1 style="margin:0; font:700 32px 'Noto Serif KR',serif; color:#f1e7cf;">검은 종 생존전 — 배경 프롬프트</h1>
+    <p style="margin:10px 0 0; max-width:680px; font:400 13.5px 'Noto Sans KR'; color:#8a7d64; line-height:1.65;">시안 보드(5존 × 3시안)와 아트 보드 톤을 반영. <b style="color:#cdbf9f;">아무 블록이나 클릭하면 전체 프롬프트(공통 스타일 + 베이스 + 시안 + 회피)가 통째로 복사</b>됩니다. 존당 1안을 골라 <span style="font-family:'Spline Sans Mono',monospace; color:#9aae8f;">assets/backgrounds/&lt;zone&gt;.png</span>로 저장.</p>
+  </div>
+
+  <!-- common blocks -->
+  <div style="margin-top:26px; display:grid; gap:12px;">
+    <div onClick="{{ copy }}" data-copy="{{ common }}" style="cursor:copy; padding:14px 16px; background:#100d0a; border:1px solid #3a2e1c;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#9c7b45; letter-spacing:.14em; margin-bottom:7px;">공통 스타일 · 모든 프롬프트 앞에</div>
+      <div style="font:400 11.5px 'Spline Sans Mono',monospace; color:#cdbf9f; line-height:1.65;">Top-down 2D pixel-art game background for a dark-fantasy roguelike survivors game (Halls of Torment style). Strict pixel art with a 1px dark outline, a small limited palette, and a muted desaturated low-contrast tone. Atmosphere only: darker and lower-contrast than the gameplay sprites on top. Flat even top-down lighting, no horizon, no sky, no perspective.</div>
+    </div>
+    <div onClick="{{ copy }}" data-copy="{{ avoid }}" style="cursor:copy; padding:14px 16px; background:#100d0a; border:1px solid #3a2422;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#c0726a; letter-spacing:.14em; margin-bottom:7px;">공통 회피 · 모든 프롬프트 끝에</div>
+      <div style="font:400 11.5px 'Spline Sans Mono',monospace; color:#b8aa8d; line-height:1.65;">Avoid: characters, creatures, monsters, players, items, UI, HUD, health bars, text, numbers, watermark; bright saturated colors, neon, glowing cyan/teal gems, red warning lines; isometric or 3/4 perspective, photorealism, lens flare, strong directional shadows.</div>
+    </div>
+    <div style="padding:11px 15px; background:rgba(156,123,69,.05); border:1px solid #2f2418; font:500 11.5px 'Noto Sans KR'; color:#8a7d64; line-height:1.6;"><b style="color:#cdbf9f;">출력</b> — 바닥 타일(B1–B4) 1024×1024 생성 → 320×150 비율로 축소 · 검은탑(B5) 1792×1024 생성 → 480×200 세트피스. 어두운 단색 배경으로 받아 엔진에서 사용.</div>
+  </div>
+
+  <!-- ===== B1 inn ===== -->
+  <div style="margin-top:34px;">
+    <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:5px;">
+      <span style="font:700 12px 'Spline Sans Mono',monospace; color:#b08a52;">B1</span>
+      <span style="font:700 19px 'Noto Serif KR',serif; color:#f1e7cf;">마른 참나무 여관</span>
+      <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">시작 0~3분 · 따뜻한 갈색 · 검은 종</span>
+      <span style="margin-left:auto; display:flex; gap:5px;"><span style="width:22px; height:14px; background:#241b12; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#3a2e1c; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#5d4a2f; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#7f715b; border:1px solid #2f2418;"></span></span>
+    </div>
+    <div onClick="{{ copy }}" data-copy="{{ innBase }}" style="cursor:copy; padding:13px 15px; background:#0e0b08; border:1px solid #3a2e1c; margin-bottom:9px;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#9c7b45; letter-spacing:.12em; margin-bottom:6px;">베이스 — 클릭 시 공통+베이스+회피 전체 복사</div>
+      <div style="font:400 11.5px 'Spline Sans Mono',monospace; color:#cdbf9f; line-height:1.6;">A top-down dirt ground tile of the clearing in front of a weathered old timber tavern. Packed warm-brown earth, worn wooden props, and the edge of the tavern's plank roof with a small black iron bell hanging silent from the eaves. Heavily muted — warmest zone yet still gloomy. Palette #241b12, #3a2e1c, iron #5d4a2f, faded #7f715b.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+      <div onClick="{{ copy }}" data-copy="{{ innA }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#b08a52; margin-bottom:5px;">시안 A · 좌측 배치</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">처마가 좌상단, 흙길이 왼쪽으로 굽어 내려가고 통·궤짝이 좌하단에 모임.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ innB }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#b08a52; margin-bottom:5px;">시안 B · 우측 길·처마</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">처마가 상단 전체, 출입구가 오른쪽. 길이 우측으로 올라가 문으로 이어짐.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ innC }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#b08a52; margin-bottom:5px;">시안 C · 넓은 처마·다물건</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">더 깊은 처마, 종이 중앙. 통·궤짝 여러 개가 흩어짐.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== B2 ruins ===== -->
+  <div style="margin-top:30px;">
+    <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:5px;">
+      <span style="font:700 12px 'Spline Sans Mono',monospace; color:#9a8e74;">B2</span>
+      <span style="font:700 19px 'Noto Serif KR',serif; color:#f1e7cf;">무너진 신전 폐허</span>
+      <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">중간 길 · 균열 돌바닥 · 회색 문양</span>
+      <span style="margin-left:auto; display:flex; gap:5px;"><span style="width:22px; height:14px; background:#15130f; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#2f2a22; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#4a4234; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#7f715b; border:1px solid #2f2418;"></span></span>
+    </div>
+    <div onClick="{{ copy }}" data-copy="{{ ruinsBase }}" style="cursor:copy; padding:13px 15px; background:#0c0b09; border:1px solid #3a3228; margin-bottom:9px;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#9a8e74; letter-spacing:.12em; margin-bottom:6px;">베이스 — 클릭 시 전체 복사</div>
+      <div style="font:400 11.5px 'Spline Sans Mono',monospace; color:#cdbf9f; line-height:1.6;">A top-down cracked stone-slab floor of a collapsed temple. Blocky grey flagstones split by jagged dark cracks, toppled stone columns lying in segments, and a faint grey ritual seal carved into the floor (grey only, very low contrast, never glowing or colored). Bleak and heavy. Palette #15130f, stone #2f2a22, #4a4234, faded #7f715b.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+      <div onClick="{{ copy }}" data-copy="{{ ruinsA }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#9a8e74; margin-bottom:5px;">시안 A · 중앙 봉인·기둥1</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">회색 봉인 중앙, 쓰러진 기둥 1개 상단, 균열 보통.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ ruinsB }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#9a8e74; margin-bottom:5px;">시안 B · 기둥2·균열多</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">기둥 2개 교차, 균열 빽빽, 봉인은 한쪽으로.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ ruinsC }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#9a8e74; margin-bottom:5px;">시안 C · 봉인 우측 치우침</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">봉인 우측 1/3, 기둥 1개 좌하단, 균열 적고 여백 강조.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== B3 forest ===== -->
+  <div style="margin-top:30px;">
+    <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:5px;">
+      <span style="font:700 12px 'Spline Sans Mono',monospace; color:#7e9a66;">B3</span>
+      <span style="font:700 19px 'Noto Serif KR',serif; color:#f1e7cf;">기억의 숲</span>
+      <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">추격 구간 · 나무 외곽선 · 시야 제한</span>
+      <span style="margin-left:auto; display:flex; gap:5px;"><span style="width:22px; height:14px; background:#0e130c; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#1e2a1a; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#3a4a30; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#667f54; border:1px solid #2f2418;"></span></span>
+    </div>
+    <div onClick="{{ copy }}" data-copy="{{ forestBase }}" style="cursor:copy; padding:13px 15px; background:#0a0d08; border:1px solid #2a3a22; margin-bottom:9px;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#7e9a66; letter-spacing:.12em; margin-bottom:6px;">베이스 — 클릭 시 전체 복사</div>
+      <div style="font:400 11.5px 'Spline Sans Mono',monospace; color:#cdbf9f; line-height:1.6;">A top-down dark forest floor seen from directly above. Dense tree canopies read only as dark circular silhouettes with thin mossy outlines and very dark interiors, scattered leaf-litter specks on near-black mossy ground. Gloomy, disorienting, sight-limiting, with a strong dark vignette closing the edges. Palette #0e130c, #1e2a1a, moss #3a4a30, dull leaf #667f54. Low contrast so danger lines read on top.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+      <div onClick="{{ copy }}" data-copy="{{ forestA }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#7e9a66; margin-bottom:5px;">시안 A · 성긴 숲·길</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">성긴 캐노피, 가운데로 희미한 흙길.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ forestB }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#7e9a66; margin-bottom:5px;">시안 B · 중밀도·곡선 길</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">중간 밀도, 캐노피 사이를 휘는 길.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ forestC }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#7e9a66; margin-bottom:5px;">시안 C · 빽빽·길 없음</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">빽빽한 겹친 캐노피, 더 좁은 비네트, 길 없음.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== B4 basin ===== -->
+  <div style="margin-top:30px;">
+    <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:5px;">
+      <span style="font:700 12px 'Spline Sans Mono',monospace; color:#6fa7b5;">B4</span>
+      <span style="font:700 19px 'Noto Serif KR',serif; color:#f1e7cf;">잠긴 물그릇</span>
+      <span style="font:500 11.5px 'Noto Sans KR'; color:#8a7d64;">중앙 압박 · 탁한 물(저채도)</span>
+      <span style="margin-left:auto; display:flex; gap:5px;"><span style="width:22px; height:14px; background:#0c1012; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#162226; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#2c4248; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#4d7780; border:1px solid #2f2418;"></span></span>
+    </div>
+    <div onClick="{{ copy }}" data-copy="{{ basinBase }}" style="cursor:copy; padding:13px 15px; background:#080b0d; border:1px solid #1f3a40; margin-bottom:9px;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#6fa7b5; letter-spacing:.12em; margin-bottom:6px;">베이스 — 클릭 시 전체 복사</div>
+      <div style="font:400 11.5px 'Spline Sans Mono',monospace; color:#cdbf9f; line-height:1.6;">A top-down view of a dark murky water basin at the center of a ruined shrine, ringed by cracked stone slowing-ground. Still, oppressive, stagnant water in dull desaturated teal with faint concentric ripple rings; the water must stay murky and low-saturation so it never reads like a bright xp gem. Palette #0c1012, #162226, dull teal #2c4248, #4d7780.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+      <div onClick="{{ copy }}" data-copy="{{ basinA }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#6fa7b5; margin-bottom:5px;">시안 A · 큰 중앙 웅덩이</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">큰 타원 웅덩이 중앙, 넓은 균열 석재 링.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ basinB }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#6fa7b5; margin-bottom:5px;">시안 B · 좌측 치우침</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">웅덩이 좌측, 우측에 드러난 균열 석재 더 많이.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ basinC }}" style="cursor:copy; padding:11px 13px; background:#080706; border:1px solid #2f2418;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#6fa7b5; margin-bottom:5px;">시안 C · 하단·잔물결多</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">웅덩이 하단, 촘촘한 동심 잔물결, 빽빽한 깨진 석재.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== B5 tower ===== -->
+  <div style="margin-top:30px;">
+    <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:5px;">
+      <span style="font:700 12px 'Spline Sans Mono',monospace; color:#c79a55;">B5</span>
+      <span style="font:700 19px 'Noto Serif KR',serif; color:#f1e7cf;">검은탑 · 마지막 문</span>
+      <span style="font:500 11.5px 'Noto Sans KR'; color:#a59ac9;">목적지 · 대형 세트피스 · 보라 발광</span>
+      <span style="margin-left:auto; display:flex; gap:5px;"><span style="width:22px; height:14px; background:#08060c; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#171320; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#5d527d; border:1px solid #2f2418;"></span><span style="width:22px; height:14px; background:#9c7b45; border:1px solid #2f2418;"></span></span>
+    </div>
+    <div onClick="{{ copy }}" data-copy="{{ towerBase }}" style="cursor:copy; padding:13px 15px; background:#0b0810; border:1px solid #4a4060; margin-bottom:9px;">
+      <div style="font:600 10px 'Spline Sans Mono',monospace; color:#c79a55; letter-spacing:.12em; margin-bottom:6px;">베이스 — 클릭 시 전체 복사 · 세트피스(타일 아님)</div>
+      <div style="font:400 11.5px 'Spline Sans Mono',monospace; color:#cbb9d8; line-height:1.6;">A top-down dark-fantasy background set-piece (not tileable) of a colossal black tower silhouette at the far end of the path, with a glowing arched "last door" at its base. Dim purple curse-light leaks only from the door seam, thin brass trim bands ring the tower, a worn approach path leads to the door, dark standing stones flank the foreground. Ominous and grand. Palette #08060c, #171320, dim purple #5d527d, brass #9c7b45 — glow confined to the door only.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+      <div onClick="{{ copy }}" data-copy="{{ towerA }}" style="cursor:copy; padding:11px 13px; background:#080609; border:1px solid #322c45;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#a59ac9; margin-bottom:5px;">시안 A · 강한 문 발광</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">단일 넓은 탑 중앙, 강하지만 흐린 보라 블룸, 문 중앙 밝은 이음선.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ towerB }}" style="cursor:copy; padding:11px 13px; background:#080609; border:1px solid #322c45;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#a59ac9; margin-bottom:5px;">시안 B · 쌍탑 실루엣</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">중앙 탑 + 양옆 작은 첨탑, 절제된 문 발광, 잔해 적음.</div></div>
+      <div onClick="{{ copy }}" data-copy="{{ towerC }}" style="cursor:copy; padding:11px 13px; background:#080609; border:1px solid #322c45;"><div style="font:600 10px 'Spline Sans Mono',monospace; color:#a59ac9; margin-bottom:5px;">시안 C · 넓은 탑·잔해多</div><div style="font:400 11px 'Noto Sans KR'; color:#9aae8f; line-height:1.55;">더 넓고 묵직한 탑 기단, 부드러운 넓은 발광, 잔해·선돌 많음.</div></div>
+    </div>
+  </div>
+
+  <div style="margin-top:34px; padding-top:18px; border-top:1px solid #2f2418; font:400 11px 'Spline Sans Mono',monospace; color:#5d5340; line-height:1.6;">DALL·E는 완벽한 seamless 타일을 보장하지 않음 — 생성 후 엔진에서 가장자리를 겹쳐 깔거나 큰 1장으로 사용 · 같은 내용 마크다운: background-ai-prompts.md</div>
+</div>
+</div>
+
+<!-- copy toast -->
+<div style="position:fixed; left:50%; bottom:32px; transform:translateX(-50%); padding:10px 20px; background:#9c7b45; color:#0a0807; font:700 12px 'Spline Sans Mono',monospace; letter-spacing:.08em; border-radius:2px; box-shadow:0 6px 20px rgba(0,0,0,.5); transition:opacity .2s; opacity:{{ toastOpacity }}; pointer-events:none;">✓ 전체 프롬프트 복사됨</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { toast: false };
+  renderVals() {
+    const COMMON = "Top-down 2D pixel-art game background for a dark-fantasy roguelike survivors game (Halls of Torment style). Strict pixel art with a 1px dark outline, a small limited palette, and a muted desaturated low-contrast tone. Atmosphere only: darker and lower-contrast than the gameplay sprites on top. Flat even top-down lighting, no horizon, no sky, no perspective.";
+    const AVOID = "Avoid: characters, creatures, monsters, players, items, UI, HUD, health bars, text, numbers, watermark; bright saturated colors, neon, glowing cyan/teal gems, red warning lines; isometric or 3/4 perspective, photorealism, lens flare, strong directional shadows.";
+    const BASE = {
+      inn: "A top-down dirt ground tile of the clearing in front of a weathered old timber tavern. Packed warm-brown earth, worn wooden props, and the edge of the tavern's plank roof with a small black iron bell hanging silent from the eaves. Heavily muted — the warmest zone of the run yet still gloomy. Palette dark brown #241b12, #3a2e1c, iron #5d4a2f, faded #7f715b.",
+      ruins: "A top-down cracked stone-slab floor of a collapsed temple. Blocky grey flagstones split by jagged dark cracks, toppled stone columns lying in segments, and a faint grey ritual seal carved into the floor (grey only, very low contrast, never glowing or colored). Bleak, heavy, abandoned. Palette near-black #15130f, stone #2f2a22, #4a4234, faded #7f715b.",
+      forest: "A top-down dark forest floor seen from directly above. Dense tree canopies read only as dark circular silhouettes with thin mossy outlines and very dark interiors, scattered leaf-litter specks on near-black mossy ground. Gloomy, disorienting, sight-limiting, with a strong dark vignette closing the edges. Palette near-black green #0e130c, #1e2a1a, moss #3a4a30, dull leaf #667f54. Keep contrast low so danger lines read on top.",
+      basin: "A top-down view of a dark murky water basin at the center of a ruined shrine, ringed by cracked stone slowing-ground. Still, oppressive, stagnant water in dull desaturated teal with faint concentric ripple rings; the water must stay murky and low-saturation so it never reads like a bright xp gem. Palette near-black #0c1012, #162226, dull teal #2c4248, #4d7780.",
+      tower: "A top-down dark-fantasy background set-piece (not tileable) of a colossal black tower silhouette rising at the far end of the path, with a glowing arched \"last door\" at its base. Dim purple curse-light leaks only from the door seam, thin brass trim bands ring the tower, a worn approach path leads up to the door, and a few dark standing stones flank the foreground. Ominous and grand. Palette near-black #08060c, #171320, dim purple #5d527d, brass #9c7b45 — glow confined to the door only.",
+    };
+    const VAR = {
+      innA: "Composition: the tavern's plank roof edge runs across the top-left corner, the dirt path curving down the left side, worn barrels and a crate clustered at the bottom-left.",
+      innB: "Composition: the plank roof spans the top with the dark doorway gap on the right; the dirt path winds up the right side toward the door, a barrel and crate beside it on the right.",
+      innC: "Composition: a wider, deeper plank roof along the whole top edge with the black bell centered beneath it; more scattered props — three barrels and crates spread across the open dirt.",
+      ruinsA: "Composition: the faint grey ritual seal centered, one toppled column lying across the upper area, a moderate scatter of floor cracks.",
+      ruinsB: "Composition: two toppled columns crossing the scene at different angles, heavier dense cracking across the flagstones, the grey seal partly off to one side.",
+      ruinsC: "Composition: the grey ritual seal pushed to the right third, a single long column lower-left, calmer cracking — emptier, more oppressive negative space.",
+      forestA: "Composition: sparse canopies leaving open ground, a faint trodden dirt path winding through the middle.",
+      forestB: "Composition: medium tree density with a curving overgrown path threading between the canopies.",
+      forestC: "Composition: dense overlapping canopies and a tighter vignette, no clear path — maximum closed-in, lost-in-the-woods pressure.",
+      basinA: "Composition: a large oval pool centered, a broad cracked-stone ring around it, a couple of calm ripple rings.",
+      basinB: "Composition: the pool shifted left of center, more exposed cracked stone on the right, moderate ripples.",
+      basinC: "Composition: the pool lower in the frame with many tight concentric ripple rings, a denser broken-stone surround.",
+      towerA: "Composition: a single broad tower centered, a strong but still dim purple bloom around the arched door, a bright purple seam down the center of the door, scattered standing stones in the foreground.",
+      towerB: "Composition: a tall central tower flanked by two smaller spires, a tighter controlled door glow, fewer foreground stones — a gate-like, twin-spired silhouette.",
+      towerC: "Composition: a wider, heavier tower base with a softer wide door glow and more broken debris and standing stones strewn across the approach.",
+    };
+    const full = (zone, mod) => COMMON + "\n\n" + BASE[zone] + (mod ? "\n\n" + mod : "") + "\n\n" + AVOID;
+    const out = {
+      common: COMMON, avoid: AVOID,
+      innBase: full('inn'), ruinsBase: full('ruins'), forestBase: full('forest'), basinBase: full('basin'), towerBase: full('tower'),
+      toastOpacity: this.state.toast ? 1 : 0,
+      copy: (e) => {
+        const t = e.currentTarget && e.currentTarget.getAttribute('data-copy');
+        if (!t) return;
+        try { navigator.clipboard && navigator.clipboard.writeText(t); } catch (err) {}
+        this.setState({ toast: true });
+        clearTimeout(this._tt);
+        this._tt = setTimeout(() => this.setState({ toast: false }), 1300);
+      },
+    };
+    const zoneOf = { inn: 'inn', ruins: 'ruins', forest: 'forest', basin: 'basin', tower: 'tower' };
+    Object.keys(VAR).forEach((k) => {
+      const z = Object.keys(zoneOf).find((zz) => k.startsWith(zz));
+      out[k] = full(z, VAR[k]);
+    });
+    return out;
+  }
+}
+</script>
+</body>
+</html>
