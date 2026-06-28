@@ -4,26 +4,31 @@
       at: 0,
       title: '마른 참나무 여관 앞',
       copy: '마라가 문을 걸어 잠그고, 토른이 방패를 들어 첫 고블린 무리를 막아섭니다.',
+      backgroundKey: 'inn',
     },
     {
       at: 45,
       title: '뿌리 아래 고블린 길',
       copy: '픽이 가짜 표식 사이에서 손짓합니다. 작은 왕의 정찰병들이 뿌리 틈으로 몰려옵니다.',
+      backgroundKey: 'ruins',
     },
     {
       at: 90,
       title: '무너진 신전의 물그릇',
       copy: '정지 문양이 흔들리고 슬라임과 미믹이 첫 번째 열쇠를 둘러싸기 시작합니다.',
+      backgroundKey: 'basin',
     },
     {
       at: 135,
       title: '오크 다리와 기억의 숲',
       copy: '바루크의 창선 너머로 그림자 늑대와 빈 갑옷이 함께 발소리를 맞춥니다.',
+      backgroundKey: 'forest',
     },
     {
       at: 190,
       title: '검은탑의 마지막 문',
       copy: '헤르의 눈이 열리고 검은 종 파수꾼이 문 그림자를 끌어올립니다.',
+      backgroundKey: 'towerGate',
     },
   ];
 
@@ -242,6 +247,7 @@
       moveName: '위험 돌파',
       checkStat: 'dex',
       objective: '정찰병의 얇은 포위를 뚫고 길을 여세요.',
+      backgroundKey: 'inn',
       pressureRule: 'edge-skirmish',
       hazards: [],
       cadence: 1.05,
@@ -259,6 +265,7 @@
       moveName: '상황 파악',
       checkStat: 'wis',
       objective: '뿌리 표식이 빛나기 전에 안전한 길을 골라 움직이세요.',
+      backgroundKey: 'ruins',
       pressureRule: 'snare-circles',
       hazards: [
         { kind: 'rootSnare', cadence: 5.4, warning: 0.9, duration: 2.2, radius: 62, slow: 1.2, tension: 0.5, colorToken: '--class-druid', label: '뿌리 매듭' },
@@ -279,6 +286,7 @@
       moveName: '정면 방어',
       checkStat: 'str',
       objective: '물그릇 주변의 느린 웅덩이를 피해 갑옷의 길목 봉쇄를 버티세요.',
+      backgroundKey: 'basin',
       pressureRule: 'basin-pools',
       hazards: [
         { kind: 'basinPool', cadence: 4.8, warning: 0.8, duration: 2.8, radius: 74, damage: 2.6, slow: 1.6, colorToken: '--status-info', label: '물그릇 웅덩이' },
@@ -301,6 +309,7 @@
       moveName: '의지 유지',
       checkStat: 'will',
       objective: '늑대의 직선 돌진로를 읽고 빈 갑옷 사이를 빠져나가세요.',
+      backgroundKey: 'forest',
       pressureRule: 'charge-lanes',
       hazards: [
         { kind: 'wolfLane', cadence: 4.2, warning: 0.72, duration: 1.25, length: 280, width: 42, damage: 7, tension: 0.7, colorToken: '--status-error', label: '늑대 돌진로' },
@@ -323,6 +332,7 @@
       moveName: '마지막 문 돌파',
       checkStat: 'str',
       objective: '파수꾼의 종파와 탑 그림자를 읽고 보스를 쓰러뜨리세요.',
+      backgroundKey: 'towerGate',
       pressureRule: 'bell-rings',
       hazards: [
         { kind: 'bellRing', cadence: 4.6, warning: 0.95, duration: 1.7, radius: 112, width: 34, damage: 8, tension: 0.9, colorToken: '--accent-bell', label: '검은 종파' },
@@ -339,15 +349,15 @@
   ];
 
   const standardScenes = [
-    { at: 0, title: '마른 참나무 여관 앞', copy: '첫 3분은 보석을 모으고 시작 무기를 익히는 시간입니다.' },
-    { at: 180, title: '뿌리 아래 고블린 길', copy: '웨이브가 길어집니다. 같은 무기와 패시브를 반복해 진화 조건을 준비하세요.' },
-    { at: 360, title: '무너진 신전의 물그릇', copy: '미믹과 슬라임이 보석 길을 막습니다. 엘리트 상자를 노릴 준비를 합니다.' },
-    { at: 540, title: '오크 다리와 기억의 숲', copy: '늑대 돌진과 빈 갑옷이 겹칩니다. 생존 패시브가 빛나는 구간입니다.' },
-    { at: 720, title: '검은 종의 중턱', copy: '15분을 향해 압박이 올라갑니다. 진화 무기가 있다면 런의 방향이 선명해집니다.' },
-    { at: 900, title: '검은탑으로 가는 긴 길', copy: '20분까지는 화력과 자석 범위가 성장 속도를 가릅니다.' },
-    { at: 1200, title: '마지막 문 앞 숲', copy: '25분 이후에는 엘리트와 위험 구역을 모두 읽어야 합니다.' },
-    { at: 1500, title: '검은 종 아래', copy: '29분까지 살아남으면 마지막 문의 균열이 열리기 시작합니다.' },
-    { at: 1740, title: '마지막 문', copy: '30분까지 버티세요. 검은 종 파수꾼이 마지막 문을 지키고 있습니다.' },
+    { at: 0, title: '마른 참나무 여관 앞', copy: '첫 3분은 보석을 모으고 시작 무기를 익히는 시간입니다.', backgroundKey: 'inn' },
+    { at: 180, title: '뿌리 아래 고블린 길', copy: '웨이브가 길어집니다. 같은 무기와 패시브를 반복해 진화 조건을 준비하세요.', backgroundKey: 'ruins' },
+    { at: 360, title: '무너진 신전의 물그릇', copy: '미믹과 슬라임이 보석 길을 막습니다. 엘리트 상자를 노릴 준비를 합니다.', backgroundKey: 'basin' },
+    { at: 540, title: '오크 다리와 기억의 숲', copy: '늑대 돌진과 빈 갑옷이 겹칩니다. 생존 패시브가 빛나는 구간입니다.', backgroundKey: 'forest' },
+    { at: 720, title: '검은 종의 중턱', copy: '15분을 향해 압박이 올라갑니다. 진화 무기가 있다면 런의 방향이 선명해집니다.', backgroundKey: 'forest' },
+    { at: 900, title: '검은탑으로 가는 긴 길', copy: '20분까지는 화력과 자석 범위가 성장 속도를 가릅니다.', backgroundKey: 'forest' },
+    { at: 1200, title: '마지막 문 앞 숲', copy: '25분 이후에는 엘리트와 위험 구역을 모두 읽어야 합니다.', backgroundKey: 'towerGate' },
+    { at: 1500, title: '검은 종 아래', copy: '29분까지 살아남으면 마지막 문의 균열이 열리기 시작합니다.', backgroundKey: 'towerGate' },
+    { at: 1740, title: '마지막 문', copy: '30분까지 버티세요. 검은 종 파수꾼이 마지막 문을 지키고 있습니다.', backgroundKey: 'towerGate' },
   ];
 
   const standardWavePatterns = [
@@ -360,6 +370,7 @@
       moveName: '위험 돌파',
       checkStat: 'dex',
       objective: '보석을 먹어 첫 레벨업을 만들고 시작 무기를 강화하세요.',
+      backgroundKey: 'inn',
       pressureRule: 'edge-skirmish',
       hazards: [],
       cadence: 1.1,
@@ -378,6 +389,7 @@
       moveName: '상황 파악',
       checkStat: 'wis',
       objective: '무기 Lv.8과 맞는 패시브 조합을 의식하며 선택지를 고르세요.',
+      backgroundKey: 'ruins',
       pressureRule: 'snare-circles',
       hazards: [
         { kind: 'rootSnare', cadence: 5.2, warning: 0.9, duration: 2.2, radius: 66, slow: 1.25, tension: 0.5, colorToken: '--class-druid', label: '뿌리 매듭' },
@@ -398,6 +410,7 @@
       moveName: '정면 방어',
       checkStat: 'str',
       objective: '첫 엘리트 상자 이후 진화 조건을 완성할 방향을 잡으세요.',
+      backgroundKey: 'basin',
       pressureRule: 'basin-pools',
       hazards: [
         { kind: 'basinPool', cadence: 4.8, warning: 0.8, duration: 2.8, radius: 74, damage: 3, slow: 1.6, colorToken: '--status-info', label: '물그릇 웅덩이' },
@@ -420,6 +433,7 @@
       moveName: '의지 유지',
       checkStat: 'will',
       objective: '위험 구역을 읽고 상자를 먹을 안전한 틈을 만드세요.',
+      backgroundKey: 'forest',
       pressureRule: 'charge-lanes',
       hazards: [
         { kind: 'wolfLane', cadence: 4.2, warning: 0.72, duration: 1.25, length: 300, width: 42, damage: 7, tension: 0.7, colorToken: '--status-error', label: '늑대 돌진로' },
@@ -442,6 +456,7 @@
       moveName: '마지막 문 예감',
       checkStat: 'will',
       objective: '무기 Lv.8과 패시브를 맞춰 다음 상자 진화를 노리세요.',
+      backgroundKey: 'forest',
       pressureRule: 'bell-rings',
       hazards: [
         { kind: 'bellRing', cadence: 5, warning: 0.95, duration: 1.7, radius: 112, width: 34, damage: 8, tension: 0.8, colorToken: '--accent-bell', label: '검은 종파' },
@@ -463,6 +478,7 @@
       moveName: '압박 견디기',
       checkStat: 'str',
       objective: '진화 무기를 한 개 이상 확보하면 20분 이후가 안정됩니다.',
+      backgroundKey: 'forest',
       pressureRule: 'mixed-pressure',
       hazards: [
         { kind: 'bellRing', cadence: 4.7, warning: 0.9, duration: 1.7, radius: 118, width: 36, damage: 8, tension: 0.85, colorToken: '--accent-bell', label: '검은 종파' },
@@ -485,6 +501,7 @@
       moveName: '문턱 버티기',
       checkStat: 'wis',
       objective: '상자 보상은 진화 조건을 먼저 확인합니다. 조건이 맞으면 진화가 우선입니다.',
+      backgroundKey: 'towerGate',
       pressureRule: 'tower-gaze',
       hazards: [
         { kind: 'towerGaze', cadence: 5.4, warning: 1, duration: 1.2, length: 390, width: 56, damage: 9, tension: 0.7, colorToken: '--accent-bell', label: '탑의 눈길' },
@@ -507,6 +524,7 @@
       moveName: '마지막 호흡',
       checkStat: 'dex',
       objective: '남은 상자로 핵심 무기나 패시브를 마지막 단계까지 밀어 올리세요.',
+      backgroundKey: 'towerGate',
       pressureRule: 'last-hold',
       hazards: [
         { kind: 'bellRing', cadence: 4.4, warning: 0.86, duration: 1.6, radius: 124, width: 38, damage: 9, tension: 0.95, colorToken: '--accent-bell', label: '검은 종파' },
@@ -530,6 +548,7 @@
       moveName: '마지막 문 돌파',
       checkStat: 'str',
       objective: '30분까지 버티고 검은 종 파수꾼의 마지막 전조를 넘기세요.',
+      backgroundKey: 'towerGate',
       pressureRule: 'final-door',
       hazards: [
         { kind: 'bellRing', cadence: 4.2, warning: 0.86, duration: 1.6, radius: 130, width: 40, damage: 10, tension: 1, colorToken: '--accent-bell', label: '검은 종파' },

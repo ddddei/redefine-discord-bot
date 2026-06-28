@@ -25,6 +25,7 @@
     inn: { file: 'inn-ground.png', kind: 'ground' },
     ruins: { file: 'ruins-ground.png', kind: 'ground' },
     forest: { file: 'forest-ground.png', kind: 'ground' },
+    basin: { file: 'basin-ground.png', kind: 'ground' },
     basinSetpiece: { file: 'basin-setpiece.png', kind: 'setpiece' },
     towerGate: { file: 'tower-gate-setpiece.png', kind: 'setpiece' },
   };
@@ -150,6 +151,23 @@
     return sprite && sprite.loaded && !sprite.failed ? sprite : null;
   }
 
+  function markBackgroundSpriteFailedForQa(spriteId) {
+    if (!BACKGROUND_SPRITE_SPECS[spriteId]) return false;
+    const current = backgroundSprites[spriteId] || { image: null, spec: BACKGROUND_SPRITE_SPECS[spriteId] };
+    current.loaded = false;
+    current.failed = true;
+    backgroundSprites[spriteId] = current;
+    return true;
+  }
+
+  function getBackgroundLoadState(spriteId) {
+    const sprite = spriteId ? backgroundSprites[spriteId] : null;
+    if (!sprite) return 'pending';
+    if (sprite.loaded && !sprite.failed) return 'loaded';
+    if (sprite.failed) return 'failed';
+    return 'pending';
+  }
+
   function getPalette() {
     const style = getComputedStyle(document.documentElement);
     const token = (name) => style.getPropertyValue(name).trim();
@@ -233,13 +251,33 @@
     return value - Math.floor(value);
   }
 
-  function resolveGroundBackgroundId(state) {
+  function resolveBackgroundKey(state) {
     const wave = state.waves && state.waves[state.waveIndex] ? state.waves[state.waveIndex] : null;
+    const scene = state.scenes && state.scenes[state.sceneIndex] ? state.scenes[state.sceneIndex] : null;
+    if (state.bossSpawned) return 'towerGate';
+    if (wave && wave.backgroundKey) return wave.backgroundKey;
+    if (scene && scene.backgroundKey) return scene.backgroundKey;
     const waveId = wave && wave.id ? wave.id : '';
-    if (state.bossSpawned || waveId === 'finalGate' || waveId.includes('29-30')) return 'forest';
+    if (waveId === 'finalGate' || waveId.includes('29-30')) return 'towerGate';
     if (waveId.includes('forest') || waveId.includes('15-20') || waveId.includes('20-25') || waveId.includes('25-29')) return 'forest';
-    if (waveId.includes('ruin') || waveId.includes('basin') || waveId.includes('6-9') || waveId.includes('9-12') || waveId.includes('12-15')) return 'ruins';
+    if (waveId.includes('basin') || waveId.includes('6-9')) return 'basin';
+    if (waveId.includes('ruin') || waveId.includes('9-12') || waveId.includes('12-15')) return 'ruins';
     return 'inn';
+  }
+
+  function resolveGroundBackgroundId(state) {
+    const key = resolveBackgroundKey(state);
+    if (key === 'towerGate') return 'forest';
+    return BACKGROUND_SPRITE_SPECS[key] && BACKGROUND_SPRITE_SPECS[key].kind === 'ground' ? key : 'inn';
+  }
+
+  function shouldDrawBasinSetpiece(state) {
+    return resolveBackgroundKey(state) === 'basin';
+  }
+
+  function shouldDrawTowerGateSetpiece(state) {
+    const key = resolveBackgroundKey(state);
+    return key === 'towerGate' || state.bossSpawned;
   }
 
   function withPixelSprites(ctx, draw) {
@@ -261,14 +299,35 @@
     });
   }
 
-  function drawTowerGateSetpiece(ctx, world, camera) {
+  function drawBasinSetpiece(ctx, world, camera) {
+    const sprite = getBackgroundSprite('basinSetpiece');
+    if (!sprite) return false;
+    const width = 980;
+    const height = Math.round(width * sprite.image.height / sprite.image.width);
+    const x = world.width * 0.52 - width / 2;
+    const y = world.height * 0.49 - height / 2;
+    if (!isVisible(camera, x + width / 2, y + height / 2, Math.max(width, height) / 2)) return true;
+    drawSetpieceSprite(ctx, sprite, x, y, width, height);
+    return true;
+  }
+
+  function drawTowerGateSetpiece(ctx, world, camera, state, palette) {
     const sprite = getBackgroundSprite('towerGate');
     if (!sprite) return false;
-    const width = 1540;
+    const width = state.bossSpawned ? 1280 : 1120;
     const height = Math.round(width * sprite.image.height / sprite.image.width);
-    const x = camera.x + camera.width / 2 - width / 2;
-    const y = camera.y - height * 0.42;
+    const x = world.towerX - width / 2;
+    const y = world.towerY - height * 0.54;
     if (!isVisible(camera, x + width / 2, y + height / 2, Math.max(width, height) / 2)) return true;
+    if (state.effects.bossPulse > 0 || state.bossSpawned) {
+      ctx.save();
+      ctx.globalAlpha = 0.16 + Math.min(0.22, state.effects.bossPulse * 0.18);
+      ctx.fillStyle = palette.accentBell;
+      ctx.beginPath();
+      ctx.ellipse(world.towerX, world.towerY + height * 0.28, width * 0.28, height * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     drawSetpieceSprite(ctx, sprite, x, y, width, height);
     return true;
   }
@@ -277,8 +336,26 @@
     const groundSprite = getBackgroundSprite(resolveGroundBackgroundId(state));
     if (!groundSprite) return false;
     drawGroundBackgroundSprite(ctx, groundSprite, world);
-    if (state.bossSpawned && !drawTowerGateSetpiece(ctx, world, camera)) drawTower(ctx, world, state.elapsed, palette);
+    if (shouldDrawBasinSetpiece(state)) drawBasinSetpiece(ctx, world, camera);
+    if (shouldDrawTowerGateSetpiece(state) && !drawTowerGateSetpiece(ctx, world, camera, state, palette)) {
+      drawTower(ctx, world, state.elapsed, palette);
+    }
     return true;
+  }
+
+  function getBackgroundRenderInfo(state) {
+    const backgroundKey = resolveBackgroundKey(state);
+    const groundKey = resolveGroundBackgroundId(state);
+    const setpieces = [];
+    if (shouldDrawBasinSetpiece(state)) setpieces.push('basinSetpiece');
+    if (shouldDrawTowerGateSetpiece(state)) setpieces.push('towerGate');
+    return {
+      backgroundKey,
+      groundKey,
+      groundLoadState: getBackgroundLoadState(groundKey),
+      usingProcedural: !getBackgroundSprite(groundKey),
+      setpieces,
+    };
   }
 
   function drawProceduralBackground(ctx, world, camera, elapsed, palette) {
@@ -1719,6 +1796,8 @@
   window.DungeonworldSurvivorsRenderer = {
     createCamera,
     formatTime,
+    getBackgroundRenderInfo,
+    markBackgroundSpriteFailedForQa,
     preloadClassSprites,
     preloadEnemySprites,
     preloadBackgroundSprites,

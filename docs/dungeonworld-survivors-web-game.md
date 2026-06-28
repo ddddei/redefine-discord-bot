@@ -18,7 +18,7 @@
 - 각 직업은 시작 능력치, 기본 공격, 생존 방식, 레벨업 선택지가 다릅니다.
 - 기본 공격과 플레이북 장비는 자동으로 발동합니다.
 - 월드는 960x540 단일 화면보다 큰 2400x1600 지도이며, 카메라가 플레이어를 따라가고 가장자리에서는 빈 공간이 보이지 않도록 고정됩니다.
-- 지도에는 여관 쪽 시작 지점, 검은탑의 마지막 문으로 이어지는 길, 폐허, 숲, 물그릇, 검은탑 실루엣, 안개와 비네트가 캔버스 절차형 그림으로 표시됩니다.
+- 지도에는 여관 쪽 시작 지점, 검은탑의 마지막 문으로 이어지는 길, 폐허, 숲, 물그릇, 검은탑 실루엣, 안개와 비네트가 표시됩니다. 배경 에셋이 정상 로드되면 구간별 바닥/세트피스 PNG를 먼저 사용하고, 에셋이 없거나 로드 실패하면 기존 절차형 캔버스 배경으로 폴백합니다.
 - 적 웨이브는 `정찰 웨이브`, `뿌리 매복`, `물그릇 압박`, `숲의 추격`, `마지막 문` 순서로 바뀝니다.
 - 30분 정식 런은 `0~3분`, `3~6분`, `6~9분`, `9~12분`, `12~15분`, `15~20분`, `20~25분`, `25~29분`, `29~30분` 구간으로 나뉩니다. 구간이 길어질수록 미믹, 신도, 늑대, 빈 갑옷, 검은탑 저주와 검은 종 위험 현상이 더 촘촘히 섞입니다.
 - 고블린은 좌우로 흔들며 접근하고, 슬라임은 느리게 뭉쳐 밀고, 빈 갑옷은 버티다가 빨라지고, 그림자 늑대는 짧게 돌진합니다. 중후반에는 `물그릇 미믹`이 멈칫하다가 부채꼴 이빨 공격을 하고, `검은 종 신도`가 멀리서 원형 종말 기도를 예고합니다.
@@ -62,27 +62,26 @@
 - 배경 프롬프트 보드는 `docs/design/dungeonworld-survivors-background-ai-prompts.dc.html`에 보관합니다.
 - 배경 시안 보드는 `docs/design/dungeonworld-survivors-background-concept-board.dc.html`에 보관합니다. 이 보드는 `bg-sprites.js` 의존성이 필요하며, 해당 파일이 없는 환경에서는 프리뷰 스프라이트가 표시되지 않을 수 있습니다.
 - B1~B3는 낮은 채도/낮은 대비의 바닥/존 배경으로 사용합니다.
-- B4는 현재 `basin-setpiece.png`만 있으며, 반복 가능한 `basin-ground.png`는 추후 제작 예정입니다.
+- B4는 `basin-ground.png` 바닥과 `basin-setpiece.png` 물그릇 세트피스를 함께 사용합니다.
 - B5는 반복 배경이 아니라 검은탑과 마지막 문을 위한 대형 세트피스로 사용합니다.
 - 배경 제작 메모에서는 `dark-fantasy roguelike survivors game`, `grim top-down pixel-art survivor game`, `dark fantasy survivor-like action roguelike background` 같은 일반화된 표현을 우선 사용합니다.
 - 배경은 낮은 채도와 낮은 대비로 유지합니다.
 - 배경 스프라이트는 `public/dungeonworld-survivors/assets/backgrounds/` 아래에 둡니다.
+- wave/scene의 `backgroundKey`가 배경 선택의 기준입니다. `inn`, `ruins`, `basin`, `forest`, `towerGate`를 사용하며, `towerGate`는 숲/문 앞 바닥 위에 검은탑 문 세트피스를 얹는 연출입니다.
 - 배경 스프라이트가 없거나 로드 실패하면 기존 절차형 배경으로 폴백합니다.
 - XP, 공격 전조, 위험선, HUD, 보스 체력바는 이미지화하지 않고 기존 엔진 렌더를 유지합니다.
 - XP 보석, 공격 전조, 위험선, HUD, 체력바, 보스 체력바는 배경 이미지에 넣지 않고 기존 엔진 렌더를 유지합니다.
 
-현재 배경 에셋 v1 파일명:
+현재 배경 에셋 v2 파일명:
 
 - `public/dungeonworld-survivors/assets/backgrounds/inn-ground.png`
 - `public/dungeonworld-survivors/assets/backgrounds/ruins-ground.png`
 - `public/dungeonworld-survivors/assets/backgrounds/forest-ground.png`
+- `public/dungeonworld-survivors/assets/backgrounds/basin-ground.png`
 - `public/dungeonworld-survivors/assets/backgrounds/basin-setpiece.png`
 - `public/dungeonworld-survivors/assets/backgrounds/tower-gate-setpiece.png`
 
-배경 에셋 TODO:
-
-- `basin-ground.png`는 추후 반복 가능한 젖은 석재 바닥으로 별도 제작 예정입니다.
-- 현재 `basin-setpiece.png`는 중앙 물그릇/웅덩이 세트피스로 사용합니다.
+현재 `basin-setpiece.png`는 중앙 물그릇/웅덩이 세트피스로 사용합니다. B4 구간에서는 `basin-ground.png`가 먼저 월드 바닥으로 깔리고, 물그릇 세트피스가 중앙 구간에 낮은 대비로 겹칩니다. 보스 접근 구간과 보스전에서는 `tower-gate-setpiece.png`가 검은탑 마지막 문 위치에 고정되어 카메라 이동 중 목적지처럼 보입니다.
 
 보스전에서는 조작을 늘리지 않고 기존 이동, 자동 공격, 전조 회피 안에서 직업별 보정이 붙습니다. 전사는 파수꾼 가까이에 머물면 긴장과 피해 압박을 줄이고 근접 피해가 늘어납니다. 도적은 보스 패턴을 피한 직후 짧은 가속과 폭딜 창을 얻습니다. 사제는 보스 피해 뒤 치유 기도가 체력과 긴장을 일부 되돌립니다. 드루이드는 보스 패턴 뒤 뿌리 둔화와 이동 보상을 얻습니다. 마법사는 보호막으로 보스 피해를 받아내면 잠깐 주문 피해가 강화됩니다. 레인저는 거리를 유지한 표식 화살로 보스 피해를 올립니다.
 
@@ -97,7 +96,7 @@
 - 위험 예고는 네온 장판이 아니라 낮은 투명도의 피빛 의식선, 균열, 부채꼴, 원형 종파로 먼저 그려지고, 피해 판정은 예고가 끝난 뒤 일어납니다.
 - 1차 전투 가독성 개선에서는 플레이어 위치 원/무적 보호막, 엘리트 위협 고리, 보스 상단 경고바, 위험 전조 단계별 틱, 적 사망 파편/연기, impact spark, 청록 XP 보석의 흡수 궤적, 레벨업 충격파를 사용합니다. 배경 장식은 낮은 채도와 낮은 대비로 유지하고, 붉은색/보라색/주황색 고대비 선은 실제 위험 전조와 강적 경고에 우선 배정합니다.
 - 레벨업 카드는 룰북 전리품 카드처럼 추천 역할, 추천 사유, 희귀도, 룬/인장 배지, 직업 적합도, 시너지 힌트를 나눠 보여줍니다. 결과 모달은 `빌드명/평가 → 런 목표 → 보스전 기여 → 선택 업그레이드 → 시너지` 흐름의 빌드 요약 화면으로 사용합니다.
-- `localhost` 또는 `127.0.0.1`에서 `?qa=1`을 붙이면 캔버스 오른쪽 위에 로컬 전용 밸런스 패널이 보입니다. 생존 시간, 처치 수, 레벨/XP, 현재 웨이브, 활성 적/위험 구역 수, 보스 상태/페이즈, 최근 선택 업그레이드, 추천 카드 구성, 런 목표 진행도, 마지막 문 보스전 기여 계측을 확인할 수 있습니다.
+- `localhost` 또는 `127.0.0.1`에서 `?qa=1`을 붙이면 캔버스 오른쪽 위에 로컬 전용 밸런스 패널이 보입니다. 생존 시간, 처치 수, 레벨/XP, 현재 웨이브, 활성 적/위험 구역 수, 보스 상태/페이즈, 배경 키/바닥 로드 상태/절차형 폴백 여부/세트피스, 최근 선택 업그레이드, 추천 카드 구성, 런 목표 진행도, 마지막 문 보스전 기여 계측을 확인할 수 있습니다.
 
 ## 던전월드 반영 요소
 
@@ -163,6 +162,14 @@ http://127.0.0.1:4173/dungeonworld-survivors/?mode=quick
 
 보스 흐름과 밸런스 표시를 브라우저에서 빠르게 확인해야 할 때는 로컬 주소에 `?qa=1`을 붙입니다. 실행 중 `Shift+B`로 마지막 문 보스 등장, `Shift+N`으로 보스 처치 결과, `Shift+L`로 레벨업 카드, `Shift+C`로 일반 상자 보상, `Shift+E`로 진화 상자 보상을 확인할 수 있습니다. 이 패널과 단축키는 `127.0.0.1` 또는 `localhost`에서 `?qa=1`이 붙은 경우에만 동작합니다.
 
+브라우저 자동 스모크 QA는 로컬 Chrome/Chromium을 사용합니다. 패키지 의존성을 추가하지 않으며, Chrome 위치가 기본 경로가 아니면 `CHROME_PATH`를 지정합니다.
+
+```bash
+node scripts/smoke-dungeonworld-survivors-browser.js
+```
+
+이 스모크는 로컬 정적 서버와 임시 Chrome 프로필을 띄운 뒤 `?qa=1` 페이지에서 전사 시작, 방향키 이동, B4 물그릇 배경/세트피스, 강제 배경 실패 시 절차형 폴백, 보스 구간 `towerGate` 세트피스, 보스 처치 단축키, 캔버스 비어 있지 않음을 확인합니다.
+
 봇 프로세스의 HTTP 서버가 켜져 있는 환경에서는 `/game/dungeonworld-survivors` 경로로도 정적 파일을 서빙할 수 있습니다. 이 경로는 대시보드 API와 달리 Basic Auth를 요구하지 않습니다.
 
 ## QA 체크리스트
@@ -172,11 +179,14 @@ http://127.0.0.1:4173/dungeonworld-survivors/?mode=quick
 - `node --check public/dungeonworld-survivors/systems.js`
 - `node --check public/dungeonworld-survivors/renderer.js`
 - `node --check public/dungeonworld-survivors/game.js`
+- `node scripts/smoke-dungeonworld-survivors-browser.js`
 - 로컬 브라우저에서 시작 버튼을 누르면 캔버스가 움직이고 적이 생성되는지 확인합니다.
 - 방향키/WASD 이동, 카메라 추적, 직업별 자동 공격, 경험치 획득, 레벨업 업그레이드 선택, 추천 사유, 중복 업그레이드 레벨 표시가 동작하는지 확인합니다.
 - `?mode=standard`에서 30분 duration, 30분 웨이브 구간, 엘리트/상자/진화 보상 흐름이 동작하는지 확인합니다.
 - 웨이브 안내, 위험 구역, 적 공격 전조, 적 행동 차이, 보스 단계, 보스 처치 승리 조건이 동작하는지 확인합니다.
 - 런 목표 진행도, 보스전 기여, `?qa=1` 추천 카드/목표/기여 계측이 보이는지 확인합니다.
+- `?qa=1` 패널에서 B4 구간은 `배경 basin · 바닥 basin/loaded · 세트 basinSetpiece`, 보스 접근/보스전은 `배경 towerGate · 세트 towerGate`로 표시되는지 확인합니다.
+- `basin-ground.png` 로드를 강제로 실패시킨 자동 스모크에서 절차형 폴백이 표시되는지 확인합니다.
 - 일시정지와 재개가 동작하는지 확인합니다.
 - Escape 키로 일시정지 모달에서 전투로 돌아오고, 모달 선택 후 초점이 캔버스로 안정적으로 돌아오는지 확인합니다.
 - 375px, 768px, 1280px 폭에서 캔버스 HUD, 카드, 사이드 패널이 겹치지 않고 한글이 잘리는지 확인합니다.

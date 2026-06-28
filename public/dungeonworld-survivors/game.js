@@ -553,6 +553,9 @@
     const goals = systems.evaluateRunGoals(state).map((goal) => `${goal.title}:${goal.progress}`).join(' / ');
     const recommendation = pendingUpgrades.map((upgrade) => `${upgrade.recommendationRole || '추천'}-${upgrade.title}`).join(' / ') || '대기';
     const contribution = state.bossContribution;
+    const background = renderer.getBackgroundRenderInfo
+      ? renderer.getBackgroundRenderInfo(state)
+      : { backgroundKey: 'unknown', groundKey: 'unknown', groundLoadState: 'unknown', usingProcedural: false, setpieces: [] };
     elements.qaPanel.classList.remove('hidden');
     elements.qaPanel.innerHTML = [
       `<strong>QA balance</strong>`,
@@ -561,11 +564,54 @@
       `<span>레벨 ${state.player.level} · XP ${state.player.xp} / ${state.player.nextXp}</span>`,
       `<span>웨이브 ${wave.title} · 적 ${state.enemies.length}</span>`,
       `<span>위험 ${state.hazards.length} · 상자 ${state.chests.length} · 보스 ${bossState}</span>`,
+      `<span>배경 ${background.backgroundKey} · 바닥 ${background.groundKey}/${background.groundLoadState}${background.usingProcedural ? ' · 절차형 폴백' : ''} · 세트 ${background.setpieces.join(', ') || '없음'}</span>`,
       `<span>최근 업그레이드 ${recent}</span>`,
       `<span>추천 ${recommendation}</span>`,
       `<span>런 목표 ${goals}</span>`,
       `<span>보스 기여 ${contribution.label} · 발동 ${contribution.triggers} · 추가 ${Math.round(contribution.bonusDamage)}</span>`,
     ].join('');
+  }
+
+  function buildQaSnapshot() {
+    const wave = state.waves[state.waveIndex];
+    const scene = state.scenes[state.sceneIndex];
+    const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
+    const background = renderer.getBackgroundRenderInfo
+      ? renderer.getBackgroundRenderInfo(state)
+      : { backgroundKey: 'unknown', groundKey: 'unknown', groundLoadState: 'unknown', usingProcedural: false, setpieces: [] };
+    return {
+      status: state.status,
+      mode: state.mode.id,
+      elapsed: state.elapsed,
+      player: { x: state.player.x, y: state.player.y, health: state.player.health },
+      wave: { id: wave.id, title: wave.title, backgroundKey: wave.backgroundKey || '' },
+      scene: { title: scene.title, backgroundKey: scene.backgroundKey || '' },
+      bossSpawned: state.bossSpawned,
+      bossPresent: Boolean(boss),
+      bossPhase: state.bossPhase ? state.bossPhase.id : '',
+      background,
+    };
+  }
+
+  function installQaApi() {
+    if (!qaModeEnabled()) return;
+    window.DungeonworldSurvivorsQa = {
+      getSnapshot: buildQaSnapshot,
+      forceBackgroundFailure(spriteId) {
+        if (!renderer.markBackgroundSpriteFailedForQa || !renderer.markBackgroundSpriteFailedForQa(spriteId)) return false;
+        renderer.render(ctx, state, systems.WORLD);
+        updateDom();
+        return true;
+      },
+      jumpTo(seconds) {
+        state.elapsed = Math.max(0, Math.min(state.duration - 0.05, Number(seconds) || 0));
+        state.spawnTimer = 99;
+        systems.tick(state, input, 0.02);
+        renderer.render(ctx, state, systems.WORLD);
+        updateDom();
+        return buildQaSnapshot();
+      },
+    };
   }
 
   function handleQaShortcut(event) {
@@ -637,6 +683,7 @@
   elements.modalSecondary.onclick = hideModalOnly;
 
   state.status = 'ready';
+  installQaApi();
   updateDom();
   renderer.render(ctx, state, systems.WORLD);
   showIntro();

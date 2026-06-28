@@ -26,6 +26,7 @@ const BACKGROUND_SPRITES = {
   'inn-ground.png': [1832, 859],
   'ruins-ground.png': [1832, 859],
   'forest-ground.png': [1832, 859],
+  'basin-ground.png': [1832, 859],
   'basin-setpiece.png': [1832, 859],
   'tower-gate-setpiece.png': [1942, 809],
 };
@@ -62,11 +63,54 @@ function testBackgroundSpriteAssets() {
     assert.ok(fs.existsSync(filePath), `${fileName} should exist`);
     assert.deepStrictEqual(readPngSize(filePath), expectedSize, `${fileName} should be ${expectedSize.join('x')}`);
   });
-  assert.strictEqual(
-    fs.existsSync(path.join(GAME_DIR, 'assets', 'backgrounds', 'basin-ground.png')),
-    false,
-    'basin-ground.png should not be required in background asset v1'
-  );
+}
+
+function testBackgroundKeyMappings() {
+  const { content, systems } = loadGameRuntime();
+  const expectedDemo = {
+    skirmish: 'inn',
+    roots: 'ruins',
+    basin: 'basin',
+    forest: 'forest',
+    finalGate: 'towerGate',
+  };
+  const expectedStandard = {
+    'standard-0-3': 'inn',
+    'standard-3-6': 'ruins',
+    'standard-6-9': 'basin',
+    'standard-9-12': 'forest',
+    'standard-12-15': 'forest',
+    'standard-15-20': 'forest',
+    'standard-20-25': 'towerGate',
+    'standard-25-29': 'towerGate',
+    'standard-29-30': 'towerGate',
+  };
+
+  Object.entries(expectedDemo).forEach(([waveId, backgroundKey]) => {
+    const wave = content.wavePatterns.find((entry) => entry.id === waveId);
+    assert.ok(wave, `${waveId} should exist`);
+    assert.strictEqual(wave.backgroundKey, backgroundKey);
+  });
+  Object.entries(expectedStandard).forEach(([waveId, backgroundKey]) => {
+    const wave = content.standardWavePatterns.find((entry) => entry.id === waveId);
+    assert.ok(wave, `${waveId} should exist`);
+    assert.strictEqual(wave.backgroundKey, backgroundKey);
+  });
+  [...content.scenes, ...content.standardScenes].forEach((scene) => {
+    assert.ok(scene.backgroundKey, `${scene.title} should declare backgroundKey`);
+  });
+
+  const demo = systems.createState(content, 'fighter', { mode: 'demo' });
+  demo.elapsed = 91;
+  systems.tick(demo, { up: false, down: false, left: false, right: false }, 0.02);
+  assert.strictEqual(demo.waves[demo.waveIndex].id, 'basin');
+  assert.strictEqual(demo.waves[demo.waveIndex].backgroundKey, 'basin');
+
+  const standard = systems.createState(content, 'fighter', { mode: 'standard' });
+  standard.elapsed = 1201;
+  systems.tick(standard, { up: false, down: false, left: false, right: false }, 0.02);
+  assert.strictEqual(standard.waves[standard.waveIndex].id, 'standard-20-25');
+  assert.strictEqual(standard.waves[standard.waveIndex].backgroundKey, 'towerGate');
 }
 
 function testDesignReferenceBoards() {
@@ -687,6 +731,8 @@ function main() {
   assert.ok(content.includes('runGoals'));
   assert.ok(content.includes('보스 등장 전까지 레벨 8'));
   assert.ok(content.includes('표식이 사라지기 전에'));
+  assert.ok(content.includes("backgroundKey: 'basin'"));
+  assert.ok(content.includes("backgroundKey: 'towerGate'"));
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('RUN_MODES'));
@@ -757,6 +803,9 @@ function main() {
   assert.ok(game.includes('function formatEvolutionComparison'));
   assert.ok(game.includes('renderer.preloadEnemySprites();'));
   assert.ok(game.includes('renderer.preloadBackgroundSprites();'));
+  assert.ok(game.includes('renderer.getBackgroundRenderInfo'));
+  assert.ok(game.includes('window.DungeonworldSurvivorsQa'));
+  assert.ok(game.includes('forceBackgroundFailure(spriteId)'));
   assert.ok(game.includes('런 목표'));
   assert.ok(game.includes('보스전 기여'));
   assert.ok(game.includes('formatTagBadges'));
@@ -787,12 +836,17 @@ function main() {
   assert.ok(renderer.includes('function getEnemySprite'));
   assert.ok(renderer.includes('function getBackgroundSprite'));
   assert.ok(renderer.includes("inn: { file: 'inn-ground.png', kind: 'ground' }"));
+  assert.ok(renderer.includes("basin: { file: 'basin-ground.png', kind: 'ground' }"));
   assert.ok(renderer.includes("basinSetpiece: { file: 'basin-setpiece.png', kind: 'setpiece' }"));
   assert.ok(renderer.includes("towerGate: { file: 'tower-gate-setpiece.png', kind: 'setpiece' }"));
+  assert.ok(renderer.includes('function resolveBackgroundKey'));
   assert.ok(renderer.includes('function resolveGroundBackgroundId'));
   assert.ok(renderer.includes('function drawBackgroundSprites'));
   assert.ok(renderer.includes('function drawGroundBackgroundSprite'));
+  assert.ok(renderer.includes('function drawBasinSetpiece'));
   assert.ok(renderer.includes('function drawTowerGateSetpiece'));
+  assert.ok(renderer.includes('function getBackgroundRenderInfo'));
+  assert.ok(renderer.includes('markBackgroundSpriteFailedForQa'));
   assert.ok(renderer.includes('function drawProceduralBackground'));
   assert.ok(renderer.includes('if (!groundSprite) return false;'));
   assert.ok(renderer.includes('drawProceduralBackground(ctx, world, camera, state.elapsed, palette);'));
@@ -887,12 +941,14 @@ function main() {
   assert.ok(webGameDoc.includes('배경 시안 보드는 `docs/design/dungeonworld-survivors-background-concept-board.dc.html`에 보관'));
   assert.ok(webGameDoc.includes('bg-sprites.js` 의존성이 필요'));
   assert.ok(webGameDoc.includes('B1~B3는 낮은 채도/낮은 대비의 바닥/존 배경으로 사용'));
-  assert.ok(webGameDoc.includes('B4는 현재 `basin-setpiece.png`만 있으며, 반복 가능한 `basin-ground.png`는 추후 제작 예정'));
+  assert.ok(webGameDoc.includes('B4는 `basin-ground.png` 바닥과 `basin-setpiece.png` 물그릇 세트피스를 함께 사용'));
   assert.ok(webGameDoc.includes('B5는 반복 배경이 아니라 검은탑과 마지막 문을 위한 대형 세트피스로 사용'));
   assert.ok(webGameDoc.includes('public/dungeonworld-survivors/assets/backgrounds/inn-ground.png'));
   assert.ok(webGameDoc.includes('public/dungeonworld-survivors/assets/backgrounds/tower-gate-setpiece.png'));
-  assert.ok(webGameDoc.includes('`basin-ground.png`는 추후 반복 가능한 젖은 석재 바닥으로 별도 제작 예정'));
+  assert.ok(webGameDoc.includes('public/dungeonworld-survivors/assets/backgrounds/basin-ground.png'));
   assert.ok(webGameDoc.includes('현재 `basin-setpiece.png`는 중앙 물그릇/웅덩이 세트피스로 사용'));
+  assert.ok(webGameDoc.includes('wave/scene의 `backgroundKey`'));
+  assert.ok(webGameDoc.includes('node scripts/smoke-dungeonworld-survivors-browser.js'));
   assert.ok(webGameDoc.includes('배경 스프라이트가 없거나 로드 실패하면 기존 절차형 배경으로 폴백'));
   assert.ok(webGameDoc.includes('XP, 공격 전조, 위험선, HUD, 보스 체력바는 이미지화하지 않고 기존 엔진 렌더를 유지'));
   assert.ok(webGameDoc.includes('XP 보석, 공격 전조, 위험선, HUD, 체력바, 보스 체력바는 배경 이미지에 넣지 않고 기존 엔진 렌더를 유지'));
@@ -901,6 +957,7 @@ function main() {
   testEnemySpriteRendererSharpness();
   testEnemySpriteAssets();
   testBackgroundSpriteAssets();
+  testBackgroundKeyMappings();
   testWaveRollBehavior();
   testRunModesAndStandardTimeline();
   testLargeWorldAndMovementClamp();
