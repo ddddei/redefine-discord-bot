@@ -235,6 +235,11 @@ h2 {
   font-weight: 700;
 }
 
+.feedback-strip span:last-child {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .canvas-frame {
   position: relative;
   overflow: hidden;
@@ -308,6 +313,18 @@ h2 {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
+.hud-chip.mode-demo {
+  border-color: color-mix(in srgb, var(--status-info) 70%, var(--border-default));
+}
+
+.hud-chip.mode-quick {
+  border-color: color-mix(in srgb, var(--status-warning) 72%, var(--border-default));
+}
+
+.hud-chip.mode-standard {
+  border-color: color-mix(in srgb, var(--accent-primary) 62%, var(--border-default));
+}
+
 .hud-chip span,
 .hud-chip strong {
   display: block;
@@ -331,6 +348,25 @@ h2 {
 
 .boss-chip strong {
   color: var(--accent-bell);
+}
+
+.boss-chip.boss-active,
+.boss-chip.evolution-ready-chip {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-bell) 22%, var(--surface-primary)), color-mix(in srgb, var(--surface-primary) 84%, transparent)),
+    var(--surface-primary);
+}
+
+.boss-chip.boss-active {
+  border-color: var(--accent-bell);
+}
+
+.boss-chip.evolution-ready-chip {
+  border-color: var(--status-warning);
+}
+
+.boss-chip.evolution-ready-chip strong {
+  color: var(--status-warning);
 }
 
 canvas {
@@ -513,8 +549,16 @@ canvas {
   transform: translateY(-1px);
 }
 
-.upgrade-option strong {
+.upgrade-option > strong {
   grid-column: 2;
+  color: var(--option-accent);
+  font-size: 18px;
+  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.upgrade-option .reward-card-main > strong {
   color: var(--option-accent);
   font-size: 18px;
   font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
@@ -530,6 +574,56 @@ canvas {
 .upgrade-option > span:not(.card-seal),
 .upgrade-option > strong {
   grid-column: 2;
+}
+
+.reward-card-main {
+  grid-column: 2;
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.reward-topline,
+.reward-quick-grid,
+.level-shift,
+.chest-level-compare {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.reward-topline {
+  justify-content: space-between;
+}
+
+.level-shift,
+.chest-level-compare {
+  border: 1px solid color-mix(in srgb, var(--option-accent) 44%, var(--border-subtle));
+  border-radius: 4px;
+  padding: var(--space-2);
+  background: color-mix(in srgb, var(--surface-primary) 36%, transparent);
+  color: var(--text-primary);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.level-shift b,
+.chest-level-compare b {
+  color: var(--option-accent);
+}
+
+.level-shift strong,
+.chest-level-compare strong {
+  color: var(--option-accent);
+  font: inherit;
+  font-weight: 800;
+}
+
+.level-shift em {
+  color: var(--text-tertiary);
+  font-style: normal;
 }
 
 .card-seal {
@@ -593,6 +687,23 @@ canvas {
   padding-left: var(--space-2);
 }
 
+.effect-line,
+.evolution-line,
+.synergy-hint,
+.reward-quick-grid span {
+  display: grid;
+  gap: 2px;
+}
+
+.effect-line b,
+.evolution-line b,
+.synergy-hint b,
+.reward-quick-grid b {
+  color: var(--option-accent);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+}
+
 .effect-line {
   color: var(--text-primary);
 }
@@ -602,9 +713,50 @@ canvas {
   font-weight: 700;
 }
 
+.reward-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reward-quick-grid span {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: var(--space-2);
+  background: color-mix(in srgb, var(--surface-primary) 28%, transparent);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.chest-level-compare.evolution-compare {
+  border-color: color-mix(in srgb, var(--accent-bell) 62%, var(--status-warning));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-bell) 24%, transparent), transparent 68%),
+    color-mix(in srgb, var(--surface-primary) 36%, transparent);
+}
+
 .chest-reward-option {
   --option-accent: var(--accent-ember);
   --option-soft: color-mix(in srgb, var(--accent-bell) 24%, var(--surface-parchment));
+}
+
+.upgrade-option.evolution-ready {
+  --option-accent: var(--status-warning);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--status-warning) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.upgrade-option.evolution-ready .evolution-line {
+  color: var(--status-warning);
+}
+
+.upgrade-option.evolution-ready .recommendation-pill,
+.upgrade-option .evolution-ready b {
+  background: color-mix(in srgb, var(--status-warning) 18%, transparent);
+}
+
+.upgrade-option.evolution-linked {
+  border-color: color-mix(in srgb, var(--accent-bell) 58%, var(--border-default));
 }
 
 .upgrade-option.rarity-class {
@@ -868,7 +1020,8 @@ canvas {
     font-size: clamp(24px, 8vw, 28px);
   }
 
-  .upgrade-option strong {
+  .upgrade-option > strong,
+  .upgrade-option .reward-card-main > strong {
     font-size: clamp(17px, 5.2vw, 20px);
     line-height: 1.35;
   }
@@ -882,6 +1035,17 @@ canvas {
   .card-seal {
     width: 22px;
     height: 32px;
+  }
+
+  .reward-topline,
+  .reward-quick-grid,
+  .level-shift,
+  .chest-level-compare {
+    gap: var(--space-1);
+  }
+
+  .reward-quick-grid {
+    grid-template-columns: 1fr;
   }
 
   .hud-rail {

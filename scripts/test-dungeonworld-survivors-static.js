@@ -292,10 +292,20 @@ function testInventoryEvolutionAndChestRewards() {
   assert.strictEqual(systems.getEligibleEvolutions(state).length, 0);
 
   systems.setInventoryItemLevel(state, 'weapon', 'cleave', 8);
+  let shieldBashState = systems.getUpgradeEvolutionState(state, content.upgrades.find((upgrade) => upgrade.id === 'shieldBash'));
+  assert.strictEqual(shieldBashState.status, 'progress');
+  assert.match(shieldBashState.text, /방패선/);
   systems.setInventoryItemLevel(state, 'passive', 'shieldLine', 1);
   const eligible = systems.getEligibleEvolutions(state);
   assert.strictEqual(eligible.length, 1);
   assert.strictEqual(eligible[0].title, '방패선의 회전검');
+  shieldBashState = systems.getUpgradeEvolutionState(state, content.upgrades.find((upgrade) => upgrade.id === 'shieldBash'));
+  assert.strictEqual(shieldBashState.status, 'ready');
+  assert.match(shieldBashState.text, /다음 상자/);
+  const evolutionPlan = systems.getEvolutionPlan(state, eligible[0]);
+  assert.strictEqual(evolutionPlan.weaponTitle, '철의 베기');
+  assert.strictEqual(evolutionPlan.passiveTitle, '방패선');
+  assert.strictEqual(evolutionPlan.ready, true);
 
   const chest = systems.dropChest(state, { x: state.player.x + 1, y: state.player.y });
   assert.strictEqual(state.chests.length, 1);
@@ -594,6 +604,14 @@ function main() {
   assert.ok(systems.includes('function updateOrbitingSpears'));
   assert.ok(systems.includes('function getAttackTrail'));
   assert.ok(systems.includes('impactKind'));
+  assert.ok(systems.includes('particles: []'));
+  assert.ok(systems.includes('levelShockwave'));
+  assert.ok(systems.includes('function spawnDeathParticles'));
+  assert.ok(systems.includes('function spawnImpactSparks'));
+  assert.ok(systems.includes('function spawnXpAbsorbParticles'));
+  assert.ok(systems.includes('function updateParticles'));
+  assert.ok(systems.includes('gem.trail'));
+  assert.ok(systems.includes('gem.pullMode'));
   assert.ok(systems.includes('function consumeLevelUps'));
   assert.ok(systems.includes('function updateWave'));
   assert.ok(systems.includes('bossDefeated'));
@@ -629,7 +647,12 @@ function main() {
   assert.ok(game.includes('dataset.mode'));
   assert.ok(game.includes("params.get('qa') === '1'"));
   assert.ok(game.includes('quick 모드에서는 10분 빠른 런'));
-  assert.ok(game.includes('recommendation-reason'));
+  assert.ok(game.includes('MODE ${state.mode.id.toUpperCase()}'));
+  assert.ok(game.includes('evolution-ready-chip'));
+  assert.ok(game.includes('진화 가능: 다음 엘리트 상자를 노리세요'));
+  assert.ok(game.includes('reward-quick-grid'));
+  assert.ok(game.includes('function shortenRecommendation'));
+  assert.ok(game.includes('function formatEvolutionComparison'));
   assert.ok(game.includes('런 목표'));
   assert.ok(game.includes('보스전 기여'));
   assert.ok(game.includes('formatTagBadges'));
@@ -644,11 +667,18 @@ function main() {
   assert.ok(renderer.includes('drawTower'));
   assert.ok(renderer.includes('drawRoad'));
   assert.ok(renderer.includes('drawProjectileTrail'));
+  assert.ok(renderer.includes('function drawPlayerAnchor'));
+  assert.ok(renderer.includes('function drawInvulnerabilityShell'));
+  assert.ok(renderer.includes('function drawLevelShockwave'));
   assert.ok(renderer.includes('function drawHazard'));
   assert.ok(renderer.includes('function drawWarning'));
+  assert.ok(renderer.includes('function drawArmedHazardTicks'));
+  assert.ok(renderer.includes('function drawWarningPhaseTicks'));
   assert.ok(renderer.includes('drawLaneShape'));
   assert.ok(renderer.includes('thornCross'));
   assert.ok(renderer.includes('ambusher'));
+  assert.ok(renderer.includes('function drawEnemyThreatRing'));
+  assert.ok(renderer.includes('function getEnemyOutline'));
   assert.ok(renderer.includes('drawGoblinEnemy'));
   assert.ok(renderer.includes('drawSlimeEnemy'));
   assert.ok(renderer.includes('drawArmorEnemy'));
@@ -657,6 +687,11 @@ function main() {
   assert.ok(renderer.includes('drawCultistEnemy'));
   assert.ok(renderer.includes('drawSentinelEnemy'));
   assert.ok(renderer.includes('drawJawWarning'));
+  assert.ok(renderer.includes('function drawParticle'));
+  assert.ok(renderer.includes('function drawGemPullTrail'));
+  assert.ok(renderer.includes('state.particles.forEach'));
+  assert.ok(renderer.includes('function drawBossStatusHud'));
+  assert.ok(renderer.includes('MODE ${modeLabel}'));
 
   const styles = readGameFile('styles.css');
   assert.ok(styles.includes('--surface-parchment: #2b2116;'));
@@ -664,6 +699,11 @@ function main() {
   assert.ok(styles.includes('aspect-ratio: 16 / 9;'));
   assert.ok(styles.includes('.feedback-strip'));
   assert.ok(styles.includes('.hud-rail'));
+  assert.ok(styles.includes('.hud-chip.mode-demo'));
+  assert.ok(styles.includes('.hud-chip.mode-quick'));
+  assert.ok(styles.includes('.hud-chip.mode-standard'));
+  assert.ok(styles.includes('.boss-chip.boss-active'));
+  assert.ok(styles.includes('.boss-chip.evolution-ready-chip'));
   assert.ok(styles.includes('.sheet-list'));
   assert.ok(styles.includes('.playbook-option'));
   assert.ok(styles.includes('.rarity-rare'));
@@ -678,6 +718,7 @@ function main() {
   assert.ok(styles.includes('.card-seal'));
   assert.ok(styles.includes('.rune-badge'));
   assert.ok(styles.includes('.result-ledger-head'));
+  assert.ok(styles.includes('.upgrade-option.evolution-ready'));
   assert.ok(styles.includes('@media (max-width: 980px)'));
 
   testWaveRollBehavior();
