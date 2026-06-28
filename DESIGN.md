@@ -10,37 +10,40 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 
 | Role | Token | Light | Dark | Usage |
 | --- | --- | --- | --- | --- |
-| Surface/primary | --surface-primary | #F7F5EF | #0D0F10 | Page background |
-| Surface/secondary | --surface-secondary | #ECE7D8 | #12100D | Panels, canvas shell |
-| Surface/elevated | --surface-elevated | #FFFFFF | #1B1711 | Modals, upgrade cards |
-| Surface/canvas | --surface-canvas | #D7D0BA | #070808 | Game field |
-| Surface/parchment | --surface-parchment | #D8C7A8 | #2B2116 | Character-sheet bands, option cards |
-| Text/primary | --text-primary | #1C2425 | #F2EAD9 | Main Korean text |
-| Text/secondary | --text-secondary | #526060 | #C6B99F | Supporting text |
-| Text/tertiary | --text-tertiary | #717B78 | #8F8069 | Metadata |
-| Border/default | --border-default | #B9B19D | #6B5436 | Panels and controls |
-| Border/subtle | --border-subtle | #D8D1C0 | #3A2B1D | Soft dividers |
-| Accent/primary | --accent-primary | #256F5A | #6F9B65 | Primary action, player |
-| Accent/hover | --accent-hover | #1D5948 | #A6BE86 | Hover/focus |
-| Accent/ember | --accent-ember | #A85F24 | #B8793C | XP, timers, warnings |
-| Accent/bell | --accent-bell | #5E4DB2 | #75629B | Boss, black-bell motif |
-| Status/success | --status-success | #1F7A4A | #8BCF83 | Win, cleared state |
-| Status/warning | --status-warning | #A85F24 | #D09A4A | Caution, upgrade available |
-| Status/error | --status-error | #A53C3C | #D36F61 | Low health, game over |
-| Status/info | --status-info | #315E7C | #80A8BD | Help and hints |
-| Class/fighter | --class-fighter | #8B6F3B | #BBA16F | Fighter cards, player, cleave |
-| Class/cleric | --class-cleric | #8D8238 | #C3BC79 | Cleric cards, pulse, healing light |
-| Class/thief | --class-thief | #8E552C | #BD7F45 | Thief cards, blade trails |
-| Class/druid | --class-druid | #4F7A44 | #799F63 | Druid cards, roots, wild aura |
-| Class/wizard | --class-wizard | #5E4DB2 | #8170B8 | Wizard cards, runes, shield |
-| Class/ranger | --class-ranger | #687839 | #9EAA62 | Ranger cards, arrows, hawk marks |
+| Surface/primary | --surface-primary | #F7F5EF | #090A09 | Page background |
+| Surface/secondary | --surface-secondary | #ECE7D8 | #11100C | Panels, canvas shell |
+| Surface/elevated | --surface-elevated | #FFFFFF | #18140F | Modals, upgrade cards |
+| Surface/canvas | --surface-canvas | #D7D0BA | #050605 | Game field |
+| Surface/parchment | --surface-parchment | #D8C7A8 | #241B12 | Character-sheet bands, option cards |
+| Surface/iron | --surface-iron | #C0B7A2 | #171717 | Rusted iron, dim UI metal |
+| Surface/tower | --surface-tower | #BDB6AA | #070706 | Black tower silhouettes and canvas depth |
+| Text/primary | --text-primary | #1C2425 | #E7DDC8 | Main Korean text |
+| Text/secondary | --text-secondary | #526060 | #B8AA8D | Supporting text |
+| Text/tertiary | --text-tertiary | #717B78 | #7F715B | Metadata |
+| Border/default | --border-default | #B9B19D | #5D4A2F | Panels and controls |
+| Border/subtle | --border-subtle | #D8D1C0 | #2F2418 | Soft dividers |
+| Accent/primary | --accent-primary | #256F5A | #5F7650 | Primary action, player |
+| Accent/hover | --accent-hover | #1D5948 | #94815C | Hover/focus |
+| Accent/ember | --accent-ember | #A85F24 | #9A6338 | Timers, rust, restrained warnings |
+| Accent/brass | --accent-brass | #8F6A2E | #9C7B45 | Brass frames, chest metal, focus lines |
+| Accent/bell | --accent-bell | #5E4DB2 | #5D527D | Boss, black-bell curse motif |
+| Status/success | --status-success | #1F7A4A | #6D996B | Win, cleared state |
+| Status/warning | --status-warning | #A85F24 | #B98A48 | Caution, evolution available |
+| Status/error | --status-error | #A53C3C | #A85249 | Low health, danger marks |
+| Status/info | --status-info | #315E7C | #6FA7B5 | XP and informational glow |
+| Class/fighter | --class-fighter | #8B6F3B | #9D875D | Fighter cards, player, cleave |
+| Class/cleric | --class-cleric | #8D8238 | #A59C66 | Cleric cards, pulse, healing light |
+| Class/thief | --class-thief | #8E552C | #9A6841 | Thief cards, blade trails |
+| Class/druid | --class-druid | #4F7A44 | #667F54 | Druid cards, roots, wild aura |
+| Class/wizard | --class-wizard | #5E4DB2 | #6B6090 | Wizard cards, runes, shield |
+| Class/ranger | --class-ranger | #687839 | #7E8756 | Ranger cards, arrows, hawk marks |
 
 ### Rules
 
 - Game UI uses the dark palette by default.
-- Dungeon World surfaces must avoid neon glow and dashboard glass. Prefer ink wash, worn parchment, rusted rules, stitched borders, and low-saturation class marks.
+- Dungeon World surfaces must avoid neon glow and dashboard glass. Prefer ink wash, worn parchment, rusted rules, brass seams, cracked panels, and low-saturation class marks.
 - Accent/primary is reserved for the player, start/retry controls, focus rings, and positive progress.
-- Accent/bell is only for the black bell, tower, boss, arcane shield, or special wave language.
+- Accent/bell is only for black-bell curse effects, boss patterns, arcane shield, or special wave language. The black tower and last gate remain the destination hierarchy.
 - Class colors are scoped to Dungeon World survivor playbook identity and should stay less dominant than health, XP, enemy, and boss readability colors.
 - No raw color values in UI files outside this table.
 
