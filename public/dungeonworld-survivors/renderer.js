@@ -1,6 +1,25 @@
 (function () {
   const CLASS_SPRITE_PATH_PREFIX = 'assets/classes/';
   const CLASS_SPRITE_IDS = ['fighter', 'cleric', 'thief', 'druid', 'wizard', 'ranger'];
+  const ENEMY_SPRITE_PATH_PREFIX = 'assets/enemies/';
+  const ENEMY_SPRITE_SPECS = {
+    goblin: { file: 'goblin.png', width: 48, height: 48 },
+    slime: { file: 'slime.png', width: 48, height: 48 },
+    armor: { file: 'armor.png', width: 48, height: 48 },
+    wolf: { file: 'wolf.png', width: 64, height: 40 },
+    mimic: { file: 'mimic.png', width: 56, height: 56 },
+    cultist: { file: 'cultist.png', width: 56, height: 56 },
+    warden: { file: 'warden.png', width: 128, height: 128 },
+  };
+  const ENEMY_BEHAVIOR_SPRITE_MAP = {
+    skirmisher: 'goblin',
+    lurcher: 'slime',
+    bulwark: 'armor',
+    charger: 'wolf',
+    ambusher: 'mimic',
+    caster: 'cultist',
+    boss: 'warden',
+  };
   const CREST_CLASS_MAP = {
     shield: 'fighter',
     halo: 'cleric',
@@ -10,7 +29,9 @@
     hawk: 'ranger',
   };
   const classSprites = Object.create(null);
+  const enemySprites = Object.create(null);
   let classSpritesPreload = null;
+  let enemySpritesPreload = null;
 
   function normalizeClassId(value) {
     if (!value) return '';
@@ -50,10 +71,45 @@
     return classSpritesPreload;
   }
 
+  function preloadEnemySprites() {
+    if (enemySpritesPreload) return enemySpritesPreload;
+    if (typeof window.Image !== 'function') {
+      enemySpritesPreload = Promise.resolve(enemySprites);
+      return enemySpritesPreload;
+    }
+    enemySpritesPreload = Promise.all(Object.keys(ENEMY_SPRITE_SPECS).map((spriteId) => new Promise((resolve) => {
+      const image = new window.Image();
+      const spec = ENEMY_SPRITE_SPECS[spriteId];
+      enemySprites[spriteId] = { image, loaded: false, failed: false, spec };
+      image.onload = () => {
+        enemySprites[spriteId].loaded = true;
+        resolve(enemySprites[spriteId]);
+      };
+      image.onerror = () => {
+        enemySprites[spriteId].failed = true;
+        resolve(enemySprites[spriteId]);
+      };
+      image.src = `${ENEMY_SPRITE_PATH_PREFIX}${spec.file}`;
+    }))).then(() => enemySprites);
+    return enemySpritesPreload;
+  }
+
   function getPlayerClassSprite(player) {
     const classId = resolvePlayerClassId(player);
     const sprite = classId ? classSprites[classId] : null;
     return sprite && sprite.loaded && !sprite.failed ? sprite.image : null;
+  }
+
+  function resolveEnemySpriteId(enemy) {
+    if (!enemy) return '';
+    if (enemy.spriteId && ENEMY_SPRITE_SPECS[enemy.spriteId]) return enemy.spriteId;
+    return ENEMY_BEHAVIOR_SPRITE_MAP[enemy.behavior] || '';
+  }
+
+  function getEnemySprite(enemy) {
+    const spriteId = resolveEnemySpriteId(enemy);
+    const sprite = spriteId ? enemySprites[spriteId] : null;
+    return sprite && sprite.loaded && !sprite.failed ? sprite : null;
   }
 
   function getPalette() {
@@ -623,10 +679,24 @@
 
   function drawEnemy(ctx, enemy, palette) {
     const color = enemy.hitFlash > 0 ? palette.textPrimary : resolveColor(palette, enemy.colorToken);
+    const enemySprite = getEnemySprite(enemy);
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
     const wobble = Math.sin(enemy.behaviorTimer * 5) * enemy.radius * 0.12;
     drawEnemyThreatRing(ctx, enemy, palette);
+    if (enemySprite) drawEnemySprite(ctx, enemySprite, enemy, palette, wobble);
+    else drawProceduralEnemy(ctx, enemy, palette, color, wobble);
+    ctx.restore();
+    const metrics = enemySprite ? getEnemySpriteMetrics(enemySprite, enemy) : { width: enemy.radius * 2.2, top: -enemy.radius };
+    const width = metrics.width;
+    const hpRatio = Math.max(0, enemy.hp / enemy.maxHp);
+    ctx.fillStyle = palette.borderSubtle;
+    ctx.fillRect(enemy.x - width / 2, enemy.y + metrics.top - 10, width, 4);
+    ctx.fillStyle = enemy.behavior === 'boss' ? palette.accentBell : palette.statusError;
+    ctx.fillRect(enemy.x - width / 2, enemy.y + metrics.top - 10, width * hpRatio, 4);
+  }
+
+  function drawProceduralEnemy(ctx, enemy, palette, color, wobble) {
     ctx.fillStyle = withAlpha(color, enemy.behavior === 'boss' ? 0.82 : 0.72);
     ctx.strokeStyle = getEnemyOutline(enemy, palette);
     ctx.lineWidth = enemy.behavior === 'boss' ? 5 : enemy.elite ? 3.5 : 2;
@@ -643,13 +713,34 @@
       ctx.fill();
       ctx.stroke();
     }
-    ctx.restore();
-    const width = enemy.radius * 2.2;
-    const hpRatio = Math.max(0, enemy.hp / enemy.maxHp);
-    ctx.fillStyle = palette.borderSubtle;
-    ctx.fillRect(enemy.x - width / 2, enemy.y - enemy.radius - 12, width, 4);
-    ctx.fillStyle = enemy.behavior === 'boss' ? palette.accentBell : palette.statusError;
-    ctx.fillRect(enemy.x - width / 2, enemy.y - enemy.radius - 12, width * hpRatio, 4);
+  }
+
+  function drawEnemySprite(ctx, sprite, enemy, palette, wobble) {
+    const metrics = getEnemySpriteMetrics(sprite, enemy);
+    const previousSmoothing = ctx.imageSmoothingEnabled;
+    const previousFilter = ctx.filter;
+    const snapX = Math.round(enemy.x) - enemy.x;
+    const snapY = Math.round(enemy.y) - enemy.y;
+    const offsetX = enemy.behavior === 'skirmisher' || enemy.behavior === 'lurcher' ? wobble : 0;
+    ctx.imageSmoothingEnabled = true;
+    if (enemy.hitFlash > 0) ctx.filter = 'brightness(1.75)';
+    ctx.drawImage(
+      sprite.image,
+      snapX + offsetX - metrics.width / 2,
+      snapY - metrics.height / 2,
+      metrics.width,
+      metrics.height,
+    );
+    ctx.filter = previousFilter;
+    ctx.imageSmoothingEnabled = previousSmoothing;
+  }
+
+  function getEnemySpriteMetrics(sprite, enemy) {
+    const eliteScale = enemy.elite ? 1.14 : 1;
+    const bossScale = enemy.behavior === 'boss' ? 1 : eliteScale;
+    const width = sprite.spec.width * bossScale;
+    const height = sprite.spec.height * bossScale;
+    return { width, height, top: -height / 2 };
   }
 
   function drawEnemyThreatRing(ctx, enemy, palette) {
@@ -1535,6 +1626,7 @@
     createCamera,
     formatTime,
     preloadClassSprites,
+    preloadEnemySprites,
     render,
   };
 })();

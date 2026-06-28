@@ -40,6 +40,7 @@
   let previousFocus = null;
 
   renderer.preloadClassSprites();
+  renderer.preloadEnemySprites();
 
   function getRequestedMode() {
     const params = new URLSearchParams(window.location.search);

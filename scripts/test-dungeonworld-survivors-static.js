@@ -12,6 +12,15 @@ const REQUIRED_FILES = [
   'renderer.js',
   'game.js',
 ];
+const ENEMY_SPRITES = {
+  'goblin.png': [48, 48],
+  'slime.png': [48, 48],
+  'armor.png': [48, 48],
+  'wolf.png': [64, 40],
+  'mimic.png': [56, 56],
+  'cultist.png': [56, 56],
+  'warden.png': [128, 128],
+};
 
 function readGameFile(fileName) {
   return fs.readFileSync(path.join(GAME_DIR, fileName), 'utf8');
@@ -19,6 +28,20 @@ function readGameFile(fileName) {
 
 function readProjectFile(fileName) {
   return fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8');
+}
+
+function readPngSize(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  assert.strictEqual(buffer.toString('ascii', 1, 4), 'PNG', `${filePath} should be a PNG`);
+  return [buffer.readUInt32BE(16), buffer.readUInt32BE(20)];
+}
+
+function testEnemySpriteAssets() {
+  Object.entries(ENEMY_SPRITES).forEach(([fileName, expectedSize]) => {
+    const filePath = path.join(GAME_DIR, 'assets', 'enemies', fileName);
+    assert.ok(fs.existsSync(filePath), `${fileName} should exist`);
+    assert.deepStrictEqual(readPngSize(filePath), expectedSize, `${fileName} should be ${expectedSize.join('x')}`);
+  });
 }
 
 function testWaveRollBehavior() {
@@ -657,6 +680,7 @@ function main() {
   assert.ok(game.includes('reward-quick-grid'));
   assert.ok(game.includes('function shortenRecommendation'));
   assert.ok(game.includes('function formatEvolutionComparison'));
+  assert.ok(game.includes('renderer.preloadEnemySprites();'));
   assert.ok(game.includes('런 목표'));
   assert.ok(game.includes('보스전 기여'));
   assert.ok(game.includes('formatTagBadges'));
@@ -674,10 +698,18 @@ function main() {
   assert.ok(renderer.includes('function drawPlayerAnchor'));
   assert.ok(renderer.includes('function drawPlayerMiniatureBody'));
   assert.ok(renderer.includes('classSprites'));
+  assert.ok(renderer.includes('enemySprites'));
   assert.ok(renderer.includes('assets/classes/'));
+  assert.ok(renderer.includes('assets/enemies/'));
   assert.ok(renderer.includes('function preloadClassSprites'));
+  assert.ok(renderer.includes('function preloadEnemySprites'));
   assert.ok(renderer.includes('function getPlayerClassSprite'));
+  assert.ok(renderer.includes('function getEnemySprite'));
   assert.ok(renderer.includes('function drawPlayerClassSprite'));
+  assert.ok(renderer.includes('function drawEnemySprite'));
+  assert.ok(renderer.includes('function drawProceduralEnemy'));
+  assert.ok(renderer.includes('if (enemySprite)'));
+  assert.ok(renderer.includes("boss: 'warden'"));
   assert.ok(renderer.includes('if (classSprite)'));
   assert.ok(renderer.includes('} else {'));
   assert.ok(renderer.includes('ctx.drawImage(image'));
@@ -753,7 +785,10 @@ function main() {
   assert.ok(webGameDoc.includes('중심 목표는 검은탑의 마지막 문'));
   assert.ok(webGameDoc.includes('검은 종은 탑에서 울리는 저주와 보스 패턴의 신호'));
   assert.ok(webGameDoc.includes('네온 장판이 아니라 낮은 투명도의 피빛 의식선'));
+  assert.ok(webGameDoc.includes('assets/enemies/<enemy>.png'));
+  assert.ok(webGameDoc.includes('스프라이트가 없거나 로드에 실패하면 기존 절차형 적 렌더로 폴백'));
 
+  testEnemySpriteAssets();
   testWaveRollBehavior();
   testRunModesAndStandardTimeline();
   testLargeWorldAndMovementClamp();
