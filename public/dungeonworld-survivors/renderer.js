@@ -1,4 +1,61 @@
 (function () {
+  const CLASS_SPRITE_PATH_PREFIX = 'assets/classes/';
+  const CLASS_SPRITE_IDS = ['fighter', 'cleric', 'thief', 'druid', 'wizard', 'ranger'];
+  const CREST_CLASS_MAP = {
+    shield: 'fighter',
+    halo: 'cleric',
+    blade: 'thief',
+    root: 'druid',
+    rune: 'wizard',
+    hawk: 'ranger',
+  };
+  const classSprites = Object.create(null);
+  let classSpritesPreload = null;
+
+  function normalizeClassId(value) {
+    if (!value) return '';
+    if (typeof value === 'object' && typeof value.id === 'string') return normalizeClassId(value.id);
+    if (typeof value !== 'string') return '';
+    const classId = value.toLowerCase();
+    return CLASS_SPRITE_IDS.includes(classId) ? classId : '';
+  }
+
+  function resolvePlayerClassId(player) {
+    return normalizeClassId(player.playbook)
+      || normalizeClassId(player.classId)
+      || normalizeClassId(player.playbookId)
+      || CREST_CLASS_MAP[player.crest]
+      || '';
+  }
+
+  function preloadClassSprites() {
+    if (classSpritesPreload) return classSpritesPreload;
+    if (typeof window.Image !== 'function') {
+      classSpritesPreload = Promise.resolve(classSprites);
+      return classSpritesPreload;
+    }
+    classSpritesPreload = Promise.all(CLASS_SPRITE_IDS.map((classId) => new Promise((resolve) => {
+      const image = new window.Image();
+      classSprites[classId] = { image, loaded: false, failed: false };
+      image.onload = () => {
+        classSprites[classId].loaded = true;
+        resolve(classSprites[classId]);
+      };
+      image.onerror = () => {
+        classSprites[classId].failed = true;
+        resolve(classSprites[classId]);
+      };
+      image.src = `${CLASS_SPRITE_PATH_PREFIX}${classId}.png`;
+    }))).then(() => classSprites);
+    return classSpritesPreload;
+  }
+
+  function getPlayerClassSprite(player) {
+    const classId = resolvePlayerClassId(player);
+    const sprite = classId ? classSprites[classId] : null;
+    return sprite && sprite.loaded && !sprite.failed ? sprite.image : null;
+  }
+
   function getPalette() {
     const style = getComputedStyle(document.documentElement);
     const token = (name) => style.getPropertyValue(name).trim();
@@ -240,28 +297,46 @@
 
   function drawPlayer(ctx, player, palette) {
     const accent = resolveColor(palette, player.accentToken);
+    const classSprite = getPlayerClassSprite(player);
     ctx.save();
     drawPlayerAnchor(ctx, player, accent, palette);
     ctx.translate(player.x, player.y);
-    ctx.rotate(player.facing || 0);
     if (player.invulnerableTimer > 0) drawInvulnerabilityShell(ctx, player.radius, accent, palette);
     ctx.globalAlpha = player.invulnerableTimer > 0 ? 0.78 : 1;
-    drawPlayerMiniatureBody(ctx, player, accent, palette);
-    ctx.fillStyle = withAlpha(accent, 0.72);
-    ctx.strokeStyle = withAlpha(palette.textPrimary, 0.78);
-    ctx.lineWidth = 2.2;
-    ctx.save();
-    ctx.scale(0.78, 0.78);
-    if (player.crest === 'shield') drawShieldCrest(ctx, player.radius);
-    else if (player.crest === 'blade') drawBladeCrest(ctx, player.radius);
-    else if (player.crest === 'halo') drawHaloCrest(ctx, player.radius);
-    else if (player.crest === 'root') drawRootCrest(ctx, player.radius);
-    else if (player.crest === 'rune') drawRuneCrest(ctx, player.radius);
-    else drawHawkCrest(ctx, player.radius);
-    ctx.restore();
-    drawFacingNotch(ctx, player.radius, accent);
+    if (classSprite) {
+      drawPlayerClassSprite(ctx, classSprite, player);
+      ctx.save();
+      ctx.rotate(player.facing || 0);
+      drawFacingNotch(ctx, player.radius, accent);
+      ctx.restore();
+    } else {
+      ctx.rotate(player.facing || 0);
+      drawPlayerMiniatureBody(ctx, player, accent, palette);
+      ctx.fillStyle = withAlpha(accent, 0.72);
+      ctx.strokeStyle = withAlpha(palette.textPrimary, 0.78);
+      ctx.lineWidth = 2.2;
+      ctx.save();
+      ctx.scale(0.78, 0.78);
+      if (player.crest === 'shield') drawShieldCrest(ctx, player.radius);
+      else if (player.crest === 'blade') drawBladeCrest(ctx, player.radius);
+      else if (player.crest === 'halo') drawHaloCrest(ctx, player.radius);
+      else if (player.crest === 'root') drawRootCrest(ctx, player.radius);
+      else if (player.crest === 'rune') drawRuneCrest(ctx, player.radius);
+      else drawHawkCrest(ctx, player.radius);
+      ctx.restore();
+      drawFacingNotch(ctx, player.radius, accent);
+    }
     ctx.restore();
     drawPlayerAuras(ctx, player, accent, palette);
+  }
+
+  function drawPlayerClassSprite(ctx, image, player) {
+    const previousSmoothing = ctx.imageSmoothingEnabled;
+    const snapX = Math.round(player.x) - player.x;
+    const snapY = Math.round(player.y) - player.y;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(image, snapX - 32, snapY - 32, 64, 64);
+    ctx.imageSmoothingEnabled = previousSmoothing;
   }
 
   function drawPlayerMiniatureBody(ctx, player, accent, palette) {
@@ -1459,6 +1534,7 @@
   window.DungeonworldSurvivorsRenderer = {
     createCamera,
     formatTime,
+    preloadClassSprites,
     render,
   };
 })();

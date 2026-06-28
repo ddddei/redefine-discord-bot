@@ -673,6 +673,15 @@ function main() {
   assert.ok(renderer.includes('drawProjectileTrail'));
   assert.ok(renderer.includes('function drawPlayerAnchor'));
   assert.ok(renderer.includes('function drawPlayerMiniatureBody'));
+  assert.ok(renderer.includes('classSprites'));
+  assert.ok(renderer.includes('assets/classes/'));
+  assert.ok(renderer.includes('function preloadClassSprites'));
+  assert.ok(renderer.includes('function getPlayerClassSprite'));
+  assert.ok(renderer.includes('function drawPlayerClassSprite'));
+  assert.ok(renderer.includes('if (classSprite)'));
+  assert.ok(renderer.includes('} else {'));
+  assert.ok(renderer.includes('ctx.drawImage(image'));
+  assert.ok(renderer.includes('ctx.imageSmoothingEnabled = false'));
   assert.ok(renderer.includes('function drawInvulnerabilityShell'));
   assert.ok(renderer.includes('function drawLevelShockwave'));
   assert.ok(renderer.includes('function drawHazard'));

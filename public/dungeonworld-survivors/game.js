@@ -39,6 +39,8 @@
   let pendingChestReward = null;
   let previousFocus = null;
 
+  renderer.preloadClassSprites();
+
   function getRequestedMode() {
     const params = new URLSearchParams(window.location.search);
     const requestedMode = params.get('mode');
