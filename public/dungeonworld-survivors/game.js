@@ -460,6 +460,7 @@
       `<li class="goal-${goal.status}"><strong>${formatGoalStatus(goal.status)} · ${goal.title}</strong><span>${goal.progress}</span><span>${goal.close}</span></li>`
     )).join('');
     const contribution = summary.bossContribution;
+    const ultimate = summary.classUltimate || { title: '궁극기 없음', ready: false, progress: '조건 없음', copy: '' };
     elements.upgradeOptions.innerHTML = [
       '<section class="result-ledger-head">',
       `<span class="card-seal" aria-hidden="true"></span><div><p class="retry-copy">${summary.buildVerdict}</p>`,
@@ -473,6 +474,7 @@
       '</div>',
       `<div class="result-tags">${tags}</div>`,
       '<p class="retry-copy">다음 런에서는 같은 룬 배지를 두 장 이상 모아 시너지를 먼저 여는 쪽이 보스 도달이 안정적입니다.</p>',
+      `<h3 class="result-heading">직업별 궁극기</h3><ul class="result-list"><li><strong>${ultimate.ready ? '궁극기 완성' : '궁극기 미완성'} · ${ultimate.title}</strong><span>${ultimate.progress}</span><span>${ultimate.copy}</span></li></ul>`,
       `<h3 class="result-heading">런 목표</h3><ul class="result-list goal-result-list">${goals}</ul>`,
       `<h3 class="result-heading">보스전 기여</h3><ul class="result-list"><li><strong>${contribution.label}</strong><span>${contribution.text}</span><span>발동 ${contribution.triggers}회 · 추가 피해 ${contribution.bonusDamage} · 완화 ${contribution.preventedDamage} · 회복 ${contribution.recoveredHealth} · 제어 ${contribution.controlTime}초</span></li></ul>`,
       `<h3 class="result-heading">선택한 업그레이드</h3><ul class="result-list">${upgrades}</ul>`,
@@ -556,6 +558,9 @@
     const background = renderer.getBackgroundRenderInfo
       ? renderer.getBackgroundRenderInfo(state)
       : { backgroundKey: 'unknown', groundKey: 'unknown', groundLoadState: 'unknown', usingProcedural: false, setpieces: [] };
+    const readability = renderer.getCombatReadabilityInfo
+      ? renderer.getCombatReadabilityInfo(state)
+      : { hudContrast: 'unknown', bossPhaseLabel: '', activeElitePatterns: [] };
     elements.qaPanel.classList.remove('hidden');
     elements.qaPanel.innerHTML = [
       `<strong>QA balance</strong>`,
@@ -565,6 +570,7 @@
       `<span>웨이브 ${wave.title} · 적 ${state.enemies.length}</span>`,
       `<span>위험 ${state.hazards.length} · 상자 ${state.chests.length} · 보스 ${bossState}</span>`,
       `<span>배경 ${background.backgroundKey} · 바닥 ${background.groundKey}/${background.groundLoadState}${background.usingProcedural ? ' · 절차형 폴백' : ''} · 세트 ${background.setpieces.join(', ') || '없음'}</span>`,
+      `<span>가독성 ${readability.hudContrast} · 보스 페이즈 ${readability.bossPhaseLabel || '없음'} · 엘리트 ${readability.activeElitePatterns.join(', ') || '없음'}</span>`,
       `<span>최근 업그레이드 ${recent}</span>`,
       `<span>추천 ${recommendation}</span>`,
       `<span>런 목표 ${goals}</span>`,
@@ -579,6 +585,9 @@
     const background = renderer.getBackgroundRenderInfo
       ? renderer.getBackgroundRenderInfo(state)
       : { backgroundKey: 'unknown', groundKey: 'unknown', groundLoadState: 'unknown', usingProcedural: false, setpieces: [] };
+    const readability = renderer.getCombatReadabilityInfo
+      ? renderer.getCombatReadabilityInfo(state)
+      : { hudContrast: 'unknown', bossPhaseLabel: '', activeElitePatterns: [] };
     return {
       status: state.status,
       mode: state.mode.id,
@@ -590,6 +599,7 @@
       bossPresent: Boolean(boss),
       bossPhase: state.bossPhase ? state.bossPhase.id : '',
       background,
+      readability,
     };
   }
 

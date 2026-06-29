@@ -215,6 +215,8 @@ async function main() {
     const afterMove = await evaluate(cdp, 'window.DungeonworldSurvivorsQa.getSnapshot()');
     assert.ok(afterMove.player.x > beforeMove.player.x, 'ArrowRight should move the player to the right');
     assert.strictEqual(afterMove.background.backgroundKey, 'inn');
+    assert.ok(afterMove.readability);
+    assert.strictEqual(afterMove.readability.hudContrast, 'reinforced');
 
     const basin = await evaluate(cdp, 'window.DungeonworldSurvivorsQa.jumpTo(91)');
     assert.strictEqual(basin.wave.id, 'basin');
@@ -227,15 +229,67 @@ async function main() {
     assert.strictEqual(fallback.background.groundLoadState, 'failed');
     assert.strictEqual(fallback.background.usingProcedural, true);
 
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'L', modifiers: 8 });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'L', modifiers: 8 });
+    await waitFor(cdp, "document.getElementById('modal').dataset.mode === 'upgrade'", 'level-up modal');
+    const levelModal = await evaluate(cdp, `(() => ({
+      mode: document.getElementById('modal').dataset.mode,
+      options: document.querySelectorAll('.upgrade-option').length,
+      hasEvolutionLine: Boolean(document.querySelector('.evolution-line')),
+    }))()`);
+    assert.strictEqual(levelModal.mode, 'upgrade');
+    assert.strictEqual(levelModal.options, 3);
+    assert.strictEqual(levelModal.hasEvolutionLine, true);
+    await evaluate(cdp, "document.querySelector('.upgrade-option').click()");
+    await waitFor(cdp, "window.DungeonworldSurvivorsQa.getSnapshot().status === 'running'", 'running after upgrade');
+
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'C', modifiers: 8 });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'C', modifiers: 8 });
+    await waitFor(cdp, "document.getElementById('modal').dataset.mode === 'chest'", 'chest modal');
+    const chestModal = await evaluate(cdp, `(() => ({
+      title: document.getElementById('modal-title').textContent,
+      hasReward: Boolean(document.querySelector('.chest-reward-option')),
+    }))()`);
+    assert.strictEqual(chestModal.hasReward, true);
+    assert.match(chestModal.title, /상자|무기/);
+    await evaluate(cdp, "document.querySelector('.chest-reward-option').click()");
+    await waitFor(cdp, "window.DungeonworldSurvivorsQa.getSnapshot().status === 'running'", 'running after chest');
+
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'E', modifiers: 8 });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'E', modifiers: 8 });
+    await waitFor(cdp, "document.getElementById('modal').dataset.mode === 'chest'", 'evolution chest modal');
+    const evolutionModal = await evaluate(cdp, `(() => ({
+      title: document.getElementById('modal-title').textContent,
+      ready: Boolean(document.querySelector('.chest-reward-option.evolution-ready')),
+      copy: document.querySelector('.effect-line') ? document.querySelector('.effect-line').textContent : '',
+    }))()`);
+    assert.strictEqual(evolutionModal.ready, true);
+    assert.match(evolutionModal.title, /진화/);
+    assert.match(evolutionModal.copy, /진화/);
+    await evaluate(cdp, "document.querySelector('.chest-reward-option').click()");
+    await waitFor(cdp, "window.DungeonworldSurvivorsQa.getSnapshot().status === 'running'", 'running after evolution');
+
     const boss = await evaluate(cdp, 'window.DungeonworldSurvivorsQa.jumpTo(199)');
     assert.strictEqual(boss.background.backgroundKey, 'towerGate');
     assert.ok(boss.background.setpieces.includes('towerGate'));
     assert.strictEqual(boss.bossSpawned, true);
     assert.strictEqual(boss.bossPresent, true);
+    assert.ok(boss.bossPhase);
+    assert.ok(boss.readability.bossPhaseLabel);
+    assert.ok(boss.readability.activeElitePatterns.length >= 0);
 
     await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'N', modifiers: 8 });
     await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'N', modifiers: 8 });
     await waitFor(cdp, "window.DungeonworldSurvivorsQa.getSnapshot().status === 'won'", 'boss shortcut win');
+    await waitFor(cdp, "document.getElementById('modal').dataset.mode === 'result'", 'result modal');
+    const resultModal = await evaluate(cdp, `(() => ({
+      heading: document.querySelector('.result-ledger-head h3') ? document.querySelector('.result-ledger-head h3').textContent : '',
+      hasUltimate: document.getElementById('upgrade-options').textContent.includes('궁극기'),
+      hasBossContribution: document.getElementById('upgrade-options').textContent.includes('보스전 기여'),
+    }))()`);
+    assert.ok(resultModal.heading.length > 0);
+    assert.strictEqual(resultModal.hasUltimate, true);
+    assert.strictEqual(resultModal.hasBossContribution, true);
 
     const canvasHasPixels = await evaluate(cdp, "(() => { const canvas = document.getElementById('game-canvas'); const data = canvas.getContext('2d').getImageData(0, 0, 16, 16).data; return Array.from(data).some((value) => value !== 0); })()");
     assert.strictEqual(canvasHasPixels, true, 'canvas should render nonblank pixels');

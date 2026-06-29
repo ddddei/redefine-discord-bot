@@ -379,7 +379,8 @@
 
   function spawnElite(state, minute) {
     const typeIds = ['armor', 'mimic', 'cultist', 'wolf'];
-    const type = state.content.enemyTypes[typeIds[(minute / 5 - 1) % typeIds.length]];
+    const typeId = typeIds[(minute / 5 - 1) % typeIds.length];
+    const type = state.content.enemyTypes[typeId];
     const side = Math.floor(Math.random() * 4);
     const axisLength = side < 2 ? WORLD.height : WORLD.width;
     const edge = createEdgePoint(side, Math.random() * axisLength);
@@ -393,9 +394,42 @@
     elite.damage *= 1.25;
     elite.radius += 5;
     elite.xp += 12;
+    applyElitePattern(state, elite, typeId);
     state.effects.pulse = 0.55;
     state.effects.bossPulse = Math.max(state.effects.bossPulse, 0.46);
     addFloater(state, `${minute}분 엘리트 등장`, state.player.x, state.player.y - 112, '--accent-ember', 1.8, true);
+  }
+
+  function applyElitePattern(state, elite, typeId) {
+    const pattern = state.content.elitePatterns && state.content.elitePatterns[typeId];
+    if (!pattern) return;
+    elite.elitePattern = pattern.modifier;
+    elite.elitePatternTitle = pattern.title;
+    elite.name = `${elite.name} · ${pattern.title}`;
+    elite.attackProfile.warningLabel = pattern.warningLabel || `엘리트 ${elite.attackProfile.warningLabel}`;
+    if (pattern.modifier === 'guardBreak') {
+      elite.attackProfile.arc = Math.max(elite.attackProfile.arc || 0, Math.PI * 0.82);
+      elite.attackProfile.reach = Math.max(elite.attackProfile.reach || 0, 104);
+      elite.attackProfile.windup += 0.1;
+      return;
+    }
+    if (pattern.modifier === 'jawAmbush') {
+      elite.attackProfile.arc = Math.max(elite.attackProfile.arc || 0, Math.PI * 0.74);
+      elite.attackProfile.reach = Math.max(elite.attackProfile.reach || 0, 132);
+      elite.speed *= 1.08;
+      return;
+    }
+    if (pattern.modifier === 'bellChoir') {
+      elite.attackProfile.radius = Math.max(elite.attackProfile.radius || 0, 104);
+      elite.attackProfile.width = Math.max(elite.attackProfile.width || 0, 34);
+      elite.attackProfile.recovery = Math.max(1.2, elite.attackProfile.recovery - 0.18);
+      return;
+    }
+    if (pattern.modifier === 'longCharge') {
+      elite.attackProfile.length = Math.max(elite.attackProfile.length || 0, 190);
+      elite.attackProfile.width = Math.max(24, (elite.attackProfile.width || 28) - 2);
+      elite.speed *= 1.06;
+    }
   }
 
   function updateWaveHazards(state, wave, dt) {
@@ -1698,11 +1732,13 @@
       .sort((a, b) => state.buildTags[b] - state.buildTags[a])
       .map((tag) => ({ tag, count: state.buildTags[tag] }));
     const buildIdentity = createBuildIdentity(state, sortedTags);
+    const classUltimate = evaluateClassUltimate(state);
     return {
       playbook: state.playbook.title,
       buildName: buildIdentity.name,
       buildVerdict: buildIdentity.verdict,
       buildSummary: buildIdentity.summary,
+      classUltimate,
       survivalTime: Math.min(state.elapsed, state.duration),
       kills: state.kills,
       level: state.player.level,
@@ -1723,6 +1759,7 @@
 
   function createBuildIdentity(state, sortedTags) {
     const primaryTag = sortedTags[0] ? sortedTags[0].tag : null;
+    const classUltimate = evaluateClassUltimate(state);
     const playbookNames = {
       fighter: '전사',
       thief: '도적',
@@ -1757,9 +1794,31 @@
       ? `${state.synergies.length}개 시너지 발동`
       : '시너지 미발동';
     return {
-      name: `${theme} ${playbookName}`,
+      name: classUltimate.ready ? classUltimate.resultName : `${theme} ${playbookName}`,
       verdict,
       summary: `${state.kills}체 처치, 레벨 ${state.player.level}, ${synergyText}`,
+    };
+  }
+
+  function evaluateClassUltimate(state) {
+    const ultimate = state.playbook.ultimate;
+    if (!ultimate) {
+      return {
+        title: '궁극기 없음',
+        resultName: state.playbook.title,
+        ready: false,
+        progress: '조건 없음',
+        copy: '이 플레이북에는 궁극기 조건이 없습니다.',
+      };
+    }
+    const count = ultimate.tags.reduce((total, tag) => total + (state.buildTags[tag] || 0), 0);
+    const ready = ultimate.tags.every((tag) => (state.buildTags[tag] || 0) > 0) || count >= ultimate.tags.length;
+    return {
+      title: ultimate.title,
+      resultName: ultimate.resultName,
+      ready,
+      progress: `${count} / ${ultimate.tags.length} 핵심 태그`,
+      copy: ultimate.copy,
     };
   }
 
@@ -1814,6 +1873,7 @@
     getEligibleEvolutions,
     getEvolutionPlan,
     getRunSummary,
+    evaluateClassUltimate,
     getUpgradeEvolutionState,
     pickUpgrades,
     setInventoryItemLevel,

@@ -644,6 +644,33 @@
     },
   ];
 
+  const elitePatterns = {
+    armor: {
+      title: '철문 봉쇄',
+      modifier: 'guardBreak',
+      warningLabel: '엘리트 철문 휘두르기',
+      copy: '빈 갑옷 엘리트는 더 넓은 호로 길목을 닫습니다.',
+    },
+    mimic: {
+      title: '굶주린 상자',
+      modifier: 'jawAmbush',
+      warningLabel: '엘리트 상자 이빨',
+      copy: '미믹 엘리트는 이빨 예고가 넓고 상자 근처 압박이 큽니다.',
+    },
+    cultist: {
+      title: '검은 종 성가',
+      modifier: 'bellChoir',
+      warningLabel: '엘리트 종말 기도',
+      copy: '신도 엘리트는 원형 종파를 더 자주 겹칩니다.',
+    },
+    wolf: {
+      title: '긴 그림자 돌진',
+      modifier: 'longCharge',
+      warningLabel: '엘리트 그림자 돌진',
+      copy: '늑대 엘리트는 길고 얇은 돌진로를 남깁니다.',
+    },
+  };
+
   const playbooks = [
     {
       id: 'fighter',
@@ -662,6 +689,12 @@
       attack: 'cleave',
       survival: '방패벽: 방어 +3, 긴장 상승을 크게 줄입니다.',
       upgradePool: ['fighter', 'martial', 'survival'],
+      ultimate: {
+        title: '철문 파쇄자',
+        resultName: '철문 파쇄자',
+        tags: ['shield', 'boss'],
+        copy: '방패선과 보스 압박을 갖추면 마지막 문 앞에서 버티며 밀어붙이는 전사 빌드입니다.',
+      },
       apply: (player) => {
         player.maxHealth += 22;
         player.health = player.maxHealth;
@@ -690,6 +723,12 @@
       attack: 'knives',
       survival: '그림자 걸음: 이동 속도와 회피가 높고 경험치 회수가 빠릅니다.',
       upgradePool: ['thief', 'mobility', 'trick'],
+      ultimate: {
+        title: '그림자 칼비꾼',
+        resultName: '그림자 칼비꾼',
+        tags: ['blade', 'mobility'],
+        copy: '칼날 박자와 기동 태그가 모이면 보스 전조 뒤 폭딜 창을 여는 도적 빌드입니다.',
+      },
       apply: (player) => {
         player.maxHealth -= 8;
         player.health = player.maxHealth;
@@ -718,6 +757,12 @@
       attack: 'radiance',
       survival: '치유 기도: 주기적으로 체력을 회복하고 2d6 판정 실패 피해를 낮춥니다.',
       upgradePool: ['cleric', 'faith', 'survival'],
+      ultimate: {
+        title: '태양환 사면자',
+        resultName: '태양환 사면자',
+        tags: ['faith', 'bell'],
+        copy: '기도 닻과 검은 종 사면을 함께 챙긴 사제는 피격 뒤 회복으로 전선을 붙잡습니다.',
+      },
       apply: (player) => {
         player.attackCooldown = 0.88;
         player.damage += 2;
@@ -746,6 +791,12 @@
       attack: 'roots',
       survival: '짐승의 형상: 긴장이 높아질수록 이동 속도와 둔화 범위가 커집니다.',
       upgradePool: ['druid', 'wild', 'control'],
+      ultimate: {
+        title: '고대 뿌리 문지기',
+        resultName: '고대 뿌리 문지기',
+        tags: ['root', 'control'],
+        copy: '뿌리와 제어 태그를 모으면 보스 패턴 뒤 둔화로 문 앞 공간을 되찾습니다.',
+      },
       apply: (player) => {
         player.speed *= 1.08;
         player.attackCooldown = 0.82;
@@ -774,6 +825,12 @@
       attack: 'missile',
       survival: '비전 보호막: 일정 시간마다 한 번 접촉 피해를 줄입니다.',
       upgradePool: ['wizard', 'arcane', 'control'],
+      ultimate: {
+        title: '검은 서고 유성술사',
+        resultName: '검은 서고 유성술사',
+        tags: ['arcane', 'pierce'],
+        copy: '비전 결계와 관통 주문을 겹친 마법사는 보호막 뒤 주문 피해를 끌어올립니다.',
+      },
       apply: (player) => {
         player.maxHealth -= 14;
         player.health = player.maxHealth;
@@ -803,6 +860,12 @@
       attack: 'arrow',
       survival: '동료 매: 주기적으로 약한 적을 찍어 경험치 흐름을 만듭니다.',
       upgradePool: ['ranger', 'martial', 'mobility'],
+      ultimate: {
+        title: '파수꾼 사냥매',
+        resultName: '파수꾼 사냥매',
+        tags: ['hunt', 'pierce'],
+        copy: '추적 표식과 관통을 갖춘 레인저는 거리를 유지하며 마지막 문 보스를 녹입니다.',
+      },
       apply: (player) => {
         player.speed *= 1.08;
         player.attackCooldown = 0.74;
@@ -1296,6 +1359,7 @@
     enemyTypes,
     wavePatterns,
     standardWavePatterns,
+    elitePatterns,
     itemCatalog,
     playbooks,
     upgrades,

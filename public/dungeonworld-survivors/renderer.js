@@ -378,6 +378,17 @@
     drawProceduralBackground(ctx, world, camera, state.elapsed, palette);
   }
 
+  function drawCombatReadabilityScrim(ctx, camera, state, palette) {
+    const bossWeight = state.bossSpawned ? 0.08 : 0;
+    ctx.save();
+    ctx.fillStyle = withAlpha(palette.surfaceCanvas, 0.18 + bossWeight);
+    ctx.fillRect(camera.x, camera.y, camera.width, camera.height);
+    ctx.strokeStyle = withAlpha(state.bossSpawned ? palette.accentBell : palette.borderDefault, state.bossSpawned ? 0.28 : 0.16);
+    ctx.lineWidth = state.bossSpawned ? 5 : 3;
+    ctx.strokeRect(camera.x + 10, camera.y + 10, camera.width - 20, camera.height - 20);
+    ctx.restore();
+  }
+
   function drawGroundTexture(ctx, world, camera, palette) {
     ctx.fillStyle = withAlpha(palette.borderSubtle, 0.24);
     const startX = Math.floor(camera.x / 80) * 80;
@@ -894,6 +905,16 @@
     const snapY = Math.round(enemy.y) - enemy.y;
     const offsetX = enemy.behavior === 'skirmisher' || enemy.behavior === 'lurcher' ? Math.round(wobble) : 0;
     ctx.imageSmoothingEnabled = false;
+    ctx.save();
+    ctx.strokeStyle = getEnemyOutline(enemy, palette);
+    ctx.lineWidth = enemy.behavior === 'boss' ? 5 : enemy.elite ? 3 : 2;
+    ctx.strokeRect(
+      snapX + offsetX - metrics.width / 2 - 2,
+      snapY - metrics.height / 2 - 2,
+      metrics.width + 4,
+      metrics.height + 4,
+    );
+    ctx.restore();
     if (enemy.hitFlash > 0) ctx.filter = 'brightness(1.75)';
     ctx.drawImage(
       sprite.image,
@@ -1592,6 +1613,7 @@
     ctx.save();
     ctx.translate(gem.x, gem.y);
     ctx.scale(pulse, pulse);
+    drawGemHalo(ctx, gem, palette);
     ctx.fillStyle = palette.statusInfo;
     ctx.strokeStyle = withAlpha(palette.textPrimary, 0.5);
     ctx.lineWidth = 1.6;
@@ -1606,6 +1628,18 @@
     ctx.strokeStyle = withAlpha(palette.statusInfo, gem.pullMode === 'magnet' ? 0.66 : 0.34);
     ctx.beginPath();
     ctx.arc(0, 0, gem.radius + (gem.pullMode === 'magnet' ? 6 : 3), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGemHalo(ctx, gem, palette) {
+    ctx.save();
+    ctx.fillStyle = withAlpha(palette.surfaceCanvas, 0.56);
+    ctx.strokeStyle = withAlpha(palette.statusInfo, gem.pullMode ? 0.74 : 0.42);
+    ctx.lineWidth = gem.pullMode ? 2.2 : 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, gem.radius + 7, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
     ctx.restore();
   }
@@ -1699,7 +1733,11 @@
     ctx.fillText(boss ? '검은 종 파수꾼' : '강적 접근', x + 14, y + 22);
     if (boss) {
       const ratio = Math.max(0, boss.hp / boss.maxHp);
-      drawBar(ctx, x + 136, y + 13, width - 154, 8, ratio, palette.borderSubtle, palette.accentBell);
+      const phaseLabel = state.bossPhase ? state.bossPhase.title : '문 앞의 종';
+      drawBar(ctx, x + 136, y + 11, width - 154, 8, ratio, palette.borderSubtle, palette.accentBell);
+      ctx.fillStyle = palette.textSecondary;
+      ctx.font = '700 11px "Apple SD Gothic Neo", Arial, sans-serif';
+      ctx.fillText(phaseLabel, x + 136, y + 27);
     } else {
       ctx.fillStyle = palette.accentBell;
       ctx.fillText('엘리트/보스 경고', x + 136, y + 22);
@@ -1764,6 +1802,21 @@
     return `${minutes}:${rest}`;
   }
 
+  function getCombatReadabilityInfo(state) {
+    const boss = state.enemies.find((enemy) => enemy.behavior === 'boss');
+    return {
+      hudContrast: 'reinforced',
+      bossPhaseLabel: state.bossPhase ? state.bossPhase.title : '',
+      bossPhase: state.bossPhase ? state.bossPhase.id : '',
+      activeElitePatterns: state.enemies
+        .filter((enemy) => enemy.elitePatternTitle)
+        .map((enemy) => enemy.elitePatternTitle),
+      warningCount: state.enemyWarnings.length + state.bossWarnings.length + state.hazards.length,
+      xpGemCount: state.gems.length,
+      bossVisible: Boolean(boss),
+    };
+  }
+
   function render(ctx, state, world) {
     const palette = getPalette();
     const canvas = ctx.canvas;
@@ -1775,6 +1828,7 @@
     }
     applyCamera(ctx, camera);
     drawBackground(ctx, world, camera, state, palette);
+    drawCombatReadabilityScrim(ctx, camera, state, palette);
     state.hazards.forEach((hazard) => drawHazard(ctx, hazard, palette));
     state.bossWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
     state.enemyWarnings.forEach((warning) => drawWarning(ctx, warning, palette));
@@ -1797,6 +1851,7 @@
     createCamera,
     formatTime,
     getBackgroundRenderInfo,
+    getCombatReadabilityInfo,
     markBackgroundSpriteFailedForQa,
     preloadClassSprites,
     preloadEnemySprites,

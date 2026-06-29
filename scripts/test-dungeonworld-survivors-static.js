@@ -386,9 +386,10 @@ function testUpgradeMetadataAndSynergies() {
 
   const summary = systems.getRunSummary(state);
   assert.strictEqual(summary.playbook, '전사');
-  assert.match(summary.buildName, /방패선 전사|생존선 전사/);
+  assert.match(summary.buildName, /철문 파쇄자|방패선 전사|생존선 전사/);
   assert.ok(summary.buildVerdict);
   assert.ok(summary.buildSummary.includes('시너지'));
+  assert.strictEqual(summary.classUltimate.ready, true);
   assert.strictEqual(summary.selectedUpgrades.length, 2);
   assert.ok(summary.buildTags.some((entry) => entry.tag === 'shield'));
   assert.ok(summary.synergies.some((synergy) => synergy.title === '방패선'));
@@ -474,6 +475,13 @@ function testInventoryEvolutionAndChestRewards() {
 
 function testStandardEliteDropsChest() {
   const { content, systems } = loadGameRuntime();
+  assert.ok(content.elitePatterns, 'elitePatterns should exist');
+  ['armor', 'mimic', 'cultist', 'wolf'].forEach((typeId) => {
+    assert.ok(content.elitePatterns[typeId], `${typeId} elite pattern should exist`);
+    assert.ok(content.elitePatterns[typeId].title, `${typeId} elite pattern should have title`);
+    assert.ok(content.elitePatterns[typeId].modifier, `${typeId} elite pattern should have modifier`);
+  });
+
   const standard = systems.createState(content, 'fighter', { mode: 'standard' });
   standard.elapsed = 300.01;
   standard.spawnTimer = 99;
@@ -483,6 +491,9 @@ function testStandardEliteDropsChest() {
   const elite = standard.enemies.find((enemy) => enemy.elite);
   assert.ok(elite);
   assert.strictEqual(elite.eliteMinute, 5);
+  assert.ok(elite.elitePattern);
+  assert.ok(elite.elitePatternTitle);
+  assert.ok(elite.attackProfile.warningLabel.includes('엘리트') || elite.name.includes('엘리트'));
   elite.hp = 0;
   systems.tick(standard, { up: false, down: false, left: false, right: false }, 0.016);
   assert.strictEqual(standard.chests.length, 1);
@@ -662,6 +673,31 @@ function testBossFlowCanSpawnAndResolveWin() {
   assert.strictEqual(state.bossDefeated, true);
 }
 
+function testClassUltimatesAndBuildNames() {
+  const { content, systems } = loadGameRuntime();
+  content.playbooks.forEach((playbook) => {
+    assert.ok(playbook.ultimate, `${playbook.id} should define an ultimate`);
+    assert.ok(playbook.ultimate.title, `${playbook.id} ultimate should have title`);
+    assert.ok(playbook.ultimate.resultName, `${playbook.id} ultimate should have resultName`);
+    assert.ok(playbook.ultimate.tags.length >= 2, `${playbook.id} ultimate should declare tags`);
+  });
+
+  const fighter = systems.createState(content, 'fighter');
+  systems.applyUpgrade(fighter, content.upgrades.find((upgrade) => upgrade.id === 'shieldBash'));
+  systems.applyUpgrade(fighter, content.upgrades.find((upgrade) => upgrade.id === 'ironVow'));
+  const fighterSummary = systems.getRunSummary(fighter);
+  assert.ok(fighterSummary.classUltimate);
+  assert.strictEqual(fighterSummary.classUltimate.ready, true);
+  assert.match(fighterSummary.buildName, /철문 파쇄자|방패선/);
+
+  const thief = systems.createState(content, 'thief');
+  systems.applyUpgrade(thief, content.upgrades.find((upgrade) => upgrade.id === 'shadowStep'));
+  systems.applyUpgrade(thief, content.upgrades.find((upgrade) => upgrade.id === 'backstabRhythm'));
+  const thiefSummary = systems.getRunSummary(thief);
+  assert.strictEqual(thiefSummary.classUltimate.ready, true);
+  assert.match(thiefSummary.buildName, /그림자 칼비꾼|칼날 박자/);
+}
+
 function main() {
   REQUIRED_FILES.forEach((fileName) => {
     assert.ok(fs.existsSync(path.join(GAME_DIR, fileName)), `${fileName} should exist`);
@@ -733,6 +769,9 @@ function main() {
   assert.ok(content.includes('표식이 사라지기 전에'));
   assert.ok(content.includes("backgroundKey: 'basin'"));
   assert.ok(content.includes("backgroundKey: 'towerGate'"));
+  assert.ok(content.includes('elitePatterns'));
+  assert.ok(content.includes('ultimate'));
+  assert.ok(content.includes('resultName'));
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('RUN_MODES'));
@@ -779,6 +818,9 @@ function main() {
   assert.ok(systems.includes('bossPatternAvoids'));
   assert.ok(systems.includes('function getEligibleEvolutions'));
   assert.ok(systems.includes('function claimChestReward'));
+  assert.ok(systems.includes('function applyElitePattern'));
+  assert.ok(systems.includes('function evaluateClassUltimate'));
+  assert.ok(systems.includes('classUltimate'));
 
   const game = readGameFile('game.js');
   assert.ok(game.includes('function renderPlaybookOptions'));
@@ -812,6 +854,9 @@ function main() {
   assert.ok(game.includes('result-ledger-head'));
   assert.ok(game.includes('buildName'));
   assert.ok(game.includes('buildVerdict'));
+  assert.ok(game.includes('readability'));
+  assert.ok(game.includes('classUltimate'));
+  assert.ok(game.includes('activeElitePatterns'));
 
   const renderer = readGameFile('renderer.js');
   assert.ok(renderer.includes('function createCamera'));
@@ -889,6 +934,10 @@ function main() {
   assert.ok(renderer.includes('surfaceTower'));
   assert.ok(renderer.includes('accentBrass'));
   assert.ok(renderer.includes('preloadBackgroundSprites,'));
+  assert.ok(renderer.includes('function drawCombatReadabilityScrim'));
+  assert.ok(renderer.includes('function drawGemHalo'));
+  assert.ok(renderer.includes('function getCombatReadabilityInfo'));
+  assert.ok(renderer.includes('bossPhase'));
 
   const styles = readGameFile('styles.css');
   assert.ok(styles.includes('--surface-parchment: #241b12;'));
@@ -952,6 +1001,9 @@ function main() {
   assert.ok(webGameDoc.includes('배경 스프라이트가 없거나 로드 실패하면 기존 절차형 배경으로 폴백'));
   assert.ok(webGameDoc.includes('XP, 공격 전조, 위험선, HUD, 보스 체력바는 이미지화하지 않고 기존 엔진 렌더를 유지'));
   assert.ok(webGameDoc.includes('XP 보석, 공격 전조, 위험선, HUD, 체력바, 보스 체력바는 배경 이미지에 넣지 않고 기존 엔진 렌더를 유지'));
+  assert.ok(webGameDoc.includes('v3 전투 가독성'));
+  assert.ok(webGameDoc.includes('엘리트 패턴'));
+  assert.ok(webGameDoc.includes('직업별 궁극기'));
 
   testDesignReferenceBoards();
   testEnemySpriteRendererSharpness();
@@ -969,6 +1021,7 @@ function main() {
   testStandardEliteDropsChest();
   testRunGoalsSmartRecommendationsAndBossTelemetry();
   testBossFlowCanSpawnAndResolveWin();
+  testClassUltimatesAndBuildNames();
 
   console.log('dungeonworld survivors static test passed');
 }
