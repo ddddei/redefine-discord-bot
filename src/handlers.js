@@ -24,6 +24,7 @@ const {
   buildOperatorReactionApprovalsEmbed,
   buildOperatorRedemptionsEmbed,
   buildOperatorSubmissionsEmbed,
+  buildOperatorTodayQueueEmbed,
   createChannelGuideEmbed,
   createGuideEmbed,
   createGuideHubDetailEmbed,
@@ -38,6 +39,7 @@ const {
   getNoticeTemplate,
   truncateText,
 } = require('./embeds');
+const { buildTodayOperationsQueue } = require('./adminApi');
 const {
   DUNGEONWORLD_CHOICE_PREFIX,
   GUIDE_HUB_SELECT_ID,
@@ -2581,6 +2583,10 @@ async function handlePointLogCommand(interaction) {
 }
 
 function getOperatorHubEmbed(value, limit = 10) {
+  if (value === 'today_queue') {
+    return buildOperatorTodayQueueEmbed(buildTodayOperationsQueue(pointsRepository, limit));
+  }
+
   if (value === 'redemptions') {
     return buildOperatorRedemptionsEmbed(pointsRepository.listPendingRedemptions(limit));
   }

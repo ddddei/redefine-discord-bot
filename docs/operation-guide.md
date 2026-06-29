@@ -15,7 +15,7 @@
 - 운영진 전용 채널을 참여자가 볼 수 없는지 권한을 확인합니다.
 - 봇 사용 안내 공지를 참여자가 보기 쉬운 채널에 고정합니다.
 - 리허설 후 테스트 데이터와 실제 운영 데이터를 구분하고, 운영용 미션/상점만 active 상태로 남겼는지 확인합니다.
-- `/운영현황`과 `/admin`을 함께 확인해 대기 건, 최근 로그, 활성 미션/상점 수가 같은 흐름을 보여주는지 확인합니다.
+- `/운영현황`과 `/admin`을 함께 확인해 오늘의 운영 큐, 대기 건, 최근 로그, 활성 미션/상점 수가 같은 흐름을 보여주는지 확인합니다.
 
 ## 참여자에게 안내할 기본 명령어
 
@@ -52,9 +52,11 @@
 - `/인증관리 제출id:제출ID 처리:승인`
 - `/인증관리 제출id:제출ID 처리:반려 메모:운영 메모`
 
-운영자는 먼저 `/운영현황`으로 전체 상태를 확인합니다. 첫 화면에서 교환 대기, 인증 대기, 오늘 체크인, 오늘 반응 승인, 최근 포인트 로그를 확인한 뒤 드롭다운에서 필요한 메뉴를 선택합니다.
+운영자는 먼저 `/운영현황`으로 전체 상태를 확인합니다. 첫 화면에서 오늘의 운영 큐, 교환 대기, 인증 대기, 오늘 체크인, 오늘 반응 승인, 최근 포인트 로그를 확인한 뒤 드롭다운에서 필요한 메뉴를 선택합니다.
 
 교환 처리는 `/교환관리`, 인증 처리는 `/인증관리`, 포인트 수동 지급과 차감은 `/포인트관리`, 미션과 상점 수정은 `/미션관리`와 `/상점관리`에서 진행합니다. 허브는 처리 위치를 안내하는 점검 화면이며 기존 처리 명령어는 그대로 유지합니다.
+
+`/admin` 첫 화면의 오늘의 운영 큐는 읽기 전용입니다. pending 교환, pending 인증, 오늘 반응 승인/반려, 오늘 포인트 거래, 알림 실패 후속 확인, 오래된 pending 또는 중복 pending 같은 QA 경고를 한곳에 모아 보여줍니다. example/demo/sample 데이터와 2030년대 예시 날짜는 운영 큐에 섞이지 않아야 합니다.
 
 정산이나 운영 종료 후에는 `/운영내보내기`로 요약 또는 파일 백업을 생성합니다. 자세한 허브 사용법은 [operator-dashboard-guide.md](operator-dashboard-guide.md)를 확인합니다.
 
@@ -68,7 +70,7 @@
 
 미션 인증 채널 반응 승인 흐름을 사용할 경우 참여자는 `/인증`을 입력하지 않고 `MISSION_SUBMISSION_CHANNEL_ID`로 지정된 채널에 글, 사진, 영상 인증 메시지를 올립니다. 운영자는 지급 대상 메시지에 ✅ 반응을 누르고, 지급 대상이 아니면 ❌ 반응을 누릅니다. 봇은 `MISSION_SUBMISSION_CHANNEL_ID` 채널의 `MISSION_APPROVE_EMOJI`와 `MISSION_REJECT_EMOJI` 반응만 처리하며, 기본 지급 포인트는 `MISSION_REACTION_REWARD_POINTS` 값입니다. 같은 메시지는 `messageId` 기준으로 한 번만 처리되어 중복 지급되지 않고, 운영자 권한이 없는 사용자의 반응은 무시됩니다.
 
-반응 승인을 처리할 수 있는 운영자는 `Administrator`, `ManageMessages`, 또는 선택 환경변수 `OPERATOR_ROLE_ID` 역할 보유자입니다. 승인 기록은 `data/reaction-approvals.local.json`에 저장되고, 승인 시 `pointTransactions`에는 `relatedType: "missionReactionApproval"` 지급 거래가 남습니다. 처리 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `LOG_CHANNEL_ID`로 전송됩니다. 원본 인증 채널 공개 답글은 `REACTION_APPROVAL_PUBLIC_REPLY`가 `true`일 때만 남기며 기본값은 `false`입니다. 참여자 DM 알림은 `REACTION_APPROVAL_DM_USER`로 제어하고 기본값은 `true`입니다. DM 전송에 실패해도 포인트 지급, 반려 기록, 포인트 로그는 유지됩니다. `MISSION_SUBMISSION_CHANNEL_ID`가 없으면 반응 승인 기능은 동작하지 않고 콘솔 경고만 남습니다.
+반응 승인을 처리할 수 있는 운영자는 `Administrator`, `ManageMessages`, 또는 선택 환경변수 `OPERATOR_ROLE_ID` 역할 보유자입니다. 승인 기록은 `data/reaction-approvals.local.json`에 저장되고, 승인 시 `pointTransactions`에는 `relatedType: "missionReactionApproval"` 지급 거래가 남습니다. 처리 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `LOG_CHANNEL_ID`로 전송됩니다. 이 로그에는 참여자 DM과 원본 인증 채널 공개 답글이 각각 `전송 완료`, `전송 실패`, `비활성` 중 어떤 상태였는지도 함께 표시됩니다. 원본 인증 채널 공개 답글은 `REACTION_APPROVAL_PUBLIC_REPLY`가 `true`일 때만 남기며 기본값은 `false`입니다. 참여자 DM 알림은 `REACTION_APPROVAL_DM_USER`로 제어하고 기본값은 `true`입니다. DM 전송에 실패해도 포인트 지급, 반려 기록, 포인트 로그는 유지되며 운영자 로그에서 실패 상태를 확인합니다. `MISSION_SUBMISSION_CHANNEL_ID`가 없으면 반응 승인 기능은 동작하지 않고 콘솔 경고만 남습니다.
 
 `/상점`과 `/교환`도 모두 선택형으로 안내할 수 있습니다. `/교환`을 단독 실행하면 `/상점`과 같은 항목 선택 메뉴가 열리고, 신청 코드를 알고 있는 참여자는 `/교환 항목:S001`처럼 직접 입력해도 됩니다. 운영자는 참여자 안내에서 코드보다 항목 이름과 미션 이름을 중심으로 설명해도 됩니다.
 

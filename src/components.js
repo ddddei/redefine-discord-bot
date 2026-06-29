@@ -111,6 +111,11 @@ const OPERATOR_HUB_OPTIONS = [
     description: '핵심 운영 숫자와 확인 필요 항목',
   },
   {
+    label: '오늘의 운영 큐',
+    value: 'today_queue',
+    description: '오늘 먼저 확인할 처리 대기와 주의 항목',
+  },
+  {
     label: '교환 대기',
     value: 'redemptions',
     description: 'pending 교환 신청 목록',

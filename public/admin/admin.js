@@ -1,12 +1,22 @@
 (function () {
   const endpoints = {
     summary: '/api/admin/summary',
+    todayQueue: '/api/admin/today-queue?limit=10',
     redemptions: '/api/admin/redemptions?status=pending&limit=10',
     submissions: '/api/admin/submissions?status=pending&limit=10',
     transactions: '/api/admin/point-transactions?limit=10',
     missions: '/api/admin/missions?limit=10',
     shopItems: '/api/admin/shop-items?limit=10',
     reactions: '/api/admin/reaction-approvals?limit=10',
+  };
+
+  const queueLabels = {
+    pendingRedemptions: '교환 대기',
+    pendingSubmissions: '인증 대기',
+    todayReactionApprovals: '오늘 반응 승인',
+    todayPointTransactions: '오늘 포인트 거래',
+    followUps: '후속 확인',
+    qaWarnings: 'QA 경고',
   };
 
   const labels = {
@@ -76,6 +86,80 @@
 
   function rowsFromResponse(response) {
     return response && Array.isArray(response.data) ? response.data : response;
+  }
+
+  function renderQueueCard(label, value) {
+    return '<article class="summary-card queue-card"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(text(value, 0)) + '</strong></article>';
+  }
+
+  function renderQueueItem(kind, title, meta, command) {
+    return [
+      '<article class="queue-item ' + escapeHtml(kind) + '">',
+      '<strong>' + escapeHtml(title) + '</strong>',
+      '<span>' + escapeHtml(meta) + '</span>',
+      command ? '<code>' + escapeHtml(command) + '</code>' : '',
+      '</article>',
+    ].join('');
+  }
+
+  function renderQueueList(targetId, items, emptyMessage) {
+    $(targetId).innerHTML = items.length > 0
+      ? items.join('')
+      : '<p class="empty">' + escapeHtml(emptyMessage) + '</p>';
+  }
+
+  function renderTodayQueue(queue) {
+    const counts = queue.counts || {};
+    $('today-queue-cards').innerHTML = Object.keys(queueLabels).map(function (key) {
+      return renderQueueCard(queueLabels[key], counts[key]);
+    }).join('');
+
+    const workItems = [];
+    (queue.pendingRedemptions || []).slice(0, 5).forEach(function (row) {
+      workItems.push(renderQueueItem(
+        'pending',
+        '교환 대기 · ' + text(row.itemName || row.itemId, '항목 확인 필요'),
+        text(row.displayName || row.userDisplayName || shortId(row.userId), '신청자 확인 필요') + ' · ' + formatDate(row.requestedAt || row.createdAt),
+        '/교환관리'
+      ));
+    });
+    (queue.pendingSubmissions || []).slice(0, 5).forEach(function (row) {
+      workItems.push(renderQueueItem(
+        'pending',
+        '인증 대기 · ' + text(row.missionTitle || row.missionId, '미션 확인 필요'),
+        text(row.displayName || shortId(row.userId), '제출자 확인 필요') + ' · ' + formatDate(row.createdAt),
+        '/인증관리'
+      ));
+    });
+    (queue.todayReactionApprovals || []).slice(0, 3).forEach(function (row) {
+      workItems.push(renderQueueItem(
+        row.status === 'rejected' ? 'rejected' : 'approved',
+        '오늘 반응 처리 · ' + text(row.status, '상태 확인 필요'),
+        text(row.authorDisplayName || shortId(row.authorId), '참여자 확인 필요') + ' · ' + formatDate(row.reviewedAt || row.createdAt),
+        '/운영현황'
+      ));
+    });
+    (queue.todayPointTransactions || []).slice(0, 3).forEach(function (row) {
+      workItems.push(renderQueueItem(
+        Number(row.amount || 0) >= 0 ? 'approved' : 'rejected',
+        '오늘 포인트 거래 · ' + text(row.amount, 0) + 'P',
+        text(row.reason, '사유 없음') + ' · ' + formatDate(row.createdAt),
+        '/포인트로그'
+      ));
+    });
+
+    const alertItems = [];
+    (queue.followUps || []).forEach(function (item) {
+      alertItems.push(renderQueueItem('warning', '후속 확인', item.message, item.recordId || ''));
+    });
+    (queue.qaWarnings || []).forEach(function (item) {
+      alertItems.push(renderQueueItem('warning', 'QA 경고', item.message, item.recordId || ''));
+    });
+
+    renderQueueList('today-queue-work', workItems, '오늘 바로 처리할 대기 항목이 없습니다.');
+    renderQueueList('today-queue-alerts', alertItems, '후속 확인이나 QA 경고가 없습니다.');
+    $('today-queue-status').textContent = '읽기 전용 · example 데이터 제외'
+      + (queue.meta && queue.meta.exampleRecordsExcluded > 0 ? ' ' + queue.meta.exampleRecordsExcluded + '건' : '');
   }
 
   function renderSummary(summary) {
@@ -193,6 +277,7 @@
     try {
       const results = await Promise.all([
         fetchJson(endpoints.summary),
+        fetchJson(endpoints.todayQueue),
         fetchJson(endpoints.redemptions),
         fetchJson(endpoints.submissions),
         fetchJson(endpoints.transactions),
@@ -202,17 +287,18 @@
       ]);
 
       renderSummary(results[0]);
-      renderRedemptions(rowsFromResponse(results[1]));
-      renderSubmissions(rowsFromResponse(results[2]));
-      renderTransactions(rowsFromResponse(results[3]));
-      renderMissions(rowsFromResponse(results[4]));
-      renderShopItems(rowsFromResponse(results[5]));
-      renderReactions(rowsFromResponse(results[6]));
+      renderTodayQueue(results[1]);
+      renderRedemptions(rowsFromResponse(results[2]));
+      renderSubmissions(rowsFromResponse(results[3]));
+      renderTransactions(rowsFromResponse(results[4]));
+      renderMissions(rowsFromResponse(results[5]));
+      renderShopItems(rowsFromResponse(results[6]));
+      renderReactions(rowsFromResponse(results[7]));
 
       $('last-updated').textContent = '마지막 갱신: ' + formatDate(new Date().toISOString());
     } catch (error) {
       $('global-status').textContent = '데이터를 불러오지 못했습니다.';
-      ['redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals'].forEach(function (id) {
+      ['today-queue-work', 'today-queue-alerts', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
       });
     }

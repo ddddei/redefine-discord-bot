@@ -6,6 +6,7 @@ const { createPointsRepository } = require('./pointsRepository');
 const { requireAdminAuth, isAdminAuthConfigured } = require('./adminAuth');
 const {
   buildAdminSummary,
+  buildTodayOperationsQueue,
   listMissionStatus,
   listPendingRedemptions,
   listPendingSubmissions,
@@ -106,6 +107,11 @@ function handleAdminApi(req, res, pathname, searchParams, repository) {
 
     if (pathname === '/api/admin/summary') {
       sendJson(res, 200, buildAdminSummary(repository));
+      return;
+    }
+
+    if (pathname === '/api/admin/today-queue') {
+      sendJson(res, 200, buildTodayOperationsQueue(repository, limit));
       return;
     }
 

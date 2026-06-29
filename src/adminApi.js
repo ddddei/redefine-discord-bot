@@ -59,6 +59,81 @@ function isMissionSubmissionRecord(submission) {
   return submission && submission.type !== 'checkin';
 }
 
+function getDateValue(record, fields) {
+  return fields.map((field) => record && record[field]).find(Boolean) || null;
+}
+
+function getAgeHours(value) {
+  const date = new Date(value || 0);
+  if (Number.isNaN(date.getTime())) {
+    return 0;
+  }
+
+  return Math.floor((Date.now() - date.getTime()) / (60 * 60 * 1000));
+}
+
+function createQueueWarning(type, severity, message, record) {
+  return {
+    type,
+    severity,
+    message,
+    recordId: record && record.id ? record.id : null,
+    createdAt: record ? getDateValue(record, ['requestedAt', 'createdAt', 'reviewedAt']) : null,
+  };
+}
+
+function createQueueFollowUp(type, message, record) {
+  return {
+    type,
+    message,
+    recordId: record && record.id ? record.id : null,
+    createdAt: record ? getDateValue(record, ['reviewedAt', 'createdAt']) : null,
+    source: record && record.messageUrl ? record.messageUrl : null,
+  };
+}
+
+function getDuplicateWarnings(items, fields, type, label) {
+  const groups = items.reduce((map, item) => {
+    const key = fields.map((field) => item[field] || '').join(':');
+    if (!key.replace(/:/g, '')) {
+      return map;
+    }
+
+    map[key] = map[key] || [];
+    map[key].push(item);
+    return map;
+  }, {});
+
+  return Object.values(groups)
+    .filter((records) => records.length > 1)
+    .map((records) => {
+      const first = records[0];
+      return createQueueWarning(
+        type,
+        'warning',
+        `${label}: 같은 참여자와 대상 조합으로 ${records.length}건이 대기 중입니다.`,
+        first
+      );
+    });
+}
+
+function getNotificationFollowUps(reactionApprovals) {
+  return reactionApprovals.flatMap((record) => {
+    const results = record.notificationResults || {};
+    const followUps = [];
+
+    if (results.dmUser === 'failed') {
+      followUps.push(createQueueFollowUp('reactionApprovalDmFailed', 'DM 알림 실패: 참여자에게 처리 결과가 전달됐는지 확인해 주세요.', record));
+    }
+
+    if (results.publicReply === 'failed') {
+      followUps.push(createQueueFollowUp('reactionApprovalPublicReplyFailed', '공개 답글 알림 실패: 인증 글에 처리 안내가 남았는지 확인해 주세요.', record));
+    }
+
+    return followUps;
+  });
+}
+
 function buildAdminMeta(exampleRecordsExcluded = 0) {
   return {
     exampleRecordsExcluded,
@@ -252,8 +327,117 @@ function listRecentReactionApprovals(repository = createDefaultRepository(), lim
   );
 }
 
+function buildTodayOperationsQueue(repository = createDefaultRepository(), limit = 10) {
+  const safeLimit = parseLimit(limit, 10);
+  const state = readState(repository);
+  const usersResult = filterOperationalRecords(state.pointsData && state.pointsData.users);
+  const pointTransactionsResult = filterOperationalRecords(state.pointsData && state.pointsData.pointTransactions);
+  const redemptionsResult = filterOperationalRecords(state.redemptionsData && state.redemptionsData.redemptions);
+  const submissionsResult = filterOperationalRecords(state.submissionsData && state.submissionsData.submissions);
+  const missionsResult = filterOperationalRecords(state.missionsData && state.missionsData.missions);
+  const shopItemsResult = filterOperationalRecords(state.shopItemsData && state.shopItemsData.shopItems);
+  const reactionApprovalsResult = filterOperationalRecords(readReactionApprovals(repository));
+  const pointTransactions = pointTransactionsResult.data;
+  const redemptions = redemptionsResult.data;
+  const submissions = submissionsResult.data.filter(isMissionSubmissionRecord);
+  const missionsById = missionsResult.data.reduce((map, mission) => {
+    map[mission.id] = mission;
+    return map;
+  }, {});
+  const shopItemsById = shopItemsResult.data.reduce((map, item) => {
+    map[item.id] = item;
+    return map;
+  }, {});
+  const pendingRedemptions = sortNewestFirst(redemptions, ['requestedAt', 'createdAt'])
+    .filter((redemption) => redemption.status === 'pending')
+    .map((redemption) => ({
+      ...redemption,
+      itemName: redemption.itemName || (shopItemsById[redemption.itemId] && shopItemsById[redemption.itemId].name) || null,
+    }));
+  const pendingSubmissions = sortNewestFirst(submissions, ['createdAt', 'reviewedAt'])
+    .filter((submission) => submission.status === 'pending')
+    .map((submission) => ({
+      ...submission,
+      missionTitle: submission.missionTitle || (missionsById[submission.missionId] && missionsById[submission.missionId].title) || null,
+      rewardPoints: submission.rewardPoints || (missionsById[submission.missionId] && missionsById[submission.missionId].rewardPoints) || 0,
+    }));
+  const todayReactionApprovals = sortNewestFirst(reactionApprovalsResult.data, ['reviewedAt', 'createdAt'])
+    .filter((record) => isTodayKst(record.reviewedAt || record.createdAt));
+  const todayPointTransactions = sortNewestFirst(pointTransactions, ['createdAt'])
+    .filter((transaction) => isTodayKst(transaction.createdAt));
+  const staleRedemptionWarnings = pendingRedemptions
+    .filter((redemption) => getAgeHours(redemption.requestedAt || redemption.createdAt) >= 24)
+    .map((redemption) => createQueueWarning(
+      'stalePendingRedemption',
+      'warning',
+      `오래된 교환 대기: ${getAgeHours(redemption.requestedAt || redemption.createdAt)}시간째 pending 상태입니다.`,
+      redemption
+    ));
+  const staleSubmissionWarnings = pendingSubmissions
+    .filter((submission) => getAgeHours(submission.createdAt) >= 24)
+    .map((submission) => createQueueWarning(
+      'stalePendingSubmission',
+      'warning',
+      `오래된 인증 대기: ${getAgeHours(submission.createdAt)}시간째 pending 상태입니다.`,
+      submission
+    ));
+  const missingReferenceWarnings = [
+    ...pendingRedemptions
+      .filter((redemption) => redemption.itemId && !shopItemsById[redemption.itemId])
+      .map((redemption) => createQueueWarning('missingShopItem', 'warning', '교환 대기 항목의 상점 항목을 찾지 못했습니다.', redemption)),
+    ...pendingSubmissions
+      .filter((submission) => submission.missionId && !missionsById[submission.missionId])
+      .map((submission) => createQueueWarning('missingMission', 'warning', '인증 대기 항목의 미션을 찾지 못했습니다.', submission)),
+    ...todayReactionApprovals
+      .filter((record) => record.status === 'approved' && record.rewardPoints > 0 && !record.transactionId)
+      .map((record) => createQueueWarning('missingReactionTransaction', 'warning', '승인된 반응 기록에 포인트 거래 ID가 없습니다.', record)),
+  ];
+  const duplicateWarnings = [
+    ...getDuplicateWarnings(pendingRedemptions, ['userId', 'itemId'], 'duplicatePendingRedemption', '중복 교환 대기'),
+    ...getDuplicateWarnings(pendingSubmissions, ['userId', 'missionId'], 'duplicatePendingSubmission', '중복 인증 대기'),
+  ];
+  const exampleRecordsExcluded = usersResult.excluded
+    + pointTransactionsResult.excluded
+    + redemptionsResult.excluded
+    + submissionsResult.excluded
+    + missionsResult.excluded
+    + shopItemsResult.excluded
+    + reactionApprovalsResult.excluded;
+
+  return {
+    title: '오늘의 운영 큐',
+    readOnly: true,
+    storageMode: 'local-json',
+    generatedAt: new Date().toISOString(),
+    counts: {
+      pendingRedemptions: pendingRedemptions.length,
+      pendingSubmissions: pendingSubmissions.length,
+      todayReactionApprovals: todayReactionApprovals.length,
+      todayPointTransactions: todayPointTransactions.length,
+      followUps: getNotificationFollowUps(todayReactionApprovals).length,
+      qaWarnings: staleRedemptionWarnings.length
+        + staleSubmissionWarnings.length
+        + missingReferenceWarnings.length
+        + duplicateWarnings.length,
+    },
+    pendingRedemptions: clone(pendingRedemptions.slice(0, safeLimit)),
+    pendingSubmissions: clone(pendingSubmissions.slice(0, safeLimit)),
+    todayReactionApprovals: clone(todayReactionApprovals.slice(0, safeLimit)),
+    todayPointTransactions: clone(todayPointTransactions.slice(0, safeLimit)),
+    followUps: clone(getNotificationFollowUps(todayReactionApprovals).slice(0, safeLimit)),
+    qaWarnings: clone([
+      ...staleRedemptionWarnings,
+      ...staleSubmissionWarnings,
+      ...missingReferenceWarnings,
+      ...duplicateWarnings,
+    ].slice(0, safeLimit)),
+    meta: buildAdminMeta(exampleRecordsExcluded),
+  };
+}
+
 module.exports = {
   buildAdminSummary,
+  buildTodayOperationsQueue,
   listMissionStatus,
   listPendingRedemptions,
   listPendingSubmissions,

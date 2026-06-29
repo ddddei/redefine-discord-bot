@@ -332,6 +332,13 @@ async function sendMissionReactionApprovalLog(client, record) {
 
     const approved = record.status === 'approved';
     const notificationSettings = record.notificationSettings || {};
+    const notificationResults = record.notificationResults || {};
+    const formatNotificationStatus = (settingEnabled, result) => {
+      if (!settingEnabled) return '비활성';
+      if (result === 'sent') return '전송 완료';
+      if (result === 'failed') return '전송 실패';
+      return '전송 시도';
+    };
     const embed = new EmbedBuilder()
       .setColor(approved ? 0x5f8f6b : 0x8f6b5f)
       .setTitle(approved ? '미션 인증 반응 승인' : '미션 인증 반응 반려')
@@ -354,11 +361,11 @@ async function sendMissionReactionApprovalLog(client, record) {
         },
         {
           name: '참여자 DM',
-          value: notificationSettings.dmUser ? '전송 시도 예정' : '비활성',
+          value: formatNotificationStatus(notificationSettings.dmUser, notificationResults.dmUser),
         },
         {
           name: '공개 답글',
-          value: notificationSettings.publicReply ? '전송 시도 예정' : '비활성',
+          value: formatNotificationStatus(notificationSettings.publicReply, notificationResults.publicReply),
         },
         {
           name: '처리 시간',

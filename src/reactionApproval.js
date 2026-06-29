@@ -174,6 +174,27 @@ async function sendReviewDm(user, text) {
   }
 }
 
+async function sendConfiguredReviewNotifications(message, participantDmText, publicReplyText) {
+  const notificationSettings = {
+    dmUser: shouldDmReactionApprovalUser(),
+    publicReply: shouldSendReactionApprovalPublicReply(),
+  };
+  const dmSent = await sendReviewDm(message.author, participantDmText);
+  const publicReplySent = await sendReviewReply(message, publicReplyText);
+
+  return {
+    settings: notificationSettings,
+    results: {
+      dmUser: notificationSettings.dmUser
+        ? (dmSent ? 'sent' : 'failed')
+        : 'disabled',
+      publicReply: notificationSettings.publicReply
+        ? (publicReplySent ? 'sent' : 'failed')
+        : 'disabled',
+    },
+  };
+}
+
 async function fetchMember(message, user) {
   if (!message || !message.guild || !message.guild.members || typeof message.guild.members.fetch !== 'function') {
     return null;
@@ -260,23 +281,29 @@ async function handleMissionReactionApproval(reaction, user, client, options = {
     const publicReplyText = approved
       ? `미션 인증이 승인됐어요 ✅ ${result.record.rewardPoints}P가 지급됐어요.`
       : '이번 인증은 반려됐어요. 안내 내용을 확인한 뒤 다시 제출해주세요.';
-    const notificationSettings = {
-      dmUser: shouldDmReactionApprovalUser(),
-      publicReply: shouldSendReactionApprovalPublicReply(),
-    };
+    const notifications = await sendConfiguredReviewNotifications(
+      message,
+      participantDmText,
+      publicReplyText
+    );
+    if (typeof repository.updateReactionApprovalNotifications === 'function') {
+      repository.updateReactionApprovalNotifications(
+        result.record.id,
+        notifications.settings,
+        notifications.results
+      );
+    }
 
     await sendMissionReactionApprovalLog(client, {
       ...result.record,
-      notificationSettings,
+      notificationSettings: notifications.settings,
+      notificationResults: notifications.results,
     });
 
-    await sendReviewDm(message.author, participantDmText);
-    await sendReviewReply(
-      message,
-      publicReplyText
-    );
-
-    return result;
+    return {
+      ...result,
+      notificationResults: notifications.results,
+    };
   } catch (error) {
     console.error('미션 인증 반응 처리 실패:', error.message);
     return { ok: false, reason: 'ERROR', error };

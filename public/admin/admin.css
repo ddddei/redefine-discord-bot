@@ -56,6 +56,11 @@ h2 {
   font-size: 19px;
 }
 
+h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
 main {
   width: min(1480px, 100%);
   margin: 0 auto;
@@ -123,6 +128,74 @@ button:hover {
   display: block;
   margin-top: 8px;
   font-size: 28px;
+}
+
+.queue-section {
+  margin-bottom: 28px;
+}
+
+.queue-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.queue-card {
+  min-height: 88px;
+}
+
+.queue-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.queue-panel {
+  min-height: 220px;
+}
+
+.queue-list {
+  display: grid;
+  gap: 10px;
+}
+
+.queue-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-strong);
+}
+
+.queue-item strong {
+  font-size: 14px;
+}
+
+.queue-item span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.queue-item code {
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.queue-item.warning {
+  border-color: var(--warn);
+}
+
+.queue-item.rejected {
+  border-color: var(--danger);
+}
+
+.queue-item.approved {
+  border-color: var(--accent);
 }
 
 .two-column {
@@ -232,6 +305,10 @@ td {
   }
 
   .two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .queue-layout {
     grid-template-columns: 1fr;
   }
 }

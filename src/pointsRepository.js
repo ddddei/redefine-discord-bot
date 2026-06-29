@@ -1646,9 +1646,32 @@ function createPointsRepository(paths = {}, options = {}) {
       reviewedByDisplayName: input.reviewedByDisplayName || input.reviewedBy,
       reviewEmoji: input.reviewEmoji,
       messageUrl: input.messageUrl || null,
+      notificationSettings: input.notificationSettings || null,
+      notificationResults: input.notificationResults || null,
       createdAt: input.createdAt || now,
       reviewedAt: input.reviewedAt || now,
     };
+  }
+
+  function updateReactionApprovalNotifications(recordId, notificationSettings, notificationResults) {
+    const approvalsData = cloneJson(getReactionApprovalData());
+    const records = Array.isArray(approvalsData.records) ? approvalsData.records : [];
+    const index = records.findIndex((record) => record.id === recordId);
+
+    if (index === -1) {
+      return null;
+    }
+
+    const updatedRecord = {
+      ...records[index],
+      notificationSettings: notificationSettings || null,
+      notificationResults: notificationResults || null,
+    };
+
+    records[index] = updatedRecord;
+    approvalsData.records = records;
+    saveReactionApprovalData(approvalsData);
+    return updatedRecord;
   }
 
   function approveReactionMessage(input) {
@@ -2066,6 +2089,7 @@ function createPointsRepository(paths = {}, options = {}) {
     reviewRedemption,
     resolveActiveMission,
     resolveActiveShopItem,
+    updateReactionApprovalNotifications,
     saveMissionsData,
     saveSubmissionsData,
     saveReactionApprovalData,

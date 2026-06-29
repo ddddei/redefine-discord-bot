@@ -22,7 +22,9 @@ const {
   buildOperatorReactionApprovalsEmbed,
   buildOperatorRedemptionsEmbed,
   buildOperatorSubmissionsEmbed,
+  buildOperatorTodayQueueEmbed,
 } = require('../src/embeds');
+const { buildTodayOperationsQueue } = require('../src/adminApi');
 const {
   handleInteractionCreate,
   handleOperatorHubSelect,
@@ -83,6 +85,7 @@ async function main() {
     OPERATOR_HUB_OPTIONS.map((option) => option.value),
     [
       'overview',
+      'today_queue',
       'redemptions',
       'submissions',
       'points',
@@ -102,11 +105,13 @@ async function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 13);
+  assert.strictEqual(menu.options.length, 14);
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'invitation_notice'
     && /초대 안내문|초대 공지/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'prelaunch_check'
     && /초대.*점검|준비.*점검/.test(`${option.label} ${option.description}`)));
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'today_queue'
+    && /오늘.*운영.*큐|먼저 확인/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'environment_check'
     && /환경|채널/.test(option.label)));
 
@@ -203,7 +208,16 @@ async function main() {
   const overview = buildOperatorHubEmbed(summary);
   assert.strictEqual(getEmbedTitle(overview), '운영 현황 허브');
   assert.match(getEmbedDescription(overview), /전체 사용자/);
+  assert.match(getEmbedDescription(overview), /오늘의 운영 큐/);
   assert.match(getEmbedDescription(overview), /오늘 포인트 거래/);
+
+  const todayQueue = buildOperatorTodayQueueEmbed(buildTodayOperationsQueue(repository, 10));
+  assert.strictEqual(getEmbedTitle(todayQueue), '오늘의 운영 큐');
+  assert.match(getEmbedDescription(todayQueue), /지금 처리할 항목/);
+  assert.match(getEmbedDescription(todayQueue), /교환 대기/);
+  assert.match(getEmbedDescription(todayQueue), /인증 대기/);
+  assert.match(getEmbedDescription(todayQueue), /오늘 반응 승인/);
+  assert.match(getEmbedDescription(todayQueue), /오늘 포인트 거래/);
 
   const redemptions = buildOperatorRedemptionsEmbed(repository.listPendingRedemptions(10));
   assert.strictEqual(getEmbedTitle(redemptions), '교환 대기');

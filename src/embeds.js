@@ -302,6 +302,12 @@ function buildOperatorHubEmbed(summary = {}) {
       '현재 운영 상태를 한눈에 확인할 수 있어요.',
       '아래 요약을 확인한 뒤 필요한 메뉴를 선택해 주세요.',
       '',
+      '오늘의 운영 큐',
+      `- 교환 대기 ${summary.pendingRedemptionsCount || 0}건`,
+      `- 인증 대기 ${summary.pendingSubmissionsCount || 0}건`,
+      `- 오늘 반응 승인 ${summary.todayReactionApprovalsCount || 0}건`,
+      `- 오늘 포인트 거래 ${summary.todayPointTransactionsCount || 0}건`,
+      '',
       `전체 사용자: ${summary.usersCount || 0}명`,
       `총 포인트 거래: ${summary.pointTransactionsCount || 0}건`,
       `교환 대기: ${summary.pendingRedemptionsCount || 0}건`,
@@ -318,6 +324,82 @@ function buildOperatorHubEmbed(summary = {}) {
       '',
       '최근 포인트 로그',
       ...recentLogLines,
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function formatQueueItemDate(record, fields) {
+  const value = fields.map((field) => record && record[field]).find(Boolean);
+  return formatTransactionDateTime(value);
+}
+
+function buildOperatorTodayQueueEmbed(queue = {}) {
+  const counts = queue.counts || {};
+  const redemptions = Array.isArray(queue.pendingRedemptions) ? queue.pendingRedemptions : [];
+  const submissions = Array.isArray(queue.pendingSubmissions) ? queue.pendingSubmissions : [];
+  const reactions = Array.isArray(queue.todayReactionApprovals) ? queue.todayReactionApprovals : [];
+  const transactions = Array.isArray(queue.todayPointTransactions) ? queue.todayPointTransactions : [];
+  const followUps = Array.isArray(queue.followUps) ? queue.followUps : [];
+  const qaWarnings = Array.isArray(queue.qaWarnings) ? queue.qaWarnings : [];
+  const redemptionLines = redemptions.length > 0
+    ? redemptions.slice(0, 3).map((redemption) => {
+      return `- ${truncateText(redemption.itemName || redemption.itemId, 42, '교환 항목')} / ${truncateText(redemption.displayName || redemption.userId, 32, '신청자')} / \`${truncateText(redemption.id, 48, '신청 ID')}\``;
+    })
+    : ['- 교환 대기 없음'];
+  const submissionLines = submissions.length > 0
+    ? submissions.slice(0, 3).map((submission) => {
+      return `- ${truncateText(submission.missionTitle || submission.missionId, 42, '미션')} / ${truncateText(submission.displayName || submission.userId, 32, '제출자')} / \`${truncateText(submission.id, 48, '제출 ID')}\``;
+    })
+    : ['- 인증 대기 없음'];
+  const reactionLines = reactions.length > 0
+    ? reactions.slice(0, 3).map((record) => {
+      return `- ${formatQueueItemDate(record, ['reviewedAt', 'createdAt'])} / ${truncateText(record.authorDisplayName || record.authorId, 28, '참여자')} / ${record.status || '상태 없음'}`;
+    })
+    : ['- 오늘 처리된 반응 승인/반려 없음'];
+  const transactionLines = transactions.length > 0
+    ? transactions.slice(0, 3).map((transaction) => {
+      return `- ${formatQueueItemDate(transaction, ['createdAt'])} / ${formatTransactionAmount(transaction.amount)} / ${truncateText(transaction.reason, 42, '사유')}`;
+    })
+    : ['- 오늘 포인트 거래 없음'];
+  const followUpLines = followUps.length > 0
+    ? followUps.slice(0, 3).map((item) => `- ${truncateText(item.message, 90, '후속 확인')}`)
+    : ['- 알림 실패 후속 확인 없음'];
+  const warningLines = qaWarnings.length > 0
+    ? qaWarnings.slice(0, 4).map((warning) => `- ${truncateText(warning.message, 90, 'QA 경고')}`)
+    : ['- 오래된 pending 또는 중복 경고 없음'];
+
+  return createGuideEmbed(
+    '오늘의 운영 큐',
+    [
+      '운영자가 오늘 먼저 확인할 읽기 전용 큐입니다.',
+      '지금 처리할 항목을 보고 실제 처리는 기존 관리 명령어에서 진행해 주세요.',
+      '',
+      `교환 대기 ${counts.pendingRedemptions || 0}건 / 인증 대기 ${counts.pendingSubmissions || 0}건`,
+      `오늘 반응 승인 ${counts.todayReactionApprovals || 0}건 / 오늘 포인트 거래 ${counts.todayPointTransactions || 0}건`,
+      `후속 확인 ${counts.followUps || 0}건 / QA 경고 ${counts.qaWarnings || 0}건`,
+      '',
+      '교환 대기',
+      ...redemptionLines,
+      '',
+      '인증 대기',
+      ...submissionLines,
+      '',
+      '오늘 반응 승인/반려',
+      ...reactionLines,
+      '',
+      '오늘 포인트 거래',
+      ...transactionLines,
+      '',
+      '후속 확인',
+      ...followUpLines,
+      '',
+      'QA 경고',
+      ...warningLines,
+      '',
+      '처리 명령어: `/교환관리`, `/인증관리`, `/포인트로그`, `/운영내보내기`',
     ].join('\n'),
     {
       footer: OPERATOR_CHECK_FOOTER,
@@ -945,6 +1027,7 @@ module.exports = {
   buildOperatorReactionApprovalsEmbed,
   buildOperatorRedemptionsEmbed,
   buildOperatorSubmissionsEmbed,
+  buildOperatorTodayQueueEmbed,
   createChannelGuideEmbed,
   createGuideHubDetailEmbed,
   createGuideHubEmbed,

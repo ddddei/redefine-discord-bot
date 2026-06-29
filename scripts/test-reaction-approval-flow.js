@@ -97,6 +97,31 @@ function createReaction({
   };
 }
 
+function createLogClient() {
+  const sent = [];
+
+  return {
+    sent,
+    client: {
+      user: { id: 'bot_test' },
+      channels: {
+        fetch: async () => ({
+          send: async (payload) => {
+            sent.push(payload);
+            return payload;
+          },
+        }),
+      },
+    },
+  };
+}
+
+function getEmbedFieldValue(payload, fieldName) {
+  const fields = payload.embeds[0].data.fields;
+  const field = fields.find((item) => item.name === fieldName);
+  return field && field.value;
+}
+
 async function main() {
   const previousEnv = {
     MISSION_APPROVE_EMOJI: process.env.MISSION_APPROVE_EMOJI,
@@ -107,6 +132,7 @@ async function main() {
     OPERATOR_ROLE_ID: process.env.OPERATOR_ROLE_ID,
     REACTION_APPROVAL_PUBLIC_REPLY: process.env.REACTION_APPROVAL_PUBLIC_REPLY,
     REACTION_APPROVAL_DM_USER: process.env.REACTION_APPROVAL_DM_USER,
+    ACTIVITY_REVIEW_CHANNEL_ID: process.env.ACTIVITY_REVIEW_CHANNEL_ID,
   };
 
   process.env.MISSION_APPROVE_EMOJI = '✅';
@@ -115,6 +141,7 @@ async function main() {
   process.env.MISSION_SUBMISSION_CHANNEL_ID = 'mission_channel_test';
   process.env.TODAY_MISSION_CHANNEL_ID = 'today_mission_channel_test';
   process.env.OPERATOR_ROLE_ID = 'operator_role_test';
+  process.env.ACTIVITY_REVIEW_CHANNEL_ID = 'activity_review_channel_test';
   delete process.env.REACTION_APPROVAL_PUBLIC_REPLY;
   delete process.env.REACTION_APPROVAL_DM_USER;
 
@@ -272,6 +299,7 @@ async function main() {
     const handlerRepository = createPointsRepository(handlerPaths);
     process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'false';
     process.env.REACTION_APPROVAL_DM_USER = 'true';
+    const approveLog = createLogClient();
     const approveReaction = createReaction({
       messageId: 'message_handler_approve',
       authorId: 'participant_handler_approve',
@@ -280,16 +308,27 @@ async function main() {
     const approveResult = await handleMissionReactionApproval(
       approveReaction,
       { id: 'operator_handler', username: 'operator_handler', bot: false },
-      { user: { id: 'bot_test' } },
+      approveLog.client,
       { repository: handlerRepository }
     );
 
     assert.strictEqual(approveResult.ok, true);
     assert.strictEqual(approveResult.record.status, 'approved');
+    assert.deepStrictEqual(approveResult.notificationResults, {
+      dmUser: 'sent',
+      publicReply: 'disabled',
+    });
     assert.strictEqual(approveReaction.message.replies.length, 0);
     assert.strictEqual(approveReaction.message.author.dms.length, 1);
     assert.match(approveReaction.message.author.dms[0], /미션 인증이 승인됐어요/);
     assert.match(approveReaction.message.author.dms[0], /20P가 지급됐어요/);
+    assert.strictEqual(approveLog.sent.length, 1);
+    assert.strictEqual(getEmbedFieldValue(approveLog.sent[0], '참여자 DM'), '전송 완료');
+    assert.strictEqual(getEmbedFieldValue(approveLog.sent[0], '공개 답글'), '비활성');
+    assert.deepStrictEqual(
+      handlerRepository.findReactionApprovalByMessageId('message_handler_approve').notificationResults,
+      { dmUser: 'sent', publicReply: 'disabled' }
+    );
 
     const duplicateHandlerResult = await handleMissionReactionApproval(
       approveReaction,
@@ -322,6 +361,7 @@ async function main() {
 
     process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'true';
     process.env.REACTION_APPROVAL_DM_USER = 'false';
+    const rejectLog = createLogClient();
     const rejectReaction = createReaction({
       messageId: 'message_handler_reject',
       authorId: 'participant_handler_reject',
@@ -330,18 +370,30 @@ async function main() {
     const rejectResult = await handleMissionReactionApproval(
       rejectReaction,
       { id: 'operator_handler', username: 'operator_handler', bot: false },
-      { user: { id: 'bot_test' } },
+      rejectLog.client,
       { repository: handlerRepository }
     );
 
     assert.strictEqual(rejectResult.ok, true);
     assert.strictEqual(rejectResult.record.status, 'rejected');
+    assert.deepStrictEqual(rejectResult.notificationResults, {
+      dmUser: 'disabled',
+      publicReply: 'sent',
+    });
     assert.strictEqual(rejectReaction.message.replies.length, 1);
     assert.match(rejectReaction.message.replies[0].content, /이번 인증은 반려됐어요/);
     assert.strictEqual(rejectReaction.message.author.dms.length, 0);
+    assert.strictEqual(rejectLog.sent.length, 1);
+    assert.strictEqual(getEmbedFieldValue(rejectLog.sent[0], '참여자 DM'), '비활성');
+    assert.strictEqual(getEmbedFieldValue(rejectLog.sent[0], '공개 답글'), '전송 완료');
+    assert.deepStrictEqual(
+      handlerRepository.findReactionApprovalByMessageId('message_handler_reject').notificationResults,
+      { dmUser: 'disabled', publicReply: 'sent' }
+    );
 
     process.env.REACTION_APPROVAL_PUBLIC_REPLY = 'false';
     process.env.REACTION_APPROVAL_DM_USER = 'true';
+    const dmFailureLog = createLogClient();
     const dmFailureReaction = createReaction({
       messageId: 'message_handler_dm_failure',
       authorId: 'participant_handler_dm_failure',
@@ -353,13 +405,24 @@ async function main() {
     const dmFailureResult = await handleMissionReactionApproval(
       dmFailureReaction,
       { id: 'operator_handler', username: 'operator_handler', bot: false },
-      { user: { id: 'bot_test' } },
+      dmFailureLog.client,
       { repository: handlerRepository }
     );
 
     assert.strictEqual(dmFailureResult.ok, true);
     assert.strictEqual(dmFailureResult.record.status, 'approved');
+    assert.deepStrictEqual(dmFailureResult.notificationResults, {
+      dmUser: 'failed',
+      publicReply: 'disabled',
+    });
     assert.strictEqual(dmFailureReaction.message.replies.length, 0);
+    assert.strictEqual(dmFailureLog.sent.length, 1);
+    assert.strictEqual(getEmbedFieldValue(dmFailureLog.sent[0], '참여자 DM'), '전송 실패');
+    assert.strictEqual(getEmbedFieldValue(dmFailureLog.sent[0], '공개 답글'), '비활성');
+    assert.deepStrictEqual(
+      handlerRepository.findReactionApprovalByMessageId('message_handler_dm_failure').notificationResults,
+      { dmUser: 'failed', publicReply: 'disabled' }
+    );
 
     pointsData = readJson(handlerPaths.points);
     assert.strictEqual(

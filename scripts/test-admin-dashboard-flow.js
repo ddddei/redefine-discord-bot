@@ -2,6 +2,7 @@ const assert = require('assert');
 const { Writable } = require('stream');
 const {
   buildAdminSummary,
+  buildTodayOperationsQueue,
   filterOperationalRecords,
   isExampleLikeRecord,
   listMissionStatus,
@@ -35,6 +36,7 @@ function basic(username, password) {
 
 function createRepository() {
   const now = new Date().toISOString();
+  const stale = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
   const state = {
     pointsData: {
       users: [{ userId: 'user1234567890', displayName: '테스트 참여자', totalPoints: 120 }],
@@ -76,6 +78,22 @@ function createRepository() {
           requestedAt: now,
         },
         {
+          id: 'rd_stale',
+          userId: 'user1234567890',
+          itemId: 'item1',
+          cost: 50,
+          status: 'pending',
+          requestedAt: stale,
+        },
+        {
+          id: 'rd_duplicate',
+          userId: 'user1234567890',
+          itemId: 'item1',
+          cost: 50,
+          status: 'pending',
+          requestedAt: now,
+        },
+        {
           id: 'rd_example_pending',
           userId: 'user_example_001',
           itemId: 'item_youth_point_100_example',
@@ -90,6 +108,26 @@ function createRepository() {
       submissions: [
         {
           id: 'sub1',
+          type: 'mission',
+          missionId: 'mission1',
+          userId: 'user1234567890',
+          displayName: '테스트 참여자',
+          status: 'pending',
+          createdAt: now,
+          attachment: null,
+        },
+        {
+          id: 'sub_stale',
+          type: 'mission',
+          missionId: 'mission1',
+          userId: 'user1234567890',
+          displayName: '테스트 참여자',
+          status: 'pending',
+          createdAt: stale,
+          attachment: null,
+        },
+        {
+          id: 'sub_duplicate',
           type: 'mission',
           missionId: 'mission1',
           userId: 'user1234567890',
@@ -195,6 +233,10 @@ function createRepository() {
       status: 'approved',
       rewardPoints: 20,
       reviewedAt: now,
+      notificationResults: {
+        dmUser: 'failed',
+        publicReply: 'sent',
+      },
     },
     {
       id: 'reaction_example',
@@ -373,11 +415,11 @@ async function main() {
     assert.strictEqual(summary.title, '테스트 대시보드');
     assert.strictEqual(summary.usersCount, 1);
     assert.strictEqual(summary.pointTransactionsCount, 1);
-    assert.strictEqual(summary.pendingRedemptionsCount, 1);
-    assert.strictEqual(summary.pendingSubmissionsCount, 1);
+    assert.strictEqual(summary.pendingRedemptionsCount, 3);
+    assert.strictEqual(summary.pendingSubmissionsCount, 3);
     assert.strictEqual(summary.reviewedSubmissionsCount, 2);
     assert.deepStrictEqual(summary.submissionStatusCounts, {
-      pending: 1,
+      pending: 3,
       approved: 1,
       rejected: 1,
     });
@@ -389,6 +431,25 @@ async function main() {
     assert.strictEqual(summary.meta.exampleRecordsExcluded, 6);
     assert.strictEqual(summary.storageMode, 'local-json');
     assert.strictEqual(summary.readOnly, true);
+
+    const queue = buildTodayOperationsQueue(repository, 10);
+    assert.strictEqual(queue.title, '오늘의 운영 큐');
+    assert.strictEqual(queue.readOnly, true);
+    assert.strictEqual(queue.counts.pendingRedemptions, 3);
+    assert.strictEqual(queue.counts.pendingSubmissions, 3);
+    assert.strictEqual(queue.counts.todayReactionApprovals, 1);
+    assert.strictEqual(queue.counts.todayPointTransactions, 1);
+    assert.strictEqual(queue.pendingRedemptions.length, 3);
+    assert.strictEqual(queue.pendingSubmissions.length, 3);
+    assert.strictEqual(queue.todayReactionApprovals.length, 1);
+    assert.strictEqual(queue.todayPointTransactions.length, 1);
+    assert.strictEqual(queue.followUps.length, 1);
+    assert.match(queue.followUps[0].message, /DM 알림 실패/);
+    assert.ok(queue.qaWarnings.some((warning) => /오래된 교환 대기/.test(warning.message)));
+    assert.ok(queue.qaWarnings.some((warning) => /오래된 인증 대기/.test(warning.message)));
+    assert.ok(queue.qaWarnings.some((warning) => /중복 교환 대기/.test(warning.message)));
+    assert.ok(queue.qaWarnings.some((warning) => /중복 인증 대기/.test(warning.message)));
+    assert.strictEqual(queue.meta.exampleRecordsExcluded, 6);
 
     const emptyRepository = createEmptyRepository();
     const emptySummary = buildAdminSummary(emptyRepository);
@@ -411,6 +472,16 @@ async function main() {
     assert.strictEqual(exampleOnlySummary.activeMissionsCount, 0);
     assert.strictEqual(exampleOnlySummary.activeShopItemsCount, 0);
     assert.strictEqual(exampleOnlySummary.exampleRecordsExcluded, 7);
+    const exampleOnlyQueue = buildTodayOperationsQueue(exampleOnlyRepository, 10);
+    assert.strictEqual(exampleOnlyQueue.counts.pendingRedemptions, 0);
+    assert.strictEqual(exampleOnlyQueue.counts.pendingSubmissions, 0);
+    assert.strictEqual(exampleOnlyQueue.counts.todayReactionApprovals, 0);
+    assert.strictEqual(exampleOnlyQueue.counts.todayPointTransactions, 0);
+    assert.deepStrictEqual(exampleOnlyQueue.pendingRedemptions, []);
+    assert.deepStrictEqual(exampleOnlyQueue.pendingSubmissions, []);
+    assert.deepStrictEqual(exampleOnlyQueue.todayReactionApprovals, []);
+    assert.deepStrictEqual(exampleOnlyQueue.todayPointTransactions, []);
+    assert.strictEqual(exampleOnlyQueue.meta.exampleRecordsExcluded, 7);
     assert.deepStrictEqual(listPendingRedemptions(exampleOnlyRepository, 10).data, []);
     assert.deepStrictEqual(listPendingSubmissions(exampleOnlyRepository, 10).data, []);
     assert.deepStrictEqual(listRecentPointTransactions(exampleOnlyRepository, 10).data, []);
@@ -418,8 +489,8 @@ async function main() {
     assert.deepStrictEqual(listShopItemStatus(exampleOnlyRepository, 10).data, []);
     assert.deepStrictEqual(listRecentReactionApprovals(exampleOnlyRepository, 10).data, []);
 
-    assert.strictEqual(listPendingRedemptions(repository, 10).data.length, 1);
-    assert.strictEqual(listPendingSubmissions(repository, 10).data.length, 1);
+    assert.strictEqual(listPendingRedemptions(repository, 10).data.length, 3);
+    assert.strictEqual(listPendingSubmissions(repository, 10).data.length, 3);
     assert.strictEqual(listRecentPointTransactions(repository, 10).data.length, 1);
     assert.strictEqual(listMissionStatus(repository, 10).data.length, 1);
     assert.strictEqual(listShopItemStatus(repository, 10).data.length, 1);
@@ -439,19 +510,27 @@ async function main() {
     assert.strictEqual(acceptedSummary.usersCount, 1);
     assert.strictEqual(acceptedSummary.reviewedSubmissionsCount, 2);
     assert.deepStrictEqual(acceptedSummary.submissionStatusCounts, {
-      pending: 1,
+      pending: 3,
       approved: 1,
       rejected: 1,
     });
 
+    const queueResponse = await invokeHandler(handler, '/api/admin/today-queue', basic('admin', 'secret'));
+    assert.strictEqual(queueResponse.statusCode, 200);
+    const queuePayload = JSON.parse(queueResponse.body);
+    assert.strictEqual(queuePayload.counts.pendingRedemptions, 3);
+    assert.strictEqual(queuePayload.followUps.length, 1);
+    assert.ok(queuePayload.qaWarnings.some((warning) => /중복/.test(warning.message)));
+
     const redemptionsResponse = await invokeHandler(handler, '/api/admin/redemptions', basic('admin', 'secret'));
     const redemptionsPayload = JSON.parse(redemptionsResponse.body);
-    assert.strictEqual(redemptionsPayload.data.length, 1);
+    assert.strictEqual(redemptionsPayload.data.length, 3);
     assert.strictEqual(redemptionsPayload.meta.exampleRecordsExcluded, 1);
 
     const page = await invokeHandler(handler, '/admin', basic('admin', 'secret'));
     assert.strictEqual(page.statusCode, 200);
     assert.ok(page.body.includes('summary-cards'));
+    assert.ok(page.body.includes('today-queue'));
     assert.ok(page.body.includes('submission-status-card'));
 
     const gamePage = await invokeHandler(handler, '/game/dungeonworld-survivors');
