@@ -138,7 +138,7 @@
         '<span class="reward-card-main">',
         `<span class="reward-topline"><span class="recommendation-pill">${upgrade.recommendationRole || '추천'}</span><span class="option-meta">${formatRarity(upgrade.rarity)} · ${itemType}</span></span>`,
         `<strong>${upgrade.title}</strong>`,
-        `<span class="level-shift" aria-label="현재 레벨 ${currentLevel}, 다음 레벨 ${nextLevel}, 최대 레벨 ${upgrade.maxLevel}"><span>Lv.${currentLevel}</span><b>→</b><strong>Lv.${nextLevel}</strong><em>/ ${upgrade.maxLevel}</em></span>`,
+        `<span class="level-shift" aria-label="현재 레벨 ${currentLevel}, 다음 레벨 ${nextLevel}, 최대 레벨 ${upgrade.maxLevel}"><span>Lv.${currentLevel}</span><b>→</b><strong>Lv.${nextLevel}</strong><em>/ ${upgrade.maxLevel}</em>${renderLevelPips(currentLevel, nextLevel, upgrade.maxLevel)}</span>`,
         `<span class="effect-line"><b>효과</b>${upgrade.effectPreview || upgrade.text}</span>`,
         `<span class="reward-quick-grid"><span><b>선택 이유</b>${shortenRecommendation(upgrade.recommendationReason)}</span><span><b>빌드 방향</b>${shortenBuildDirection(upgrade)}</span></span>`,
         `<span class="evolution-line evolution-${evolutionState.status}"><b>${evolutionState.label}</b>${evolutionState.text}</span>`,
@@ -402,6 +402,19 @@
 
   function formatTags(tags) {
     return (tags || []).map((tag) => `#${tag}`).join(' ');
+  }
+
+  function renderLevelPips(currentLevel, nextLevel, maxLevel) {
+    const pips = [];
+    for (let level = 1; level <= maxLevel; level += 1) {
+      const className = level <= currentLevel
+        ? 'filled'
+        : level === nextLevel
+          ? 'next'
+          : 'empty';
+      pips.push(`<span class="level-pip ${className}" aria-hidden="true"></span>`);
+    }
+    return `<span class="level-pips">${pips.join('')}</span>`;
   }
 
   function formatRecommendationRoleClass(role) {

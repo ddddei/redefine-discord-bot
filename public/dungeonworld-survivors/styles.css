@@ -602,6 +602,10 @@ canvas {
 
 .level-shift,
 .chest-level-compare {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   border: 1px solid color-mix(in srgb, var(--option-accent) 44%, var(--border-subtle));
   border-radius: 2px;
   padding: var(--space-2);
@@ -627,6 +631,32 @@ canvas {
 .level-shift em {
   color: var(--text-tertiary);
   font-style: normal;
+}
+
+.level-pips {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 66px;
+  margin-left: auto;
+  padding-left: var(--space-2);
+}
+
+.level-pip {
+  width: 9px;
+  height: 9px;
+  border: 1px solid color-mix(in srgb, var(--option-accent) 54%, var(--border-subtle));
+  transform: rotate(45deg);
+}
+
+.level-pip.filled,
+.level-pip.next {
+  background: var(--option-accent);
+}
+
+.level-pip.next {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--option-accent) 16%, transparent);
 }
 
 .card-seal {

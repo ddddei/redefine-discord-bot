@@ -208,6 +208,7 @@ async function assertUpgradeModalHealthy(cdp, width, height) {
       roles,
       hasRoleClasses: ['role-current', 'role-pivot', 'role-stable'].every((className) => Boolean(document.querySelector('.' + className))),
       hasBuildDirection: document.getElementById('upgrade-options').textContent.includes('빌드 방향'),
+      hasLevelPips: cards.every((card) => card.querySelectorAll('.level-pip').length > 0 && card.querySelectorAll('.level-pip.next').length === 1),
       clippedCards: cards.filter((card) => card.scrollWidth > card.clientWidth + 1 || card.scrollHeight > card.clientHeight + 1).length,
       overflowingText: Array.from(document.querySelectorAll('.upgrade-option span, .upgrade-option strong')).filter((node) => node.scrollWidth > node.clientWidth + 1).length,
     };
@@ -217,6 +218,7 @@ async function assertUpgradeModalHealthy(cdp, width, height) {
   assert.deepStrictEqual(metrics.roles, ['현재 빌드', '방향 전환', '안정 보정']);
   assert.strictEqual(metrics.hasRoleClasses, true, 'upgrade cards should expose distinct role classes');
   assert.strictEqual(metrics.hasBuildDirection, true, 'upgrade cards should show build direction copy');
+  assert.strictEqual(metrics.hasLevelPips, true, 'upgrade cards should show level progress pips');
   assert.strictEqual(metrics.clippedCards, 0, `${width}px upgrade cards should not clip content`);
   assert.strictEqual(metrics.overflowingText, 0, `${width}px upgrade card text should not overflow`);
 }

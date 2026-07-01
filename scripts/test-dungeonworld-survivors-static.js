@@ -878,6 +878,7 @@ function main() {
   assert.ok(game.includes('진화 가능: 다음 엘리트 상자를 노리세요'));
   assert.ok(game.includes('reward-quick-grid'));
   assert.ok(game.includes('function shortenRecommendation'));
+  assert.ok(game.includes('function renderLevelPips'));
   assert.ok(game.includes('function formatRecommendationRoleClass'));
   assert.ok(game.includes('function formatEvolutionComparison'));
   assert.ok(game.includes('renderer.preloadEnemySprites();'));
@@ -1000,6 +1001,8 @@ function main() {
   assert.ok(styles.includes('.build-line'));
   assert.ok(styles.includes('.retry-copy'));
   assert.ok(styles.includes('.recommendation-pill'));
+  assert.ok(styles.includes('.level-pips'));
+  assert.ok(styles.includes('.level-pip.next'));
   assert.ok(styles.includes('.upgrade-option.role-current'));
   assert.ok(styles.includes('.upgrade-option.role-pivot'));
   assert.ok(styles.includes('.upgrade-option.role-stable'));
