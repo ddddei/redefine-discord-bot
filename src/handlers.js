@@ -15,13 +15,17 @@ const {
   buildOperatorChecklistEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
+  buildOperatorFaqCandidatesEmbed,
+  buildOperatorFirstDayCheckEmbed,
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
+  buildOperatorOnboardingSignalsEmbed,
   buildOperatorPrelaunchCheckEmbed,
   getOperatorPrelaunchCheckIssues,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
+  buildOperatorReactionFollowUpsEmbed,
   buildOperatorRedemptionsEmbed,
   buildOperatorSubmissionsEmbed,
   buildOperatorTodayQueueEmbed,
@@ -39,7 +43,13 @@ const {
   getNoticeTemplate,
   truncateText,
 } = require('./embeds');
-const { buildTodayOperationsQueue } = require('./adminApi');
+const {
+  buildFaqCandidateQueue,
+  buildFirstDayCheck,
+  buildOnboardingSignals,
+  buildReactionFollowUpQueue,
+  buildTodayOperationsQueue,
+} = require('./adminApi');
 const {
   DUNGEONWORLD_CHOICE_PREFIX,
   GUIDE_HUB_SELECT_ID,
@@ -318,6 +328,42 @@ async function createOperatorPrelaunchCheckPayload(interaction) {
     embeds: [buildOperatorPrelaunchCheckEmbed(checkData)],
     components,
   };
+}
+
+async function createOperatorFirstDayCheckPayload(interaction) {
+  const environmentCheck = await createOperatorEnvironmentCheck(interaction);
+  const checkData = buildFirstDayCheck(pointsRepository, {
+    ...environmentCheck,
+    limit: 10,
+  });
+
+  return {
+    embeds: [buildOperatorFirstDayCheckEmbed(checkData)],
+    components: [createOperatorHubSelectRow('first_day_check')],
+  };
+}
+
+function recordParticipantCommandUse(interaction, commandName) {
+  if (!interaction || !interaction.user || !interaction.user.id) {
+    return;
+  }
+
+  try {
+    pointsRepository.recordParticipantCommandFirstUse({
+      userId: interaction.user.id,
+      commandName,
+    });
+  } catch (error) {
+    console.warn('참여자 기본 명령어 첫 사용 기록 실패:', error.message);
+  }
+}
+
+function recordFaqFallbackQuestion(question) {
+  try {
+    recordFaqFallbackQuestion(question);
+  } catch (error) {
+    console.warn('FAQ 후보 질문 기록 실패:', error.message);
+  }
 }
 
 function createInsufficientPointsDescription({ currentPoints = 0, requiredPoints = 0 } = {}) {
@@ -1538,6 +1584,7 @@ function createNoticeEmbed(type) {
 }
 
 async function handleGuideCommand(interaction) {
+  recordParticipantCommandUse(interaction, '안내');
   const roleType = getOnboardingRoleType(interaction.member);
   const roleGuideMessage = getOnboardingGuideMessage(roleType);
 
@@ -1749,6 +1796,7 @@ async function handleQuestionCommand(interaction) {
     );
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
+    pointsRepository.recordFaqFallbackCandidate({ question });
     await sendUnansweredQuestionLog(interaction, question);
     return;
   }
@@ -1772,6 +1820,7 @@ async function handleQuestionCommand(interaction) {
   );
 
   await interaction.reply({ embeds: [embed], ephemeral: true });
+  recordFaqFallbackQuestion(question);
   await sendUnansweredQuestionLog(interaction, question);
 }
 
@@ -1786,6 +1835,7 @@ async function handleNoticeCommand(interaction) {
 
 async function handlePointCommand(interaction) {
   try {
+    recordParticipantCommandUse(interaction, '포인트');
     await interaction.reply({
       embeds: [createPointBalanceEmbedForUser(interaction.user.id)],
       ephemeral: true,
@@ -1801,6 +1851,7 @@ async function handlePointCommand(interaction) {
 
 async function handleShopCommand(interaction) {
   try {
+    recordParticipantCommandUse(interaction, '상점');
     await replyWithShopSelection(interaction);
   } catch (error) {
     console.error('상점 정보 로드 실패:', error.message);
@@ -1866,6 +1917,7 @@ async function handleCheckinCommand(interaction) {
 
 async function handleMissionCommand(interaction) {
   try {
+    recordParticipantCommandUse(interaction, '미션');
     await replyWithMissionSelection(interaction);
   } catch (error) {
     console.error('미션 목록 조회 실패:', error.message);
@@ -2587,6 +2639,10 @@ function getOperatorHubEmbed(value, limit = 10) {
     return buildOperatorTodayQueueEmbed(buildTodayOperationsQueue(pointsRepository, limit));
   }
 
+  if (value === 'first_day_check') {
+    return buildOperatorFirstDayCheckEmbed(buildFirstDayCheck(pointsRepository, { limit }));
+  }
+
   if (value === 'redemptions') {
     return buildOperatorRedemptionsEmbed(pointsRepository.listPendingRedemptions(limit));
   }
@@ -2609,6 +2665,18 @@ function getOperatorHubEmbed(value, limit = 10) {
 
   if (value === 'reaction_approvals') {
     return buildOperatorReactionApprovalsEmbed(pointsRepository.listRecentReactionApprovals(limit));
+  }
+
+  if (value === 'reaction_followups') {
+    return buildOperatorReactionFollowUpsEmbed(buildReactionFollowUpQueue(pointsRepository, limit));
+  }
+
+  if (value === 'onboarding_signals') {
+    return buildOperatorOnboardingSignalsEmbed(buildOnboardingSignals(pointsRepository, limit));
+  }
+
+  if (value === 'faq_candidates') {
+    return buildOperatorFaqCandidatesEmbed(buildFaqCandidateQueue(pointsRepository, limit));
   }
 
   if (value === 'environment_check') {
@@ -2651,6 +2719,8 @@ async function handleOperatorHubSelect(interaction) {
       payload = createMissionHubPayload();
     } else if (selectedValue === 'shop_management') {
       payload = createShopHubPayload();
+    } else if (selectedValue === 'first_day_check') {
+      payload = await createOperatorFirstDayCheckPayload(interaction);
     } else if (selectedValue === 'environment_check') {
       payload = {
         embeds: [buildOperatorEnvironmentCheckEmbed(await createOperatorEnvironmentCheck(interaction))],
@@ -2997,6 +3067,15 @@ async function handleOperationStatusCommand(interaction) {
     let selectedValue = 'overview';
     let embed;
 
+    if (type === 'firstDayCheck') {
+      const payload = await createOperatorFirstDayCheckPayload(interaction);
+      await interaction.reply({
+        ...payload,
+        ephemeral: true,
+      });
+      return;
+    }
+
     if (type === 'pendingRedemptions') {
       selectedValue = 'redemptions';
       embed = createPendingRedemptionsEmbed(pointsRepository.listPendingRedemptions(limit));
@@ -3009,6 +3088,15 @@ async function handleOperationStatusCommand(interaction) {
     } else if (type === 'shop') {
       selectedValue = 'missions_shop';
       embed = createAdminShopListEmbed(pointsRepository.listShopItemsForAdmin({ limit }));
+    } else if (type === 'reactionFollowUps') {
+      selectedValue = 'reaction_followups';
+      embed = buildOperatorReactionFollowUpsEmbed(buildReactionFollowUpQueue(pointsRepository, limit));
+    } else if (type === 'onboardingSignals') {
+      selectedValue = 'onboarding_signals';
+      embed = buildOperatorOnboardingSignalsEmbed(buildOnboardingSignals(pointsRepository, limit));
+    } else if (type === 'faqCandidates') {
+      selectedValue = 'faq_candidates';
+      embed = buildOperatorFaqCandidatesEmbed(buildFaqCandidateQueue(pointsRepository, limit));
     } else {
       embed = createOperationSummaryEmbed(pointsRepository.getOperationSummary());
     }

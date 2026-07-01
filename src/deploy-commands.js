@@ -256,8 +256,12 @@ const commands = [
         .setRequired(false)
         .addChoices(
           { name: '요약', value: 'summary' },
+          { name: '첫날점검', value: 'firstDayCheck' },
           { name: '교환대기', value: 'pendingRedemptions' },
           { name: '인증대기', value: 'pendingSubmissions' },
+          { name: '반응후속확인', value: 'reactionFollowUps' },
+          { name: '도움필요신호', value: 'onboardingSignals' },
+          { name: 'FAQ후보', value: 'faqCandidates' },
           { name: '미션', value: 'missions' },
           { name: '상점', value: 'shop' }
         )

@@ -2,6 +2,10 @@ const assert = require('assert');
 const { Writable } = require('stream');
 const {
   buildAdminSummary,
+  buildFaqCandidateQueue,
+  buildFirstDayCheck,
+  buildOnboardingSignals,
+  buildReactionFollowUpQueue,
   buildTodayOperationsQueue,
   filterOperationalRecords,
   isExampleLikeRecord,
@@ -246,8 +250,30 @@ function createRepository() {
         dmUser: 'failed',
         publicReply: 'sent',
       },
+      transactionId: null,
     },
   ];
+  const supportSummary = {
+    readOnly: true,
+    storageMode: 'local-json',
+    trackedCommands: ['안내', '포인트', '미션', '상점'],
+    commandCounts: { 안내: 1, 포인트: 1, 미션: 0, 상점: 0 },
+    trackedUsersCount: 1,
+    guidanceSentCount: 1,
+    helpSignals: [{
+      userId: 'user1234567890',
+      usedCommands: ['안내', '포인트'],
+      missingCommands: ['미션', '상점'],
+      usedCount: 2,
+    }],
+    faqCandidates: [{
+      id: 'faq_candidate_1',
+      sampleQuestion: '주차는 어디에 하나요?',
+      latestQuestion: '주차 어디에 해요?',
+      count: 2,
+      lastSeenAt: now,
+    }],
+  };
 
   return {
     loadState: () => state,
@@ -265,6 +291,7 @@ function createRepository() {
     listMissionsForAdmin: ({ limit }) => state.missionsData.missions.slice(0, limit),
     listShopItemsForAdmin: ({ limit }) => state.shopItemsData.shopItems.slice(0, limit),
     listRecentReactionApprovals: (limit) => reactionRecords.slice(0, limit),
+    getOperatorSupportSummary: () => supportSummary,
   };
 }
 
@@ -426,6 +453,7 @@ async function main() {
     assert.strictEqual(summary.activeMissionsCount, 1);
     assert.strictEqual(summary.activeShopItemsCount, 1);
     assert.strictEqual(summary.todayReactionApprovalsCount, 1);
+    assert.strictEqual(summary.reactionFollowUpsCount, 2);
     assert.strictEqual(summary.todayEarnedPoints, 20);
     assert.strictEqual(summary.exampleRecordsExcluded, 6);
     assert.strictEqual(summary.meta.exampleRecordsExcluded, 6);
@@ -443,13 +471,53 @@ async function main() {
     assert.strictEqual(queue.pendingSubmissions.length, 3);
     assert.strictEqual(queue.todayReactionApprovals.length, 1);
     assert.strictEqual(queue.todayPointTransactions.length, 1);
-    assert.strictEqual(queue.followUps.length, 1);
+    assert.strictEqual(queue.followUps.length, 2);
     assert.match(queue.followUps[0].message, /DM 알림 실패/);
+    assert.ok(queue.followUps.some((item) => /포인트 거래 ID/.test(item.message)));
     assert.ok(queue.qaWarnings.some((warning) => /오래된 교환 대기/.test(warning.message)));
     assert.ok(queue.qaWarnings.some((warning) => /오래된 인증 대기/.test(warning.message)));
     assert.ok(queue.qaWarnings.some((warning) => /중복 교환 대기/.test(warning.message)));
     assert.ok(queue.qaWarnings.some((warning) => /중복 인증 대기/.test(warning.message)));
     assert.strictEqual(queue.meta.exampleRecordsExcluded, 6);
+    const firstDayCheck = buildFirstDayCheck(repository, {
+      channelChecks: [{
+        envName: 'LOG_CHANNEL_ID',
+        required: true,
+        configured: true,
+        found: true,
+        accessible: true,
+        canSendMessages: true,
+      }],
+      googleSheetsCheck: {
+        loggingEnabled: false,
+        webAppUrlConfigured: false,
+      },
+    });
+    assert.strictEqual(firstDayCheck.readOnly, true);
+    assert.strictEqual(firstDayCheck.activeMissionsCount, 1);
+    assert.strictEqual(firstDayCheck.activeShopItemsCount, 1);
+    assert.strictEqual(firstDayCheck.pendingRedemptionsCount, 3);
+    assert.strictEqual(firstDayCheck.pendingSubmissionsCount, 3);
+    assert.strictEqual(firstDayCheck.reactionFollowUpsCount, 2);
+    assert.strictEqual(firstDayCheck.exampleRecordsExcluded, 6);
+    assert.strictEqual(firstDayCheck.channelReadyCount, 1);
+    assert.strictEqual(firstDayCheck.backupReminderEnabled, false);
+    assert.strictEqual(firstDayCheck.exportGuideCommand, '/운영내보내기 종류:전체 형식:JSON');
+
+    const reactionFollowUps = buildReactionFollowUpQueue(repository, 10);
+    assert.strictEqual(reactionFollowUps.readOnly, true);
+    assert.strictEqual(reactionFollowUps.counts.followUps, 2);
+    assert.ok(reactionFollowUps.followUps.some((item) => /DM 알림 실패/.test(item.message)));
+    assert.ok(reactionFollowUps.followUps.some((item) => /포인트 거래 ID/.test(item.message)));
+
+    const onboardingSignals = buildOnboardingSignals(repository, 10);
+    assert.strictEqual(onboardingSignals.trackedUsersCount, 1);
+    assert.strictEqual(onboardingSignals.guidanceSentCount, 1);
+    assert.deepStrictEqual(onboardingSignals.helpSignals[0].missingCommands, ['미션', '상점']);
+
+    const faqCandidateQueue = buildFaqCandidateQueue(repository, 10);
+    assert.strictEqual(faqCandidateQueue.readOnly, true);
+    assert.strictEqual(faqCandidateQueue.faqCandidates[0].count, 2);
 
     const emptyRepository = createEmptyRepository();
     const emptySummary = buildAdminSummary(emptyRepository);
@@ -522,8 +590,24 @@ async function main() {
     assert.strictEqual(queueResponse.statusCode, 200);
     const queuePayload = JSON.parse(queueResponse.body);
     assert.strictEqual(queuePayload.counts.pendingRedemptions, 3);
-    assert.strictEqual(queuePayload.followUps.length, 1);
+    assert.strictEqual(queuePayload.followUps.length, 2);
     assert.ok(queuePayload.qaWarnings.some((warning) => /중복/.test(warning.message)));
+
+    const firstDayResponse = await invokeHandler(handler, '/api/admin/first-day-check', basic('admin', 'secret'));
+    assert.strictEqual(firstDayResponse.statusCode, 200);
+    assert.strictEqual(JSON.parse(firstDayResponse.body).readOnly, true);
+
+    const reactionFollowUpsResponse = await invokeHandler(handler, '/api/admin/reaction-follow-ups', basic('admin', 'secret'));
+    assert.strictEqual(reactionFollowUpsResponse.statusCode, 200);
+    assert.strictEqual(JSON.parse(reactionFollowUpsResponse.body).counts.followUps, 2);
+
+    const onboardingResponse = await invokeHandler(handler, '/api/admin/onboarding-signals', basic('admin', 'secret'));
+    assert.strictEqual(onboardingResponse.statusCode, 200);
+    assert.strictEqual(JSON.parse(onboardingResponse.body).trackedUsersCount, 1);
+
+    const faqCandidatesResponse = await invokeHandler(handler, '/api/admin/faq-candidates', basic('admin', 'secret'));
+    assert.strictEqual(faqCandidatesResponse.statusCode, 200);
+    assert.strictEqual(JSON.parse(faqCandidatesResponse.body).faqCandidates[0].count, 2);
 
     const redemptionsResponse = await invokeHandler(handler, '/api/admin/redemptions', basic('admin', 'secret'));
     const redemptionsPayload = JSON.parse(redemptionsResponse.body);
@@ -535,6 +619,8 @@ async function main() {
     assert.ok(page.body.includes('summary-cards'));
     assert.ok(page.body.includes('today-queue'));
     assert.ok(page.body.includes('submission-status-card'));
+    assert.ok(page.body.includes('first-day-check'));
+    assert.ok(page.body.includes('faq-candidates'));
 
     const gamePage = await invokeHandler(handler, '/game/dungeonworld-survivors');
     assert.strictEqual(gamePage.statusCode, 200);

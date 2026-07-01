@@ -2,11 +2,17 @@ require('dotenv').config();
 
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { handleInteractionCreate } = require('./handlers');
-const { handleMissionReactionApproval } = require('./reactionApproval');
+const {
+  handleMissionReactionApproval,
+  handleMissionSubmissionGuidanceMessage,
+} = require('./reactionApproval');
 const { startAdminServer } = require('./adminServer');
 const { startDailyMissionAnnouncementScheduler } = require('./dailyMissionAnnouncement');
 const { startTodayMissionAutoPublishScheduler } = require('./todayMissionAutoPublish');
 const { handleTodayMissionMessageCreate } = require('./todayMission');
+const {
+  startOperationBackupReminder,
+} = require('./logging');
 const {
   findFaqAnswer,
   findKnowledgeAnswer,
@@ -35,12 +41,18 @@ client.once('clientReady', () => {
   console.log(`${client.user.tag} 봇이 준비됐어요.`);
   startDailyMissionAnnouncementScheduler(client);
   startTodayMissionAutoPublishScheduler(client);
+  startOperationBackupReminder(client);
 });
 
 client.on('interactionCreate', handleInteractionCreate);
 
 client.on('messageCreate', async (message) => {
   await handleTodayMissionMessageCreate(message, client);
+  try {
+    await handleMissionSubmissionGuidanceMessage(message);
+  } catch (error) {
+    console.warn('미션 인증 채널 자동 안내 처리 실패:', error.message);
+  }
 });
 
 client.on('messageReactionAdd', async (reaction, user) => {
@@ -65,6 +77,7 @@ module.exports = {
   findKnowledgeAnswer,
   handleInteractionCreate,
   handleMissionReactionApproval,
+  handleMissionSubmissionGuidanceMessage,
   handleTodayMissionMessageCreate,
   normalizeText,
   scoreFaqItem,

@@ -21,9 +21,11 @@ DISCORD_TOKEN=
 CLIENT_ID=
 GUILD_ID=
 LOG_CHANNEL_ID=
+OPERATION_BACKUP_REMINDER_ENABLED=false
+OPERATION_BACKUP_REMINDER_TIME_KST=20:50
 ```
 
-`DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`는 실제 운영 Discord 앱과 서버 기준으로 입력합니다. `LOG_CHANNEL_ID`는 기본 운영 로그와 fallback 알림을 받을 운영진 전용 채널로 설정합니다.
+`DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`는 실제 운영 Discord 앱과 서버 기준으로 입력합니다. `LOG_CHANNEL_ID`는 기본 운영 로그와 fallback 알림을 받을 운영진 전용 채널로 설정합니다. `OPERATION_BACKUP_REMINDER_ENABLED=true`로 켜면 `OPERATION_BACKUP_REMINDER_TIME_KST` 시각에 `/운영내보내기` 확인 알림만 전송하며, 백업 파일은 자동 생성하지 않습니다.
 
 ## 4. 관리자 대시보드 환경변수
 
@@ -74,6 +76,8 @@ SAFETY_ALERT_CHANNEL_ID=
 | 환경변수 | 기준 | 용도 |
 | --- | --- | --- |
 | `LOG_CHANNEL_ID` | 권장 | 기본 운영 로그와 fallback 알림 |
+| `OPERATION_BACKUP_REMINDER_ENABLED` | 선택 | 운영 종료 전 `/운영내보내기` 확인 리마인더 |
+| `OPERATION_BACKUP_REMINDER_TIME_KST` | 선택 | 백업 리마인더 전송 시각, 기본 `20:50` |
 | `POINT_REDEEM_CHANNEL_ID` | 권장 | 교환 신청 및 처리 알림 |
 | `ACTIVITY_REVIEW_CHANNEL_ID` | 권장 | 미션 인증 검토 카드와 승인/반려 흐름 |
 | `TODAY_MISSION_CHANNEL_ID` | 권장 | 오늘의 미션/인증 업로드 채널 |
@@ -83,6 +87,14 @@ SAFETY_ALERT_CHANNEL_ID=
 | `SAFETY_ALERT_CHANNEL_ID` | 선택 | 민감 질문 알림을 기본 로그와 분리할 때 |
 
 `/운영현황`의 `환경 설정 점검`에서는 각 채널 환경변수의 설정 여부, 채널 ID, Discord 채널 조회 여부, 봇 접근 권한, 메시지 전송 권한을 확인합니다. 선택 항목이 미설정인 것은 오류가 아니라 현재 운영 방식 안내입니다.
+
+## 5-1. 운영 보조 local JSON 경로
+
+```env
+OPERATOR_SUPPORT_DATA_PATH=
+```
+
+비워두면 `data/operator-support.local.json`을 사용합니다. 이 파일에는 `/안내`, `/포인트`, `/미션`, `/상점` 첫 사용 여부, 미션 인증 채널 1회 안내 기록, FAQ 후보 질문 묶음이 저장됩니다. 실제 운영 데이터이므로 `data/*.local.json`과 같이 커밋하지 않습니다.
 
 ## 6. Google Sheets 보조 로그 환경변수
 

@@ -24,6 +24,7 @@ function main() {
     missionsFallback: path.join(dataDir, 'missions.example.json'),
     submissions: path.join(tempDir, 'submissions.json'),
     submissionsFallback: path.join(dataDir, 'submissions.example.json'),
+    operatorSupport: path.join(tempDir, 'operator-support.json'),
   };
   const sheetsEvents = [];
   const repository = createPointsRepository(paths, {
@@ -70,6 +71,26 @@ function main() {
   });
   assert.strictEqual(completed.redemption.status, 'completed');
   assert.strictEqual(completed.redemption.reviewedBy, 'operator_repository_test');
+  assert.strictEqual(completed.redemption.reviewNote, 'repository test');
+  assert.strictEqual(completed.redemption.reviewHistory.length, 1);
+
+  const notedRedemption = repository.requestRedemption({
+    user: {
+      userId: 'user_example_003',
+      displayName: '참여자 예시 3',
+    },
+    itemId: 'item_youth_point_100_example',
+    note: 'repository test note target',
+  });
+  const completedWithNote = repository.reviewRedemption({
+    redemptionId: notedRedemption.redemption.id,
+    action: 'complete',
+    operatorId: 'operator_repository_test',
+    note: '현장 지급 완료 확인',
+  });
+  assert.strictEqual(completedWithNote.redemption.status, 'completed');
+  assert.strictEqual(completedWithNote.redemption.reviewNote, '현장 지급 완료 확인');
+  assert.strictEqual(completedWithNote.redemption.reviewHistory[0].note, '현장 지급 완료 확인');
 
   const adjusted = repository.adjustUserPoints({
     user: {
@@ -116,6 +137,46 @@ function main() {
   });
   assert.strictEqual(logs.length, 1);
   assert.strictEqual(logs[0].relatedId, 'rd_example_cancelled');
+
+  const firstGuideUse = repository.recordParticipantCommandFirstUse({
+    userId: 'first_use_user',
+    commandName: '안내',
+  });
+  const duplicateGuideUse = repository.recordParticipantCommandFirstUse({
+    userId: 'first_use_user',
+    commandName: '안내',
+  });
+  repository.recordParticipantCommandFirstUse({
+    userId: 'first_use_user',
+    commandName: '포인트',
+  });
+  assert.strictEqual(firstGuideUse.recorded, true);
+  assert.strictEqual(duplicateGuideUse.recorded, false);
+
+  const firstGuidance = repository.recordMissionSubmissionGuidance({
+    userId: 'first_use_user',
+    channelId: 'mission_submission_channel',
+    messageId: 'mission_submission_message',
+  });
+  const duplicateGuidance = repository.recordMissionSubmissionGuidance({
+    userId: 'first_use_user',
+    channelId: 'mission_submission_channel',
+    messageId: 'mission_submission_message_2',
+  });
+  assert.strictEqual(firstGuidance.recorded, true);
+  assert.strictEqual(duplicateGuidance.recorded, false);
+  assert.strictEqual(repository.hasSentMissionSubmissionGuidance('first_use_user', 'mission_submission_channel'), true);
+
+  repository.recordFaqFallbackCandidate({ question: '주차는 어디에 하나요?' });
+  const repeatedFaqCandidate = repository.recordFaqFallbackCandidate({ question: '주차는 어디에 하나요?' });
+  assert.strictEqual(repeatedFaqCandidate.count, 2);
+
+  const supportSummary = repository.getOperatorSupportSummary(10);
+  assert.strictEqual(supportSummary.trackedUsersCount, 1);
+  assert.strictEqual(supportSummary.commandCounts['안내'], 1);
+  assert.strictEqual(supportSummary.commandCounts['포인트'], 1);
+  assert.strictEqual(supportSummary.guidanceSentCount, 1);
+  assert.strictEqual(supportSummary.faqCandidates[0].count, 2);
 
   assert.strictEqual(repository.isDuplicateMissionRewardGuardHealthy('2030-06-01'), true);
 

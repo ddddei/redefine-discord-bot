@@ -116,6 +116,11 @@ const OPERATOR_HUB_OPTIONS = [
     description: '오늘 먼저 확인할 처리 대기와 주의 항목',
   },
   {
+    label: '첫날 점검',
+    value: 'first_day_check',
+    description: '첫 운영 전 환경, 대기열, 백업 확인',
+  },
+  {
     label: '교환 대기',
     value: 'redemptions',
     description: 'pending 교환 신청 목록',
@@ -149,6 +154,21 @@ const OPERATOR_HUB_OPTIONS = [
     label: '반응 승인 기록',
     value: 'reaction_approvals',
     description: '미션 인증 채널 이모지 처리 기록',
+  },
+  {
+    label: '반응 후속 확인',
+    value: 'reaction_followups',
+    description: 'DM/답글 실패와 거래 누락 확인',
+  },
+  {
+    label: '도움 필요 신호',
+    value: 'onboarding_signals',
+    description: '기본 명령어 첫 사용 흐름 확인',
+  },
+  {
+    label: 'FAQ 후보',
+    value: 'faq_candidates',
+    description: '반복 fallback 질문 묶음 확인',
   },
   {
     label: '참여자 초대 안내문',

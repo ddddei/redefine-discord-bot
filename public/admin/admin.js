@@ -2,6 +2,10 @@
   const endpoints = {
     summary: '/api/admin/summary',
     todayQueue: '/api/admin/today-queue?limit=10',
+    firstDayCheck: '/api/admin/first-day-check?limit=10',
+    reactionFollowUps: '/api/admin/reaction-follow-ups?limit=10',
+    onboardingSignals: '/api/admin/onboarding-signals?limit=10',
+    faqCandidates: '/api/admin/faq-candidates?limit=10',
     redemptions: '/api/admin/redemptions?status=pending&limit=10',
     submissions: '/api/admin/submissions?status=pending&limit=10',
     transactions: '/api/admin/point-transactions?limit=10',
@@ -29,6 +33,7 @@
     activeMissionsCount: '활성 미션',
     activeShopItemsCount: '활성 상점 항목',
     todayReactionApprovalsCount: '오늘 반응 승인',
+    reactionFollowUpsCount: '반응 후속 확인',
   };
 
   function $(id) {
@@ -162,6 +167,53 @@
       + (queue.meta && queue.meta.exampleRecordsExcluded > 0 ? ' ' + queue.meta.exampleRecordsExcluded + '건' : '');
   }
 
+  function renderFirstDayCheck(check) {
+    const sheets = check.googleSheetsCheck || {};
+    const lines = [
+      '채널 점검: ' + text(check.channelReadyCount, 0) + '/' + text(check.channelCheckCount, 0) + '개 전송 가능',
+      'Google Sheets: ' + (sheets.loggingEnabled ? '켜짐' : '꺼짐') + ' / URL ' + (sheets.webAppUrlConfigured ? '설정됨' : '미설정'),
+      'active 미션 ' + text(check.activeMissionsCount, 0) + '개 · active 상점 ' + text(check.activeShopItemsCount, 0) + '개',
+      '교환 대기 ' + text(check.pendingRedemptionsCount, 0) + '건 · 인증 대기 ' + text(check.pendingSubmissionsCount, 0) + '건',
+      '예시 데이터 제외 ' + text(check.exampleRecordsExcluded, 0) + '건',
+      (check.backupReminderEnabled ? '백업 리마인더 켜짐' : '백업 리마인더 꺼짐') + ' · /운영내보내기 확인',
+    ];
+    $('first-day-check').innerHTML = lines.map(function (line) {
+      return '<li>' + escapeHtml(line) + '</li>';
+    }).join('');
+  }
+
+  function renderReactionFollowUps(queue) {
+    const items = (queue.followUps || []).map(function (item) {
+      return renderQueueItem('warning', '반응 승인 후속 확인', item.message, item.recordId || '');
+    });
+    renderQueueList('reaction-follow-ups', items, '반응 승인 후속 확인 항목이 없습니다.');
+  }
+
+  function renderOnboardingSignals(signals) {
+    const counts = signals.commandCounts || {};
+    const lines = [
+      '기록된 사용자 ' + text(signals.trackedUsersCount, 0) + '명',
+      '/안내 ' + text(counts['안내'], 0) + '명 · /포인트 ' + text(counts['포인트'], 0) + '명 · /미션 ' + text(counts['미션'], 0) + '명 · /상점 ' + text(counts['상점'], 0) + '명',
+      '미션 인증 채널 1회 안내 ' + text(signals.guidanceSentCount, 0) + '건',
+    ];
+    const signalItems = (signals.helpSignals || []).slice(0, 5).map(function (signal) {
+      return '<li><span class="mono">' + escapeHtml(shortId(signal.userId)) + '</span> · 아직 안 쓴 기본 명령어: '
+        + escapeHtml((signal.missingCommands || []).join(', ') || '없음') + '</li>';
+    });
+
+    $('onboarding-signals').innerHTML = lines.map(function (line) {
+      return '<li>' + escapeHtml(line) + '</li>';
+    }).concat(signalItems).join('');
+  }
+
+  function renderFaqCandidates(queue) {
+    renderTable('faq-candidates', queue.faqCandidates || [], [
+      { label: '반복', render: function (row) { return escapeHtml(row.count || 1) + '회'; } },
+      { label: '질문', render: function (row) { return escapeHtml(row.sampleQuestion || row.latestQuestion || '-'); } },
+      { label: '마지막 확인', render: function (row) { return escapeHtml(formatDate(row.lastSeenAt)); } },
+    ], '아직 FAQ 후보로 묶인 fallback 질문이 없습니다.');
+  }
+
   function renderSummary(summary) {
     if (summary.title) {
       $('dashboard-title').textContent = summary.title;
@@ -278,6 +330,10 @@
       const results = await Promise.all([
         fetchJson(endpoints.summary),
         fetchJson(endpoints.todayQueue),
+        fetchJson(endpoints.firstDayCheck),
+        fetchJson(endpoints.reactionFollowUps),
+        fetchJson(endpoints.onboardingSignals),
+        fetchJson(endpoints.faqCandidates),
         fetchJson(endpoints.redemptions),
         fetchJson(endpoints.submissions),
         fetchJson(endpoints.transactions),
@@ -288,17 +344,23 @@
 
       renderSummary(results[0]);
       renderTodayQueue(results[1]);
-      renderRedemptions(rowsFromResponse(results[2]));
-      renderSubmissions(rowsFromResponse(results[3]));
-      renderTransactions(rowsFromResponse(results[4]));
-      renderMissions(rowsFromResponse(results[5]));
-      renderShopItems(rowsFromResponse(results[6]));
-      renderReactions(rowsFromResponse(results[7]));
+      renderFirstDayCheck(results[2]);
+      renderReactionFollowUps(results[3]);
+      renderOnboardingSignals(results[4]);
+      renderFaqCandidates(results[5]);
+      renderRedemptions(rowsFromResponse(results[6]));
+      renderSubmissions(rowsFromResponse(results[7]));
+      renderTransactions(rowsFromResponse(results[8]));
+      renderMissions(rowsFromResponse(results[9]));
+      renderShopItems(rowsFromResponse(results[10]));
+      renderReactions(rowsFromResponse(results[11]));
 
       $('last-updated').textContent = '마지막 갱신: ' + formatDate(new Date().toISOString());
     } catch (error) {
       $('global-status').textContent = '데이터를 불러오지 못했습니다.';
-      ['today-queue-work', 'today-queue-alerts', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals'].forEach(function (id) {
+      $('first-day-check').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
+      $('onboarding-signals').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
+      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
       });
     }

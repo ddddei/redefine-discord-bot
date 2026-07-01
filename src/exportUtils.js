@@ -65,10 +65,13 @@ const CSV_COLUMNS = {
     ['completedAt', '완료일시'],
     ['cancelledAt', '취소일시'],
     ['refundedAt', '환불일시'],
+    ['reviewedAt', '처리일시'],
     ['reviewedBy', '처리자'],
     ['transactionId', '거래ID'],
     ['refundTransactionId', '환불거래ID'],
     ['note', '메모'],
+    ['reviewNote', '운영처리메모'],
+    ['reviewHistory', '처리이력'],
   ],
   submissions: [
     ['id', '제출ID'],

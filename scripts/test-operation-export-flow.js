@@ -65,6 +65,31 @@ function main() {
   assert.ok(summaryPayload.content.includes('운영 요약'));
   assert.ok(summaryPayload.content.includes('개인정보'));
 
+  for (const localPath of [
+    paths.points,
+    paths.shopItems,
+    paths.redemptions,
+    paths.missions,
+    paths.submissions,
+  ]) {
+    assert.strictEqual(fs.existsSync(localPath), false);
+  }
+
+  const redemptionForNote = repository.requestRedemption({
+    user: {
+      userId: 'user_example_002',
+      displayName: '참여자 예시 2',
+    },
+    itemId: 'item_youth_point_100_example',
+    note: 'export note seed',
+  });
+  repository.reviewRedemption({
+    redemptionId: redemptionForNote.redemption.id,
+    action: 'complete',
+    operatorId: 'operator_export_test',
+    note: '현장 지급 완료',
+  });
+
   const pointsJson = buildOperationExportPayload(repository, {
     kind: 'points',
     format: 'json',
@@ -84,6 +109,12 @@ function main() {
   });
   assertAttachmentPayload(redemptionsJson, '.json');
   assert.strictEqual(JSON.parse(redemptionsJson.content).kind, 'redemptions');
+  const parsedRedemptions = JSON.parse(redemptionsJson.content);
+  assert.ok(parsedRedemptions.data.redemptions.some((redemption) => {
+    return redemption.id === redemptionForNote.redemption.id
+      && redemption.reviewNote === '현장 지급 완료'
+      && Array.isArray(redemption.reviewHistory);
+  }));
 
   const submissionsJson = buildOperationExportPayload(repository, {
     kind: 'submissions',
@@ -138,6 +169,8 @@ function main() {
   });
   assertAttachmentPayload(redemptionsCsv, '.csv');
   assert.ok(redemptionsCsv.content.startsWith('신청ID,사용자ID,항목ID'));
+  assert.ok(redemptionsCsv.content.includes('운영처리메모'));
+  assert.ok(redemptionsCsv.content.includes('현장 지급 완료'));
 
   const escapedCsv = toCsv(
     [
@@ -162,16 +195,6 @@ function main() {
   const truncated = truncateForDiscord('a'.repeat(300), 80);
   assert.ok(truncated.length <= 80);
   assert.ok(truncated.includes('일부만 표시'));
-
-  for (const localPath of [
-    paths.points,
-    paths.shopItems,
-    paths.redemptions,
-    paths.missions,
-    paths.submissions,
-  ]) {
-    assert.strictEqual(fs.existsSync(localPath), false);
-  }
 
   const missingFallbackPath = path.join(os.tmpdir(), `missing-${Date.now()}.json`);
   const { repository: emptyRepository } = createTempRepository({

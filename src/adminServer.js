@@ -6,6 +6,10 @@ const { createPointsRepository } = require('./pointsRepository');
 const { requireAdminAuth, isAdminAuthConfigured } = require('./adminAuth');
 const {
   buildAdminSummary,
+  buildFaqCandidateQueue,
+  buildFirstDayCheck,
+  buildOnboardingSignals,
+  buildReactionFollowUpQueue,
   buildTodayOperationsQueue,
   listMissionStatus,
   listPendingRedemptions,
@@ -112,6 +116,26 @@ function handleAdminApi(req, res, pathname, searchParams, repository) {
 
     if (pathname === '/api/admin/today-queue') {
       sendJson(res, 200, buildTodayOperationsQueue(repository, limit));
+      return;
+    }
+
+    if (pathname === '/api/admin/first-day-check') {
+      sendJson(res, 200, buildFirstDayCheck(repository, { limit }));
+      return;
+    }
+
+    if (pathname === '/api/admin/reaction-follow-ups') {
+      sendJson(res, 200, buildReactionFollowUpQueue(repository, limit));
+      return;
+    }
+
+    if (pathname === '/api/admin/onboarding-signals') {
+      sendJson(res, 200, buildOnboardingSignals(repository, limit));
+      return;
+    }
+
+    if (pathname === '/api/admin/faq-candidates') {
+      sendJson(res, 200, buildFaqCandidateQueue(repository, limit));
       return;
     }
 

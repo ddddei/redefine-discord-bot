@@ -7,6 +7,7 @@ const {
   buildMessageUrl,
   getReactionRewardPoints,
   handleMissionReactionApproval,
+  handleMissionSubmissionGuidanceMessage,
   isApprovalEmoji,
   isMissionSubmissionChannel,
   isOperatorMember,
@@ -36,6 +37,7 @@ function createTempPaths() {
     redemptions: path.join(tempDir, 'redemptions.json'),
     redemptionsFallback: path.join(dataDir, 'redemptions.example.json'),
     reactionApprovals: path.join(tempDir, 'reaction-approvals.json'),
+    operatorSupport: path.join(tempDir, 'operator-support.json'),
   };
 }
 
@@ -338,6 +340,29 @@ async function main() {
     );
     assert.strictEqual(duplicateHandlerResult.ok, false);
     assert.strictEqual(duplicateHandlerResult.reason, 'ALREADY_REVIEWED');
+
+    const guidanceMessage = createReaction({
+      messageId: 'message_guidance_first',
+      authorId: 'participant_guidance',
+      emoji: '✅',
+    }).message;
+    const guidanceResult = await handleMissionSubmissionGuidanceMessage(guidanceMessage, {
+      repository: handlerRepository,
+    });
+    const duplicateGuidanceMessage = createReaction({
+      messageId: 'message_guidance_duplicate',
+      authorId: 'participant_guidance',
+      emoji: '✅',
+    }).message;
+    const duplicateGuidanceResult = await handleMissionSubmissionGuidanceMessage(duplicateGuidanceMessage, {
+      repository: handlerRepository,
+    });
+    assert.strictEqual(guidanceResult.ok, true);
+    assert.match(guidanceMessage.replies[0].content, /운영진이 확인한 뒤 포인트를 지급/);
+    assert.match(guidanceMessage.replies[0].content, /민감한 개인정보/);
+    assert.strictEqual(duplicateGuidanceResult.ok, false);
+    assert.strictEqual(duplicateGuidanceResult.reason, 'ALREADY_GUIDED');
+    assert.strictEqual(duplicateGuidanceMessage.replies.length, 0);
 
     const todayMissionReaction = createReaction({
       messageId: 'message_today_mission_reaction',

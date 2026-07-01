@@ -407,6 +407,153 @@ function buildOperatorTodayQueueEmbed(queue = {}) {
   );
 }
 
+function formatChannelReadySummary(checks = []) {
+  if (!checks.length) {
+    return 'Discord 채널 실시간 점검은 `/운영현황` Discord 화면에서 확인해 주세요.';
+  }
+
+  const readyCount = checks.filter(isChannelReady).length;
+  const issueLines = checks
+    .filter((check) => !isChannelReady(check) && check.required)
+    .slice(0, 4)
+    .map((check) => `- ${check.envName}: ${check.configured ? '권한 확인 필요' : '미설정'}`);
+
+  return [
+    `점검 채널 ${checks.length}개 중 ${readyCount}개 전송 가능`,
+    ...(issueLines.length > 0 ? issueLines : ['- 필수 채널 설정에서 큰 경고 없음']),
+  ].join('\n');
+}
+
+function buildOperatorFirstDayCheckEmbed(check = {}) {
+  const sheets = check.googleSheetsCheck || {};
+  const backupLine = check.backupReminderEnabled
+    ? '백업 리마인더: 켜짐'
+    : '백업 리마인더: 꺼짐 - 운영 종료 전 `/운영내보내기`를 직접 확인해 주세요.';
+
+  return createGuideEmbed(
+    '첫날 점검',
+    [
+      '첫 운영 전 불안을 줄이기 위한 읽기 전용 점검 화면입니다.',
+      '이 화면은 설정이나 데이터를 수정하지 않습니다.',
+      '',
+      '환경변수/채널 설정',
+      formatChannelReadySummary(check.channelChecks || []),
+      `Google Sheets 보조 로그: ${sheets.loggingEnabled ? '켜짐' : '꺼짐'} / Web App URL ${sheets.webAppUrlConfigured ? '설정됨' : '미설정'}`,
+      '',
+      '운영 데이터',
+      `- active 미션: ${check.activeMissionsCount || 0}개`,
+      `- active 상점: ${check.activeShopItemsCount || 0}개`,
+      `- 교환 대기: ${check.pendingRedemptionsCount || 0}건`,
+      `- 인증 대기: ${check.pendingSubmissionsCount || 0}건`,
+      `- 반응 승인 후속 확인: ${check.reactionFollowUpsCount || 0}건`,
+      '',
+      '예시 데이터 제외',
+      `example/demo/sample/2030년대 예시 데이터 제외: 적용됨 (${check.exampleRecordsExcluded || 0}건 제외)`,
+      '',
+      '백업',
+      backupLine,
+      `수동 백업 명령어: \`${check.exportGuideCommand || '/운영내보내기 종류:전체 형식:JSON'}\``,
+      '',
+      '참여자 도움 신호',
+      `- 기본 명령어 첫 사용 기록 사용자: ${check.onboardingTrackedUsersCount || 0}명`,
+      `- 미션 인증 채널 1회 안내 전송: ${check.missionGuidanceSentCount || 0}건`,
+      `- FAQ 후보 묶음: ${check.faqCandidateCount || 0}건`,
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorReactionFollowUpsEmbed(queue = {}) {
+  const followUps = Array.isArray(queue.followUps) ? queue.followUps : [];
+  const lines = followUps.length > 0
+    ? followUps.slice(0, 10).map((item, index) => {
+      return [
+        `${index + 1}. ${truncateText(item.message, 120, '후속 확인')}`,
+        `   기록 ID: \`${truncateText(item.recordId, 80, '기록 ID 없음')}\``,
+        item.source ? `   원본: ${truncateText(item.source, 140, '원본')}` : null,
+      ].filter(Boolean).join('\n');
+    })
+    : ['현재 별도 확인할 반응 승인 후속 항목이 없습니다.'];
+
+  return createGuideEmbed(
+    '반응 승인 후속 확인',
+    [
+      'DM 실패, 공개 답글 실패, 승인 기록의 포인트 거래 누락을 모아 보여주는 읽기 전용 화면입니다.',
+      `후속 확인 항목: ${(queue.counts && queue.counts.followUps) || followUps.length || 0}건`,
+      '',
+      ...lines,
+      '',
+      '처리는 원본 인증 글, `/포인트로그`, `/운영내보내기`를 대조해 확인해 주세요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorOnboardingSignalsEmbed(signals = {}) {
+  const counts = signals.commandCounts || {};
+  const helpSignals = Array.isArray(signals.helpSignals) ? signals.helpSignals : [];
+  const lines = helpSignals.length > 0
+    ? helpSignals.slice(0, 10).map((signal, index) => {
+      return [
+        `${index + 1}. 사용자 ${truncateText(signal.userId, 24, '알 수 없음')}`,
+        `   사용: ${(signal.usedCommands || []).join(', ') || '없음'}`,
+        `   아직 안 쓴 기본 명령어: ${(signal.missingCommands || []).join(', ') || '없음'}`,
+      ].join('\n');
+    })
+    : ['아직 도움 필요 신호로 볼 기본 명령어 첫 사용 기록이 없습니다.'];
+
+  return createGuideEmbed(
+    '도움 필요 신호',
+    [
+      '참여자 첫 입장 흐름을 감시가 아니라 안내 보조 신호로만 봅니다.',
+      '저장 항목은 사용자 ID와 기본 명령어 첫 사용 여부로 최소화합니다.',
+      '',
+      `기록된 사용자: ${signals.trackedUsersCount || 0}명`,
+      `기본 명령어 첫 사용: /안내 ${counts['안내'] || 0}명 / /포인트 ${counts['포인트'] || 0}명 / /미션 ${counts['미션'] || 0}명 / /상점 ${counts['상점'] || 0}명`,
+      `미션 인증 채널 1회 안내: ${signals.guidanceSentCount || 0}건`,
+      '',
+      ...lines,
+      '',
+      '운영자가 먼저 말을 걸 때는 “필요하면 안내드릴게요” 정도의 낮은 압력으로 확인해 주세요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
+function buildOperatorFaqCandidatesEmbed(queue = {}) {
+  const candidates = Array.isArray(queue.faqCandidates) ? queue.faqCandidates : [];
+  const lines = candidates.length > 0
+    ? candidates.slice(0, 10).map((candidate, index) => {
+      return [
+        `${index + 1}. 반복 ${candidate.count || 1}회`,
+        `   질문: ${truncateText(candidate.sampleQuestion || candidate.latestQuestion, 180, '질문 내용 없음')}`,
+        `   마지막 확인: ${formatTransactionDateTime(candidate.lastSeenAt)}`,
+      ].join('\n');
+    })
+    : ['아직 FAQ 후보로 묶인 fallback 질문이 없습니다.'];
+
+  return createGuideEmbed(
+    'FAQ 개선 후보',
+    [
+      '`/질문`에서 답을 찾지 못한 반복 질문을 운영자가 검토하기 쉽게 묶은 읽기 전용 화면입니다.',
+      '자동으로 FAQ에 반영하지 않습니다.',
+      '',
+      ...lines,
+      '',
+      '복사 후 `data/faq.json` 또는 `data/knowledge.json` 반영 여부를 운영자가 직접 검토해 주세요.',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
 function buildOperatorRedemptionsEmbed(redemptions = []) {
   if (redemptions.length === 0) {
     return createGuideEmbed('교환 대기', '현재 대기 중인 교환 신청은 없어요.', {
@@ -1018,13 +1165,17 @@ module.exports = {
   buildOperatorChecklistEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
+  buildOperatorFaqCandidatesEmbed,
+  buildOperatorFirstDayCheckEmbed,
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
+  buildOperatorOnboardingSignalsEmbed,
   buildOperatorPrelaunchCheckEmbed,
   getOperatorPrelaunchCheckIssues,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
+  buildOperatorReactionFollowUpsEmbed,
   buildOperatorRedemptionsEmbed,
   buildOperatorSubmissionsEmbed,
   buildOperatorTodayQueueEmbed,

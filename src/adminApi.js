@@ -130,6 +130,10 @@ function getNotificationFollowUps(reactionApprovals) {
       followUps.push(createQueueFollowUp('reactionApprovalPublicReplyFailed', '공개 답글 알림 실패: 인증 글에 처리 안내가 남았는지 확인해 주세요.', record));
     }
 
+    if (record.status === 'approved' && Number(record.rewardPoints || 0) > 0 && !record.transactionId) {
+      followUps.push(createQueueFollowUp('reactionApprovalMissingTransaction', '승인 기록에 포인트 거래 ID가 없습니다. 포인트 로그와 원본 메시지를 대조해 주세요.', record));
+    }
+
     return followUps;
   });
 }
@@ -219,6 +223,7 @@ function buildAdminSummary(repository = createDefaultRepository()) {
     activeMissionsCount: missions.filter((mission) => mission.status === 'active').length,
     activeShopItemsCount: shopItems.filter((item) => item.status === 'active').length,
     todayReactionApprovalsCount: reactionApprovals.filter((record) => isTodayKst(record.reviewedAt || record.createdAt)).length,
+    reactionFollowUpsCount: getNotificationFollowUps(reactionApprovals).length,
     submissionStatusCounts: countByStatus(missionSubmissions),
     missionStatusCounts: countByStatus(missions),
     shopItemStatusCounts: countByStatus(shopItems),
@@ -227,6 +232,106 @@ function buildAdminSummary(repository = createDefaultRepository()) {
     readOnly: true,
     generatedAt: new Date().toISOString(),
     meta: buildAdminMeta(exampleRecordsExcluded),
+  };
+}
+
+function buildFirstDayCheck(repository = createDefaultRepository(), options = {}) {
+  const state = readState(repository);
+  const usersResult = filterOperationalRecords(state.pointsData && state.pointsData.users);
+  const pointTransactionsResult = filterOperationalRecords(state.pointsData && state.pointsData.pointTransactions);
+  const redemptionsResult = filterOperationalRecords(state.redemptionsData && state.redemptionsData.redemptions);
+  const submissionsResult = filterOperationalRecords(state.submissionsData && state.submissionsData.submissions);
+  const missionsResult = filterOperationalRecords(state.missionsData && state.missionsData.missions);
+  const shopItemsResult = filterOperationalRecords(state.shopItemsData && state.shopItemsData.shopItems);
+  const reactionApprovalsResult = filterOperationalRecords(readReactionApprovals(repository));
+  const supportSummary = repository && typeof repository.getOperatorSupportSummary === 'function'
+    ? repository.getOperatorSupportSummary(parseLimit(options.limit, 10))
+    : { trackedUsersCount: 0, guidanceSentCount: 0, faqCandidates: [] };
+  const missionSubmissions = submissionsResult.data.filter(isMissionSubmissionRecord);
+  const exampleRecordsExcluded = usersResult.excluded
+    + pointTransactionsResult.excluded
+    + redemptionsResult.excluded
+    + submissionsResult.excluded
+    + missionsResult.excluded
+    + shopItemsResult.excluded
+    + reactionApprovalsResult.excluded;
+  const pendingRedemptions = redemptionsResult.data.filter((redemption) => redemption.status === 'pending');
+  const pendingSubmissions = missionSubmissions.filter((submission) => submission.status === 'pending');
+  const channelChecks = toArray(options.channelChecks);
+  const channelReadyCount = channelChecks.filter((check) => {
+    return check && check.configured && check.found && check.accessible && check.canSendMessages;
+  }).length;
+
+  return {
+    readOnly: true,
+    storageMode: 'local-json',
+    generatedAt: new Date().toISOString(),
+    channelChecks,
+    channelReadyCount,
+    channelCheckCount: channelChecks.length,
+    googleSheetsCheck: options.googleSheetsCheck || {},
+    activeMissionsCount: missionsResult.data.filter((mission) => mission.status === 'active').length,
+    activeShopItemsCount: shopItemsResult.data.filter((item) => item.status === 'active').length,
+    pendingRedemptionsCount: pendingRedemptions.length,
+    pendingSubmissionsCount: pendingSubmissions.length,
+    reactionFollowUpsCount: getNotificationFollowUps(reactionApprovalsResult.data).length,
+    exampleRecordsExcluded,
+    exampleDataExcluded: exampleRecordsExcluded >= 0,
+    backupReminderEnabled: process.env.OPERATION_BACKUP_REMINDER_ENABLED === 'true',
+    exportGuideCommand: '/운영내보내기 종류:전체 형식:JSON',
+    onboardingTrackedUsersCount: supportSummary.trackedUsersCount || 0,
+    missionGuidanceSentCount: supportSummary.guidanceSentCount || 0,
+    faqCandidateCount: toArray(supportSummary.faqCandidates).length,
+    meta: buildAdminMeta(exampleRecordsExcluded),
+  };
+}
+
+function buildReactionFollowUpQueue(repository = createDefaultRepository(), limit = 10) {
+  const reactionApprovals = filterOperationalRecords(readReactionApprovals(repository)).data;
+  const followUps = sortNewestFirst(
+    getNotificationFollowUps(reactionApprovals),
+    ['createdAt']
+  ).slice(0, parseLimit(limit, 10));
+
+  return {
+    title: '반응 승인 후속 확인',
+    readOnly: true,
+    storageMode: 'local-json',
+    generatedAt: new Date().toISOString(),
+    counts: {
+      followUps: getNotificationFollowUps(reactionApprovals).length,
+    },
+    followUps: clone(followUps),
+    meta: buildAdminMeta(filterOperationalRecords(readReactionApprovals(repository)).excluded),
+  };
+}
+
+function buildOnboardingSignals(repository = createDefaultRepository(), limit = 10) {
+  if (repository && typeof repository.getOperatorSupportSummary === 'function') {
+    return repository.getOperatorSupportSummary(parseLimit(limit, 10));
+  }
+
+  return {
+    readOnly: true,
+    storageMode: 'local-json',
+    generatedAt: new Date().toISOString(),
+    trackedCommands: ['안내', '포인트', '미션', '상점'],
+    commandCounts: {},
+    trackedUsersCount: 0,
+    guidanceSentCount: 0,
+    helpSignals: [],
+    faqCandidates: [],
+  };
+}
+
+function buildFaqCandidateQueue(repository = createDefaultRepository(), limit = 10) {
+  const signals = buildOnboardingSignals(repository, limit);
+
+  return {
+    readOnly: true,
+    storageMode: 'local-json',
+    generatedAt: new Date().toISOString(),
+    faqCandidates: toArray(signals.faqCandidates),
   };
 }
 
@@ -452,6 +557,10 @@ function buildTodayOperationsQueue(repository = createDefaultRepository(), limit
 
 module.exports = {
   buildAdminSummary,
+  buildFaqCandidateQueue,
+  buildFirstDayCheck,
+  buildOnboardingSignals,
+  buildReactionFollowUpQueue,
   buildTodayOperationsQueue,
   listMissionStatus,
   listPendingRedemptions,

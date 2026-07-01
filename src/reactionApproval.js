@@ -310,11 +310,53 @@ async function handleMissionReactionApproval(reaction, user, client, options = {
   }
 }
 
+async function handleMissionSubmissionGuidanceMessage(message, options = {}) {
+  if (!message || !message.author || message.author.bot) {
+    return { ok: false, reason: 'IGNORED_MESSAGE' };
+  }
+
+  if (!isMissionSubmissionChannel(message.channelId)) {
+    return { ok: false, reason: 'NOT_MISSION_SUBMISSION_CHANNEL' };
+  }
+
+  const repository = options.repository || createPointsRepository(options.paths);
+  if (repository.hasSentMissionSubmissionGuidance(message.author.id, message.channelId)) {
+    return { ok: false, reason: 'ALREADY_GUIDED' };
+  }
+
+  if (typeof message.reply !== 'function') {
+    return { ok: false, reason: 'REPLY_UNAVAILABLE' };
+  }
+
+  try {
+    await message.reply({
+      content: [
+        '인증을 남겨 주셔서 고마워요.',
+        '운영진이 확인한 뒤 포인트를 지급할게요.',
+        '민감한 개인정보는 올리지 않아도 됩니다.',
+      ].join('\n'),
+      allowedMentions: { repliedUser: false },
+    });
+  } catch (error) {
+    console.warn('미션 인증 채널 자동 안내 전송 실패:', error.message);
+    return { ok: false, reason: 'REPLY_FAILED', error };
+  }
+
+  const result = repository.recordMissionSubmissionGuidance({
+    userId: message.author.id,
+    channelId: message.channelId,
+    messageId: message.id,
+  });
+
+  return { ok: true, record: result.record };
+}
+
 module.exports = {
   buildMessageUrl,
   fetchReactionContext,
   getReactionRewardPoints,
   handleMissionReactionApproval,
+  handleMissionSubmissionGuidanceMessage,
   isApprovalEmoji,
   isMissionSubmissionChannel,
   isOperatorMember,

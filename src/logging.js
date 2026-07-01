@@ -57,6 +57,80 @@ function formatKoreanTime(date = new Date()) {
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
+function parseBooleanEnv(value, defaultValue = false) {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  return String(value).trim().toLowerCase() === 'true';
+}
+
+function getBackupReminderDelay(now = new Date()) {
+  const configuredTime = String(process.env.OPERATION_BACKUP_REMINDER_TIME_KST || '20:50').trim();
+  const match = configuredTime.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  const hours = match ? Number(match[1]) : 20;
+  const minutes = match ? Number(match[2]) : 50;
+  const nowKst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const targetKst = new Date(Date.UTC(
+    nowKst.getUTCFullYear(),
+    nowKst.getUTCMonth(),
+    nowKst.getUTCDate(),
+    hours,
+    minutes,
+    0,
+    0
+  ));
+
+  if (targetKst.getTime() <= nowKst.getTime()) {
+    targetKst.setUTCDate(targetKst.getUTCDate() + 1);
+  }
+
+  return targetKst.getTime() - nowKst.getTime();
+}
+
+async function sendOperationBackupReminder(client) {
+  const logChannelId = process.env.LOG_CHANNEL_ID;
+
+  if (!logChannelId || !client || !client.channels || typeof client.channels.fetch !== 'function') {
+    return false;
+  }
+
+  try {
+    const channel = await client.channels.fetch(logChannelId);
+    if (!channel || typeof channel.send !== 'function') {
+      return false;
+    }
+
+    await channel.send({
+      content: [
+        '운영 종료 전 확인입니다.',
+        '`/운영내보내기 종류:전체 형식:JSON`으로 오늘 운영 데이터를 백업했는지 확인해 주세요.',
+        '이 알림은 파일을 자동 생성하지 않습니다.',
+      ].join('\n'),
+    });
+    return true;
+  } catch (error) {
+    console.warn('운영 데이터 백업 리마인더 전송 실패:', error.message);
+    return false;
+  }
+}
+
+function startOperationBackupReminder(client) {
+  if (!parseBooleanEnv(process.env.OPERATION_BACKUP_REMINDER_ENABLED, false)) {
+    return null;
+  }
+
+  const scheduleNext = () => {
+    const delay = getBackupReminderDelay();
+    return setTimeout(async () => {
+      await sendOperationBackupReminder(client);
+      scheduleNext();
+    }, delay);
+  };
+
+  return scheduleNext();
+}
+
 async function sendUnansweredQuestionLog(interaction, question) {
   const logChannelId = process.env.LOG_CHANNEL_ID;
 
@@ -442,10 +516,13 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
 module.exports = {
   createSubmissionReviewActionRow,
   formatKoreanTime,
+  getBackupReminderDelay,
+  sendOperationBackupReminder,
   sendMissionReactionApprovalLog,
   sendMissionSubmissionReviewAlert,
   sendMissionSubmissionReviewLog,
   sendRedemptionReviewAlert,
   sendSensitiveQuestionAlert,
   sendUnansweredQuestionLog,
+  startOperationBackupReminder,
 };

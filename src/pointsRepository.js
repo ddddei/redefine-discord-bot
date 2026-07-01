@@ -34,6 +34,7 @@ const DEFAULT_PATHS = {
   submissions: process.env.SUBMISSIONS_DATA_PATH || path.join(DATA_DIR, 'submissions.local.json'),
   submissionsFallback: path.join(DATA_DIR, 'submissions.example.json'),
   reactionApprovals: process.env.REACTION_APPROVALS_DATA_PATH || path.join(DATA_DIR, 'reaction-approvals.local.json'),
+  operatorSupport: process.env.OPERATOR_SUPPORT_DATA_PATH || path.join(DATA_DIR, 'operator-support.local.json'),
 };
 
 const CHECKIN_REWARD_POINTS = 10;
@@ -123,6 +124,17 @@ function createInitialReactionApprovalsData() {
   };
 }
 
+function createInitialOperatorSupportData() {
+  return {
+    version: 1,
+    isExample: false,
+    description: 'Local read-only operator support signals. JSON storage is for MVP operation only.',
+    commandFirstUse: [],
+    missionSubmissionGuidance: [],
+    faqCandidates: [],
+  };
+}
+
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -202,6 +214,9 @@ function createPointsRepository(paths = {}, options = {}) {
   if (!paths.reactionApprovals && paths.submissions) {
     resolvedPaths.reactionApprovals = path.join(path.dirname(paths.submissions), 'reaction-approvals.local.json');
   }
+  if (!paths.operatorSupport && paths.submissions) {
+    resolvedPaths.operatorSupport = path.join(path.dirname(paths.submissions), 'operator-support.local.json');
+  }
 
   function loadState() {
     return {
@@ -278,6 +293,35 @@ function createPointsRepository(paths = {}, options = {}) {
       isExample: false,
       description: reactionApprovalData.description || createInitialReactionApprovalsData().description,
       records: Array.isArray(reactionApprovalData.records) ? reactionApprovalData.records : [],
+    });
+  }
+
+  function getOperatorSupportData() {
+    if (fs.existsSync(resolvedPaths.operatorSupport)) {
+      const data = loadJsonFile(resolvedPaths.operatorSupport);
+      return {
+        ...createInitialOperatorSupportData(),
+        ...data,
+        isExample: data.isExample === true,
+        commandFirstUse: Array.isArray(data.commandFirstUse) ? data.commandFirstUse : [],
+        missionSubmissionGuidance: Array.isArray(data.missionSubmissionGuidance) ? data.missionSubmissionGuidance : [],
+        faqCandidates: Array.isArray(data.faqCandidates) ? data.faqCandidates : [],
+      };
+    }
+
+    const initialData = createInitialOperatorSupportData();
+    saveJsonFile(resolvedPaths.operatorSupport, initialData);
+    return initialData;
+  }
+
+  function saveOperatorSupportData(operatorSupportData) {
+    saveJsonFile(resolvedPaths.operatorSupport, {
+      ...createInitialOperatorSupportData(),
+      ...operatorSupportData,
+      isExample: false,
+      commandFirstUse: Array.isArray(operatorSupportData.commandFirstUse) ? operatorSupportData.commandFirstUse : [],
+      missionSubmissionGuidance: Array.isArray(operatorSupportData.missionSubmissionGuidance) ? operatorSupportData.missionSubmissionGuidance : [],
+      faqCandidates: Array.isArray(operatorSupportData.faqCandidates) ? operatorSupportData.faqCandidates : [],
     });
   }
 
@@ -707,6 +751,14 @@ function createPointsRepository(paths = {}, options = {}) {
 
     let nextRedemption;
     let refundTransaction = null;
+    const reviewedAt = createTimestamp();
+    const reviewNote = input.note ? String(input.note).trim() : '';
+    const reviewEntry = {
+      action: input.action,
+      operatorId: input.operatorId,
+      note: reviewNote || null,
+      reviewedAt,
+    };
 
     if (input.action === 'complete') {
       nextRedemption = completeRedemption(redemption, input.operatorId);
@@ -742,6 +794,15 @@ function createPointsRepository(paths = {}, options = {}) {
       throw new Error('지원하지 않는 교환 관리 작업입니다.');
     }
 
+    nextRedemption = {
+      ...nextRedemption,
+      reviewedAt,
+      reviewNote: reviewNote || nextRedemption.note || null,
+      reviewHistory: [
+        ...(Array.isArray(redemption.reviewHistory) ? redemption.reviewHistory : []),
+        reviewEntry,
+      ],
+    };
     redemptionsData.redemptions[index] = nextRedemption;
     saveState({ ...state, pointsData, redemptionsData });
     if (refundTransaction) {
@@ -1674,6 +1735,164 @@ function createPointsRepository(paths = {}, options = {}) {
     return updatedRecord;
   }
 
+  function createSupportRecordId(prefix) {
+    return createOperationId(prefix);
+  }
+
+  function normalizeQuestionKey(question) {
+    return String(question || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .slice(0, 160);
+  }
+
+  function recordParticipantCommandFirstUse(input = {}) {
+    const userId = requireTrimmedString(input.userId, 'userId');
+    const commandName = requireTrimmedString(input.commandName, 'commandName');
+    const supportData = cloneJson(getOperatorSupportData());
+    const records = Array.isArray(supportData.commandFirstUse) ? supportData.commandFirstUse : [];
+    const existing = records.find((record) => record.userId === userId && record.commandName === commandName);
+
+    if (existing) {
+      return { recorded: false, record: existing };
+    }
+
+    const record = {
+      id: createSupportRecordId('cmd_first_use'),
+      userId,
+      commandName,
+      firstUsedAt: input.usedAt || createTimestamp(),
+    };
+
+    supportData.commandFirstUse = [...records, record];
+    saveOperatorSupportData(supportData);
+    return { recorded: true, record };
+  }
+
+  function hasSentMissionSubmissionGuidance(userId, channelId) {
+    const supportData = getOperatorSupportData();
+    const records = Array.isArray(supportData.missionSubmissionGuidance)
+      ? supportData.missionSubmissionGuidance
+      : [];
+
+    return records.some((record) => record.userId === userId && record.channelId === channelId);
+  }
+
+  function recordMissionSubmissionGuidance(input = {}) {
+    const userId = requireTrimmedString(input.userId, 'userId');
+    const channelId = requireTrimmedString(input.channelId, 'channelId');
+    const supportData = cloneJson(getOperatorSupportData());
+    const records = Array.isArray(supportData.missionSubmissionGuidance)
+      ? supportData.missionSubmissionGuidance
+      : [];
+    const existing = records.find((record) => record.userId === userId && record.channelId === channelId);
+
+    if (existing) {
+      return { recorded: false, record: existing };
+    }
+
+    const record = {
+      id: createSupportRecordId('mission_guidance'),
+      userId,
+      channelId,
+      messageId: input.messageId || null,
+      guidedAt: input.guidedAt || createTimestamp(),
+    };
+
+    supportData.missionSubmissionGuidance = [...records, record];
+    saveOperatorSupportData(supportData);
+    return { recorded: true, record };
+  }
+
+  function recordFaqFallbackCandidate(input = {}) {
+    const question = requireTrimmedString(input.question, 'question');
+    const questionKey = normalizeQuestionKey(question);
+    const supportData = cloneJson(getOperatorSupportData());
+    const candidates = Array.isArray(supportData.faqCandidates) ? supportData.faqCandidates : [];
+    const now = input.seenAt || createTimestamp();
+    const index = candidates.findIndex((candidate) => candidate.questionKey === questionKey);
+
+    if (index !== -1) {
+      const current = candidates[index];
+      const updated = {
+        ...current,
+        count: Number(current.count || 0) + 1,
+        lastSeenAt: now,
+        latestQuestion: question.slice(0, 300),
+      };
+      candidates[index] = updated;
+      supportData.faqCandidates = candidates;
+      saveOperatorSupportData(supportData);
+      return updated;
+    }
+
+    const candidate = {
+      id: createSupportRecordId('faq_candidate'),
+      questionKey,
+      sampleQuestion: question.slice(0, 300),
+      latestQuestion: question.slice(0, 300),
+      count: 1,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      source: input.source || '/질문 fallback',
+    };
+
+    supportData.faqCandidates = [...candidates, candidate];
+    saveOperatorSupportData(supportData);
+    return candidate;
+  }
+
+  function getOperatorSupportSummary(limit = 10) {
+    const supportData = getOperatorSupportData();
+    const commandRecords = getOperationalRecords(supportData.commandFirstUse);
+    const guidanceRecords = getOperationalRecords(supportData.missionSubmissionGuidance);
+    const faqCandidates = getOperationalRecords(supportData.faqCandidates);
+    const trackedCommands = ['안내', '포인트', '미션', '상점'];
+    const commandsByUser = commandRecords.reduce((map, record) => {
+      map[record.userId] = map[record.userId] || new Set();
+      map[record.userId].add(record.commandName);
+      return map;
+    }, {});
+    const helpSignals = Object.entries(commandsByUser).map(([userId, commandSet]) => {
+      const usedCommands = trackedCommands.filter((commandName) => commandSet.has(commandName));
+      const missingCommands = trackedCommands.filter((commandName) => !commandSet.has(commandName));
+      const firstUsedAtValues = commandRecords
+        .filter((record) => record.userId === userId)
+        .map((record) => record.firstUsedAt)
+        .filter(Boolean)
+        .sort();
+
+      return {
+        userId,
+        usedCommands,
+        missingCommands,
+        usedCount: usedCommands.length,
+        firstSeenAt: firstUsedAtValues[0] || null,
+        lastSeenAt: firstUsedAtValues[firstUsedAtValues.length - 1] || null,
+      };
+    }).sort((left, right) => {
+      return left.usedCount - right.usedCount
+        || new Date(right.lastSeenAt || 0).getTime() - new Date(left.lastSeenAt || 0).getTime();
+    });
+    const commandCounts = trackedCommands.reduce((counts, commandName) => {
+      counts[commandName] = commandRecords.filter((record) => record.commandName === commandName).length;
+      return counts;
+    }, {});
+
+    return {
+      readOnly: true,
+      storageMode: 'local-json',
+      generatedAt: createTimestamp(),
+      trackedCommands,
+      commandCounts,
+      trackedUsersCount: Object.keys(commandsByUser).length,
+      guidanceSentCount: guidanceRecords.length,
+      helpSignals: cloneJson(limitItems(helpSignals, limit)),
+      faqCandidates: cloneJson(sortNewestFirst(faqCandidates, ['lastSeenAt', 'firstSeenAt']).slice(0, limit)),
+    };
+  }
+
   function approveReactionMessage(input) {
     if (hasReactionMessageBeenReviewed(input.messageId)) {
       return {
@@ -2051,6 +2270,8 @@ function createPointsRepository(paths = {}, options = {}) {
     getMissionsExportData,
     getMissionTemplatesData,
     getOperationSummary,
+    getOperatorSupportData,
+    getOperatorSupportSummary,
     getPointsExportData,
     getRedemptionsExportData,
     getTodayMinigameRecord,
@@ -2062,6 +2283,7 @@ function createPointsRepository(paths = {}, options = {}) {
     getReactionApprovalData,
     hasCheckedInToday,
     hasPaidTodayMissionReward,
+    hasSentMissionSubmissionGuidance,
     isDuplicateMissionRewardGuardHealthy,
     hasReactionMessageBeenReviewed,
     hasTodayMissionNoticeBeenPublished,
@@ -2081,6 +2303,9 @@ function createPointsRepository(paths = {}, options = {}) {
     listTodayCheckins,
     listWeekdayMissionRecommendations,
     loadState,
+    recordFaqFallbackCandidate,
+    recordMissionSubmissionGuidance,
+    recordParticipantCommandFirstUse,
     requestRedemption,
     rejectSubmissionById,
     rejectReactionMessage,

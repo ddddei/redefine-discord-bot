@@ -14,17 +14,25 @@ const {
   buildOperatorChecklistEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
+  buildOperatorFaqCandidatesEmbed,
+  buildOperatorFirstDayCheckEmbed,
   buildOperatorHubEmbed,
   buildOperatorInvitationNoticeEmbed,
+  buildOperatorOnboardingSignalsEmbed,
   buildOperatorPrelaunchCheckEmbed,
   buildOperatorMissionsShopEmbed,
   buildOperatorPointLogsEmbed,
   buildOperatorReactionApprovalsEmbed,
+  buildOperatorReactionFollowUpsEmbed,
   buildOperatorRedemptionsEmbed,
   buildOperatorSubmissionsEmbed,
   buildOperatorTodayQueueEmbed,
 } = require('../src/embeds');
 const { buildTodayOperationsQueue } = require('../src/adminApi');
+const {
+  getBackupReminderDelay,
+  sendOperationBackupReminder,
+} = require('../src/logging');
 const {
   handleInteractionCreate,
   handleOperatorHubSelect,
@@ -49,6 +57,7 @@ function createTempRepository() {
     submissions: path.join(tempDir, 'submissions.json'),
     submissionsFallback: path.join(dataDir, 'submissions.example.json'),
     reactionApprovals: path.join(tempDir, 'reaction-approvals.json'),
+    operatorSupport: path.join(tempDir, 'operator-support.json'),
   });
 }
 
@@ -86,6 +95,7 @@ async function main() {
     [
       'overview',
       'today_queue',
+      'first_day_check',
       'redemptions',
       'submissions',
       'points',
@@ -93,6 +103,9 @@ async function main() {
       'mission_management',
       'shop_management',
       'reaction_approvals',
+      'reaction_followups',
+      'onboarding_signals',
+      'faq_candidates',
       'invitation_notice',
       'prelaunch_check',
       'environment_check',
@@ -105,7 +118,7 @@ async function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 14);
+  assert.strictEqual(menu.options.length, 18);
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'invitation_notice'
     && /초대 안내문|초대 공지/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'prelaunch_check'
@@ -114,6 +127,14 @@ async function main() {
     && /오늘.*운영.*큐|먼저 확인/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'environment_check'
     && /환경|채널/.test(option.label)));
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'first_day_check'
+    && /첫날/.test(option.label)));
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'reaction_followups'
+    && /후속/.test(option.label)));
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'onboarding_signals'
+    && /도움/.test(option.label)));
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'faq_candidates'
+    && /FAQ/.test(option.label)));
 
   const invitationButtonRow = createOperatorInvitationNoticeButtonRow();
   const hubButtons = invitationButtonRow.components.map((component) => component.data);
@@ -245,6 +266,61 @@ async function main() {
   const reactions = buildOperatorReactionApprovalsEmbed(repository.listRecentReactionApprovals(10));
   assert.strictEqual(getEmbedTitle(reactions), '반응 승인 기록');
   assert.match(getEmbedDescription(reactions), /반응 승인 사용자/);
+
+  const firstDayCheck = buildOperatorFirstDayCheckEmbed({
+    channelChecks: [],
+    googleSheetsCheck: {
+      loggingEnabled: false,
+      webAppUrlConfigured: false,
+    },
+    activeMissionsCount: 1,
+    activeShopItemsCount: 1,
+    pendingRedemptionsCount: 1,
+    pendingSubmissionsCount: 1,
+    reactionFollowUpsCount: 1,
+    exampleRecordsExcluded: 2,
+    backupReminderEnabled: false,
+    onboardingTrackedUsersCount: 1,
+    missionGuidanceSentCount: 1,
+    faqCandidateCount: 1,
+  });
+  assert.strictEqual(getEmbedTitle(firstDayCheck), '첫날 점검');
+  assert.match(getEmbedDescription(firstDayCheck), /읽기 전용/);
+  assert.match(getEmbedDescription(firstDayCheck), /example\/demo\/sample\/2030년대/);
+  assert.match(getEmbedDescription(firstDayCheck), /\/운영내보내기/);
+
+  const reactionFollowUps = buildOperatorReactionFollowUpsEmbed({
+    counts: { followUps: 1 },
+    followUps: [{
+      message: 'DM 알림 실패: 참여자에게 처리 결과가 전달됐는지 확인해 주세요.',
+      recordId: 'reaction1',
+    }],
+  });
+  assert.strictEqual(getEmbedTitle(reactionFollowUps), '반응 승인 후속 확인');
+  assert.match(getEmbedDescription(reactionFollowUps), /DM 알림 실패/);
+
+  const onboardingSignals = buildOperatorOnboardingSignalsEmbed({
+    commandCounts: { 안내: 1, 포인트: 1, 미션: 0, 상점: 0 },
+    trackedUsersCount: 1,
+    guidanceSentCount: 1,
+    helpSignals: [{
+      userId: 'operator_hub_user',
+      usedCommands: ['안내', '포인트'],
+      missingCommands: ['미션', '상점'],
+    }],
+  });
+  assert.strictEqual(getEmbedTitle(onboardingSignals), '도움 필요 신호');
+  assert.match(getEmbedDescription(onboardingSignals), /감시가 아니라 안내 보조 신호/);
+
+  const faqCandidates = buildOperatorFaqCandidatesEmbed({
+    faqCandidates: [{
+      sampleQuestion: '주차는 어디에 하나요?',
+      count: 2,
+      lastSeenAt: new Date().toISOString(),
+    }],
+  });
+  assert.strictEqual(getEmbedTitle(faqCandidates), 'FAQ 개선 후보');
+  assert.match(getEmbedDescription(faqCandidates), /자동으로 FAQ에 반영하지 않습니다/);
 
   const invitationNotice = buildOperatorInvitationNoticeEmbed();
   const invitationDescription = getEmbedDescription(invitationNotice);
@@ -599,6 +675,34 @@ async function main() {
 
   assert.match(getEmbedDescription(buildOperatorExportGuideEmbed()), /\/운영내보내기 종류:전체 형식:JSON/);
   assert.match(getEmbedDescription(buildOperatorChecklistEmbed()), /docs\/operator-dashboard-guide\.md/);
+
+  const previousReminderLogChannelId = process.env.LOG_CHANNEL_ID;
+  try {
+    process.env.LOG_CHANNEL_ID = 'operator_log_channel';
+    const sentBackupReminders = [];
+    const reminderSent = await sendOperationBackupReminder({
+      channels: {
+        fetch: async (channelId) => {
+          assert.strictEqual(channelId, 'operator_log_channel');
+          return {
+            send: async (payload) => {
+              sentBackupReminders.push(payload);
+            },
+          };
+        },
+      },
+    });
+    assert.strictEqual(reminderSent, true);
+    assert.strictEqual(sentBackupReminders.length, 1);
+    assert.match(sentBackupReminders[0].content, /운영 종료 전/);
+    assert.match(sentBackupReminders[0].content, /\/운영내보내기/);
+    assert.match(sentBackupReminders[0].content, /자동 생성하지 않습니다/);
+    const delay = getBackupReminderDelay(new Date('2026-07-01T10:00:00.000Z'));
+    assert.ok(delay > 0);
+    assert.ok(delay <= 24 * 60 * 60 * 1000);
+  } finally {
+    restoreEnv('LOG_CHANNEL_ID', previousReminderLogChannelId);
+  }
 
   console.log('operator hub flow smoke test passed');
 }
