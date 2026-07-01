@@ -429,6 +429,24 @@ function buildOperatorFirstDayCheckEmbed(check = {}) {
   const backupLine = check.backupReminderEnabled
     ? '백업 리마인더: 켜짐'
     : '백업 리마인더: 꺼짐 - 운영 종료 전 `/운영내보내기`를 직접 확인해 주세요.';
+  const riskLabels = {
+    critical: '치명',
+    warning: '주의',
+    optional: '선택',
+  };
+  const riskLines = Array.isArray(check.riskChecks) && check.riskChecks.length > 0
+    ? check.riskChecks.slice(0, 8).map((risk) => {
+      const label = riskLabels[risk.level] || '확인';
+      const command = risk.command ? ` (${risk.command})` : '';
+      return `- [${label}] ${risk.title}: ${risk.detail}${command}`;
+    })
+    : ['- [선택] 큰 사전 경고 없음: 실제 Discord 리허설로 마지막 흐름을 확인해 주세요.'];
+  const actionLines = Array.isArray(check.todayActions) && check.todayActions.length > 0
+    ? check.todayActions.slice(0, 5).map((action) => `- ${action}`)
+    : [
+      '- `/미션관리`와 `/상점관리`에서 active 항목을 확인합니다.',
+      '- `/운영내보내기 종류:전체 형식:JSON`으로 백업 파일을 확보합니다.',
+    ];
 
   return createGuideEmbed(
     '첫날 점검',
@@ -449,10 +467,17 @@ function buildOperatorFirstDayCheckEmbed(check = {}) {
       '',
       '예시 데이터 제외',
       `example/demo/sample/2030년대 예시 데이터 제외: 적용됨 (${check.exampleRecordsExcluded || 0}건 제외)`,
+      check.exampleDataWarning || '예시 데이터 혼입 경고 없음',
       '',
       '백업',
       backupLine,
       `수동 백업 명령어: \`${check.exportGuideCommand || '/운영내보내기 종류:전체 형식:JSON'}\``,
+      '',
+      '운영 리스크',
+      ...riskLines,
+      '',
+      '오늘 해야 할 일',
+      ...actionLines,
       '',
       '참여자 도움 신호',
       `- 기본 명령어 첫 사용 기록 사용자: ${check.onboardingTrackedUsersCount || 0}명`,

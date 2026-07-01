@@ -503,6 +503,11 @@ async function main() {
     assert.strictEqual(firstDayCheck.channelReadyCount, 1);
     assert.strictEqual(firstDayCheck.backupReminderEnabled, false);
     assert.strictEqual(firstDayCheck.exportGuideCommand, '/운영내보내기 종류:전체 형식:JSON');
+    assert.ok(firstDayCheck.riskChecks.some((risk) => risk.level === 'critical'
+      && /예시 데이터/.test(risk.title)));
+    assert.ok(firstDayCheck.riskChecks.some((risk) => /별도 인증 채널/.test(risk.title)));
+    assert.ok(firstDayCheck.todayActions.some((action) => /운영내보내기/.test(action)));
+    assert.match(firstDayCheck.exampleDataWarning, /운영 데이터로 표시하지 않고 제외/);
 
     const reactionFollowUps = buildReactionFollowUpQueue(repository, 10);
     assert.strictEqual(reactionFollowUps.readOnly, true);
@@ -595,7 +600,10 @@ async function main() {
 
     const firstDayResponse = await invokeHandler(handler, '/api/admin/first-day-check', basic('admin', 'secret'));
     assert.strictEqual(firstDayResponse.statusCode, 200);
-    assert.strictEqual(JSON.parse(firstDayResponse.body).readOnly, true);
+    const firstDayPayload = JSON.parse(firstDayResponse.body);
+    assert.strictEqual(firstDayPayload.readOnly, true);
+    assert.ok(firstDayPayload.riskChecks.some((risk) => risk.level === 'critical'));
+    assert.ok(firstDayPayload.todayActions.length >= 3);
 
     const reactionFollowUpsResponse = await invokeHandler(handler, '/api/admin/reaction-follow-ups', basic('admin', 'secret'));
     assert.strictEqual(reactionFollowUpsResponse.statusCode, 200);
@@ -618,6 +626,7 @@ async function main() {
     assert.strictEqual(page.statusCode, 200);
     assert.ok(page.body.includes('summary-cards'));
     assert.ok(page.body.includes('today-queue'));
+    assert.ok(page.body.includes('first-day-actions'));
     assert.ok(page.body.includes('submission-status-card'));
     assert.ok(page.body.includes('first-day-check'));
     assert.ok(page.body.includes('faq-candidates'));

@@ -288,6 +288,9 @@ async function main() {
   assert.match(getEmbedDescription(firstDayCheck), /읽기 전용/);
   assert.match(getEmbedDescription(firstDayCheck), /example\/demo\/sample\/2030년대/);
   assert.match(getEmbedDescription(firstDayCheck), /\/운영내보내기/);
+  assert.match(getEmbedDescription(firstDayCheck), /운영 리스크/);
+  assert.match(getEmbedDescription(firstDayCheck), /\[선택\]|\[주의\]|\[치명\]/);
+  assert.match(getEmbedDescription(firstDayCheck), /오늘 해야 할 일/);
 
   const reactionFollowUps = buildOperatorReactionFollowUpsEmbed({
     counts: { followUps: 1 },

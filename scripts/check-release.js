@@ -199,6 +199,21 @@ const checks = [
     args: ['--check', 'scripts/test-operation-export-flow.js'],
   },
   {
+    label: 'scripts/check-local-operation-data.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/check-local-operation-data.js'],
+  },
+  {
+    label: 'scripts/test-local-operation-data-check.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-local-operation-data-check.js'],
+  },
+  {
+    label: 'scripts/test-slash-command-docs-consistency.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-slash-command-docs-consistency.js'],
+  },
+  {
     label: 'scripts/test-participant-ux-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-participant-ux-flow.js'],
@@ -327,6 +342,21 @@ const checks = [
     label: 'operation export flow smoke test',
     command: 'node',
     args: ['scripts/test-operation-export-flow.js'],
+  },
+  {
+    label: 'local operation data integrity check',
+    command: 'node',
+    args: ['scripts/check-local-operation-data.js'],
+  },
+  {
+    label: 'local operation data checker smoke test',
+    command: 'node',
+    args: ['scripts/test-local-operation-data-check.js'],
+  },
+  {
+    label: 'slash command docs consistency test',
+    command: 'node',
+    args: ['scripts/test-slash-command-docs-consistency.js'],
   },
   {
     label: 'participant UX flow smoke test',

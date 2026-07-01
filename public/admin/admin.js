@@ -169,6 +169,11 @@
 
   function renderFirstDayCheck(check) {
     const sheets = check.googleSheetsCheck || {};
+    const riskLabels = {
+      critical: '치명',
+      warning: '주의',
+      optional: '선택',
+    };
     const lines = [
       '채널 점검: ' + text(check.channelReadyCount, 0) + '/' + text(check.channelCheckCount, 0) + '개 전송 가능',
       'Google Sheets: ' + (sheets.loggingEnabled ? '켜짐' : '꺼짐') + ' / URL ' + (sheets.webAppUrlConfigured ? '설정됨' : '미설정'),
@@ -177,7 +182,18 @@
       '예시 데이터 제외 ' + text(check.exampleRecordsExcluded, 0) + '건',
       (check.backupReminderEnabled ? '백업 리마인더 켜짐' : '백업 리마인더 꺼짐') + ' · /운영내보내기 확인',
     ];
-    $('first-day-check').innerHTML = lines.map(function (line) {
+    const riskLines = (check.riskChecks || []).slice(0, 8).map(function (risk) {
+      const label = riskLabels[risk.level] || '확인';
+      const command = risk.command ? ' · ' + risk.command : '';
+      return '[' + label + '] ' + text(risk.title, '점검 항목') + ': ' + text(risk.detail, '') + command;
+    });
+    $('first-day-check').innerHTML = lines.concat(riskLines).map(function (line) {
+      return '<li>' + escapeHtml(line) + '</li>';
+    }).join('');
+    $('first-day-actions').innerHTML = (check.todayActions || [
+      '/미션관리와 /상점관리에서 active 항목을 확인합니다.',
+      '/운영내보내기 종류:전체 형식:JSON으로 백업 파일을 확보합니다.',
+    ]).slice(0, 5).map(function (line) {
       return '<li>' + escapeHtml(line) + '</li>';
     }).join('');
   }
@@ -359,6 +375,7 @@
     } catch (error) {
       $('global-status').textContent = '데이터를 불러오지 못했습니다.';
       $('first-day-check').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
+      $('first-day-actions').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('onboarding-signals').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';

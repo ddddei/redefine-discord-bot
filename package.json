@@ -7,6 +7,7 @@
     "deploy": "node src/deploy-commands.js",
     "start": "node src/index.js",
     "check:release": "node scripts/check-release.js",
+    "check:local-data": "node scripts/check-local-operation-data.js",
     "validate:data": "node scripts/validate-data.js",
     "test:questions": "node scripts/test-questions.js"
   },

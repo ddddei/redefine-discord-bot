@@ -92,12 +92,14 @@ async function sendOperationBackupReminder(client) {
   const logChannelId = process.env.LOG_CHANNEL_ID;
 
   if (!logChannelId || !client || !client.channels || typeof client.channels.fetch !== 'function') {
+    console.warn('운영 데이터 백업 리마인더 전송 건너뜀: LOG_CHANNEL_ID와 Discord 채널 접근을 확인해 주세요. 수동 확인은 `/운영내보내기 종류:전체 형식:JSON`입니다.');
     return false;
   }
 
   try {
     const channel = await client.channels.fetch(logChannelId);
     if (!channel || typeof channel.send !== 'function') {
+      console.warn('운영 데이터 백업 리마인더 전송 실패: LOG_CHANNEL_ID 채널 조회 또는 메시지 전송 권한을 확인해 주세요.');
       return false;
     }
 
@@ -110,7 +112,7 @@ async function sendOperationBackupReminder(client) {
     });
     return true;
   } catch (error) {
-    console.warn('운영 데이터 백업 리마인더 전송 실패:', error.message);
+    console.warn('운영 데이터 백업 리마인더 전송 실패:', `${error.message} / 확인 위치: Railway Variables LOG_CHANNEL_ID, Discord 채널 권한, /운영내보내기`);
     return false;
   }
 }
@@ -221,12 +223,12 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
   const alertChannelEnvName = process.env.ACTIVITY_REVIEW_CHANNEL_ID ? 'ACTIVITY_REVIEW_CHANNEL_ID' : 'LOG_CHANNEL_ID';
 
   if (!alertChannelId) {
-    console.warn('[submission-alert] skipped: ACTIVITY_REVIEW_CHANNEL_ID and LOG_CHANNEL_ID are not configured');
+    console.warn('[submission-alert] skipped: ACTIVITY_REVIEW_CHANNEL_ID and LOG_CHANNEL_ID are not configured. 확인 위치: /운영현황 종류:인증대기, /인증관리');
     return;
   }
 
   if (!interaction.client || !interaction.client.channels || typeof interaction.client.channels.fetch !== 'function') {
-    console.warn('[submission-alert] failed: Discord client channel access is unavailable');
+    console.warn('[submission-alert] failed: Discord client channel access is unavailable. 확인 위치: /운영현황 종류:인증대기, /인증관리');
     return;
   }
 
@@ -234,7 +236,7 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
     const channel = await interaction.client.channels.fetch(alertChannelId);
 
     if (!channel || typeof channel.send !== 'function') {
-      console.warn('[submission-alert] failed: missing channel permission or channel not found');
+      console.warn('[submission-alert] failed: missing channel permission or channel not found. 확인 위치: ACTIVITY_REVIEW_CHANNEL_ID, LOG_CHANNEL_ID, /운영현황 종류:환경설정점검');
       return;
     }
 
@@ -307,7 +309,7 @@ async function sendMissionSubmissionReviewAlert(interaction, submission, mission
     });
     console.info(`[submission-alert] sent to ${alertChannelEnvName}: channel=${alertChannelId} submission=${submission.id}`);
   } catch (error) {
-    console.warn(`[submission-alert] failed: ${error.message}`);
+    console.warn(`[submission-alert] failed: ${error.message} / 확인 위치: /운영현황 종류:인증대기, /인증관리, Discord 채널 권한`);
   }
 }
 
@@ -315,12 +317,12 @@ async function sendMissionSubmissionReviewLog(client, result, reviewerDisplayNam
   const alertChannelId = process.env.ACTIVITY_REVIEW_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
 
   if (!alertChannelId) {
-    console.warn('미션 인증 버튼 처리 로그 채널이 설정되지 않아 알림을 건너뜁니다.');
+    console.warn('미션 인증 버튼 처리 로그 채널이 설정되지 않아 알림을 건너뜁니다. 확인 위치: /운영현황 종류:인증대기, /포인트로그');
     return;
   }
 
   if (!client || !client.channels || typeof client.channels.fetch !== 'function') {
-    console.warn('미션 인증 버튼 처리 로그 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    console.warn('미션 인증 버튼 처리 로그 전송 실패: Discord client 채널 접근을 사용할 수 없습니다. 확인 위치: /운영현황 종류:인증대기, /포인트로그');
     return;
   }
 
@@ -328,7 +330,7 @@ async function sendMissionSubmissionReviewLog(client, result, reviewerDisplayNam
     const channel = await client.channels.fetch(alertChannelId);
 
     if (!channel || typeof channel.send !== 'function') {
-      console.warn('미션 인증 버튼 처리 로그 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      console.warn('미션 인증 버튼 처리 로그 채널을 찾을 수 없거나 전송할 수 없습니다. 확인 위치: ACTIVITY_REVIEW_CHANNEL_ID, LOG_CHANNEL_ID, /운영현황 종류:환경설정점검');
       return;
     }
 
@@ -379,7 +381,7 @@ async function sendMissionSubmissionReviewLog(client, result, reviewerDisplayNam
     await channel.send({ embeds: [embed] });
     console.info(`미션 인증 버튼 처리 로그 전송됨: channel=${alertChannelId} submission=${result.submission.id}`);
   } catch (error) {
-    console.warn('미션 인증 버튼 처리 로그 전송 실패:', error.message);
+    console.warn('미션 인증 버튼 처리 로그 전송 실패:', `${error.message} / 확인 위치: /운영현황 종류:인증대기, /포인트로그`);
   }
 }
 
@@ -387,12 +389,12 @@ async function sendMissionReactionApprovalLog(client, record) {
   const alertChannelId = process.env.ACTIVITY_REVIEW_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
 
   if (!alertChannelId) {
-    console.warn('미션 인증 반응 처리 로그 채널이 설정되지 않아 알림을 건너뜁니다.');
+    console.warn('미션 인증 반응 처리 로그 채널이 설정되지 않아 알림을 건너뜁니다. 확인 위치: /운영현황 종류:반응후속확인, /포인트로그');
     return;
   }
 
   if (!client || !client.channels || typeof client.channels.fetch !== 'function') {
-    console.warn('미션 인증 반응 처리 로그 전송 실패: Discord client 채널 접근을 사용할 수 없습니다.');
+    console.warn('미션 인증 반응 처리 로그 전송 실패: Discord client 채널 접근을 사용할 수 없습니다. 확인 위치: /운영현황 종류:반응후속확인, /포인트로그');
     return;
   }
 
@@ -400,7 +402,7 @@ async function sendMissionReactionApprovalLog(client, record) {
     const channel = await client.channels.fetch(alertChannelId);
 
     if (!channel || typeof channel.send !== 'function') {
-      console.warn('미션 인증 반응 처리 로그 채널을 찾을 수 없거나 전송할 수 없습니다.');
+      console.warn('미션 인증 반응 처리 로그 채널을 찾을 수 없거나 전송할 수 없습니다. 확인 위치: ACTIVITY_REVIEW_CHANNEL_ID, LOG_CHANNEL_ID, /운영현황 종류:환경설정점검');
       return;
     }
 
@@ -450,7 +452,7 @@ async function sendMissionReactionApprovalLog(client, record) {
     await channel.send({ embeds: [embed] });
     console.info(`미션 인증 반응 처리 로그 전송됨: channel=${alertChannelId} message=${record.messageId}`);
   } catch (error) {
-    console.warn('미션 인증 반응 처리 로그 전송 실패:', error.message);
+    console.warn('미션 인증 반응 처리 로그 전송 실패:', `${error.message} / 확인 위치: /운영현황 종류:반응후속확인, /포인트로그`);
   }
 }
 
@@ -459,12 +461,12 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
   const alertChannelEnvName = process.env.POINT_REDEEM_CHANNEL_ID ? 'POINT_REDEEM_CHANNEL_ID' : 'LOG_CHANNEL_ID';
 
   if (!alertChannelId) {
-    console.warn('[redeem-alert] skipped: POINT_REDEEM_CHANNEL_ID and LOG_CHANNEL_ID are not configured');
+    console.warn('[redeem-alert] skipped: POINT_REDEEM_CHANNEL_ID and LOG_CHANNEL_ID are not configured. 확인 위치: /운영현황 종류:교환대기, /교환관리');
     return;
   }
 
   if (!interaction.client || !interaction.client.channels || typeof interaction.client.channels.fetch !== 'function') {
-    console.warn('[redeem-alert] failed: Discord client channel access is unavailable');
+    console.warn('[redeem-alert] failed: Discord client channel access is unavailable. 확인 위치: /운영현황 종류:교환대기, /교환관리');
     return;
   }
 
@@ -472,7 +474,7 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
     const channel = await interaction.client.channels.fetch(alertChannelId);
 
     if (!channel || typeof channel.send !== 'function') {
-      console.warn('[redeem-alert] failed: missing channel permission or channel not found');
+      console.warn('[redeem-alert] failed: missing channel permission or channel not found. 확인 위치: POINT_REDEEM_CHANNEL_ID, LOG_CHANNEL_ID, /운영현황 종류:환경설정점검');
       return;
     }
 
@@ -509,7 +511,7 @@ async function sendRedemptionReviewAlert(interaction, redemption, item, user, tr
     await channel.send({ embeds: [embed] });
     console.info(`[redeem-alert] sent to ${alertChannelEnvName}: channel=${alertChannelId} redemption=${redemption.id}`);
   } catch (error) {
-    console.warn(`[redeem-alert] failed: ${error.message}`);
+    console.warn(`[redeem-alert] failed: ${error.message} / 확인 위치: /운영현황 종류:교환대기, /교환관리, Discord 채널 권한`);
   }
 }
 

@@ -123,24 +123,169 @@ function getNotificationFollowUps(reactionApprovals) {
     const followUps = [];
 
     if (results.dmUser === 'failed') {
-      followUps.push(createQueueFollowUp('reactionApprovalDmFailed', 'DM 알림 실패: 참여자에게 처리 결과가 전달됐는지 확인해 주세요.', record));
+      followUps.push(createQueueFollowUp('reactionApprovalDmFailed', 'DM 알림 실패: 원본 인증 글, `/운영현황 종류:반응후속확인`, `/포인트로그`에서 처리 결과 전달 여부를 확인해 주세요.', record));
     }
 
     if (results.publicReply === 'failed') {
-      followUps.push(createQueueFollowUp('reactionApprovalPublicReplyFailed', '공개 답글 알림 실패: 인증 글에 처리 안내가 남았는지 확인해 주세요.', record));
+      followUps.push(createQueueFollowUp('reactionApprovalPublicReplyFailed', '공개 답글 알림 실패: 인증 채널 메시지 권한과 원본 인증 글 답글 여부를 확인해 주세요.', record));
     }
 
     if (record.status === 'approved' && Number(record.rewardPoints || 0) > 0 && !record.transactionId) {
-      followUps.push(createQueueFollowUp('reactionApprovalMissingTransaction', '승인 기록에 포인트 거래 ID가 없습니다. 포인트 로그와 원본 메시지를 대조해 주세요.', record));
+      followUps.push(createQueueFollowUp('reactionApprovalMissingTransaction', '승인 기록에 포인트 거래 ID가 없습니다. `/포인트로그`, `/운영내보내기 종류:포인트`, 원본 메시지를 대조해 주세요.', record));
     }
 
     return followUps;
   });
 }
 
+function createRiskCheck(level, title, detail, command) {
+  return {
+    level,
+    title,
+    detail,
+    command: command || null,
+  };
+}
+
+function isChannelReady(check) {
+  return Boolean(check && check.configured && check.found && check.accessible && check.canSendMessages);
+}
+
+function getChannelCheck(channelChecks, envName) {
+  return toArray(channelChecks).find((check) => check && check.envName === envName) || null;
+}
+
+function buildFirstDayRiskChecks({
+  channelChecks = [],
+  activeMissionsCount = 0,
+  activeShopItemsCount = 0,
+  pendingRedemptionsCount = 0,
+  pendingSubmissionsCount = 0,
+  reactionFollowUpsCount = 0,
+  exampleRecordsExcluded = 0,
+  backupReminderEnabled = false,
+} = {}) {
+  const risks = [];
+  const logChannel = getChannelCheck(channelChecks, 'LOG_CHANNEL_ID');
+  const missionSubmissionChannel = getChannelCheck(channelChecks, 'MISSION_SUBMISSION_CHANNEL_ID');
+  const activityReviewChannel = getChannelCheck(channelChecks, 'ACTIVITY_REVIEW_CHANNEL_ID');
+  const pointRedeemChannel = getChannelCheck(channelChecks, 'POINT_REDEEM_CHANNEL_ID');
+
+  if (!isChannelReady(logChannel)) {
+    risks.push(createRiskCheck(
+      backupReminderEnabled ? 'critical' : 'warning',
+      '운영 로그 채널 확인 필요',
+      backupReminderEnabled
+        ? '백업 리마인더가 켜져 있지만 LOG_CHANNEL_ID가 전송 가능한 상태가 아닙니다. 리마인더가 운영진에게 도착하지 않을 수 있습니다.'
+        : 'LOG_CHANNEL_ID가 전송 가능한 상태가 아니면 기본 운영 로그와 fallback 알림을 놓칠 수 있습니다.',
+      '/운영현황 종류:환경설정점검'
+    ));
+  }
+
+  if (missionSubmissionChannel && missionSubmissionChannel.configured && !isChannelReady(missionSubmissionChannel)) {
+    risks.push(createRiskCheck(
+      'critical',
+      '별도 인증 채널 권한 확인 필요',
+      'MISSION_SUBMISSION_CHANNEL_ID가 설정됐지만 봇이 채널을 보거나 메시지를 보낼 수 없습니다. 참여자 인증 안내와 운영자 확인 위치가 어긋날 수 있습니다.',
+      '/운영현황 종류:환경설정점검'
+    ));
+  } else if (!missionSubmissionChannel || !missionSubmissionChannel.configured) {
+    risks.push(createRiskCheck(
+      activeMissionsCount > 0 ? 'warning' : 'optional',
+      '별도 인증 채널 미설정',
+      activeMissionsCount > 0
+        ? 'active 미션이 있습니다. 별도 인증 채널을 운영할 계획이라면 MISSION_SUBMISSION_CHANNEL_ID와 채널 권한을 확인해 주세요.'
+        : '별도 인증 채널을 쓰지 않는 운영이면 선택 항목입니다.',
+      '/운영현황 종류:첫날점검'
+    ));
+  }
+
+  if (activeMissionsCount === 0) {
+    risks.push(createRiskCheck(
+      'warning',
+      'active 미션 없음',
+      '참여자가 `/미션`에서 볼 운영 미션이 없습니다. 첫 운영 전에 `/미션관리`에서 오늘 노출할 미션을 active로 확인해 주세요.',
+      '/미션관리'
+    ));
+  }
+
+  if (activeShopItemsCount === 0) {
+    risks.push(createRiskCheck(
+      'warning',
+      'active 상점 항목 없음',
+      '참여자가 `/상점`에서 볼 교환 항목이 없습니다. 교환 운영을 할 경우 `/상점관리`에서 항목 상태를 확인해 주세요.',
+      '/상점관리'
+    ));
+  }
+
+  if (pendingRedemptionsCount > 0 && !isChannelReady(pointRedeemChannel) && !isChannelReady(logChannel)) {
+    risks.push(createRiskCheck(
+      'warning',
+      '교환 대기 알림 채널 확인 필요',
+      '교환 대기가 있는데 POINT_REDEEM_CHANNEL_ID 또는 LOG_CHANNEL_ID 알림 경로가 전송 가능한 상태가 아닙니다. `/운영현황 종류:교환대기`와 `/교환관리`를 직접 확인해 주세요.',
+      '/운영현황 종류:교환대기'
+    ));
+  }
+
+  if (pendingSubmissionsCount > 0 && !isChannelReady(activityReviewChannel) && !isChannelReady(logChannel)) {
+    risks.push(createRiskCheck(
+      'warning',
+      '인증 검토 알림 채널 확인 필요',
+      '인증 대기가 있는데 ACTIVITY_REVIEW_CHANNEL_ID 또는 LOG_CHANNEL_ID 알림 경로가 전송 가능한 상태가 아닙니다. `/운영현황 종류:인증대기`와 `/인증관리`를 직접 확인해 주세요.',
+      '/운영현황 종류:인증대기'
+    ));
+  }
+
+  if (reactionFollowUpsCount > 0) {
+    risks.push(createRiskCheck(
+      'warning',
+      '반응 승인 후속 확인 필요',
+      'DM 실패, 공개 답글 실패, 포인트 거래 ID 누락 항목이 있습니다. 원본 인증 글과 `/포인트로그`를 대조해 주세요.',
+      '/운영현황 종류:반응후속확인'
+    ));
+  }
+
+  if (exampleRecordsExcluded > 0) {
+    risks.push(createRiskCheck(
+      'critical',
+      '예시 데이터 혼입 차단',
+      'example/demo/sample/2030년대 예시 데이터가 local 운영 데이터에서 제외됐습니다. 운영 전 `data/*.local.json`에 예시 레코드가 섞였는지 확인해 주세요.',
+      'node scripts/check-local-operation-data.js'
+    ));
+  }
+
+  if (risks.length === 0) {
+    risks.push(createRiskCheck(
+      'optional',
+      '큰 사전 경고 없음',
+      '읽기 전용 점검 기준에서 치명/주의 항목이 없습니다. 실제 Discord 리허설로 마지막 흐름을 확인해 주세요.',
+      '/운영내보내기 종류:전체 형식:JSON'
+    ));
+  }
+
+  return risks;
+}
+
+function buildTodayActions(riskChecks) {
+  const actions = [];
+  const hasCritical = riskChecks.some((risk) => risk.level === 'critical');
+  if (hasCritical) {
+    actions.push('치명 항목을 먼저 확인하고, Railway Variables와 Discord 채널 권한을 맞춥니다.');
+  }
+  actions.push('`/미션관리`와 `/상점관리`에서 active 미션/상점 항목이 오늘 운영 기준과 맞는지 확인합니다.');
+  actions.push('`/운영현황 종류:교환대기`, `종류:인증대기`, `종류:반응후속확인`을 보고 처리할 ID를 확인합니다.');
+  actions.push('운영 시작 전 또는 종료 전 `/운영내보내기 종류:전체 형식:JSON`으로 백업 파일을 확보합니다.');
+  actions.push('예시 데이터 제외 건수가 0이 아니면 `node scripts/check-local-operation-data.js`로 local JSON을 점검합니다.');
+
+  return actions.slice(0, 5);
+}
+
 function buildAdminMeta(exampleRecordsExcluded = 0) {
   return {
     exampleRecordsExcluded,
+    exampleDataWarning: exampleRecordsExcluded > 0
+      ? 'example/demo/sample/2030년대 예시 데이터는 운영 데이터에서 제외됐습니다. local JSON 혼입 여부를 확인해 주세요.'
+      : null,
     storageMode: 'local-json',
     readOnly: true,
     generatedAt: new Date().toISOString(),
@@ -262,6 +407,21 @@ function buildFirstDayCheck(repository = createDefaultRepository(), options = {}
     return check && check.configured && check.found && check.accessible && check.canSendMessages;
   }).length;
 
+  const activeMissionsCount = missionsResult.data.filter((mission) => mission.status === 'active').length;
+  const activeShopItemsCount = shopItemsResult.data.filter((item) => item.status === 'active').length;
+  const reactionFollowUpsCount = getNotificationFollowUps(reactionApprovalsResult.data).length;
+  const backupReminderEnabled = process.env.OPERATION_BACKUP_REMINDER_ENABLED === 'true';
+  const riskChecks = buildFirstDayRiskChecks({
+    channelChecks,
+    activeMissionsCount,
+    activeShopItemsCount,
+    pendingRedemptionsCount: pendingRedemptions.length,
+    pendingSubmissionsCount: pendingSubmissions.length,
+    reactionFollowUpsCount,
+    exampleRecordsExcluded,
+    backupReminderEnabled,
+  });
+
   return {
     readOnly: true,
     storageMode: 'local-json',
@@ -270,18 +430,23 @@ function buildFirstDayCheck(repository = createDefaultRepository(), options = {}
     channelReadyCount,
     channelCheckCount: channelChecks.length,
     googleSheetsCheck: options.googleSheetsCheck || {},
-    activeMissionsCount: missionsResult.data.filter((mission) => mission.status === 'active').length,
-    activeShopItemsCount: shopItemsResult.data.filter((item) => item.status === 'active').length,
+    activeMissionsCount,
+    activeShopItemsCount,
     pendingRedemptionsCount: pendingRedemptions.length,
     pendingSubmissionsCount: pendingSubmissions.length,
-    reactionFollowUpsCount: getNotificationFollowUps(reactionApprovalsResult.data).length,
+    reactionFollowUpsCount,
     exampleRecordsExcluded,
     exampleDataExcluded: exampleRecordsExcluded >= 0,
-    backupReminderEnabled: process.env.OPERATION_BACKUP_REMINDER_ENABLED === 'true',
+    exampleDataWarning: exampleRecordsExcluded > 0
+      ? 'example/demo/sample/2030년대 예시 데이터는 운영 데이터로 표시하지 않고 제외했습니다.'
+      : null,
+    backupReminderEnabled,
     exportGuideCommand: '/운영내보내기 종류:전체 형식:JSON',
     onboardingTrackedUsersCount: supportSummary.trackedUsersCount || 0,
     missionGuidanceSentCount: supportSummary.guidanceSentCount || 0,
     faqCandidateCount: toArray(supportSummary.faqCandidates).length,
+    riskChecks,
+    todayActions: buildTodayActions(riskChecks),
     meta: buildAdminMeta(exampleRecordsExcluded),
   };
 }
