@@ -220,6 +220,40 @@ function testRunModesAndStandardTimeline() {
   assert.strictEqual(systems.getCurrentWave(standard).id, 'standard-25-29');
 }
 
+function testEarlyGamePacingAndUpgradeRoleClarity() {
+  const { content, systems } = loadGameRuntime();
+  assert.strictEqual(content.balance.earlyGame.xpCurve.firstLevel, 4);
+  assert.ok(content.balance.earlyGame.spawnGrace >= 1.5);
+  assert.ok(content.balance.earlyGame.baseSpawnCadence >= 1.25);
+  assert.ok(content.balance.earlyGame.contactDamageScale < 1);
+  assert.ok(content.balance.earlyGame.contactDamageScaleUntil >= 60);
+
+  const fighter = systems.createState(content, 'fighter', { mode: 'standard' });
+  let firstLevelAt = null;
+  let maxEnemies = 0;
+  for (let step = 0; step < 600; step += 1) {
+    const result = systems.tick(fighter, { up: false, down: false, left: false, right: true }, 0.1);
+    if (result === 'level' && firstLevelAt === null) firstLevelAt = fighter.elapsed;
+    maxEnemies = Math.max(maxEnemies, fighter.enemies.length);
+    if (result === 'lost') break;
+  }
+
+  assert.ok(firstLevelAt !== null && firstLevelAt <= 45, `first level should arrive early, got ${firstLevelAt}`);
+  assert.ok(fighter.kills >= 8, `first minute should create an active XP flow, got ${fighter.kills} kills`);
+  assert.ok(maxEnemies <= 45, `first minute should not flood the screen, got ${maxEnemies} enemies`);
+  assert.ok(fighter.player.health > fighter.player.maxHealth * 0.55, 'early contact pressure should leave room to recover');
+
+  const choices = systems.pickUpgrades(fighter);
+  assert.strictEqual(
+    JSON.stringify(choices.map((upgrade) => upgrade.recommendationRole)),
+    JSON.stringify(['현재 빌드', '방향 전환', '안정 보정'])
+  );
+  assert.strictEqual(new Set(choices.map((upgrade) => upgrade.recommendationReason)).size, 3);
+  choices.forEach((upgrade) => {
+    assert.ok(upgrade.recommendationReason.length <= 28, `${upgrade.id} recommendation should stay short`);
+  });
+}
+
 function loadGameRuntime() {
   const context = { window: {}, Math: Object.create(Math) };
   context.Math.random = () => 0.5;
@@ -738,6 +772,7 @@ function main() {
   assert.ok(content.includes('라메의 잎 표식'));
   assert.ok(content.includes('검은 종 파수꾼'));
   assert.ok(content.includes('balance'));
+  assert.ok(content.includes('contactDamageScale'));
   assert.ok(content.includes('spawnAt: 198'));
   assert.ok(content.includes('wavePatterns'));
   assert.ok(content.includes('behavior: \'skirmisher\''));
@@ -809,6 +844,7 @@ function main() {
   assert.ok(systems.includes('function applyUpgrade'));
   assert.ok(systems.includes('function getRunSummary'));
   assert.ok(systems.includes('applyBalanceAdjustments'));
+  assert.ok(systems.includes('function getEarlyContactDamageScale'));
   assert.ok(systems.includes('warningGrace'));
   assert.ok(systems.includes('hazardResist'));
   assert.ok(systems.includes('function evaluateRunGoals'));
@@ -842,6 +878,7 @@ function main() {
   assert.ok(game.includes('진화 가능: 다음 엘리트 상자를 노리세요'));
   assert.ok(game.includes('reward-quick-grid'));
   assert.ok(game.includes('function shortenRecommendation'));
+  assert.ok(game.includes('function formatRecommendationRoleClass'));
   assert.ok(game.includes('function formatEvolutionComparison'));
   assert.ok(game.includes('renderer.preloadEnemySprites();'));
   assert.ok(game.includes('renderer.preloadBackgroundSprites();'));
@@ -963,6 +1000,9 @@ function main() {
   assert.ok(styles.includes('.build-line'));
   assert.ok(styles.includes('.retry-copy'));
   assert.ok(styles.includes('.recommendation-pill'));
+  assert.ok(styles.includes('.upgrade-option.role-current'));
+  assert.ok(styles.includes('.upgrade-option.role-pivot'));
+  assert.ok(styles.includes('.upgrade-option.role-stable'));
   assert.ok(styles.includes('.run-goal-list'));
   assert.ok(styles.includes('.goal-result-list'));
   assert.ok(styles.includes('.card-seal'));
@@ -1012,6 +1052,7 @@ function main() {
   testBackgroundKeyMappings();
   testWaveRollBehavior();
   testRunModesAndStandardTimeline();
+  testEarlyGamePacingAndUpgradeRoleClarity();
   testLargeWorldAndMovementClamp();
   testEveryPlaybookStartsAndAttacks();
   testEnemyProfilesAndTelegraphs();

@@ -34,16 +34,18 @@
 
   const balance = {
     earlyGame: {
-      spawnGrace: 1.25,
-      baseSpawnCadence: 1.2,
-      xpCurve: { firstLevel: 5, growth: 1.3, flat: 3 },
+      spawnGrace: 1.6,
+      baseSpawnCadence: 1.28,
+      contactDamageScale: 0.62,
+      contactDamageScaleUntil: 75,
+      xpCurve: { firstLevel: 4, growth: 1.28, flat: 3 },
       classAdjustments: {
-        fighter: { damage: 2, magnet: 8 },
+        fighter: { damage: 2, magnet: 14 },
         cleric: { auraDamage: 2, firstHealTimer: 2.6 },
-        thief: { damage: 1, magnet: 12 },
-        druid: { auraRange: 8, rootSlow: 0.12 },
-        wizard: { projectileSpeed: 20, arcaneShieldTimer: 2.4 },
-        ranger: { companionTimer: 1.8, projectileLife: 0.12 },
+        thief: { damage: 1, magnet: 18 },
+        druid: { damage: 2, auraDamage: 2, auraRange: 8, magnet: 14, rootSlow: 0.12 },
+        wizard: { magnet: 10, projectileSpeed: 20, arcaneShieldTimer: 2.4 },
+        ranger: { magnet: 28, companionTimer: 1.8, projectileLife: 0.12 },
       },
     },
     boss: {
@@ -250,8 +252,8 @@
       backgroundKey: 'inn',
       pressureRule: 'edge-skirmish',
       hazards: [],
-      cadence: 1.05,
-      pressure: 1,
+      cadence: 1.18,
+      pressure: 0.9,
       packs: [
         { type: 'goblin', count: 2, formation: 'split' },
       ],
@@ -373,11 +375,10 @@
       backgroundKey: 'inn',
       pressureRule: 'edge-skirmish',
       hazards: [],
-      cadence: 1.1,
-      pressure: 1,
+      cadence: 1.18,
+      pressure: 0.92,
       packs: [
         { type: 'goblin', count: 2, formation: 'split' },
-        { type: 'slime', count: 1, formation: 'arc' },
       ],
     },
     {
@@ -392,13 +393,13 @@
       backgroundKey: 'ruins',
       pressureRule: 'snare-circles',
       hazards: [
-        { kind: 'rootSnare', cadence: 5.2, warning: 0.9, duration: 2.2, radius: 66, slow: 1.25, tension: 0.5, colorToken: '--class-druid', label: '뿌리 매듭' },
+        { kind: 'rootSnare', cadence: 5.8, warning: 1, duration: 2.1, radius: 64, slow: 1.15, tension: 0.45, colorToken: '--class-druid', label: '뿌리 매듭' },
       ],
-      cadence: 1.18,
-      pressure: 1.18,
+      cadence: 1.26,
+      pressure: 1.08,
       packs: [
-        { type: 'goblin', count: 3, formation: 'arc' },
-        { type: 'slime', count: 2, formation: 'line' },
+        { type: 'goblin', count: 2, formation: 'arc' },
+        { type: 'slime', count: 1, formation: 'line' },
       ],
     },
     {

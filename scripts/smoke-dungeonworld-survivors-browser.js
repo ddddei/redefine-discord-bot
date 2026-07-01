@@ -190,6 +190,37 @@ async function assertViewportHealthy(cdp, width, height) {
   assert.strictEqual(metrics.canvasHasPixels, true, `${width}px viewport should render nonblank canvas pixels`);
 }
 
+async function assertUpgradeModalHealthy(cdp, width, height) {
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile: width < 768,
+  });
+  await wait(180);
+  const metrics = await evaluate(cdp, `(() => {
+    const roles = Array.from(document.querySelectorAll('.recommendation-pill')).map((node) => node.textContent.trim());
+    const cards = Array.from(document.querySelectorAll('.upgrade-option'));
+    return {
+      innerWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      modalScrollTop: document.querySelector('.modal-card').scrollTop,
+      roles,
+      hasRoleClasses: ['role-current', 'role-pivot', 'role-stable'].every((className) => Boolean(document.querySelector('.' + className))),
+      hasBuildDirection: document.getElementById('upgrade-options').textContent.includes('빌드 방향'),
+      clippedCards: cards.filter((card) => card.scrollWidth > card.clientWidth + 1 || card.scrollHeight > card.clientHeight + 1).length,
+      overflowingText: Array.from(document.querySelectorAll('.upgrade-option span, .upgrade-option strong')).filter((node) => node.scrollWidth > node.clientWidth + 1).length,
+    };
+  })()`);
+  assert.ok(metrics.scrollWidth <= metrics.innerWidth + 1, `${width}px upgrade modal should not horizontally overflow`);
+  assert.strictEqual(metrics.modalScrollTop, 0, `${width}px upgrade modal should open at the title`);
+  assert.deepStrictEqual(metrics.roles, ['현재 빌드', '방향 전환', '안정 보정']);
+  assert.strictEqual(metrics.hasRoleClasses, true, 'upgrade cards should expose distinct role classes');
+  assert.strictEqual(metrics.hasBuildDirection, true, 'upgrade cards should show build direction copy');
+  assert.strictEqual(metrics.clippedCards, 0, `${width}px upgrade cards should not clip content`);
+  assert.strictEqual(metrics.overflowingText, 0, `${width}px upgrade card text should not overflow`);
+}
+
 async function main() {
   assert.ok(typeof WebSocket === 'function', 'Node 20 WebSocket support is required for CDP smoke QA');
   const chromePath = findChrome();
@@ -240,6 +271,8 @@ async function main() {
     assert.strictEqual(levelModal.mode, 'upgrade');
     assert.strictEqual(levelModal.options, 3);
     assert.strictEqual(levelModal.hasEvolutionLine, true);
+    await assertUpgradeModalHealthy(cdp, 375, 812);
+    await assertUpgradeModalHealthy(cdp, 1280, 900);
     await evaluate(cdp, "document.querySelector('.upgrade-option').click()");
     await waitFor(cdp, "window.DungeonworldSurvivorsQa.getSnapshot().status === 'running'", 'running after upgrade');
 

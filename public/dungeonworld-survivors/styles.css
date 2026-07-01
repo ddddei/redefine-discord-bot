@@ -658,6 +658,43 @@ canvas {
   font-weight: 700;
 }
 
+.upgrade-option.role-current {
+  --option-accent: var(--class-fighter);
+  --option-soft: color-mix(in srgb, var(--class-fighter-soft) 62%, var(--surface-parchment));
+}
+
+.upgrade-option.role-pivot {
+  --option-accent: var(--accent-bell);
+  --option-soft: color-mix(in srgb, var(--accent-bell) 18%, var(--surface-parchment));
+}
+
+.upgrade-option.role-stable {
+  --option-accent: var(--status-success);
+  --option-soft: color-mix(in srgb, var(--status-success) 18%, var(--surface-parchment));
+}
+
+.upgrade-option.role-current .recommendation-pill::before,
+.upgrade-option.role-pivot .recommendation-pill::before,
+.upgrade-option.role-stable .recommendation-pill::before {
+  display: inline-block;
+  width: 0.8em;
+  margin-right: var(--space-1);
+  color: var(--text-primary);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.upgrade-option.role-current .recommendation-pill::before {
+  content: "I";
+}
+
+.upgrade-option.role-pivot .recommendation-pill::before {
+  content: "II";
+}
+
+.upgrade-option.role-stable .recommendation-pill::before {
+  content: "III";
+}
+
 .rune-badges {
   display: flex;
   flex-wrap: wrap;
@@ -1041,10 +1078,20 @@ canvas {
   }
 
   .reward-topline,
-  .reward-quick-grid,
   .level-shift,
   .chest-level-compare {
     gap: var(--space-1);
+  }
+
+  .reward-topline {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .recommendation-pill,
+  .upgrade-option .option-meta {
+    width: fit-content;
+    max-width: 100%;
   }
 
   .reward-quick-grid {

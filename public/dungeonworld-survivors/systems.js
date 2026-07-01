@@ -848,9 +848,17 @@
       enemy.slowTimer = Math.max(0, enemy.slowTimer - dt);
       enemy.hitFlash = Math.max(0, enemy.hitFlash - dt);
       if (distance(player, enemy) < player.radius + enemy.radius && player.invulnerableTimer <= 0) {
-        applyPlayerDamage(state, Math.max(2, enemy.damage * 0.35), enemy, '몸싸움', '--status-error', 0.38);
+        applyPlayerDamage(state, Math.max(2, enemy.damage * 0.35 * getEarlyContactDamageScale(state)), enemy, '몸싸움', '--status-error', 0.38);
       }
     });
+  }
+
+  function getEarlyContactDamageScale(state) {
+    const earlyGame = state.content.balance && state.content.balance.earlyGame;
+    if (!earlyGame || !earlyGame.contactDamageScale || !earlyGame.contactDamageScaleUntil) return 1;
+    if (state.elapsed >= earlyGame.contactDamageScaleUntil) return 1;
+    const progress = clamp(state.elapsed / earlyGame.contactDamageScaleUntil, 0, 1);
+    return earlyGame.contactDamageScale + (1 - earlyGame.contactDamageScale) * progress;
   }
 
   function updateEnemyAttackState(state, enemy, dt, direction) {
@@ -1386,9 +1394,9 @@
       && (upgrade.pools || []).some((pool) => state.playbook.upgradePool.includes(pool))
     ));
     const chosen = [];
-    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scoreCurrentBuild), '현재 빌드', '현재 태그와 플레이북 강점을 이어갑니다.');
-    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scorePivotBuild, chosen), '방향 전환', '같은 태그만 밀지 않고 다른 승리 조건을 엽니다.');
-    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scoreStabilityBuild, chosen), '안정 보정', '체력, 전조, 기동 보정으로 런을 덜 흔들리게 합니다.');
+    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scoreCurrentBuild), '현재 빌드', '이미 잡은 태그와 직업 강점을 더 밀어줍니다.');
+    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scorePivotBuild, chosen), '방향 전환', '새 태그로 보스/진화 각도를 바꿉니다.');
+    addRecommendedUpgrade(chosen, pickBestUpgrade(available, state, scoreStabilityBuild, chosen), '안정 보정', '체력, 회피, 제어로 초반 흔들림을 줄입니다.');
     available
       .filter((upgrade) => !chosen.some((item) => item.id === upgrade.id))
       .sort(() => Math.random() - 0.5)
@@ -1482,7 +1490,7 @@
       text: upgrade.text,
     };
     state.selectedUpgrades.push(selected);
-    state.learnedUpgrades.push(`${upgrade.title} ${formatLevel(nextLevel)}`);
+    state.learnedUpgrades.push(`${upgrade.title} ${formatLevel(nextLevel)} · ${summarizeUpgradeDirection(selected.tags)}`);
     recordBuildTags(state, selected.tags);
     recordInventoryUpgrade(state, upgrade);
     updateSynergies(state);
@@ -1493,6 +1501,17 @@
     const link = UPGRADE_ITEM_LINKS[upgrade.id];
     if (!link) return;
     setInventoryItemLevel(state, link.type, link.id, getInventoryItemLevel(state, link.type, link.id) + 1);
+  }
+
+  function summarizeUpgradeDirection(tags) {
+    if (tags.includes('boss')) return '보스 화력';
+    if (tags.includes('shield') || tags.includes('survival')) return '생존 안정';
+    if (tags.includes('blade') || tags.includes('pierce')) return '처치 속도';
+    if (tags.includes('control') || tags.includes('root')) return '제어 강화';
+    if (tags.includes('bell') || tags.includes('arcane')) return '주문 화력';
+    if (tags.includes('hunt') || tags.includes('mobility')) return '거리 운영';
+    if (tags.includes('faith')) return '회복 운영';
+    return '빌드 보완';
   }
 
   function getInventoryItemLevel(state, itemType, itemId) {

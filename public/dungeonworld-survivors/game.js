@@ -125,8 +125,10 @@
       const button = document.createElement('button');
       const evolutionReady = evolutionState.status === 'ready' || evolutionState.status === 'will-ready';
       const evolutionMaterial = evolutionState.status === 'material' || evolutionState.status === 'progress';
+      const roleClass = formatRecommendationRoleClass(upgrade.recommendationRole);
       button.className = [
         `upgrade-option rarity-${upgrade.rarity || 'common'}`,
+        roleClass,
         evolutionReady ? 'evolution-ready' : '',
         evolutionMaterial ? 'evolution-linked' : '',
       ].filter(Boolean).join(' ');
@@ -138,7 +140,7 @@
         `<strong>${upgrade.title}</strong>`,
         `<span class="level-shift" aria-label="현재 레벨 ${currentLevel}, 다음 레벨 ${nextLevel}, 최대 레벨 ${upgrade.maxLevel}"><span>Lv.${currentLevel}</span><b>→</b><strong>Lv.${nextLevel}</strong><em>/ ${upgrade.maxLevel}</em></span>`,
         `<span class="effect-line"><b>효과</b>${upgrade.effectPreview || upgrade.text}</span>`,
-        `<span class="reward-quick-grid"><span><b>추천</b>${shortenRecommendation(upgrade.recommendationReason)}</span><span><b>방향</b>${shortenBuildDirection(upgrade)}</span></span>`,
+        `<span class="reward-quick-grid"><span><b>선택 이유</b>${shortenRecommendation(upgrade.recommendationReason)}</span><span><b>빌드 방향</b>${shortenBuildDirection(upgrade)}</span></span>`,
         `<span class="evolution-line evolution-${evolutionState.status}"><b>${evolutionState.label}</b>${evolutionState.text}</span>`,
         `<span class="rune-badges">${formatTagBadges(upgrade.tags)}</span>`,
         `<span class="synergy-hint"><b>적합</b>${upgrade.classHint}</span>`,
@@ -402,6 +404,15 @@
     return (tags || []).map((tag) => `#${tag}`).join(' ');
   }
 
+  function formatRecommendationRoleClass(role) {
+    const classNames = {
+      '현재 빌드': 'role-current',
+      '방향 전환': 'role-pivot',
+      '안정 보정': 'role-stable',
+    };
+    return classNames[role] || 'role-fill';
+  }
+
   function formatTagBadges(tags) {
     return (tags || []).map((tag) => `<span class="rune-badge">${tag}</span>`).join('');
   }
@@ -425,9 +436,9 @@
 
   function shortenRecommendation(reason) {
     const compact = {
-      '현재 태그와 플레이북 강점을 이어갑니다.': '강점 유지',
-      '같은 태그만 밀지 않고 다른 승리 조건을 엽니다.': '승리 조건 확장',
-      '체력, 전조, 기동 보정으로 런을 덜 흔들리게 합니다.': '런 안정화',
+      '이미 잡은 태그와 직업 강점을 더 밀어줍니다.': '강점 강화',
+      '새 태그로 보스/진화 각도를 바꿉니다.': '새 승리각',
+      '체력, 회피, 제어로 초반 흔들림을 줄입니다.': '피격 완충',
       '남은 빌드 빈칸을 메우는 선택입니다.': '빈칸 보완',
     };
     return compact[reason] || (reason || '선택지 확장').replace(/^추천 이유:\s*/, '');
@@ -494,7 +505,15 @@
     const focusTarget = mode === 'result' ? elements.modalTitle : firstAction;
     if (mode === 'result') elements.modalTitle.setAttribute('tabindex', '-1');
     window.setTimeout(() => {
-      if (focusTarget) focusTarget.focus();
+      if (focusTarget) {
+        try {
+          focusTarget.focus({ preventScroll: true });
+        } catch (error) {
+          focusTarget.focus();
+        }
+      }
+      if (modalCard) modalCard.scrollTop = 0;
+      elements.upgradeOptions.scrollTop = 0;
     }, 0);
   }
 
