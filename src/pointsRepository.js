@@ -1759,7 +1759,7 @@ function createPointsRepository(paths = {}, options = {}) {
   function listRecentReactionApprovals(limit = 10) {
     const data = getReactionApprovalData();
     const records = Array.isArray(data.records) ? data.records : [];
-    return sortNewestFirst(records, ['reviewedAt', 'createdAt']).slice(0, limit);
+    return sortNewestFirst(getOperationalRecords(records), ['reviewedAt', 'createdAt']).slice(0, limit);
   }
 
   function listRecentSubmissions(limit = 10) {

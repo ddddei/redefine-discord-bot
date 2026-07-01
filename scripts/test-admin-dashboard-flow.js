@@ -184,14 +184,6 @@ function createRepository() {
     missionsData: {
       missions: [
         {
-          id: 'mission1',
-          title: '테스트 미션',
-          status: 'active',
-          rewardPoints: 20,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
           id: 'mission_example',
           title: '예시 미션',
           status: 'active',
@@ -199,19 +191,18 @@ function createRepository() {
           createdAt: '2030-01-01T00:00:00.000Z',
           updatedAt: '2030-01-01T00:00:00.000Z',
         },
+        {
+          id: 'mission1',
+          title: '테스트 미션',
+          status: 'active',
+          rewardPoints: 20,
+          createdAt: now,
+          updatedAt: now,
+        },
       ],
     },
     shopItemsData: {
       shopItems: [
-        {
-          id: 'item1',
-          name: '테스트 리워드',
-          status: 'active',
-          cost: 50,
-          stock: null,
-          createdAt: now,
-          updatedAt: now,
-        },
         {
           id: 'item_example',
           name: '예시 상점 항목',
@@ -221,10 +212,28 @@ function createRepository() {
           createdAt: '2030-01-01T00:00:00.000Z',
           updatedAt: '2030-01-01T00:00:00.000Z',
         },
+        {
+          id: 'item1',
+          name: '테스트 리워드',
+          status: 'active',
+          cost: 50,
+          stock: null,
+          createdAt: now,
+          updatedAt: now,
+        },
       ],
     },
   };
   const reactionRecords = [
+    {
+      id: 'reaction_example',
+      authorId: 'user_example_001',
+      authorDisplayName: '참여자 예시',
+      reviewedBy: 'operator_example',
+      status: 'approved',
+      rewardPoints: 20,
+      reviewedAt: '2030-01-01T00:00:00.000Z',
+    },
     {
       id: 'reaction1',
       authorId: 'user1234567890',
@@ -237,15 +246,6 @@ function createRepository() {
         dmUser: 'failed',
         publicReply: 'sent',
       },
-    },
-    {
-      id: 'reaction_example',
-      authorId: 'user_example_001',
-      authorDisplayName: '참여자 예시',
-      reviewedBy: 'operator_example',
-      status: 'approved',
-      rewardPoints: 20,
-      reviewedAt: '2030-01-01T00:00:00.000Z',
     },
   ];
 
@@ -495,6 +495,9 @@ async function main() {
     assert.strictEqual(listMissionStatus(repository, 10).data.length, 1);
     assert.strictEqual(listShopItemStatus(repository, 10).data.length, 1);
     assert.strictEqual(listRecentReactionApprovals(repository, 10).data.length, 1);
+    assert.strictEqual(listMissionStatus(repository, 1).data[0].id, 'mission1');
+    assert.strictEqual(listShopItemStatus(repository, 1).data[0].id, 'item1');
+    assert.strictEqual(listRecentReactionApprovals(repository, 1).data[0].id, 'reaction1');
 
     const handler = createAdminRequestHandler(repository);
     const unauthorized = await invokeHandler(handler, '/api/admin/summary');

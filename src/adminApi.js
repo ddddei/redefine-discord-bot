@@ -284,45 +284,60 @@ function listRecentPointTransactions(repository = createDefaultRepository(), lim
 }
 
 function listMissionStatus(repository = createDefaultRepository(), limit = 10) {
-  if (repository && typeof repository.listMissionsForAdmin === 'function') {
-    const state = readStateForMeta(repository);
+  const state = readStateForMeta(repository);
+  if (state) {
+    const missionsResult = filterOperationalRecords(state.missionsData && state.missionsData.missions);
     return buildListResponse(
-      repository.listMissionsForAdmin({ limit: parseLimit(limit) }),
-      state && toArray(state.missionsData && state.missionsData.missions)
+      sortNewestFirst(missionsResult.data, ['updatedAt', 'createdAt', 'activeDate']).slice(0, parseLimit(limit)),
+      toArray(state.missionsData && state.missionsData.missions)
     );
   }
 
-  const state = readState(repository);
+  if (repository && typeof repository.listMissionsForAdmin === 'function') {
+    return buildListResponse(
+      repository.listMissionsForAdmin({ limit: parseLimit(limit) }),
+      null
+    );
+  }
+
+  const fallbackState = readState(repository);
+  const missionsResult = filterOperationalRecords(fallbackState.missionsData && fallbackState.missionsData.missions);
   return buildListResponse(
-    sortNewestFirst(toArray(state.missionsData && state.missionsData.missions), ['updatedAt', 'createdAt', 'activeDate']).slice(0, parseLimit(limit)),
-    toArray(state.missionsData && state.missionsData.missions)
+    sortNewestFirst(missionsResult.data, ['updatedAt', 'createdAt', 'activeDate']).slice(0, parseLimit(limit)),
+    toArray(fallbackState.missionsData && fallbackState.missionsData.missions)
   );
 }
 
 function listShopItemStatus(repository = createDefaultRepository(), limit = 10) {
-  if (repository && typeof repository.listShopItemsForAdmin === 'function') {
-    const state = readStateForMeta(repository);
+  const state = readStateForMeta(repository);
+  if (state) {
+    const shopItemsResult = filterOperationalRecords(state.shopItemsData && state.shopItemsData.shopItems);
     return buildListResponse(
-      repository.listShopItemsForAdmin({ limit: parseLimit(limit) }),
-      state && toArray(state.shopItemsData && state.shopItemsData.shopItems)
+      sortNewestFirst(shopItemsResult.data, ['updatedAt', 'createdAt']).slice(0, parseLimit(limit)),
+      toArray(state.shopItemsData && state.shopItemsData.shopItems)
     );
   }
 
-  const state = readState(repository);
+  if (repository && typeof repository.listShopItemsForAdmin === 'function') {
+    return buildListResponse(
+      repository.listShopItemsForAdmin({ limit: parseLimit(limit) }),
+      null
+    );
+  }
+
+  const fallbackState = readState(repository);
+  const shopItemsResult = filterOperationalRecords(fallbackState.shopItemsData && fallbackState.shopItemsData.shopItems);
   return buildListResponse(
-    sortNewestFirst(toArray(state.shopItemsData && state.shopItemsData.shopItems), ['updatedAt', 'createdAt']).slice(0, parseLimit(limit)),
-    toArray(state.shopItemsData && state.shopItemsData.shopItems)
+    sortNewestFirst(shopItemsResult.data, ['updatedAt', 'createdAt']).slice(0, parseLimit(limit)),
+    toArray(fallbackState.shopItemsData && fallbackState.shopItemsData.shopItems)
   );
 }
 
 function listRecentReactionApprovals(repository = createDefaultRepository(), limit = 10) {
   const reactionApprovals = readReactionApprovals(repository);
-  if (repository && typeof repository.listRecentReactionApprovals === 'function') {
-    return buildListResponse(repository.listRecentReactionApprovals(parseLimit(limit)), reactionApprovals);
-  }
 
   return buildListResponse(
-    sortNewestFirst(reactionApprovals, ['reviewedAt', 'createdAt']).slice(0, parseLimit(limit)),
+    sortNewestFirst(filterOperationalRecords(reactionApprovals).data, ['reviewedAt', 'createdAt']).slice(0, parseLimit(limit)),
     reactionApprovals
   );
 }

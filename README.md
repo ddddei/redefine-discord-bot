@@ -137,7 +137,7 @@ ADMIN_DASHBOARD_TITLE=리디파인 운영 대시보드
 
 Railway에서 Public Domain을 생성한 뒤 `https://Railway-도메인/admin`으로 접속합니다. Public Domain은 Railway 프로젝트의 서비스 `Settings` -> `Networking` -> `Public Networking`에서 생성합니다.
 
-대시보드는 HTTP Basic Auth로 보호되며 API도 같은 인증을 사용합니다. 운영 요약 카드, 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록, `/운영내보내기` 안내와 운영 체크리스트를 보여줍니다.
+대시보드는 HTTP Basic Auth로 보호되며 API도 같은 인증을 사용합니다. 오늘의 운영 큐, 운영 요약 카드, 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록, `/운영내보내기` 안내와 운영 체크리스트를 보여줍니다.
 
 운영 로그와 알림 채널은 아래 환경변수를 기준으로 분리합니다.
 
