@@ -97,9 +97,27 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
       .slice(-safeLimit);
   }
 
+  function listRecentMessagesForAdmin(limit = null) {
+    const hasLimit = limit !== null && limit !== undefined;
+    const parsedLimit = hasLimit ? Number(limit) : NaN;
+    const safeLimit = Number.isFinite(parsedLimit)
+      ? Math.min(100, Math.max(1, parsedLimit))
+      : null;
+    const data = load();
+    const messages = data.messages
+      .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
+      .slice()
+      .sort((left, right) => {
+        return new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime();
+      });
+
+    return safeLimit ? messages.slice(0, safeLimit) : messages;
+  }
+
   return {
     appendMessage,
     hasNotice,
+    listRecentMessagesForAdmin,
     listRecentMessages,
     recordNotice,
   };

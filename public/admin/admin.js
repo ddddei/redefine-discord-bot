@@ -12,6 +12,7 @@
     missions: '/api/admin/missions?limit=10',
     shopItems: '/api/admin/shop-items?limit=10',
     reactions: '/api/admin/reaction-approvals?limit=10',
+    dmChatLogs: '/api/admin/dm-chat-logs?limit=20',
   };
 
   const queueLabels = {
@@ -69,6 +70,15 @@
   function badge(value) {
     const safeValue = text(value);
     return '<span class="badge ' + escapeHtml(safeValue) + '">' + escapeHtml(safeValue) + '</span>';
+  }
+
+  function safetyBadge(detection) {
+    if (!detection) {
+      return '<span class="badge">-</span>';
+    }
+
+    const label = [detection.category, detection.severity].filter(Boolean).join(' / ');
+    return '<span class="badge safety">' + escapeHtml(label || '감지됨') + '</span>';
   }
 
   function escapeHtml(value) {
@@ -268,7 +278,8 @@
       const cells = headers.map(function (header) {
         return '<td>' + header.render(row) + '</td>';
       }).join('');
-      return '<tr>' + cells + '</tr>';
+      const rowClass = typeof row.rowClass === 'function' ? row.rowClass(row) : '';
+      return '<tr class="' + escapeHtml(rowClass) + '">' + cells + '</tr>';
     }).join('');
 
     $(targetId).innerHTML = '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>';
@@ -340,6 +351,30 @@
     ], '아직 반응 승인 기록이 없습니다.\n미션 인증 채널에서 운영자가 승인/반려하면 이곳에 표시됩니다.');
   }
 
+  function renderDmChatLogs(response) {
+    const rows = rowsFromResponse(response).map(function (row) {
+      return {
+        ...row,
+        rowClass: function () {
+          return row.hasSafetyDetection ? 'safety-row' : '';
+        },
+      };
+    });
+    const meta = response && response.meta ? response.meta : {};
+    $('dm-chat-status').textContent = '읽기 전용 · ' + text(meta.storageMode, 'local-json') + ' · example 데이터 제외'
+      + (Number(meta.exampleRecordsExcluded || 0) > 0 ? ' ' + meta.exampleRecordsExcluded + '건' : '');
+
+    renderTable('dm-chat-logs', rows, [
+      { label: '시간', render: function (row) { return escapeHtml(formatDate(row.createdAt)); } },
+      { label: '사용자', render: function (row) {
+        return '<strong>' + escapeHtml(row.displayName || shortId(row.userId)) + '</strong><br><span class="mono muted">' + escapeHtml(shortId(row.userId)) + '</span>';
+      } },
+      { label: '역할', render: function (row) { return badge(row.role); } },
+      { label: '안전', render: function (row) { return safetyBadge(row.safetyDetection); } },
+      { label: '메시지 일부', render: function (row) { return '<span class="message-preview">' + escapeHtml(row.content || '-') + '</span>'; } },
+    ], '아직 표시할 DM 대화 로그가 없습니다.\n참여자가 DM 대화 연습을 시작하면 이곳에 최근 메시지가 표시됩니다.');
+  }
+
   async function loadDashboard() {
     $('global-status').textContent = '데이터를 불러오는 중입니다.';
     try {
@@ -356,6 +391,7 @@
         fetchJson(endpoints.missions),
         fetchJson(endpoints.shopItems),
         fetchJson(endpoints.reactions),
+        fetchJson(endpoints.dmChatLogs),
       ]);
 
       renderSummary(results[0]);
@@ -370,6 +406,7 @@
       renderMissions(rowsFromResponse(results[9]));
       renderShopItems(rowsFromResponse(results[10]));
       renderReactions(rowsFromResponse(results[11]));
+      renderDmChatLogs(results[12]);
 
       $('last-updated').textContent = '마지막 갱신: ' + formatDate(new Date().toISOString());
     } catch (error) {
@@ -377,7 +414,7 @@
       $('first-day-check').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('first-day-actions').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('onboarding-signals').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
-      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals'].forEach(function (id) {
+      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals', 'dm-chat-logs'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
       });
     }

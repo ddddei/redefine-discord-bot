@@ -96,6 +96,11 @@ button:hover {
   margin-bottom: 12px;
 }
 
+.compact-heading {
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
 .section-heading p {
   color: var(--muted);
 }
@@ -257,6 +262,33 @@ td {
 .badge.paused,
 .badge.draft {
   color: var(--warn);
+}
+
+.badge.user {
+  color: #8fb8ff;
+}
+
+.badge.assistant {
+  color: #d6b48a;
+}
+
+.badge.safety {
+  border: 1px solid rgba(255, 127, 127, 0.45);
+  color: var(--danger);
+}
+
+.safety-row td {
+  background: rgba(255, 127, 127, 0.06);
+}
+
+.message-preview {
+  display: -webkit-box;
+  max-width: 52ch;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .badge.rejected,

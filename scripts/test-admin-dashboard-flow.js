@@ -1,4 +1,7 @@
 const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { Writable } = require('stream');
 const {
   buildAdminSummary,
@@ -12,6 +15,7 @@ const {
   listMissionStatus,
   listPendingRedemptions,
   listPendingSubmissions,
+  listRecentDmChatMessages,
   listRecentPointTransactions,
   listRecentReactionApprovals,
   listShopItemStatus,
@@ -413,8 +417,50 @@ async function main() {
   const originalEnabled = process.env.ADMIN_DASHBOARD_ENABLED;
   const originalPassword = process.env.ADMIN_DASHBOARD_PASSWORD;
   const originalTitle = process.env.ADMIN_DASHBOARD_TITLE;
+  const originalDmChatLogPath = process.env.DM_CHAT_LOG_PATH;
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-dashboard-dm-chat-'));
+  const dmChatLogPath = path.join(tempDir, 'dm-chat-logs.json');
 
   try {
+    fs.writeFileSync(dmChatLogPath, `${JSON.stringify({
+      version: 1,
+      isExample: false,
+      messages: [
+        {
+          id: 'dm_chat_example_001',
+          userId: 'user_example_001',
+          displayName: '참여자 예시',
+          role: 'user',
+          content: '예시 DM 대화',
+          createdAt: '2030-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'dm_chat_001',
+          userId: 'participant_dm_001',
+          username: 'participant_dm',
+          displayName: 'DM 참여자',
+          role: 'user',
+          content: '처음 사람들한테 뭐라고 말하면 좋을까? 길게 말해도 대시보드 표가 깨지면 안 됩니다.'.repeat(4),
+          createdAt: '2026-07-03T01:10:00.000Z',
+          safetyDetection: {
+            category: 'danger',
+            severity: 'high',
+            matchedKeyword: '괴롭힘',
+          },
+        },
+        {
+          id: 'dm_chat_002',
+          userId: 'participant_dm_001',
+          username: 'participant_dm',
+          displayName: 'DM 참여자',
+          role: 'assistant',
+          content: '짧게 연습해볼게요. 먼저 한 문장으로 인사하고 질문을 이어가면 좋아요.',
+          createdAt: '2026-07-03T01:11:00.000Z',
+        },
+      ],
+    }, null, 2)}\n`);
+    process.env.DM_CHAT_LOG_PATH = dmChatLogPath;
+
     delete process.env.ADMIN_DASHBOARD_PASSWORD;
     process.env.ADMIN_DASHBOARD_ENABLED = 'true';
     assert.strictEqual(isAdminAuthConfigured(), false);
@@ -571,6 +617,16 @@ async function main() {
     assert.strictEqual(listMissionStatus(repository, 1).data[0].id, 'mission1');
     assert.strictEqual(listShopItemStatus(repository, 1).data[0].id, 'item1');
     assert.strictEqual(listRecentReactionApprovals(repository, 1).data[0].id, 'reaction1');
+    const dmChatMessages = listRecentDmChatMessages(null, 10);
+    assert.strictEqual(dmChatMessages.data.length, 2);
+    assert.strictEqual(dmChatMessages.data[0].id, 'dm_chat_002');
+    assert.strictEqual(dmChatMessages.data[1].displayName, 'DM 참여자');
+    assert.strictEqual(dmChatMessages.data[1].hasSafetyDetection, true);
+    assert.deepStrictEqual(dmChatMessages.data[1].safetyDetection, {
+      category: 'danger',
+      severity: 'high',
+    });
+    assert.strictEqual(dmChatMessages.meta.exampleRecordsExcluded, 1);
 
     const handler = createAdminRequestHandler(repository);
     const unauthorized = await invokeHandler(handler, '/api/admin/summary');
@@ -609,6 +665,15 @@ async function main() {
     assert.strictEqual(reactionFollowUpsResponse.statusCode, 200);
     assert.strictEqual(JSON.parse(reactionFollowUpsResponse.body).counts.followUps, 2);
 
+    const dmChatResponse = await invokeHandler(handler, '/api/admin/dm-chat-logs', basic('admin', 'secret'));
+    assert.strictEqual(dmChatResponse.statusCode, 200);
+    const dmChatPayload = JSON.parse(dmChatResponse.body);
+    assert.strictEqual(dmChatPayload.data.length, 2);
+    assert.strictEqual(dmChatPayload.data[0].role, 'assistant');
+    assert.strictEqual(dmChatPayload.data[1].safetyDetection.category, 'danger');
+    assert.strictEqual(dmChatPayload.meta.readOnly, true);
+    assert.strictEqual(dmChatPayload.meta.exampleRecordsExcluded, 1);
+
     const onboardingResponse = await invokeHandler(handler, '/api/admin/onboarding-signals', basic('admin', 'secret'));
     assert.strictEqual(onboardingResponse.statusCode, 200);
     assert.strictEqual(JSON.parse(onboardingResponse.body).trackedUsersCount, 1);
@@ -630,6 +695,7 @@ async function main() {
     assert.ok(page.body.includes('submission-status-card'));
     assert.ok(page.body.includes('first-day-check'));
     assert.ok(page.body.includes('faq-candidates'));
+    assert.ok(page.body.includes('dm-chat-logs'));
 
     const gamePage = await invokeHandler(handler, '/game/dungeonworld-survivors');
     assert.strictEqual(gamePage.statusCode, 200);
@@ -657,6 +723,12 @@ async function main() {
       delete process.env.ADMIN_DASHBOARD_TITLE;
     } else {
       process.env.ADMIN_DASHBOARD_TITLE = originalTitle;
+    }
+
+    if (originalDmChatLogPath === undefined) {
+      delete process.env.DM_CHAT_LOG_PATH;
+    } else {
+      process.env.DM_CHAT_LOG_PATH = originalDmChatLogPath;
     }
   }
 

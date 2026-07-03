@@ -1,3 +1,5 @@
+const path = require('path');
+const { createDmChatRepository } = require('./dmChatRepository');
 const { createPointsRepository, getKoreanDateString } = require('./pointsRepository');
 const {
   filterOperationalRecords,
@@ -7,6 +9,11 @@ const {
 
 function createDefaultRepository() {
   return createPointsRepository();
+}
+
+function createDefaultDmChatRepository() {
+  const logPath = process.env.DM_CHAT_LOG_PATH || path.join(__dirname, '..', 'data', 'dm-chat-logs.local.json');
+  return createDmChatRepository(logPath);
 }
 
 function toArray(value) {
@@ -612,6 +619,40 @@ function listRecentReactionApprovals(repository = createDefaultRepository(), lim
   );
 }
 
+function summarizeSafetyDetection(detection) {
+  if (!detection || typeof detection !== 'object') {
+    return null;
+  }
+
+  return {
+    category: detection.category || null,
+    severity: detection.severity || null,
+  };
+}
+
+function listRecentDmChatMessages(repository = null, limit = 10) {
+  const dmRepository = repository && typeof repository.listRecentMessagesForAdmin === 'function'
+    ? repository
+    : createDefaultDmChatRepository();
+  const records = dmRepository.listRecentMessagesForAdmin();
+  const filtered = filterOperationalRecords(records);
+
+  return {
+    data: clone(sortNewestFirst(filtered.data, ['createdAt']).slice(0, parseLimit(limit, 10)).map((message) => ({
+      id: message.id || null,
+      createdAt: message.createdAt || null,
+      userId: message.userId || null,
+      username: message.username || null,
+      displayName: message.displayName || message.username || message.userId || null,
+      role: message.role || null,
+      content: message.content || '',
+      hasSafetyDetection: Boolean(message.safetyDetection),
+      safetyDetection: summarizeSafetyDetection(message.safetyDetection),
+    }))),
+    meta: buildAdminMeta(filtered.excluded),
+  };
+}
+
 function buildTodayOperationsQueue(repository = createDefaultRepository(), limit = 10) {
   const safeLimit = parseLimit(limit, 10);
   const state = readState(repository);
@@ -732,6 +773,7 @@ module.exports = {
   listPendingSubmissions,
   listRecentPointTransactions,
   listRecentReactionApprovals,
+  listRecentDmChatMessages,
   listShopItemStatus,
   filterOperationalRecords,
   isExampleLikeRecord,
