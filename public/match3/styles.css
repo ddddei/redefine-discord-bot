@@ -170,29 +170,30 @@ body {
   }
 }
 
+/* 타일 배경은 가이드 3.2절의 "밝은 톤"을 쓴다. 본색 배경 위에 본색 아트를 얹으면
+   그림이 묻혀 종류 판별이 어려워진다 — 배경은 연하게, 색·형태는 아트가 담당. */
 .tile-strawberry {
-  background: var(--accent-strawberry);
+  background: #ffd9e0;
 }
 
 .tile-orange {
-  background: var(--accent-orange);
+  background: #ffe0b8;
 }
 
 .tile-candy {
-  background: var(--accent-candy);
+  background: #ffd6ef;
 }
 
 .tile-cookie {
-  background: var(--accent-cookie);
+  background: #ecc493;
 }
 
 .tile-cupcake {
-  background: var(--accent-cupcake);
-  color: #6b4b12;
+  background: #fff0c9;
 }
 
 .tile-jelly {
-  background: var(--accent-jelly);
+  background: #d9c8ff;
 }
 
 .rule-list {

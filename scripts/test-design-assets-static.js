@@ -103,6 +103,14 @@ function main() {
   const deckContent = readProjectFile(path.join('public', 'deck', 'content.js'));
   assert.ok(deckContent.includes('asset:'), 'deck content.js의 적 정의에 asset 필드가 있어야 함');
 
+  // 4. adminServer가 SVG를 올바른 MIME 타입으로 서빙하는지 확인.
+  //    누락되면 application/octet-stream으로 내려가 브라우저가 <img> 렌더링을 거부한다.
+  const adminServer = readProjectFile(path.join('src', 'adminServer.js'));
+  assert.ok(
+    adminServer.includes("'.svg': 'image/svg+xml"),
+    'adminServer.js CONTENT_TYPES에 .svg → image/svg+xml 매핑이 있어야 함'
+  );
+
   console.log('design assets static test passed');
 }
 
