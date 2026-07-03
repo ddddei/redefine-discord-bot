@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>곰팡이 요정</title>
+  <path d="M32 8 C40 8 45 15 45 22 C45 22 38 19 32 19 C26 19 19 22 19 22 C19 15 24 8 32 8 Z" fill="#7fce8e" stroke="#4a3524" stroke-width="2.8" stroke-linejoin="round"/>
+  <circle cx="24" cy="14" r="2.6" fill="#9b6bff" stroke="#4a3524" stroke-width="2"/>
+  <circle cx="32" cy="11" r="2.6" fill="#9b6bff" stroke="#4a3524" stroke-width="2"/>
+  <circle cx="40" cy="14" r="2.6" fill="#9b6bff" stroke="#4a3524" stroke-width="2"/>
+  <path d="M16 45 C13 34 20 20 32 20 C44 20 51 34 48 45 C45 55 19 55 16 45 Z" fill="#c9ecd1" stroke="#4a3524" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="25.5" cy="36" r="2.7" fill="#4a3524"/>
+  <circle cx="38.5" cy="36" r="2.7" fill="#4a3524"/>
+  <circle cx="26.4" cy="35" r="0.9" fill="#ffffff"/>
+  <circle cx="39.4" cy="35" r="0.9" fill="#ffffff"/>
+  <path d="M27.5 43.5 Q32 47 36.5 43.5" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="20.5" cy="42" rx="3" ry="2" fill="#ff9fb3"/>
+  <ellipse cx="43.5" cy="42" rx="3" ry="2" fill="#ff9fb3"/>
+</svg>

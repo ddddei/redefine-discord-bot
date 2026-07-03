@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>컵케이크</title>
+  <circle cx="32" cy="12" r="3" fill="#ff7b8f" stroke="#4a3524" stroke-width="2.2"/>
+  <path d="M20 30 C20 20 25 14 32 14 C39 14 44 20 44 30 Z" fill="#ffd166" stroke="#4a3524" stroke-width="2.8" stroke-linejoin="round"/>
+  <path d="M17 29 L47 29 L43 46 Q32 50 21 46 Z" fill="#c98a4b" stroke="#4a3524" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M20.5 33 L43.5 33" stroke="#ecc493" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="25.5" cy="26" r="2.6" fill="#4a3524"/>
+  <circle cx="38.5" cy="26" r="2.6" fill="#4a3524"/>
+  <circle cx="26.4" cy="25" r="0.9" fill="#ffffff"/>
+  <circle cx="39.4" cy="25" r="0.9" fill="#ffffff"/>
+  <path d="M27.5 36.5 Q32 39.5 36.5 36.5" fill="none" stroke="#4a3524" stroke-width="2.2" stroke-linecap="round"/>
+  <ellipse cx="21.5" cy="40" rx="2.7" ry="1.8" fill="#ff9fb3"/>
+  <ellipse cx="42.5" cy="40" rx="2.7" ry="1.8" fill="#ff9fb3"/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>휘핑 하피</title>
+  <path d="M18 30 Q4 22 6 34 Q8 44 20 40 Z" fill="#fff0e0" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M46 30 Q60 22 58 34 Q56 44 44 40 Z" fill="#fff0e0" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M22 52 L18 59" stroke="#c08857" stroke-width="3" stroke-linecap="round"/>
+  <path d="M42 52 L46 59" stroke="#c08857" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="32" cy="38" rx="16" ry="17" fill="#fff0e0" stroke="#4a3524" stroke-width="3"/>
+  <path d="M23 27 L18 24" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M41 27 L46 24" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M23 32 Q26.5 29.5 30 32" fill="none" stroke="#4a3524" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M34 32 Q37.5 29.5 41 32" fill="none" stroke="#4a3524" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="26.5" cy="34" r="2.4" fill="#4a3524"/>
+  <circle cx="37.5" cy="34" r="2.4" fill="#4a3524"/>
+  <path d="M28 30 L20 34" fill="#ffa94d" stroke="#4a3524" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M25 44 Q32 42 39 44" fill="none" stroke="#4a3524" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

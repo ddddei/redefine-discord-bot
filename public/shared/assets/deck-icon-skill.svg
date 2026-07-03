@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>스킬</title>
+  <rect x="14" y="9" width="36" height="46" rx="5" fill="#fff0c9" stroke="#4a3524" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="14" y="9" width="9" height="46" rx="4" fill="#ffd166" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M29 20 L44 20" stroke="#c98a4b" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M29 29 L44 29" stroke="#c98a4b" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M29 38 L40 38" stroke="#c98a4b" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

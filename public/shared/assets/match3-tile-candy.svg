@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>사탕</title>
+  <path d="M18 20 L9 13" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M46 20 L55 13" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M18 44 L9 51" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M46 44 L55 51" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="9" cy="13" r="3" fill="#ffd6ef" stroke="#4a3524" stroke-width="2.2"/>
+  <circle cx="55" cy="13" r="3" fill="#ffd6ef" stroke="#4a3524" stroke-width="2.2"/>
+  <circle cx="9" cy="51" r="3" fill="#ffd6ef" stroke="#4a3524" stroke-width="2.2"/>
+  <circle cx="55" cy="51" r="3" fill="#ffd6ef" stroke="#4a3524" stroke-width="2.2"/>
+  <circle cx="32" cy="32" r="19" fill="#ff8fd6" stroke="#4a3524" stroke-width="3"/>
+  <path d="M32 15 A17 17 0 0 1 47 24" fill="none" stroke="#ffd6ef" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="25.5" cy="31" r="2.6" fill="#4a3524"/>
+  <circle cx="38.5" cy="31" r="2.6" fill="#4a3524"/>
+  <circle cx="26.4" cy="30" r="0.9" fill="#ffffff"/>
+  <circle cx="39.4" cy="30" r="0.9" fill="#ffffff"/>
+  <path d="M27.5 38.5 Q32 42 36.5 38.5" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="21" cy="37.5" rx="3" ry="2" fill="#ff9fb3"/>
+  <ellipse cx="43" cy="37.5" rx="3" ry="2" fill="#ff9fb3"/>
+</svg>

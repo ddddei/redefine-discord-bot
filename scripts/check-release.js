@@ -554,6 +554,11 @@ const checks = [
     args: ['scripts/test-deck-static.js'],
   },
   {
+    label: 'design assets static smoke test',
+    command: 'node',
+    args: ['scripts/test-design-assets-static.js'],
+  },
+  {
     label: 'dungeonworld session 02 content test',
     command: 'node',
     args: ['scripts/test-dungeonworld-session-02.js'],
