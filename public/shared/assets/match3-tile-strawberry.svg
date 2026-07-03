@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>딸기</title>
+  <rect x="30.4" y="5.5" width="3.2" height="7" rx="1.6" fill="#5cb56e" stroke="#4a3524" stroke-width="2.4"/>
+  <path d="M32 8.5 C37 8.5 41 10.5 42 14.5 C38 16.5 34.5 16.5 32 15.2 C29.5 16.5 26 16.5 22 14.5 C23 10.5 27 8.5 32 8.5 Z" fill="#7fce8e" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M32 57 C19 49 11 39 11 28.5 C11 20 20 15 32 15 C44 15 53 20 53 28.5 C53 39 45 49 32 57 Z" fill="#ff7b8f" stroke="#4a3524" stroke-width="3" stroke-linejoin="round"/>
+  <ellipse cx="19" cy="30" rx="1.5" ry="2.1" fill="#ffd9e0"/>
+  <ellipse cx="45" cy="30" rx="1.5" ry="2.1" fill="#ffd9e0"/>
+  <ellipse cx="26" cy="24" rx="1.5" ry="2.1" fill="#ffd9e0"/>
+  <ellipse cx="38" cy="24" rx="1.5" ry="2.1" fill="#ffd9e0"/>
+  <ellipse cx="32" cy="49" rx="1.5" ry="2.1" fill="#ffd9e0"/>
+  <circle cx="25.5" cy="33" r="2.7" fill="#4a3524"/>
+  <circle cx="38.5" cy="33" r="2.7" fill="#4a3524"/>
+  <circle cx="26.4" cy="32" r="0.95" fill="#ffffff"/>
+  <circle cx="39.4" cy="32" r="0.95" fill="#ffffff"/>
+  <path d="M28 39.5 Q32 43.5 36 39.5" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="20" cy="38.5" rx="3" ry="2" fill="#ff9fb3"/>
+  <ellipse cx="44" cy="38.5" rx="3" ry="2" fill="#ff9fb3"/>
+</svg>

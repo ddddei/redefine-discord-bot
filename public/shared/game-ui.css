@@ -29,6 +29,11 @@
   --motion-fast: 150ms;
   --motion-base: 250ms;
   --motion-ease: cubic-bezier(0.2, 0.8, 0.3, 1);
+
+  /* 에셋 표시 크기 (docs/webgame-design-guide.md 5절의 가독성 기준과 세트) */
+  --asset-sm: 28px;
+  --asset-md: 44px;
+  --asset-lg: 84px;
 }
 
 /* ---- 버튼 ---- */
