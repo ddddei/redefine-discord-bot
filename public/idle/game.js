@@ -106,6 +106,17 @@
   }
 
   function saveState() {
+    // 저장 전에 마지막 틱 이후의 생산분을 먼저 정산한다. 이렇게 해야 lastSeenAt이
+    // "여기까지의 생산은 모두 반영됨"을 뜻하게 되고, 다음 접속의 오프라인 수익이
+    // 직전 세션 생산분을 중복 지급하지 않는다. (숨겨진 탭에서는 rAF가 멈추므로
+    // 자동 저장 주기가 백그라운드 생산 정산도 겸한다.)
+    var now = Date.now();
+    var elapsed = now - lastTickAt;
+    if (elapsed > 0) {
+      Engine.applyProductionTick(state, elapsed);
+      lastTickAt = now;
+    }
+    state.lastSeenAt = now;
     try {
       window.localStorage.setItem(Content.SAVE_KEY, Engine.serializeState(state));
     } catch (error) {
@@ -165,8 +176,23 @@
     stageUpgradeButton.disabled = state.snacks < nextStage.upgradeCost;
   }
 
+  // 목록의 구매 버튼 참조. 방치 중 재화가 모이면 tick에서 disabled만 갱신한다
+  // (목록 DOM 재생성 없이). 목록 자체는 상태 변화 때만 다시 그린다.
+  var buildingBuyButtons = [];
+  var upgradeBuyButtons = [];
+
+  function updateAffordability() {
+    buildingBuyButtons.forEach(function (entry) {
+      entry.button.disabled = state.snacks < entry.cost;
+    });
+    upgradeBuyButtons.forEach(function (entry) {
+      entry.button.disabled = state.snacks < entry.cost;
+    });
+  }
+
   function renderBuildings() {
     buildingListEl.innerHTML = '';
+    buildingBuyButtons = [];
     Content.BUILDINGS.forEach(function (building) {
       if (!Engine.isBuildingUnlocked(state, building.key)) {
         return;
@@ -203,11 +229,13 @@
       li.appendChild(info);
       li.appendChild(buyButton);
       buildingListEl.appendChild(li);
+      buildingBuyButtons.push({ cost: cost, button: buyButton });
     });
   }
 
   function renderUpgrades() {
     upgradeListEl.innerHTML = '';
+    upgradeBuyButtons = [];
     Content.UPGRADES.forEach(function (upgrade) {
       if (!Engine.isUpgradeUnlocked(state, upgrade.key) || state.upgrades[upgrade.key]) {
         return;
@@ -242,6 +270,7 @@
       li.appendChild(info);
       li.appendChild(buyButton);
       upgradeListEl.appendChild(li);
+      upgradeBuyButtons.push({ cost: upgrade.cost, button: buyButton });
     });
   }
 
@@ -259,20 +288,27 @@
     return pad(minutes) + ':' + pad(seconds);
   }
 
+  // 진행 중 배달의 남은 시간/수령 버튼만 갱신한다. 매 프레임 호출되므로 DOM을
+  // 재생성하지 않는다 (재생성하면 누르려던 버튼이 프레임 사이에 교체될 수 있다).
+  function renderDeliveryActive() {
+    if (!state.delivery) {
+      return;
+    }
+    var delivery = Engine.findDelivery(state.delivery.key);
+    var now = Date.now();
+    var ready = Engine.isDeliveryComplete(state, now);
+    deliveryActiveNameEl.textContent = delivery.name;
+    deliveryActiveRemainingEl.textContent = ready
+      ? '수령할 수 있어요.'
+      : ('남은 시간 ' + formatDuration(state.delivery.finishesAt - now));
+    deliveryActiveRewardEl.textContent = '예상 보상 ' + Engine.formatNumber(Engine.getProductionPerSecond(state) * delivery.rewardSeconds);
+    deliveryCollectButton.disabled = !ready;
+  }
+
   function renderDelivery() {
     if (state.delivery) {
-      var delivery = Engine.findDelivery(state.delivery.key);
-      var now = Date.now();
-      var remainingMs = state.delivery.finishesAt - now;
-      var ready = Engine.isDeliveryComplete(state, now);
-
       deliveryActiveEl.classList.remove('hidden');
-      deliveryActiveNameEl.textContent = delivery.name;
-      deliveryActiveRemainingEl.textContent = ready
-        ? '수령할 수 있어요.'
-        : ('남은 시간 ' + formatDuration(remainingMs));
-      deliveryActiveRewardEl.textContent = '예상 보상 ' + Engine.formatNumber(Engine.getProductionPerSecond(state) * delivery.rewardSeconds);
-      deliveryCollectButton.disabled = !ready;
+      renderDeliveryActive();
     } else {
       deliveryActiveEl.classList.add('hidden');
     }
@@ -336,7 +372,14 @@
 
   function renderPrestige() {
     var bonusPercent = Math.round(state.prestigePoints * Content.PRESTIGE.productionBonusPerPoint * 100);
-    prestigeSummaryEl.textContent = '보유 레시피 ' + state.prestigePoints + '개 (생산량 +' + bonusPercent + '%)';
+    var summary = '보유 레시피 ' + state.prestigePoints + '개 (생산량 +' + bonusPercent + '%)';
+    var pendingGain = Engine.getPrestigeGain(state);
+    if (pendingGain > 0) {
+      summary += ' · 지금 환생하면 ' + pendingGain + '개';
+    } else {
+      summary += ' · 다음 레시피까지 누적 생산 ' + Engine.formatNumber(Engine.getProducedUntilNextPrestigePoint(state)) + ' 남음';
+    }
+    prestigeSummaryEl.textContent = summary;
     prestigeButton.disabled = !Engine.canPrestige(state);
   }
 
@@ -452,6 +495,8 @@
     if (result.success) {
       showStageModal(result.stage);
       onStateChanged();
+      // 이번 승급으로 황금 간식이 해금됐을 수 있으므로 스케줄을 다시 건다.
+      scheduleGoldenSnack();
     }
   });
 
@@ -489,7 +534,7 @@
     if (!Engine.canPrestige(state)) {
       return;
     }
-    var expectedGain = Engine.getPrestigePointsForLifetime(state.lifetimeProduced);
+    var expectedGain = Engine.getPrestigeGain(state);
     prestigeModalCopyEl.textContent = '비법 레시피 ' + expectedGain + '개를 얻고, 간식·시설·업그레이드·무대·배달이 초기화돼요.\n업적·통계·레시피는 유지돼요.';
     prestigeModal.classList.remove('hidden');
   });
@@ -503,6 +548,9 @@
     prestigeModal.classList.add('hidden');
     if (result.success) {
       onStateChanged();
+      // 무대 1로 돌아가 황금 간식이 다시 잠기므로 표시 중이면 감추고 스케줄을 재설정한다.
+      hideGoldenSnack();
+      scheduleGoldenSnack();
     }
   });
 
@@ -521,6 +569,8 @@
     state = Engine.createNewState();
     state.lastSeenAt = Date.now();
     onStateChanged();
+    hideGoldenSnack();
+    scheduleGoldenSnack();
   });
 
   // ---- 황금 간식 ----
@@ -538,8 +588,14 @@
     goldenSnackTimeoutId = window.setTimeout(showGoldenSnack, delay);
   }
 
+  function hideGoldenSnack() {
+    goldenSnackButton.classList.add('hidden');
+    window.clearTimeout(goldenSnackHideTimeoutId);
+  }
+
   function showGoldenSnack() {
-    if (document.hidden) {
+    // 예약 이후 환생/초기화로 다시 잠겼을 수 있으므로 표시 시점에 재확인한다.
+    if (document.hidden || !Engine.isGoldenSnackUnlocked(state)) {
       scheduleGoldenSnack();
       return;
     }
@@ -616,7 +672,8 @@
 
     renderHeader();
     renderStageUpgrade();
-    renderDelivery();
+    renderDeliveryActive();
+    updateAffordability();
 
     if (Engine.isCurrentQuestComplete(state) !== questBarEl.classList.contains('achieved')) {
       renderQuestBar();
@@ -634,9 +691,9 @@
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       saveState();
-    } else {
-      lastTickAt = Date.now();
     }
+    // 다시 보일 때 lastTickAt을 리셋하지 않는다. 숨겨진 동안 rAF가 멈춰 있었어도
+    // 다음 틱이 경과 시간 전체를 정산하므로 백그라운드 생산이 소실되지 않는다.
   });
 
   window.addEventListener('beforeunload', saveState);

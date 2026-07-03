@@ -256,6 +256,22 @@ function testPrestige() {
   assert.strictEqual(state.clickCount, 42);
   assert.strictEqual(state.deliveryCompletedCount, 3);
   assert.strictEqual(state.lifetimeProduced, 20000000000);
+  assert.strictEqual(state.lifetimeProducedBeforePrestige, 20000000000);
+
+  // 두 번째 환생: 이전 환생에서 이미 보상받은 생산량은 중복 계산되지 않는다.
+  // 이번 주기 생산 6e9 → floor(√(6e9/5e9)) = 1개만 추가.
+  state.stageId = 6;
+  state.lifetimeProduced = 26000000000;
+  assert.strictEqual(Engine.getPrestigeGain(state), 1);
+  const second = Engine.prestige(state);
+  assert.strictEqual(second.success, true);
+  assert.strictEqual(second.gained, 1);
+  assert.strictEqual(state.prestigePoints, 3);
+  assert.strictEqual(state.prestigeCount, 2);
+  assert.strictEqual(state.lifetimeProducedBeforePrestige, 26000000000);
+
+  // 다음 레시피까지 남은 생산량: 이번 주기 0 생산 → (0+1)^2 × 5e9 = 5e9 남음.
+  assert.strictEqual(Engine.getProducedUntilNextPrestigePoint(state), 5000000000);
 }
 
 function testOfflineEarnings() {

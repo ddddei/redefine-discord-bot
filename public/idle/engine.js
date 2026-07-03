@@ -417,6 +417,21 @@
     return Math.floor(Math.sqrt(value));
   }
 
+  // 이번 환생 주기(직전 환생 이후)의 생산량만으로 레시피를 계산한다.
+  // 전체 누적을 매번 쓰면 이전 환생에서 이미 보상받은 생산량이 중복 지급된다.
+  function getPrestigeGain(state) {
+    var producedThisRun = state.lifetimeProduced - (state.lifetimeProducedBeforePrestige || 0);
+    return getPrestigePointsForLifetime(producedThisRun);
+  }
+
+  // 다음 레시피 1개를 더 받기까지 이번 주기에서 추가로 필요한 생산량.
+  function getProducedUntilNextPrestigePoint(state) {
+    var producedThisRun = state.lifetimeProduced - (state.lifetimeProducedBeforePrestige || 0);
+    var currentPoints = getPrestigePointsForLifetime(producedThisRun);
+    var nextThreshold = Math.pow(currentPoints + 1, 2) * Content.PRESTIGE.lifetimeProducedDivisor;
+    return nextThreshold - producedThisRun;
+  }
+
   function canPrestige(state) {
     return state.stageId >= Content.PRESTIGE.requiredStageId;
   }
@@ -426,7 +441,7 @@
       return { success: false, reason: 'STAGE_NOT_REACHED' };
     }
 
-    var gained = getPrestigePointsForLifetime(state.lifetimeProduced);
+    var gained = getPrestigeGain(state);
 
     var buildings = {};
     Content.BUILDINGS.forEach(function (building) {
@@ -444,6 +459,7 @@
     state.delivery = null;
     state.prestigePoints = (state.prestigePoints || 0) + gained;
     state.prestigeCount = (state.prestigeCount || 0) + 1;
+    state.lifetimeProducedBeforePrestige = state.lifetimeProduced;
     // 업적/통계/퀘스트 진행은 유지한다.
 
     return { success: true, gained: gained };
@@ -671,6 +687,8 @@
     isAchievementConditionMet: isAchievementConditionMet,
     checkAndClaimAchievements: checkAndClaimAchievements,
     getPrestigePointsForLifetime: getPrestigePointsForLifetime,
+    getPrestigeGain: getPrestigeGain,
+    getProducedUntilNextPrestigePoint: getProducedUntilNextPrestigePoint,
     canPrestige: canPrestige,
     prestige: prestige,
     computeOfflineEarnings: computeOfflineEarnings,
