@@ -815,6 +815,15 @@ function createPointsRepository(paths = {}, options = {}) {
     return { redemption: nextRedemption, refundTransaction };
   }
 
+  function listMinigameRewardTransactions() {
+    const state = loadState();
+    const transactions = Array.isArray(state.pointsData.pointTransactions)
+      ? state.pointsData.pointTransactions
+      : [];
+    return getOperationalRecords(transactions)
+      .filter((transaction) => transaction.relatedType === MINIGAME_REWARD_RELATED_TYPE);
+  }
+
   function listTransactions(options = {}) {
     const state = loadState();
     return listPointTransactions(state.pointsData, options.userId, {
@@ -2289,6 +2298,7 @@ function createPointsRepository(paths = {}, options = {}) {
     hasTodayMissionNoticeBeenPublished,
     listMissionsForAdmin,
     listMissionTemplates,
+    listMinigameRewardTransactions,
     listOperationalTransactions,
     listTodayMinigameRanking,
     listTransactions,

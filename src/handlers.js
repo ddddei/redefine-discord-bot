@@ -110,6 +110,7 @@ const {
   createDungeonworldRepository,
 } = require('./dungeonworld');
 const { createDungeonworldHandlers } = require('./dungeonworldHandlers');
+const { buildMinigameReport, createMinigameReportEmbed } = require('./minigameReport');
 
 const pointsRepository = createPointsRepository();
 const dungeonworldRepository = createDungeonworldRepository();
@@ -3097,6 +3098,11 @@ async function handleOperationStatusCommand(interaction) {
     } else if (type === 'faqCandidates') {
       selectedValue = 'faq_candidates';
       embed = buildOperatorFaqCandidatesEmbed(buildFaqCandidateQueue(pointsRepository, limit));
+    } else if (type === 'minigames') {
+      embed = createMinigameReportEmbed(buildMinigameReport({
+        pointsRepository,
+        dungeonworldRepository,
+      }));
     } else {
       embed = createOperationSummaryEmbed(pointsRepository.getOperationSummary());
     }
