@@ -244,8 +244,8 @@ async function run() {
   const emptyRankingButton = createButtonInteraction('participant_minigame_today_ranking', 'empty_user', '기록 없는 사용자');
   await handleInteractionCreate(emptyRankingButton);
   assert.strictEqual(emptyRankingButton.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(emptyRankingButton.replyPayload), '🏆 오늘의 미니게임 랭킹');
-  assert.match(emptyRankingButton.replyPayload.embeds[0].data.description, /아직 오늘의 랭킹 데이터가 없어요/);
+  assert.strictEqual(getEmbedTitle(emptyRankingButton.replyPayload), '🏆 미니게임 랭킹');
+  assert.match(emptyRankingButton.replyPayload.embeds[0].data.description, /아직 미니게임 랭킹 데이터가 없어요/);
 
   const outsideHubButton = createButtonInteraction(
     'participant_menu_minigames',
@@ -611,12 +611,15 @@ async function run() {
   const rankingButton = createButtonInteraction('participant_minigame_today_ranking', 'mini_user', '미니게임 사용자');
   await handleInteractionCreate(rankingButton);
   assert.strictEqual(rankingButton.replyPayload.ephemeral, true);
-  assert.strictEqual(getEmbedTitle(rankingButton.replyPayload), '🏆 오늘의 미니게임 랭킹');
+  assert.strictEqual(getEmbedTitle(rankingButton.replyPayload), '🏆 미니게임 랭킹');
   const rankingDescription = rankingButton.replyPayload.embeds[0].data.description;
   assert.match(rankingDescription, /재미용 기록/);
-  assert.match(rankingDescription, /상위 5명/);
+  assert.match(rankingDescription, /오늘 \(/);
+  assert.match(rankingDescription, /최근 7일/);
+  assert.match(rankingDescription, /누적/);
   assert.match(rankingDescription, /상한 사용자 - 40P \(4회\)/);
   assert.match(rankingDescription, /상한 테스트 사용자 - 40P \(3회\)/);
+  assert.match(rankingDescription, /꾸준한 참여 기록/);
   assert.match(rankingDescription, /하루 미니게임은 최대 4회, 보상 합계는 최대 40P/);
   assert.doesNotMatch(rankingDescription, /0P 사용자/);
 
