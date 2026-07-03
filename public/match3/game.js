@@ -25,8 +25,12 @@
   var movesValueEl = document.getElementById('moves-value');
   var scoreValueEl = document.getElementById('score-value');
   var comboValueEl = document.getElementById('combo-value');
+  var comboChipEl = document.getElementById('combo-chip');
   var statusMessageEl = document.getElementById('status-message');
   var restartButton = document.getElementById('restart-button');
+  var helpButton = document.getElementById('help-button');
+  var helpModal = document.getElementById('help-modal');
+  var helpModalCloseButton = document.getElementById('help-modal-close');
   var resultModal = document.getElementById('result-modal');
   var resultTitleEl = document.getElementById('result-title');
   var resultCopyEl = document.getElementById('result-copy');
@@ -106,6 +110,37 @@
     movesValueEl.textContent = String(state.movesLeft);
     scoreValueEl.textContent = String(state.score);
     comboValueEl.textContent = '×' + state.combo;
+  }
+
+  function openModal(modalEl) {
+    modalEl.classList.remove('hidden');
+    modalEl.classList.remove('gk-modal-opening');
+    // 강제 리플로우로 재시작 가능한 애니메이션 트리거.
+    void modalEl.offsetWidth;
+    modalEl.classList.add('gk-modal-opening');
+  }
+
+  function closeModal(modalEl) {
+    modalEl.classList.add('hidden');
+  }
+
+  function pulseComboChip() {
+    comboChipEl.classList.remove('pulse');
+    void comboChipEl.offsetWidth;
+    comboChipEl.classList.add('pulse');
+  }
+
+  function showScorePopup(amount, row, col) {
+    var cellSize = boardEl.clientWidth / Board.BOARD_SIZE;
+    var popup = document.createElement('span');
+    popup.className = 'gk-float-num';
+    popup.textContent = '+' + amount;
+    popup.style.left = (col * cellSize + cellSize / 2) + 'px';
+    popup.style.top = (row * cellSize) + 'px';
+    boardEl.appendChild(popup);
+    window.setTimeout(function () {
+      popup.remove();
+    }, 700);
   }
 
   function setStatusMessage(message) {
@@ -203,7 +238,26 @@
       setStatusMessage('매치 성공! ' + cascadeResult.score + '점을 얻었어요.');
     }
 
+    showScorePopupsForSteps(cascadeResult.steps);
+
+    if (cascadeResult.maxMultiplier >= 2) {
+      pulseComboChip();
+    }
+
     checkForShuffleNeeded();
+  }
+
+  function showScorePopupsForSteps(steps) {
+    if (!steps) {
+      return;
+    }
+    steps.forEach(function (step) {
+      step.groups.forEach(function (group) {
+        var groupScore = Board.scoreForGroup(group) * step.multiplier;
+        var anchorCell = group.cells[0];
+        showScorePopup(groupScore, anchorCell[0], anchorCell[1]);
+      });
+    });
   }
 
   function checkForShuffleNeeded() {
@@ -211,6 +265,9 @@
       state.grid = Board.shuffleBoard(state.grid, state.rng);
       renderBoard();
       setStatusMessage('간식을 새로 섞었어요. 이동 횟수는 차감되지 않았어요.');
+      boardEl.classList.remove('shuffling');
+      void boardEl.offsetWidth;
+      boardEl.classList.add('shuffling');
     }
 
     busy = false;
@@ -255,11 +312,11 @@
     resultScoreEl.textContent = String(state.score);
     resultComboEl.textContent = '×' + state.bestCombo;
     resultTopTileEl.textContent = getTopClearedTileLabel();
-    resultModal.classList.remove('hidden');
+    openModal(resultModal);
   }
 
   function startNewGame() {
-    resultModal.classList.add('hidden');
+    closeModal(resultModal);
     busy = false;
     state = createGameState();
     renderBoard();
@@ -269,6 +326,14 @@
 
   restartButton.addEventListener('click', startNewGame);
   resultRetryButton.addEventListener('click', startNewGame);
+
+  helpButton.addEventListener('click', function () {
+    openModal(helpModal);
+  });
+
+  helpModalCloseButton.addEventListener('click', function () {
+    closeModal(helpModal);
+  });
 
   startNewGame();
 

@@ -85,6 +85,34 @@
   var resetModalCancelButton = document.getElementById('reset-modal-cancel');
   var resetModalConfirmButton = document.getElementById('reset-modal-confirm');
 
+  var toastLayerEl = document.getElementById('toast-layer');
+
+  // ---- 모달 공통 ----
+
+  function openModal(modalEl) {
+    modalEl.classList.remove('hidden');
+    modalEl.classList.remove('gk-modal-opening');
+    // 강제 리플로우로 재시작 가능한 애니메이션 트리거.
+    void modalEl.offsetWidth;
+    modalEl.classList.add('gk-modal-opening');
+  }
+
+  function closeModal(modalEl) {
+    modalEl.classList.add('hidden');
+  }
+
+  // ---- 토스트 ----
+
+  function showToast(message) {
+    var toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    toastLayerEl.appendChild(toast);
+    window.setTimeout(function () {
+      toast.remove();
+    }, 2500);
+  }
+
   // ---- 저장/불러오기 ----
 
   function loadState() {
@@ -134,6 +162,8 @@
     rateValueEl.textContent = '+' + Engine.formatNumber(Engine.getProductionPerSecond(state)) + '/초';
   }
 
+  var lastRenderedPropCount = 0;
+
   function renderScene() {
     var stage = Engine.findStage(state.stageId);
     stageSceneEl.setAttribute('data-stage', String(stage.id));
@@ -153,10 +183,14 @@
       for (var i = 0; i < count; i += 1) {
         var span = document.createElement('span');
         span.textContent = building.emoji;
+        if (propsAdded >= lastRenderedPropCount) {
+          span.classList.add('prop-pop-in');
+        }
         scenePropsEl.appendChild(span);
         propsAdded += 1;
       }
     });
+    lastRenderedPropCount = propsAdded;
   }
 
   function renderClickAmount() {
@@ -216,7 +250,7 @@
 
       var buyButton = document.createElement('button');
       buyButton.type = 'button';
-      buyButton.className = 'button primary';
+      buyButton.className = 'gk-button primary';
       buyButton.textContent = Engine.formatNumber(cost);
       buyButton.disabled = state.snacks < cost;
       buyButton.addEventListener('click', function () {
@@ -257,7 +291,7 @@
 
       var buyButton = document.createElement('button');
       buyButton.type = 'button';
-      buyButton.className = 'button primary';
+      buyButton.className = 'gk-button primary';
       buyButton.textContent = Engine.formatNumber(upgrade.cost);
       buyButton.disabled = state.snacks < upgrade.cost;
       buyButton.addEventListener('click', function () {
@@ -335,7 +369,7 @@
 
       var sendButton = document.createElement('button');
       sendButton.type = 'button';
-      sendButton.className = 'button primary';
+      sendButton.className = 'gk-button primary';
       sendButton.textContent = '보내기';
       sendButton.disabled = !!state.delivery;
       sendButton.addEventListener('click', function () {
@@ -442,7 +476,10 @@
 
   function checkAchievements() {
     var newlyUnlocked = Engine.checkAndClaimAchievements(state);
-    // 업적 달성은 조용히 반영한다 (기록 탭에서 확인). 과장된 팝업은 띄우지 않는다.
+    // 업적 달성은 낮은 톤 토스트로 알린다. 기록 탭에서 상세를 확인할 수 있다.
+    newlyUnlocked.forEach(function (achievement) {
+      showToast('업적 달성: ' + achievement.name);
+    });
     return newlyUnlocked;
   }
 
@@ -467,8 +504,9 @@
 
   function showClickPopup(amount) {
     var popup = document.createElement('span');
-    popup.className = 'click-popup';
+    popup.className = 'gk-float-num';
     popup.textContent = '+' + Engine.formatNumber(amount);
+    popup.style.left = '50%';
     popup.style.top = '0px';
     popupLayerEl.appendChild(popup);
     window.setTimeout(function () {
@@ -503,11 +541,14 @@
   function showStageModal(stage) {
     stageModalTitleEl.textContent = stage.title + '(으)로 승급했어요';
     stageModalCopyEl.textContent = stage.announceCopy;
-    stageModal.classList.remove('hidden');
+    openModal(stageModal);
+    stageSceneEl.classList.remove('stage-transitioning');
+    void stageSceneEl.offsetWidth;
+    stageSceneEl.classList.add('stage-transitioning');
   }
 
   stageModalCloseButton.addEventListener('click', function () {
-    stageModal.classList.add('hidden');
+    closeModal(stageModal);
   });
 
   // ---- 배달 ----
@@ -536,16 +577,16 @@
     }
     var expectedGain = Engine.getPrestigeGain(state);
     prestigeModalCopyEl.textContent = '비법 레시피 ' + expectedGain + '개를 얻고, 간식·시설·업그레이드·무대·배달이 초기화돼요.\n업적·통계·레시피는 유지돼요.';
-    prestigeModal.classList.remove('hidden');
+    openModal(prestigeModal);
   });
 
   prestigeModalCancelButton.addEventListener('click', function () {
-    prestigeModal.classList.add('hidden');
+    closeModal(prestigeModal);
   });
 
   prestigeModalConfirmButton.addEventListener('click', function () {
     var result = Engine.prestige(state);
-    prestigeModal.classList.add('hidden');
+    closeModal(prestigeModal);
     if (result.success) {
       onStateChanged();
       // 무대 1로 돌아가 황금 간식이 다시 잠기므로 표시 중이면 감추고 스케줄을 재설정한다.
@@ -557,15 +598,15 @@
   // ---- 초기화 ----
 
   resetButton.addEventListener('click', function () {
-    resetModal.classList.remove('hidden');
+    openModal(resetModal);
   });
 
   resetModalCancelButton.addEventListener('click', function () {
-    resetModal.classList.add('hidden');
+    closeModal(resetModal);
   });
 
   resetModalConfirmButton.addEventListener('click', function () {
-    resetModal.classList.add('hidden');
+    closeModal(resetModal);
     state = Engine.createNewState();
     state.lastSeenAt = Date.now();
     onStateChanged();
@@ -650,11 +691,11 @@
     }
     parts.push(minutes + '분');
     offlineModalCopyEl.textContent = '자리를 비운 사이 ' + parts.join(' ') + ' 동안 간식 ' + Engine.formatNumber(result.earned) + '개가 만들어졌어요.';
-    offlineModal.classList.remove('hidden');
+    openModal(offlineModal);
   }
 
   offlineModalCloseButton.addEventListener('click', function () {
-    offlineModal.classList.add('hidden');
+    closeModal(offlineModal);
   });
 
   // ---- 메인 루프 ----

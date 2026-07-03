@@ -1,0 +1,297 @@
+/*
+ * 공용 게임 디자인 시스템 (game kit / "gk-" 접두사).
+ * 간식 세계관 웹게임 3종(match3, idle, deck)이 함께 로드하는 공용 CSS입니다.
+ * 각 게임의 styles.css보다 먼저 로드되며, 게임별 CSS가 이 값을 덮어쓸 수 있습니다.
+ * 이 파일은 시각 전용이며 게임 로직에 영향을 주지 않습니다.
+ */
+
+:root {
+  /* 색 (기존 3종 공통값을 승격) */
+  --surface-cream: #fff7ec;
+  --surface-panel: #ffffff;
+  --surface-card: #fdeedd;
+  --text-main: #4a3524;
+  --text-muted: #8a7360;
+  --accent-primary: #ff8a5b;
+  --accent-primary-dark: #ef6f3c;
+  --accent-gold: #ffb703;
+  --accent-danger: #e0554f;
+  --border-soft: #f1d9bd;
+  --shadow-soft: 0 12px 24px rgba(154, 107, 56, 0.14);
+
+  /* radius 스케일 — 이 4단계만 사용 */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* 모션 */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* ---- 버튼 ---- */
+
+.gk-button {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background var(--motion-fast) ease;
+}
+
+.gk-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.gk-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gk-button.primary {
+  background: var(--accent-primary);
+  color: #fff;
+  box-shadow: var(--shadow-soft);
+}
+
+.gk-button.primary:hover:not(:disabled) {
+  background: var(--accent-primary-dark);
+  transform: translateY(-1px);
+}
+
+.gk-button.secondary {
+  background: var(--surface-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-soft);
+}
+
+.gk-button.danger {
+  background: var(--accent-danger);
+  color: #fff;
+}
+
+/* ---- 칩 ---- */
+
+.gk-chip {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 76px;
+}
+
+.gk-chip span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.gk-chip strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gk-chip.pulse {
+  animation: gk-chip-pulse var(--motion-base) var(--motion-ease);
+}
+
+@keyframes gk-chip-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---- 패널 ---- */
+
+.gk-panel {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+}
+
+/* ---- 헤더 ---- */
+
+.gk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.gk-header-title h1 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.gk-header-subline {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.gk-header-chips {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- 모달 ---- */
+
+.gk-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(74, 53, 36, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 30;
+  opacity: 1;
+  transition: opacity var(--motion-base) var(--motion-ease);
+}
+
+.gk-modal-backdrop.hidden {
+  display: none;
+  opacity: 0;
+}
+
+.gk-modal-backdrop.gk-modal-opening {
+  animation: gk-modal-fade-in var(--motion-base) var(--motion-ease);
+}
+
+.gk-modal {
+  background: var(--surface-panel);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(74, 53, 36, 0.25);
+}
+
+.gk-modal-backdrop.gk-modal-opening .gk-modal {
+  animation: gk-modal-rise var(--motion-base) var(--motion-ease);
+}
+
+@keyframes gk-modal-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes gk-modal-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- 떠오르는 숫자 팝업 ---- */
+
+.gk-float-num {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-primary-dark);
+  pointer-events: none;
+  animation: gk-float-num-rise 0.7s ease forwards;
+}
+
+.gk-float-num.danger {
+  color: var(--accent-danger);
+}
+
+@keyframes gk-float-num-rise {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -40px);
+  }
+}
+
+/* ---- 피격 흔들림 ---- */
+
+.gk-shake {
+  animation: gk-shake-shake 0.28s ease;
+}
+
+@keyframes gk-shake-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+/* ---- 접근성: 모션 감소 ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .gk-button,
+  .gk-chip,
+  .gk-chip.pulse,
+  .gk-modal-backdrop,
+  .gk-modal-backdrop .gk-modal,
+  .gk-float-num,
+  .gk-shake,
+  .tile,
+  .tile.clearing,
+  .tile.dropping,
+  .tile.invalid-swap,
+  .make-snack-button,
+  .make-snack-button.bounce,
+  .golden-snack-button,
+  .click-popup,
+  .stage-scene,
+  .stage-scene.stage-transitioning,
+  .scene-props span.prop-pop-in,
+  #delivery-collect-button:not(:disabled),
+  .board.shuffling,
+  .card,
+  .card-playing,
+  .status-badge,
+  .enemy-block-value.badge-gain,
+  .player-block-value.badge-gain,
+  .intent-value.intent-changing,
+  .hit-flash.flashing,
+  #screen-result:not(.hidden),
+  .hp-chip.gk-shake,
+  .toast {
+    animation: none !important;
+    transition: none !important;
+  }
+}

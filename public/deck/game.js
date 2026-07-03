@@ -138,7 +138,9 @@
 
   var runProgressLabelEl = document.getElementById('run-progress-label');
   var playerHpValueEl = document.getElementById('player-hp-value');
+  var hpChipEl = document.querySelector('.hp-chip');
   var runTrackEl = document.getElementById('run-track');
+  var hitFlashEl = document.getElementById('hit-flash');
 
   var screens = {
     run: document.getElementById('screen-run'),
@@ -178,6 +180,70 @@
   var resultClearCountEl = document.getElementById('result-clear-count');
   var resultBestNodeEl = document.getElementById('result-best-node');
   var restartButton = document.getElementById('restart-button');
+
+  // ---- 연출 헬퍼 ----
+
+  function retriggerAnimation(el, className) {
+    if (!el) {
+      return;
+    }
+    el.classList.remove(className);
+    void el.offsetWidth;
+    el.classList.add(className);
+  }
+
+  function showDamagePopup(targetEl, amount) {
+    if (!targetEl) {
+      return;
+    }
+    var rect = targetEl.getBoundingClientRect();
+    var parentRect = targetEl.offsetParent
+      ? targetEl.offsetParent.getBoundingClientRect()
+      : { left: 0, top: 0 };
+    var popup = document.createElement('span');
+    popup.className = 'gk-float-num danger';
+    popup.textContent = '-' + amount;
+    popup.style.left = (rect.left - parentRect.left + rect.width / 2) + 'px';
+    popup.style.top = (rect.top - parentRect.top) + 'px';
+    (targetEl.offsetParent || document.body).appendChild(popup);
+    window.setTimeout(function () {
+      popup.remove();
+    }, 700);
+  }
+
+  function flashPlayerHit() {
+    retriggerAnimation(hitFlashEl, 'flashing');
+    retriggerAnimation(hpChipEl, 'gk-shake');
+  }
+
+  function shakeEnemy() {
+    retriggerAnimation(enemyEmojiEl, 'gk-shake');
+  }
+
+  function pulseBlockBadge(el) {
+    retriggerAnimation(el, 'badge-gain');
+  }
+
+  // 사용한 카드는 복제본을 제자리에 띄워 연출한다. 원본 손패는 곧바로
+  // 재렌더링되므로(입력 비블로킹) 원본에 클래스를 달아도 보이지 않는다.
+  function animateCardPlay(cardEl) {
+    if (!cardEl) {
+      return;
+    }
+    var rect = cardEl.getBoundingClientRect();
+    var clone = cardEl.cloneNode(true);
+    clone.classList.add('card-playing');
+    clone.style.position = 'fixed';
+    clone.style.left = rect.left + 'px';
+    clone.style.top = rect.top + 'px';
+    clone.style.width = rect.width + 'px';
+    clone.style.margin = '0';
+    clone.style.zIndex = '40';
+    document.body.appendChild(clone);
+    window.setTimeout(function () {
+      clone.remove();
+    }, 300);
+  }
 
   // ---- 렌더링 ----
 
@@ -244,6 +310,10 @@
     }
   }
 
+  var lastEnemyBlock = 0;
+  var lastPlayerBlock = 0;
+  var lastIntentText = null;
+
   function renderCombatScreen() {
     var combat = state.combat;
     if (!combat) {
@@ -257,9 +327,13 @@
     if (combat.enemyBlock > 0) {
       enemyBlockValueEl.textContent = '방어 ' + combat.enemyBlock;
       enemyBlockValueEl.classList.remove('hidden');
+      if (combat.enemyBlock > lastEnemyBlock) {
+        pulseBlockBadge(enemyBlockValueEl);
+      }
     } else {
       enemyBlockValueEl.classList.add('hidden');
     }
+    lastEnemyBlock = combat.enemyBlock;
 
     statusBadges(enemyStatusRowEl, combat.enemyStrength, combat.enemyWeak, combat.enemyVulnerable);
     statusBadges(playerStatusRowEl, combat.playerStrength, combat.playerWeak, combat.playerVulnerable);
@@ -267,9 +341,13 @@
     if (combat.playerBlock > 0) {
       playerBlockValueEl.textContent = '방어 ' + combat.playerBlock;
       playerBlockValueEl.classList.remove('hidden');
+      if (combat.playerBlock > lastPlayerBlock) {
+        pulseBlockBadge(playerBlockValueEl);
+      }
     } else {
       playerBlockValueEl.classList.add('hidden');
     }
+    lastPlayerBlock = combat.playerBlock;
 
     var intent = Engine.getEnemyIntent(state);
     var intentText = INTENT_LABEL[intent.type];
@@ -279,18 +357,31 @@
       intentText += ' ' + intent.amount;
     }
     enemyIntentValueEl.textContent = intentText;
+    if (lastIntentText !== null && lastIntentText !== intentText) {
+      retriggerAnimation(enemyIntentValueEl, 'intent-changing');
+    }
+    lastIntentText = intentText;
 
     energyValueEl.textContent = String(state.player.energy);
 
     renderHand();
   }
 
+  // 딜-인 애니메이션은 실제 드로우가 일어난 다음 렌더 한 번에만 적용한다.
+  var animateNextHandRender = false;
+
   function renderHand() {
+    var animate = animateNextHandRender;
+    animateNextHandRender = false;
     handListEl.innerHTML = '';
     state.player.hand.forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
       var el = document.createElement('div');
       el.className = 'card' + (card.rarity === 'elite' ? ' card-elite' : '');
+      if (animate) {
+        el.classList.add('card-enter');
+        el.style.animationDelay = (index * 30) + 'ms';
+      }
 
       var playable = Engine.canPlayCard(state, cardId);
       if (!playable) {
@@ -326,8 +417,18 @@
       return;
     }
     refreshTracker();
+    var cardEl = handListEl.children[index];
     var result = Engine.playCard(state, cardId, index, tracker);
     if (result.success) {
+      animateCardPlay(cardEl);
+      if (result.results && result.results.hits) {
+        result.results.hits.forEach(function (hit) {
+          showDamagePopup(enemyEmojiEl, hit.amount);
+        });
+        if (result.results.hits.length > 0) {
+          shakeEnemy();
+        }
+      }
       commit();
       if (state.screen !== 'combat') {
         onScreenChanged();
@@ -340,7 +441,13 @@
       return;
     }
     refreshTracker();
+    var hpBefore = state.player.hp;
     Engine.endTurn(state, tracker);
+    if (state.player.hp < hpBefore) {
+      showDamagePopup(hpChipEl, hpBefore - state.player.hp);
+      flashPlayerHit();
+    }
+    animateNextHandRender = true;
     commit();
     if (state.screen !== 'combat') {
       onScreenChanged();
@@ -349,10 +456,11 @@
 
   function renderRewardScreen() {
     rewardCardListEl.innerHTML = '';
-    (state.pendingReward || []).forEach(function (cardId) {
+    (state.pendingReward || []).forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
       var el = document.createElement('div');
-      el.className = 'card' + (card.rarity === 'elite' ? ' card-elite' : '');
+      el.className = 'card card-enter' + (card.rarity === 'elite' ? ' card-elite' : '');
+      el.style.animationDelay = (index * 30) + 'ms';
 
       var cost = document.createElement('span');
       cost.className = 'card-cost';
@@ -415,7 +523,7 @@
 
       var button = document.createElement('button');
       button.type = 'button';
-      button.className = 'button secondary';
+      button.className = 'gk-button secondary';
       button.textContent = '정리';
       button.addEventListener('click', function () {
         var result = Engine.applyRestRemoveCard(state, index);
@@ -476,6 +584,9 @@
     refreshTracker();
     var result = Engine.enterCurrentNode(state, tracker);
     if (result.success) {
+      if (result.type === 'combat') {
+        animateNextHandRender = true;
+      }
       commit();
     }
   });

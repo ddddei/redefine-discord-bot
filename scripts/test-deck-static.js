@@ -31,6 +31,12 @@ function main() {
   assert.ok(contentScriptIndex < engineScriptIndex, 'content.js should load before engine.js');
   assert.ok(engineScriptIndex < gameScriptIndex, 'engine.js should load before game.js');
 
+  const sharedCssIndex = html.indexOf('../shared/game-ui.css');
+  const gameCssIndex = html.indexOf('./styles.css');
+  assert.ok(sharedCssIndex !== -1, 'index.html should load ../shared/game-ui.css');
+  assert.ok(gameCssIndex !== -1, 'index.html should load ./styles.css');
+  assert.ok(sharedCssIndex < gameCssIndex, '../shared/game-ui.css should load before ./styles.css');
+
   const content = readGameFile('content.js');
   assert.ok(content.includes('window.DeckContent') || content.includes('root.DeckContent'));
   assert.ok(content.includes('module.exports'));

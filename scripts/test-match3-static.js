@@ -29,6 +29,12 @@ function main() {
   assert.ok(gameScriptIndex !== -1, 'index.html should load game.js');
   assert.ok(boardScriptIndex < gameScriptIndex, 'board.js should load before game.js');
 
+  const sharedCssIndex = html.indexOf('../shared/game-ui.css');
+  const gameCssIndex = html.indexOf('./styles.css');
+  assert.ok(sharedCssIndex !== -1, 'index.html should load ../shared/game-ui.css');
+  assert.ok(gameCssIndex !== -1, 'index.html should load ./styles.css');
+  assert.ok(sharedCssIndex < gameCssIndex, '../shared/game-ui.css should load before ./styles.css');
+
   const board = readGameFile('board.js');
   assert.ok(board.includes('window.Match3Board') || board.includes('root.Match3Board'));
   assert.ok(board.includes('module.exports'));

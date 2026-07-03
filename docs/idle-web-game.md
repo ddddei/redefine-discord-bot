@@ -27,7 +27,7 @@
 
 ## 파일 구성
 
-- `public/idle/index.html` — 마크업, 헤더, 탭 4개 컨테이너, 퀘스트 바, 탭 바, 모달(오프라인/승급/환생/리셋)
+- `public/idle/index.html` — 마크업, 헤더, 탭 4개 컨테이너, 퀘스트 바, 탭 바, 모달(오프라인/승급/환생/리셋), 토스트 레이어. 공용 디자인 시스템 `public/shared/game-ui.css`를 `styles.css`보다 먼저 로드합니다.
 - `public/idle/styles.css` — 매치3과 같은 밝은 파스텔 팔레트, 무대별 장면 스타일, 모바일(375px) 우선 + PC 480px 카드 레이아웃
 - `public/idle/content.js` — 무대/시설/업그레이드/배달/퀘스트/업적/황금 간식 등 정의 데이터와 밸런스 상수. DOM에 접근하지 않으며 `window.IdleContent` 전역과 Node `module.exports` 양쪽에서 로드할 수 있습니다.
 - `public/idle/engine.js` — 비용·생산·구매·승급·배달·환생·오프라인 수익·저장 직렬화 등 순수 계산 로직. DOM이나 `Date.now()`를 직접 참조하지 않고 시각은 항상 인자로 받습니다. `window.IdleEngine` 전역과 Node `module.exports` 양쪽에서 로드할 수 있습니다.

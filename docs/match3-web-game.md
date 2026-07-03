@@ -23,7 +23,7 @@
 
 ## 파일 구성
 
-- `public/match3/index.html` — 마크업, 헤더(제목/남은 이동/점수/콤보), 보드 컨테이너, 결과 모달
+- `public/match3/index.html` — 마크업, 헤더(제목/남은 이동/점수/콤보), 보드 컨테이너, 도움말·결과 모달. 공용 디자인 시스템 `public/shared/game-ui.css`를 `styles.css`보다 먼저 로드합니다.
 - `public/match3/styles.css` — 밝은 파스텔 팔레트, 타일별 배경색, 모바일 반응형 레이아웃
 - `public/match3/board.js` — 순수 게임 로직(시드 가능한 RNG, 보드 생성, 매치 탐색, 스왑 검증, 제거/중력/리필, 연쇄 해석, 점수 계산, 셔플). DOM에 접근하지 않으며 `window.Match3Board` 전역과 Node `module.exports` 양쪽에서 로드할 수 있습니다.
 - `public/match3/game.js` — DOM 렌더링, 클릭/터치 입력, 선택 상태 표시, 연쇄 애니메이션, 결과 모달 표시

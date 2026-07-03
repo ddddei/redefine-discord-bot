@@ -1,18 +1,7 @@
 :root {
-  --surface-cream: #fff7ec;
-  --surface-panel: #ffffff;
-  --surface-card: #fdeedd;
-  --text-main: #4a3524;
-  --text-muted: #8a7360;
-  --accent-primary: #ff8a5b;
-  --accent-primary-dark: #ef6f3c;
-  --accent-gold: #ffb703;
-  --accent-danger: #e0554f;
   --accent-block: #5b8dff;
   --accent-weak: #8a5bff;
   --accent-vulnerable: #e0554f;
-  --border-soft: #f1d9bd;
-  --shadow-soft: 0 12px 24px rgba(154, 107, 56, 0.14);
 }
 
 * {
@@ -37,62 +26,23 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: var(--surface-panel);
-  border-bottom: 1px solid var(--border-soft);
-  position: sticky;
-  top: 0;
-  z-index: 5;
-}
-
-.kicker {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
 .run-progress-label {
   margin: 2px 0 0;
   font-size: 16px;
   font-weight: 700;
 }
 
-.header-stats {
-  display: flex;
-  gap: 8px;
-}
-
-.stat-chip {
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  padding: 6px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 90px;
+.gk-header-chips .gk-chip {
   text-align: right;
-}
-
-.stat-chip span {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.stat-chip strong {
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
 }
 
 .hp-chip strong {
   color: var(--accent-danger);
+  transition: color var(--motion-fast) ease;
+}
+
+.hp-chip.gk-shake strong {
+  color: var(--accent-vulnerable);
 }
 
 /* 진행 트랙 */
@@ -176,40 +126,6 @@ body {
   color: var(--text-muted);
 }
 
-/* 버튼 공통 */
-
-.button {
-  border: none;
-  border-radius: 999px;
-  padding: 12px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-}
-
-.button.primary {
-  background: var(--accent-primary);
-  color: #fff;
-  box-shadow: var(--shadow-soft);
-}
-
-.button.primary:hover:not(:disabled) {
-  background: var(--accent-primary-dark);
-  transform: translateY(-1px);
-}
-
-.button.secondary {
-  background: var(--surface-card);
-  color: var(--text-main);
-  border: 1px solid var(--border-soft);
-}
-
-.button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* 전투 화면 */
 
 #screen-combat {
@@ -228,6 +144,7 @@ body {
   align-items: center;
   gap: 6px;
   text-align: center;
+  position: relative;
 }
 
 .enemy-name {
@@ -264,6 +181,26 @@ body {
   display: none;
 }
 
+.enemy-block-value.badge-gain,
+.player-block-value.badge-gain {
+  animation: block-badge-shine var(--motion-base) var(--motion-ease);
+}
+
+@keyframes block-badge-shine {
+  0% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+  40% {
+    transform: scale(1.15);
+    text-shadow: 0 0 8px var(--accent-block);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+}
+
 .enemy-status-row,
 .player-status-row {
   display: flex;
@@ -278,6 +215,7 @@ body {
   border-radius: 999px;
   padding: 2px 8px;
   font-weight: 600;
+  animation: status-badge-pop-in 0.2s ease;
 }
 
 .status-badge.strength {
@@ -293,6 +231,17 @@ body {
 .status-badge.vulnerable {
   background: #ffe1e0;
   color: var(--accent-vulnerable);
+}
+
+@keyframes status-badge-pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .enemy-intent {
@@ -313,6 +262,21 @@ body {
 .intent-value {
   font-size: 14px;
   font-weight: 700;
+}
+
+.intent-value.intent-changing {
+  animation: intent-swap var(--motion-fast) ease;
+}
+
+@keyframes intent-swap {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .player-combat-panel {
@@ -351,6 +315,12 @@ body {
   transition: transform 0.08s ease;
 }
 
+/* 딜-인은 실제 드로우가 일어난 렌더에만 적용한다 (카드 사용 후 재렌더마다
+   손패 전체가 다시 등장하면 깜빡이는 느낌을 준다). */
+.card.card-enter {
+  animation: card-deal-in 0.2s ease both;
+}
+
 .card:active:not(.card-disabled) {
   transform: scale(0.96);
 }
@@ -358,6 +328,33 @@ body {
 .card-disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.card-playing {
+  animation: card-play-out 0.2s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes card-deal-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-play-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.9);
+  }
 }
 
 .card-elite {
@@ -504,6 +501,45 @@ body {
   text-align: right;
 }
 
+#screen-result:not(.hidden) {
+  animation: result-fade-in var(--motion-base) var(--motion-ease);
+}
+
+@keyframes result-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 피격 플래시 */
+
+.hit-flash {
+  position: fixed;
+  inset: 0;
+  background: rgba(224, 85, 79, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.hit-flash.flashing {
+  animation: hit-flash-fade 0.2s ease;
+}
+
+@keyframes hit-flash-fade {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @media (min-width: 640px) {
   body {
     padding: 24px 0;
@@ -516,7 +552,7 @@ body {
 }
 
 @media (max-width: 480px) {
-  .app-header {
+  .gk-header {
     padding: 12px;
   }
 
