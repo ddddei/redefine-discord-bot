@@ -174,6 +174,21 @@ const checks = [
     args: ['--check', 'public/idle/game.js'],
   },
   {
+    label: 'public/deck/content.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/deck/content.js'],
+  },
+  {
+    label: 'public/deck/engine.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/deck/engine.js'],
+  },
+  {
+    label: 'public/deck/game.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/deck/game.js'],
+  },
+  {
     label: 'src/exportUtils.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/exportUtils.js'],
@@ -522,6 +537,16 @@ const checks = [
     label: 'idle static smoke test',
     command: 'node',
     args: ['scripts/test-idle-static.js'],
+  },
+  {
+    label: 'deck logic smoke test',
+    command: 'node',
+    args: ['scripts/test-deck-logic.js'],
+  },
+  {
+    label: 'deck static smoke test',
+    command: 'node',
+    args: ['scripts/test-deck-static.js'],
   },
   {
     label: 'dungeonworld session 02 content test',
