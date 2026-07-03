@@ -282,7 +282,14 @@
   #delivery-collect-button:not(:disabled),
   .board.shuffling,
   .card,
+  .card-playing,
   .status-badge,
+  .enemy-block-value.badge-gain,
+  .player-block-value.badge-gain,
+  .intent-value.intent-changing,
+  .hit-flash.flashing,
+  #screen-result:not(.hidden),
+  .hp-chip.gk-shake,
   .toast {
     animation: none !important;
     transition: none !important;
