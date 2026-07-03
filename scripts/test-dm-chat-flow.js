@@ -127,6 +127,18 @@ async function main() {
 
     assert.strictEqual(disabledHandled, false);
     assert.strictEqual(disabledMessages.length, 0);
+
+    process.env.DM_CHAT_ENABLED = 'true';
+    const emptyContentMessages = [];
+    const emptyContentHandled = await handleDmChatMessage(
+      createDmMessage('', emptyContentMessages),
+      client,
+      { repository }
+    );
+
+    assert.strictEqual(emptyContentHandled, true);
+    assert.strictEqual(emptyContentMessages.length, 1);
+    assert.match(emptyContentMessages[0], /Message Content Intent/);
   } finally {
     for (const [key, value] of Object.entries(previousEnv)) {
       if (value === undefined) {

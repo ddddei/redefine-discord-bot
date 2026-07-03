@@ -66,13 +66,19 @@ function logDmChatConfiguration() {
   }
 }
 
-function isDirectUserMessage(message) {
+function isDirectUserDm(message) {
   return Boolean(
     message
     && message.channel
     && message.channel.type === ChannelType.DM
     && message.author
     && !message.author.bot
+  );
+}
+
+function isDirectUserMessage(message) {
+  return Boolean(
+    isDirectUserDm(message)
     && typeof message.content === 'string'
     && message.content.trim()
   );
@@ -117,7 +123,7 @@ async function handleSensitiveDmMessage(message, client, repository, userRecord,
 }
 
 async function handleDmChatMessage(message, client, options = {}) {
-  if (!isDirectUserMessage(message)) {
+  if (!isDirectUserDm(message)) {
     return false;
   }
 
@@ -128,6 +134,13 @@ async function handleDmChatMessage(message, client, options = {}) {
 
   const repository = options.repository || createDmChatRepository();
   const userRecord = createUserRecord(message);
+
+  if (!isDirectUserMessage(message)) {
+    console.warn(`[dm-chat] received DM event from user=${userRecord.id} but message content is empty. Check Discord Message Content Intent and DM payload permissions.`);
+    await sendDirectMessage(message, '메시지를 받았지만 내용을 읽지 못했어요. 운영진이 봇의 Discord Message Content Intent 설정을 확인해야 합니다.');
+    return true;
+  }
+
   console.info(`[dm-chat] received DM from user=${userRecord.id}`);
 
   if (!repository.hasNotice(userRecord.id)) {
@@ -196,6 +209,7 @@ module.exports = {
   FIRST_NOTICE,
   getDmChatConfigurationStatus,
   handleDmChatMessage,
+  isDirectUserDm,
   isDirectUserMessage,
   logDmChatConfiguration,
 };
