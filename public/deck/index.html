@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="프로젝트 리디파인 참여자를 위한 브라우저 덱빌딩 게임, 간식 수호대입니다."
+    >
+    <title>간식 수호대</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-frame">
+      <header class="app-header">
+        <div class="header-title">
+          <p class="kicker">간식 수호대</p>
+          <p id="run-progress-label" class="run-progress-label">1 / 11칸</p>
+        </div>
+        <div class="header-stats">
+          <div class="stat-chip hp-chip">
+            <span>체력</span>
+            <strong id="player-hp-value">60 / 60</strong>
+          </div>
+        </div>
+      </header>
+
+      <div id="run-track" class="run-track" aria-label="런 진행 트랙"></div>
+
+      <main class="app-main">
+        <section id="screen-run" class="screen" data-screen="run">
+          <p id="run-node-description" class="run-node-description">다음 칸으로 진행하세요.</p>
+          <button id="advance-button" type="button" class="button primary">다음 칸으로</button>
+        </section>
+
+        <section id="screen-combat" class="screen hidden" data-screen="combat">
+          <div class="enemy-panel">
+            <p id="enemy-name" class="enemy-name">적</p>
+            <div class="enemy-emoji" aria-hidden="true">🐜</div>
+            <div class="enemy-stat-row">
+              <span id="enemy-hp-value" class="enemy-hp-value">0 / 0</span>
+              <span id="enemy-block-value" class="enemy-block-value hidden">방어 0</span>
+            </div>
+            <div class="enemy-status-row" id="enemy-status-row"></div>
+            <div class="enemy-intent" id="enemy-intent">
+              <span class="intent-label">다음 행동</span>
+              <span id="enemy-intent-value" class="intent-value">-</span>
+            </div>
+          </div>
+
+          <div class="player-combat-panel">
+            <div class="player-status-row" id="player-status-row"></div>
+            <div class="player-block-row">
+              <span id="player-block-value" class="player-block-value hidden">방어 0</span>
+            </div>
+          </div>
+
+          <div class="hand-area">
+            <div id="hand-list" class="hand-list"></div>
+          </div>
+
+          <div class="combat-controls">
+            <div class="energy-chip">
+              <span>에너지</span>
+              <strong id="energy-value">3</strong>
+            </div>
+            <button id="end-turn-button" type="button" class="button primary">턴 종료</button>
+          </div>
+        </section>
+
+        <section id="screen-reward" class="screen hidden" data-screen="reward">
+          <h2 class="screen-heading">카드를 골라 보세요</h2>
+          <div id="reward-card-list" class="reward-card-list"></div>
+          <button id="skip-reward-button" type="button" class="button secondary">건너뛰기</button>
+        </section>
+
+        <section id="screen-rest" class="screen hidden" data-screen="rest">
+          <h2 class="screen-heading">휴식</h2>
+          <p class="screen-copy">회복하거나 덱에서 카드 한 장을 정리할 수 있어요.</p>
+          <div class="rest-options">
+            <button id="rest-heal-button" type="button" class="button primary">회복하기</button>
+            <button id="rest-remove-button" type="button" class="button secondary">덱 정리하기</button>
+          </div>
+          <div id="rest-remove-list" class="rest-remove-list hidden"></div>
+        </section>
+
+        <section id="screen-result" class="screen hidden" data-screen="result">
+          <h2 id="result-heading" class="screen-heading">런 종료</h2>
+          <p id="result-copy" class="screen-copy"></p>
+          <dl class="result-stats">
+            <div><dt>도달한 칸</dt><dd id="result-node">0 / 11</dd></div>
+            <div><dt>처치 수</dt><dd id="result-defeated">0</dd></div>
+            <div><dt>최종 덱 수</dt><dd id="result-deck-size">0</dd></div>
+            <div><dt>클리어 횟수</dt><dd id="result-clear-count">0</dd></div>
+            <div><dt>최고 도달 칸</dt><dd id="result-best-node">0</dd></div>
+          </dl>
+          <button id="restart-button" type="button" class="button primary">새로 시작</button>
+        </section>
+      </main>
+    </div>
+
+    <script src="./content.js"></script>
+    <script src="./engine.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>
