@@ -149,6 +149,16 @@ const checks = [
     args: ['--check', 'public/dungeonworld-survivors/game.js'],
   },
   {
+    label: 'public/match3/board.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/match3/board.js'],
+  },
+  {
+    label: 'public/match3/game.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/match3/game.js'],
+  },
+  {
     label: 'src/exportUtils.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/exportUtils.js'],
@@ -477,6 +487,16 @@ const checks = [
     label: 'dungeonworld survivors static smoke test',
     command: 'node',
     args: ['scripts/test-dungeonworld-survivors-static.js'],
+  },
+  {
+    label: 'match3 logic smoke test',
+    command: 'node',
+    args: ['scripts/test-match3-logic.js'],
+  },
+  {
+    label: 'match3 static smoke test',
+    command: 'node',
+    args: ['scripts/test-match3-static.js'],
   },
   {
     label: 'dungeonworld session 02 content test',
