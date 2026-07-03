@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { normalizeExportFormat, toCsv, toSafeJson } = require('./exportUtils');
+const { saveJsonFileAtomic } = require('./jsonStorage');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_PATHS = {
@@ -509,7 +510,7 @@ function readLogsData(logsPath) {
 }
 
 function saveLogsData(logsPath, data) {
-  saveJsonAtomic(logsPath, data);
+  saveJsonFileAtomic(logsPath, data);
 }
 
 function createOperationId() {
@@ -919,11 +920,6 @@ function readConfigData(configPath, fallbackPath) {
   }
 }
 
-function saveJsonAtomic(filePath, data) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(`${filePath}.tmp`, `${JSON.stringify(data, null, 2)}\n`);
-  fs.renameSync(`${filePath}.tmp`, filePath);
-}
 
 function createDungeonworldConfigRepository(paths = {}) {
   const resolvedPaths = {
@@ -947,7 +943,7 @@ function createDungeonworldConfigRepository(paths = {}) {
       updatedAt: new Date().toISOString(),
       updatedBy: operatorId || null,
     };
-    saveJsonAtomic(resolvedPaths.config, data);
+    saveJsonFileAtomic(resolvedPaths.config, data);
     return data;
   }
 
@@ -958,7 +954,7 @@ function createDungeonworldConfigRepository(paths = {}) {
       updatedAt: new Date().toISOString(),
       updatedBy: operatorId || null,
     };
-    saveJsonAtomic(resolvedPaths.config, data);
+    saveJsonFileAtomic(resolvedPaths.config, data);
     return data;
   }
 

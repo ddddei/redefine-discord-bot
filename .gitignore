@@ -1,6 +1,7 @@
 node_modules
 .env
 data/*.local.json
+data/*.tmp
 
 # Local AI agent working files
 .omo/

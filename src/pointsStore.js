@@ -1,5 +1,5 @@
 const fs = require('fs');
-const path = require('path');
+const { saveJsonFileAtomic } = require('./jsonStorage');
 
 const TRANSACTION_TYPES = new Set([
   'earn',
@@ -37,12 +37,7 @@ function loadJsonFile(filePath) {
 }
 
 function saveJsonFile(filePath, data) {
-  try {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
-  } catch (error) {
-    throw new Error(`Failed to save JSON file "${filePath}": ${error.message}`);
-  }
+  saveJsonFileAtomic(filePath, data);
 }
 
 function getUser(pointsData, userId) {
