@@ -159,6 +159,21 @@ const checks = [
     args: ['--check', 'src/dungeonworld.js'],
   },
   {
+    label: 'src/operationBackup.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/operationBackup.js'],
+  },
+  {
+    label: 'scripts/restore-operation-backup.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/restore-operation-backup.js'],
+  },
+  {
+    label: 'scripts/test-operation-backup-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-operation-backup-flow.js'],
+  },
+  {
     label: 'scripts/test-dungeonworld-sessions.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-dungeonworld-sessions.js'],
@@ -357,6 +372,11 @@ const checks = [
     label: 'operation export flow smoke test',
     command: 'node',
     args: ['scripts/test-operation-export-flow.js'],
+  },
+  {
+    label: 'operation backup flow smoke test',
+    command: 'node',
+    args: ['scripts/test-operation-backup-flow.js'],
   },
   {
     label: 'local operation data integrity check',

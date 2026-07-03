@@ -13,6 +13,7 @@ const { handleTodayMissionMessageCreate } = require('./todayMission');
 const {
   startOperationBackupReminder,
 } = require('./logging');
+const { startOperationBackupScheduler } = require('./operationBackup');
 const {
   findFaqAnswer,
   findKnowledgeAnswer,
@@ -42,6 +43,7 @@ client.once('clientReady', () => {
   startDailyMissionAnnouncementScheduler(client);
   startTodayMissionAutoPublishScheduler(client);
   startOperationBackupReminder(client);
+  startOperationBackupScheduler(client);
 });
 
 client.on('interactionCreate', handleInteractionCreate);
