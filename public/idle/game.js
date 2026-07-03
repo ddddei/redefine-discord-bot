@@ -4,6 +4,17 @@
   var Content = window.IdleContent;
   var Engine = window.IdleEngine;
 
+  // 시설 키가 매치3 타일 이름과 그대로 겹치므로 장면 소품은 매치3 타일 SVG를 재사용한다
+  // (세계관 통일 효과, 신규 제작 없음 — docs/webgame-design-v2-plan.md 4절).
+  var BUILDING_ASSET = {
+    strawberry: '../shared/assets/match3-tile-strawberry.svg',
+    orange: '../shared/assets/match3-tile-orange.svg',
+    candy: '../shared/assets/match3-tile-candy.svg',
+    cookie: '../shared/assets/match3-tile-cookie.svg',
+    cupcake: '../shared/assets/match3-tile-cupcake.svg',
+    jelly: '../shared/assets/match3-tile-jelly.svg',
+  };
+
   var state = null;
 
   // 황금 간식의 클릭 부스트 효과가 끝나는 시각(epoch ms). 0이면 부스트 없음.
@@ -33,7 +44,6 @@
   var scenePropsEl = document.getElementById('scene-props');
 
   var makeSnackButton = document.getElementById('make-snack-button');
-  var characterEmojiEl = document.getElementById('character-emoji');
   var clickAmountLabelEl = document.getElementById('click-amount-label');
   var popupLayerEl = document.getElementById('popup-layer');
 
@@ -181,12 +191,14 @@
       var owned = state.buildings[building.key].owned;
       var count = Math.min(owned, Content.MAX_SCENE_PROPS_PER_STAGE - propsAdded);
       for (var i = 0; i < count; i += 1) {
-        var span = document.createElement('span');
-        span.textContent = building.emoji;
+        var propImg = document.createElement('img');
+        propImg.className = 'scene-prop-asset';
+        propImg.src = BUILDING_ASSET[building.key];
+        propImg.alt = '';
         if (propsAdded >= lastRenderedPropCount) {
-          span.classList.add('prop-pop-in');
+          propImg.classList.add('prop-pop-in');
         }
-        scenePropsEl.appendChild(span);
+        scenePropsEl.appendChild(propImg);
         propsAdded += 1;
       }
     });

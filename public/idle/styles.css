@@ -85,15 +85,16 @@ body {
   flex-wrap: wrap;
   align-content: flex-end;
   gap: 4px;
-  font-size: 20px;
   pointer-events: none;
 }
 
-.scene-props span {
+.scene-prop-asset {
   display: inline-block;
+  width: var(--asset-sm);
+  height: var(--asset-sm);
 }
 
-.scene-props span.prop-pop-in {
+.scene-prop-asset.prop-pop-in {
   animation: prop-pop-in 0.24s ease;
 }
 
@@ -159,8 +160,9 @@ body {
   }
 }
 
-.character-emoji {
-  font-size: 40px;
+.character-asset {
+  width: var(--asset-lg);
+  height: var(--asset-lg);
 }
 
 .make-snack-label {
