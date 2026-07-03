@@ -263,7 +263,8 @@ const commands = [
           { name: '도움필요신호', value: 'onboardingSignals' },
           { name: 'FAQ후보', value: 'faqCandidates' },
           { name: '미션', value: 'missions' },
-          { name: '상점', value: 'shop' }
+          { name: '상점', value: 'shop' },
+          { name: '미니게임', value: 'minigames' }
         )
     )
     .addIntegerOption((option) =>
