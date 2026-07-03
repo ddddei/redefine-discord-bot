@@ -277,6 +277,10 @@
   .golden-snack-button,
   .click-popup,
   .stage-scene,
+  .stage-scene.stage-transitioning,
+  .scene-props span.prop-pop-in,
+  #delivery-collect-button:not(:disabled),
+  .board.shuffling,
   .card,
   .status-badge,
   .toast {
