@@ -58,6 +58,15 @@ const MEMORY_PATTERNS = [
   ['🌱', '📘', '✨'],
   ['🎧', '🧭', '🌿'],
   ['💡', '🎴', '⭐'],
+  ['🍀', '🎈', '🌙'],
+  ['🍞', '🔔', '🧃'],
+  ['🎨', '📎', '🌊'],
+  ['🔑', '🧸', '🍎'],
+  ['🎁', '🪴', '📻'],
+  ['☕', '📮', '🌈'],
+  ['🧵', '🍋', '🎹'],
+  ['🌻', '📷', '🥪'],
+  ['🧊', '🍇', '📌'],
 ];
 
 const INITIAL_QUIZZES = [
@@ -76,32 +85,91 @@ const INITIAL_QUIZZES = [
     answer: '포인트',
     choices: ['포인트', '프로필', '파트너'],
   },
+  {
+    prompt: 'ㅊㅋㅇ',
+    answer: '체크인',
+    choices: ['체크인', '초코칩', '치킨집'],
+  },
+  {
+    prompt: 'ㅅㅈ',
+    answer: '상점',
+    choices: ['상점', '소풍', '사탕'],
+  },
+  {
+    prompt: 'ㄱㅎ',
+    answer: '교환',
+    choices: ['교환', '관람', '거울'],
+  },
+  {
+    prompt: 'ㅇㅇㅈ',
+    answer: '운영진',
+    choices: ['운영진', '안내문', '이어폰'],
+  },
+  {
+    prompt: 'ㅇㄴ',
+    answer: '안내',
+    choices: ['안내', '여름', '우유'],
+  },
+  {
+    prompt: 'ㅈㅅㅇ',
+    answer: '주사위',
+    choices: ['주사위', '지우개', '젓가락'],
+  },
+  {
+    prompt: 'ㅋㄷ',
+    answer: '카드',
+    choices: ['카드', '코알라', '키위'],
+  },
+  {
+    prompt: 'ㄷㅅㄱ',
+    answer: '도서관',
+    choices: ['도서관', '두더지', '딸기잼'],
+  },
+  {
+    prompt: 'ㅇㅎ',
+    answer: '여행',
+    choices: ['여행', '야구', '온천'],
+  },
 ];
 
+// 장소별 보상은 고정이 아니라 사용자·날짜 시드로 매일 다르게 배정됩니다 (minigameResults.js).
 const EXPLORE_PLACES = {
-  forest: { label: '숲길', reward: 3, message: '조용한 숲길에서 반짝이는 단서를 찾았어요.' },
-  library: { label: '도서관', reward: 5, message: '도서관 책갈피 사이에서 작은 기록을 발견했어요.' },
-  plaza: { label: '광장', reward: 0, message: '광장에서 쉬어 가며 다음 여정을 준비했어요.' },
+  forest: { label: '숲길' },
+  library: { label: '도서관' },
+  plaza: { label: '광장' },
 };
 
+const EXPLORE_REWARD_MESSAGES = {
+  0: [
+    '오늘은 쉬어 가는 자리였어요. 다음 걸음을 준비했어요.',
+    '특별한 발견은 없었지만 마음이 한결 가벼워졌어요.',
+    '바람만 스쳐 갔어요. 내일의 행운을 기약해요.',
+  ],
+  3: [
+    '길가에서 반짝이는 작은 단서를 주웠어요.',
+    '지나가던 이웃이 작은 응원을 건넸어요.',
+    '구석에 놓인 작은 조각을 발견했어요.',
+  ],
+  5: [
+    '숨겨진 기록을 찾아냈어요. 오늘의 행운 장소였어요.',
+    '뜻밖의 보물 상자가 살짝 열려 있었어요.',
+    '오늘의 반짝임이 이곳에 모여 있었어요.',
+  ],
+};
+
+// 탐험지별 유리한 장비/행동 조합은 고정이 아니라 사용자·날짜 시드로 매일 다르게 정해집니다 (minigameResults.js).
 const ROGUE_PATHS = {
   market: {
     label: '새벽 시장',
     intro: '아직 문을 덜 연 새벽 시장에 들어섰어요. 천막 사이로 작은 종소리가 들려요.',
-    favoredItem: 'map',
-    favoredExit: 'talk',
   },
   station: {
     label: '비밀 정거장',
     intro: '표지판 없는 정거장에 불이 하나 켜져 있어요. 곧 이름 없는 열차가 올 것 같아요.',
-    favoredItem: 'lantern',
-    favoredExit: 'signal',
   },
   rooftop: {
     label: '옥상 정원',
     intro: '낡은 계단 끝 옥상 정원에 도착했어요. 바람이 화분 사이의 쪽지를 넘겨요.',
-    favoredItem: 'snack',
-    favoredExit: 'rest',
   },
 };
 
@@ -119,6 +187,7 @@ const ROGUE_EXITS = {
 
 module.exports = {
   EXPLORE_PLACES,
+  EXPLORE_REWARD_MESSAGES,
   INITIAL_QUIZZES,
   MEMORY_PATTERNS,
   MINIGAMES,

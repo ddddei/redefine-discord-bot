@@ -497,13 +497,25 @@ async function run() {
     return transaction.userId === 'rogue_user' && transaction.relatedId.endsWith(':rogue');
   }));
 
-  const rogueExit = createButtonInteraction('participant_minigame_rogue_exit:market:map:talk', 'rogue_user', '세 칸 탐험 사용자');
+  // 유리 조합은 사용자·날짜 시드로 정해지므로 오늘의 유리 조합을 계산해 완주한다.
+  const { getRogueFavoredChoices } = require('../src/minigameResults');
+  const { ROGUE_EXITS, ROGUE_ITEMS } = require('../src/minigameData');
+  const rogueFavored = getRogueFavoredChoices({
+    userId: 'rogue_user',
+    dateString: playDate,
+    pathKey: 'market',
+  });
+  const rogueExit = createButtonInteraction(
+    `participant_minigame_rogue_exit:market:${rogueFavored.favoredItem}:${rogueFavored.favoredExit}`,
+    'rogue_user',
+    '세 칸 탐험 사용자'
+  );
   await handleInteractionCreate(rogueExit);
   assert.strictEqual(rogueExit.replyPayload.ephemeral, true);
   assert.strictEqual(getEmbedTitle(rogueExit.replyPayload), '🗺️ 세 칸 탐험');
   assert.match(rogueExit.replyPayload.embeds[0].data.description, /탐험지: 새벽 시장/);
-  assert.match(rogueExit.replyPayload.embeds[0].data.description, /장비: 접힌 지도/);
-  assert.match(rogueExit.replyPayload.embeds[0].data.description, /마지막 행동: 말 걸기/);
+  assert.ok(rogueExit.replyPayload.embeds[0].data.description.includes(`장비: ${ROGUE_ITEMS[rogueFavored.favoredItem].label}`));
+  assert.ok(rogueExit.replyPayload.embeds[0].data.description.includes(`마지막 행동: ${ROGUE_EXITS[rogueFavored.favoredExit].label}`));
   assert.match(rogueExit.replyPayload.embeds[0].data.description, /탐험 결과: 10P/);
   assert.match(rogueExit.replyPayload.embeds[0].data.description, /지급 포인트: 10P/);
 

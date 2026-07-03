@@ -259,6 +259,11 @@ const checks = [
     args: ['--check', 'scripts/test-minigame-hub-flow.js'],
   },
   {
+    label: 'scripts/test-minigame-results.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-minigame-results.js'],
+  },
+  {
     label: 'scripts/test-reaction-approval-flow.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-reaction-approval-flow.js'],
@@ -412,6 +417,11 @@ const checks = [
     label: 'minigame hub flow smoke test',
     command: 'node',
     args: ['scripts/test-minigame-hub-flow.js'],
+  },
+  {
+    label: 'minigame results smoke test',
+    command: 'node',
+    args: ['scripts/test-minigame-results.js'],
   },
   {
     label: 'reaction approval flow smoke test',
