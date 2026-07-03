@@ -107,25 +107,10 @@ function createTodayMinigameRecordPayload(record) {
   };
 }
 
-function createTodayMinigameRankingPayload(ranking) {
-  if (!ranking || ranking.length === 0) {
-    return {
-      embeds: [createGuideEmbed(
-        '🏆 오늘의 미니게임 랭킹',
-        [
-          '아직 오늘의 랭킹 데이터가 없어요.',
-          '',
-          '랭킹은 비교나 평가가 아니라 오늘 미니게임을 가볍게 돌아보는 재미용 기록이에요.',
-          '포인트 베팅이나 차감은 없어요.',
-        ].join('\n')
-      )],
-      ephemeral: true,
-    };
-  }
-
+function formatRankingLines(ranking) {
   let displayRank = 0;
   let previousPoints = null;
-  const rankingLines = ranking.map((entry, index) => {
+  return ranking.map((entry, index) => {
     if (entry.earnedPoints !== previousPoints) {
       displayRank = index + 1;
       previousPoints = entry.earnedPoints;
@@ -133,15 +118,51 @@ function createTodayMinigameRankingPayload(ranking) {
 
     return `${displayRank}. ${entry.displayName} - ${formatPoints(entry.earnedPoints)} (${entry.playCount}회)`;
   });
+}
+
+function createRankingSection(label, ranking) {
+  const lines = [label];
+  if (!ranking || ranking.length === 0) {
+    return [...lines, '아직 기록이 없어요.'];
+  }
+
+  return [...lines, ...formatRankingLines(ranking)];
+}
+
+function createMinigameRankingPayload(rankings) {
+  const safeRankings = rankings || {};
+  const today = safeRankings.today || [];
+  const recent7Days = safeRankings.recent7Days || [];
+  const total = safeRankings.total || [];
+  const hasRankingData = today.length > 0 || recent7Days.length > 0 || total.length > 0;
+
+  if (!hasRankingData) {
+    return {
+      embeds: [createGuideEmbed(
+        '🏆 미니게임 랭킹',
+        [
+          '아직 미니게임 랭킹 데이터가 없어요.',
+          '',
+          '랭킹은 비교나 평가가 아니라 미니게임을 가볍게 돌아보는 재미용 기록이에요.',
+          '포인트 베팅이나 차감은 없어요.',
+        ].join('\n')
+      )],
+      ephemeral: true,
+    };
+  }
 
   return {
     embeds: [createGuideEmbed(
-      '🏆 오늘의 미니게임 랭킹',
+      '🏆 미니게임 랭킹',
       [
-        '오늘 미니게임 포인트 기준 상위 5명이에요.',
         '비교나 평가보다 가볍게 보는 재미용 기록으로 확인해 주세요.',
         '',
-        ...rankingLines,
+        ...createRankingSection(`오늘 (${safeRankings.generatedDateKst || getKoreanDateString()})`, today),
+        '',
+        ...createRankingSection('최근 7일', recent7Days),
+        '',
+        ...createRankingSection('누적', total),
+        '누적은 순위 경쟁이 아니라 꾸준한 참여 기록에 가까워요.',
         '',
         `하루 미니게임은 최대 ${MINIGAME_DAILY_PLAY_LIMIT}회, 보상 합계는 최대 ${formatPoints(MINIGAME_DAILY_REWARD_CAP)}까지예요.`,
         '포인트 베팅이나 차감은 없어요.',
@@ -327,7 +348,7 @@ module.exports = {
   createMinigameChannelGuidePayload,
   createMinigameDetailPayload,
   createMinigameHubPayload,
+  createMinigameRankingPayload,
   createRpsChoicePayload,
-  createTodayMinigameRankingPayload,
   createTodayMinigameRecordPayload,
 };

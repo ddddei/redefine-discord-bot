@@ -11,8 +11,8 @@ const {
   createMinigameChannelGuidePayload,
   createMinigameDetailPayload,
   createMinigameHubPayload,
+  createMinigameRankingPayload,
   createRpsChoicePayload,
-  createTodayMinigameRankingPayload,
   createTodayMinigameRecordPayload,
 } = require('./minigamePayloads');
 const { getKoreanDateString } = require('./pointsRepository');
@@ -193,8 +193,8 @@ function createMinigameButtonHandler({ pointsRepository, getMemberDisplayName })
       }
 
       if (interaction.customId === 'participant_minigame_today_ranking') {
-        await interaction.reply(createTodayMinigameRankingPayload(
-          pointsRepository.listTodayMinigameRanking()
+        await interaction.reply(createMinigameRankingPayload(
+          pointsRepository.listMinigameRankings()
         ));
         return;
       }
