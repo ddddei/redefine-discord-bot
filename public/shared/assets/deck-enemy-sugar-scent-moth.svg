@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>단내 나방</title>
+  <path d="M22 22 Q8 14 8 26 Q8 36 22 32 Z" fill="#d9c8ff" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M42 22 Q56 14 56 26 Q56 36 42 32 Z" fill="#d9c8ff" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M20 34 Q9 40 12 50 Q16 58 24 46 Z" fill="#9b6bff" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M44 34 Q55 40 52 50 Q48 58 40 46 Z" fill="#9b6bff" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M27 15 Q23 9 18 10" stroke="#4a3524" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M37 15 Q41 9 46 10" stroke="#4a3524" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <circle cx="18" cy="10" r="1.8" fill="#4a3524"/>
+  <circle cx="46" cy="10" r="1.8" fill="#4a3524"/>
+  <ellipse cx="32" cy="34" rx="12" ry="17" fill="#9b6bff" stroke="#4a3524" stroke-width="3"/>
+  <circle cx="26" cy="30" r="3.6" fill="#ffffff"/>
+  <circle cx="25.2" cy="30.6" r="1.9" fill="#4a3524"/>
+  <circle cx="38" cy="30" r="3.6" fill="#ffffff"/>
+  <circle cx="38.8" cy="30.6" r="1.9" fill="#4a3524"/>
+  <path d="M27 39 Q32 42.5 37 39" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="22" cy="38" rx="2.6" ry="1.8" fill="#ff9fb3"/>
+  <ellipse cx="42" cy="38" rx="2.6" ry="1.8" fill="#ff9fb3"/>
+</svg>

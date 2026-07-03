@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>욕심쟁이 비둘기</title>
+  <path d="M12 40 L4 34" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M52 40 L60 34" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M24 52 L21 59" stroke="#4a3524" stroke-width="3" stroke-linecap="round"/>
+  <path d="M40 52 L43 59" stroke="#4a3524" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="32" cy="38" rx="18" ry="16" fill="#cddcff" stroke="#4a3524" stroke-width="3"/>
+  <circle cx="32" cy="22" r="12" fill="#cddcff" stroke="#4a3524" stroke-width="3"/>
+  <path d="M28 22 L18 25 L28 26 Z" fill="#ffa94d" stroke="#4a3524" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="26" cy="19" r="3.6" fill="#ffffff"/>
+  <circle cx="25.2" cy="19.6" r="1.9" fill="#4a3524"/>
+  <circle cx="38" cy="19" r="3.6" fill="#ffffff"/>
+  <circle cx="38.8" cy="19.6" r="1.9" fill="#4a3524"/>
+  <path d="M27 40 Q32 44 37 40" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="21" cy="27" rx="2.6" ry="1.8" fill="#ff9fb3"/>
+  <ellipse cx="43" cy="27" rx="2.6" ry="1.8" fill="#ff9fb3"/>
+</svg>

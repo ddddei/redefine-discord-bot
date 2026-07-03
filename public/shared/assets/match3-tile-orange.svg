@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>오렌지</title>
+  <path d="M32 6.5 L36.5 12.5 L31.5 12 Z" fill="#7fce8e" stroke="#4a3524" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="32" cy="34" r="22" fill="#ffa94d" stroke="#4a3524" stroke-width="3"/>
+  <path d="M32 15 Q34.5 19 32 23" fill="none" stroke="#ecc493" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M18 22 Q22 18 27 19" fill="none" stroke="#ffe0b8" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="25" cy="32" r="2.6" fill="#4a3524"/>
+  <circle cx="39" cy="32" r="2.6" fill="#4a3524"/>
+  <circle cx="25.9" cy="31" r="0.9" fill="#ffffff"/>
+  <circle cx="39.9" cy="31" r="0.9" fill="#ffffff"/>
+  <path d="M27.5 39.5 Q32 43 36.5 39.5" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="20.5" cy="38.5" rx="3" ry="2" fill="#ff9fb3"/>
+  <ellipse cx="43.5" cy="38.5" rx="3" ry="2" fill="#ff9fb3"/>
+</svg>

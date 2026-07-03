@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>대왕 식탐 드래곤</title>
+  <path d="M14 14 Q10 6 18 8 Q20 12 17 16 Z" fill="#ff7b8f" stroke="#4a3524" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M50 14 Q54 6 46 8 Q44 12 47 16 Z" fill="#ff7b8f" stroke="#4a3524" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M12 44 Q4 40 8 50 Q12 56 18 50 Z" fill="#ff7b8f" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M52 44 Q60 40 56 50 Q52 56 46 50 Z" fill="#ff7b8f" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round"/>
+  <ellipse cx="32" cy="38" rx="20" ry="19" fill="#ff7b8f" stroke="#4a3524" stroke-width="3"/>
+  <path d="M18 26 Q22 20 28 22" fill="none" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M46 26 Q42 20 36 22" fill="none" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M21 33 Q25.5 30 30 33" fill="none" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M34 33 Q38.5 30 43 33" fill="none" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="25.5" cy="35.5" r="2.6" fill="#4a3524"/>
+  <circle cx="38.5" cy="35.5" r="2.6" fill="#4a3524"/>
+  <path d="M22 46 Q32 42 42 46 Q32 51 22 46 Z" fill="#4a3524"/>
+  <path d="M27 46 L26 42" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <path d="M37 46 L38 42" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="21" cy="42" rx="2.8" ry="1.8" fill="#ffd9e0"/>
+  <ellipse cx="43" cy="42" rx="2.8" ry="1.8" fill="#ffd9e0"/>
+</svg>

@@ -3,13 +3,13 @@
 
   var Board = window.Match3Board;
 
-  var TILE_EMOJI = {
-    strawberry: '🍓',
-    orange: '🍊',
-    candy: '🍬',
-    cookie: '🍪',
-    cupcake: '🧁',
-    jelly: '🍇',
+  var TILE_ASSET = {
+    strawberry: '../shared/assets/match3-tile-strawberry.svg',
+    orange: '../shared/assets/match3-tile-orange.svg',
+    candy: '../shared/assets/match3-tile-candy.svg',
+    cookie: '../shared/assets/match3-tile-cookie.svg',
+    cupcake: '../shared/assets/match3-tile-cupcake.svg',
+    jelly: '../shared/assets/match3-tile-jelly.svg',
   };
 
   var TILE_LABEL = {
@@ -81,7 +81,11 @@
         button.dataset.row = String(row);
         button.dataset.col = String(col);
         button.setAttribute('aria-label', TILE_LABEL[type] + ' 타일, ' + (row + 1) + '행 ' + (col + 1) + '열');
-        button.textContent = TILE_EMOJI[type];
+        var tileImg = document.createElement('img');
+        tileImg.className = 'tile-asset';
+        tileImg.src = TILE_ASSET[type];
+        tileImg.alt = '';
+        button.appendChild(tileImg);
         button.addEventListener('click', onTileClick);
         boardEl.appendChild(button);
       }

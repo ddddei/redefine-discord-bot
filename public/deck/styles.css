@@ -153,8 +153,24 @@ body {
   font-size: 15px;
 }
 
-.enemy-emoji {
-  font-size: 40px;
+.enemy-asset {
+  width: var(--asset-lg);
+  height: var(--asset-lg);
+}
+
+.enemy-asset.enemy-asset-elite {
+  width: 100px;
+  height: 100px;
+}
+
+.enemy-asset.enemy-asset-boss {
+  width: 116px;
+  height: 116px;
+}
+
+.player-asset {
+  width: var(--asset-md);
+  height: var(--asset-md);
 }
 
 .enemy-stat-row {
@@ -300,6 +316,7 @@ body {
 }
 
 .card {
+  position: relative;
   flex: 0 0 auto;
   width: 96px;
   min-height: 128px;
@@ -313,6 +330,14 @@ body {
   cursor: pointer;
   box-shadow: var(--shadow-soft);
   transition: transform 0.08s ease;
+}
+
+.card-type-icon {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
 }
 
 /* 딜-인은 실제 드로우가 일어난 렌더에만 적용한다 (카드 사용 후 재렌더마다

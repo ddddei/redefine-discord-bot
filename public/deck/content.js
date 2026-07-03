@@ -210,6 +210,7 @@
     {
       id: 'crumb-ant',
       emoji: '🐜',
+      asset: 'deck-enemy-crumb-ant.svg',
       name: '부스러기 개미',
       tier: 'normal',
       maxHp: 14,
@@ -222,6 +223,7 @@
     {
       id: 'sugar-scent-moth',
       emoji: '🦋',
+      asset: 'deck-enemy-sugar-scent-moth.svg',
       name: '단내 나방',
       tier: 'normal',
       maxHp: 18,
@@ -234,6 +236,7 @@
     {
       id: 'greedy-pigeon',
       emoji: '🕊️',
+      asset: 'deck-enemy-greedy-pigeon.svg',
       name: '욕심쟁이 비둘기',
       tier: 'normal',
       maxHp: 22,
@@ -245,6 +248,7 @@
     {
       id: 'sugar-slime',
       emoji: '🫠',
+      asset: 'deck-enemy-sugar-slime.svg',
       name: '설탕 슬라임',
       tier: 'normal',
       maxHp: 26,
@@ -257,6 +261,7 @@
     {
       id: 'kitchen-mouse',
       emoji: '🐭',
+      asset: 'deck-enemy-kitchen-mouse.svg',
       name: '주방 생쥐',
       tier: 'normal',
       maxHp: 20,
@@ -269,6 +274,7 @@
     {
       id: 'mold-fairy',
       emoji: '🍄',
+      asset: 'deck-enemy-mold-fairy.svg',
       name: '곰팡이 요정',
       tier: 'normal',
       maxHp: 24,
@@ -281,6 +287,7 @@
     {
       id: 'caramel-golem',
       emoji: '🗿',
+      asset: 'deck-enemy-caramel-golem.svg',
       name: '캐러멜 골렘',
       tier: 'elite',
       maxHp: 45,
@@ -293,6 +300,7 @@
     {
       id: 'whipped-harpy',
       emoji: '🦅',
+      asset: 'deck-enemy-whipped-harpy.svg',
       name: '휘핑 하피',
       tier: 'elite',
       maxHp: 40,
@@ -305,6 +313,7 @@
     {
       id: 'great-glutton-dragon',
       emoji: '🐉',
+      asset: 'deck-enemy-great-glutton-dragon.svg',
       name: '대왕 식탐 드래곤',
       tier: 'boss',
       maxHp: 80,

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>견습 제빵사</title>
+  <circle cx="32" cy="39" r="15" fill="#ffdfc2" stroke="#4a3524" stroke-width="3"/>
+  <circle cx="20.5" cy="18.5" r="8" fill="#ffffff" stroke="#4a3524" stroke-width="2.8"/>
+  <circle cx="43.5" cy="18.5" r="8" fill="#ffffff" stroke="#4a3524" stroke-width="2.8"/>
+  <circle cx="32" cy="14.5" r="9" fill="#ffffff" stroke="#4a3524" stroke-width="2.8"/>
+  <rect x="16" y="19" width="32" height="9" rx="4.5" fill="#ffffff" stroke="#4a3524" stroke-width="2.8"/>
+  <circle cx="25.5" cy="38" r="3.6" fill="#ffffff"/>
+  <circle cx="26.3" cy="38.6" r="1.9" fill="#4a3524"/>
+  <circle cx="38.5" cy="38" r="3.6" fill="#ffffff"/>
+  <circle cx="37.7" cy="38.6" r="1.9" fill="#4a3524"/>
+  <path d="M28 44.5 Q32 48 36 44.5" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="19.5" cy="43" rx="3" ry="2" fill="#ff9fb3"/>
+  <ellipse cx="44.5" cy="43" rx="3" ry="2" fill="#ff9fb3"/>
+  <path d="M24 53 L32 59.5 L40 53 Q36 55.5 32 55.5 Q28 55.5 24 53 Z" fill="#ff8a5b" stroke="#4a3524" stroke-width="2.4" stroke-linejoin="round"/>
+</svg>

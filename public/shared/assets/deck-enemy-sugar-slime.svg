@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>설탕 슬라임</title>
+  <path d="M12 44 C8 30 16 16 32 16 C48 16 56 30 52 44 C48 56 16 56 12 44 Z" fill="#ffd6ef" stroke="#4a3524" stroke-width="3" stroke-linejoin="round"/>
+  <ellipse cx="21" cy="24" rx="3.4" ry="2.2" fill="#ffffff"/>
+  <ellipse cx="40" cy="27" rx="2.6" ry="1.8" fill="#ffffff"/>
+  <circle cx="25.5" cy="34" r="2.8" fill="#4a3524"/>
+  <circle cx="39.5" cy="34" r="2.8" fill="#4a3524"/>
+  <circle cx="26.4" cy="33" r="0.95" fill="#ffffff"/>
+  <circle cx="40.4" cy="33" r="0.95" fill="#ffffff"/>
+  <path d="M27 42 Q32 46 37 42" fill="none" stroke="#4a3524" stroke-width="2.3" stroke-linecap="round"/>
+  <ellipse cx="20" cy="40" rx="3" ry="2" fill="#ff9fb3"/>
+  <ellipse cx="44" cy="40" rx="3" ry="2" fill="#ff9fb3"/>
+</svg>
