@@ -811,6 +811,7 @@ function formatCheckBoolean(value, trueLabel = '가능', falseLabel = '불가') 
 function formatChannelCheckLine(check) {
   const configuredLabel = check.configured ? '설정됨' : '미설정';
   const channelId = check.channelId ? `\`${truncateText(check.channelId, 64, '채널 ID')}\`` : '없음';
+  const channelName = check.channelName ? `#${truncateText(check.channelName, 64, '채널명')}` : '확인 안 됨';
   const missingOptionalNote = !check.configured && !check.required
     ? ' / 선택 항목이라 오류는 아니에요'
     : '';
@@ -819,6 +820,7 @@ function formatChannelCheckLine(check) {
     `- ${check.envName} (${check.requirementLabel})`,
     `  용도: ${check.label || '운영 채널'}`,
     `  설정: ${configuredLabel}${missingOptionalNote} / 채널 ID: ${channelId}`,
+    `  실제 채널명: ${channelName}`,
     `  Discord 채널: ${formatCheckBoolean(check.found, '찾음', '못 찾음')} / 접근: ${formatCheckBoolean(check.accessible)} / 메시지 전송: ${formatCheckBoolean(check.canSendMessages)}`,
   ].join('\n');
 }

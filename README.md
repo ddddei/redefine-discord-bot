@@ -145,6 +145,22 @@ Railway에서 Public Domain을 생성한 뒤 `https://Railway-도메인/admin`�
 - `ACTIVITY_REVIEW_CHANNEL_ID`: 미션 인증 검토와 반응 승인/반려 처리 로그
 - `POINT_REDEEM_CHANNEL_ID`: 교환 신청과 교환 처리 알림
 
+## DM 대화 연습 MVP
+
+DM 대화 연습 기능은 기본값이 비활성화입니다. 운영자가 Railway Variables 또는 로컬 `.env`에 아래 값을 설정하면 참가자가 봇에게 1대1 DM으로 짧은 대화 연습을 할 수 있습니다.
+
+```env
+DM_CHAT_ENABLED=true
+AI_ENABLED=true
+AI_PROVIDER=openai
+AI_MODEL=운영자가_선택한_OpenAI_모델명
+OPENAI_API_KEY=실제_API_KEY
+DM_CHAT_LOG_CHANNEL_ID=운영진_DM_로그_채널_ID
+SAFETY_ALERT_CHANNEL_ID=안전_알림_채널_ID
+```
+
+첫 DM에는 대화가 기록되고 운영진이 확인할 수 있다는 안내가 자동 전송됩니다. 모든 DM 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되며, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. 자해, 폭력, 괴롭힘, 개인정보 노출 등 안전 관련 표현은 기존 민감 질문 감지 규칙을 사용해 `SAFETY_ALERT_CHANNEL_ID` 또는 fallback 로그 채널로 즉시 알립니다.
+
 관리자 대시보드와 `/api/admin/*` 응답은 `data/*.example.json`의 example/demo/sample 데이터를 실제 운영 데이터처럼 보이지 않도록 제외합니다. 실제 운영 전에는 `data/*.local.json` 상태를 확인하고, 테스트용 local 데이터가 남아 있으면 정리한 뒤 운영용 미션과 상점 항목을 `/미션관리`, `/상점관리`로 등록합니다.
 
 운영 전 기본 미션과 상점 항목은 자동 생성되지 않습니다. 실제 운영 데이터는 `/미션관리`, `/상점관리`로 직접 등록하고, 기본 후보와 등록 순서는 [운영용 기본 미션/상점 설계](docs/operation-default-items-plan.md)와 [미션/상점 등록 가이드](docs/mission-shop-setup-guide.md)를 기준으로 확인합니다.

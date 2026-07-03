@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { handleInteractionCreate } = require('./handlers');
+const { handleDmChatMessage, logDmChatConfiguration } = require('./dmChat');
 const {
   handleMissionReactionApproval,
   handleMissionSubmissionGuidanceMessage,
@@ -27,6 +28,7 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
   ],
@@ -40,6 +42,7 @@ const client = new Client({
 
 client.once('clientReady', () => {
   console.log(`${client.user.tag} 봇이 준비됐어요.`);
+  logDmChatConfiguration();
   startDailyMissionAnnouncementScheduler(client);
   startTodayMissionAutoPublishScheduler(client);
   startOperationBackupReminder(client);
@@ -49,6 +52,10 @@ client.once('clientReady', () => {
 client.on('interactionCreate', handleInteractionCreate);
 
 client.on('messageCreate', async (message) => {
+  if (await handleDmChatMessage(message, client)) {
+    return;
+  }
+
   await handleTodayMissionMessageCreate(message, client);
   try {
     await handleMissionSubmissionGuidanceMessage(message);
@@ -75,6 +82,8 @@ if (require.main === module) {
 
 module.exports = {
   client,
+  handleDmChatMessage,
+  logDmChatConfiguration,
   findFaqAnswer,
   findKnowledgeAnswer,
   handleInteractionCreate,

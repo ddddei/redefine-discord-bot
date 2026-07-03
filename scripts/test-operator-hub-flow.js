@@ -353,6 +353,7 @@ async function main() {
         required: true,
         configured: true,
         channelId: 'operator_log_channel',
+        channelName: 'bot-operation-log',
         found: true,
         accessible: true,
         canSendMessages: true,
@@ -364,6 +365,7 @@ async function main() {
         required: false,
         configured: false,
         channelId: null,
+        channelName: null,
         found: false,
         accessible: false,
         canSendMessages: false,
@@ -377,6 +379,7 @@ async function main() {
   const envCheckDescription = getEmbedDescription(envCheck);
   assert.strictEqual(getEmbedTitle(envCheck), '환경 설정 점검');
   assert.match(envCheckDescription, /LOG_CHANNEL_ID/);
+  assert.match(envCheckDescription, /#bot-operation-log/);
   assert.match(envCheckDescription, /권장/);
   assert.match(envCheckDescription, /MISSION_SUBMISSION_CHANNEL_ID/);
   assert.match(envCheckDescription, /선택/);

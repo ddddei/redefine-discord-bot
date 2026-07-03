@@ -251,6 +251,7 @@ async function inspectChannelEnvironment(interaction, definition) {
     ...definition,
     configured: Boolean(channelId),
     channelId: channelId || null,
+    channelName: null,
     found: null,
     accessible: null,
     canSendMessages: null,
@@ -274,6 +275,7 @@ async function inspectChannelEnvironment(interaction, definition) {
   return {
     ...baseCheck,
     found: true,
+    channelName: typeof channel.name === 'string' && channel.name ? channel.name : null,
     accessible: channelPermissionHas(permissions, PermissionFlagsBits.ViewChannel),
     canSendMessages: channelPermissionHas(permissions, PermissionFlagsBits.SendMessages),
   };

@@ -39,6 +39,24 @@ ADMIN_DASHBOARD_TITLE=리디파인 운영 대시보드
 
 `ADMIN_DASHBOARD_PASSWORD`에는 실제 관리자 비밀번호를 넣습니다. 코드, 문서, `.env.example`에는 실제 값을 남기지 않습니다.
 
+## 4. DM 대화 연습 MVP
+
+DM 대화 연습은 기본 비활성화입니다. 운영에서 켜려면 Railway Variables에 아래 값을 추가합니다.
+
+```env
+DM_CHAT_ENABLED=true
+AI_ENABLED=true
+AI_PROVIDER=openai
+AI_MODEL=
+OPENAI_API_KEY=
+DM_CHAT_LOG_CHANNEL_ID=
+DM_CHAT_HISTORY_LIMIT=8
+```
+
+`AI_MODEL`에는 운영자가 OpenAI Platform에서 사용할 모델명을 넣습니다. `OPENAI_API_KEY`와 실제 채널 ID는 Railway Variables 또는 로컬 `.env`에만 저장하고 문서, 코드, 캡처에 남기지 않습니다.
+
+DM 대화는 첫 사용 시 기록/운영진 열람 안내를 자동 전송합니다. 모든 사용자 메시지와 봇 응답은 local JSON 로그에 저장되고, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. 자해, 폭력, 괴롭힘, 긴급 위험 등 민감 표현은 `SAFETY_ALERT_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `DM_CHAT_LOG_CHANNEL_ID` 또는 `LOG_CHANNEL_ID`로 알립니다.
+
 ## 5. 채널/로그 환경변수
 
 권장 변수:
