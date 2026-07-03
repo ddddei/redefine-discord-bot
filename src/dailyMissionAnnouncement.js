@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getKoreanDateString } = require('./pointsRepository');
+const { saveJsonFileAtomic } = require('./jsonStorage');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_ANNOUNCEMENT_HOUR = 9;
@@ -73,9 +74,7 @@ function readState(statePath) {
 }
 
 function saveState(statePath, state) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(`${statePath}.tmp`, `${JSON.stringify(state, null, 2)}\n`);
-  fs.renameSync(`${statePath}.tmp`, statePath);
+  saveJsonFileAtomic(statePath, state);
 }
 
 function hasAnnouncementBeenSentForDate(state, dateString) {

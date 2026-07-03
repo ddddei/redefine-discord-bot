@@ -44,6 +44,11 @@ const checks = [
     args: ['--check', 'src/components.js'],
   },
   {
+    label: 'src/jsonStorage.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/jsonStorage.js'],
+  },
+  {
     label: 'src/pointsStore.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/pointsStore.js'],
@@ -157,6 +162,11 @@ const checks = [
     label: 'scripts/test-dungeonworld-sessions.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-dungeonworld-sessions.js'],
+  },
+  {
+    label: 'scripts/test-json-storage.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-json-storage.js'],
   },
   {
     label: 'scripts/test-points-store.js 문법 검사',
@@ -302,6 +312,11 @@ const checks = [
     label: 'scripts/test-dungeonworld-session-09.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-dungeonworld-session-09.js'],
+  },
+  {
+    label: 'jsonStorage smoke test',
+    command: 'node',
+    args: ['scripts/test-json-storage.js'],
   },
   {
     label: 'pointsStore smoke test',
