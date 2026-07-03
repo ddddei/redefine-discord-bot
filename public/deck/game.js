@@ -24,6 +24,27 @@
 
   var EFFECT_DESCRIPTION_ORDER = ['damage', 'block', 'draw', 'energy', 'strength', 'weak', 'vulnerable', 'heal', 'selfDamage'];
 
+  // 카드 우상단 타입 아이콘 판정: damage 포함=공격, block 포함(damage 없음)=방어, 그 외=스킬.
+  // (표시 전용 판정 — 카드 로직/저장 스키마에는 영향 없음.)
+  function getCardTypeAsset(card) {
+    var effect = card.effect;
+    if (effect.damage !== undefined) {
+      return '../shared/assets/deck-icon-attack.svg';
+    }
+    if (effect.block !== undefined) {
+      return '../shared/assets/deck-icon-defense.svg';
+    }
+    return '../shared/assets/deck-icon-skill.svg';
+  }
+
+  function appendCardTypeIcon(cardEl, card) {
+    var icon = document.createElement('img');
+    icon.className = 'card-type-icon';
+    icon.src = getCardTypeAsset(card);
+    icon.alt = '';
+    cardEl.appendChild(icon);
+  }
+
   function describeEffect(card) {
     var effect = card.effect;
     var parts = [];
@@ -154,7 +175,7 @@
   var advanceButton = document.getElementById('advance-button');
 
   var enemyNameEl = document.getElementById('enemy-name');
-  var enemyEmojiEl = document.querySelector('.enemy-emoji');
+  var enemyAssetEl = document.querySelector('.enemy-asset');
   var enemyHpValueEl = document.getElementById('enemy-hp-value');
   var enemyBlockValueEl = document.getElementById('enemy-block-value');
   var enemyStatusRowEl = document.getElementById('enemy-status-row');
@@ -217,7 +238,7 @@
   }
 
   function shakeEnemy() {
-    retriggerAnimation(enemyEmojiEl, 'gk-shake');
+    retriggerAnimation(enemyAssetEl, 'gk-shake');
   }
 
   function pulseBlockBadge(el) {
@@ -321,7 +342,9 @@
     }
     var enemy = Engine.findEnemy(combat.enemyId);
     enemyNameEl.textContent = enemy.name;
-    enemyEmojiEl.textContent = enemy.emoji;
+    enemyAssetEl.src = '../shared/assets/' + enemy.asset;
+    enemyAssetEl.classList.toggle('enemy-asset-elite', enemy.tier === 'elite');
+    enemyAssetEl.classList.toggle('enemy-asset-boss', enemy.tier === 'boss');
     enemyHpValueEl.textContent = Math.max(0, combat.enemyHp) + ' / ' + combat.enemyMaxHp;
 
     if (combat.enemyBlock > 0) {
@@ -400,6 +423,7 @@
       description.className = 'card-description';
       description.textContent = describeEffect(card);
 
+      appendCardTypeIcon(el, card);
       el.appendChild(cost);
       el.appendChild(name);
       el.appendChild(description);
@@ -423,7 +447,7 @@
       animateCardPlay(cardEl);
       if (result.results && result.results.hits) {
         result.results.hits.forEach(function (hit) {
-          showDamagePopup(enemyEmojiEl, hit.amount);
+          showDamagePopup(enemyAssetEl, hit.amount);
         });
         if (result.results.hits.length > 0) {
           shakeEnemy();
@@ -474,6 +498,7 @@
       description.className = 'card-description';
       description.textContent = describeEffect(card);
 
+      appendCardTypeIcon(el, card);
       el.appendChild(cost);
       el.appendChild(name);
       el.appendChild(description);

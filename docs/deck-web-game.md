@@ -29,7 +29,7 @@
 - `public/deck/styles.css` — 매치3·간식 공방 키우기와 같은 밝은 파스텔 팔레트, 모바일(375px) 우선 + PC 520px 카드 레이아웃.
 - `public/deck/content.js` — 카드 21종(시작 3 + 일반 12 + 정예급 6), 적 9종, 런 구성 배열, 휴식/보상 상수, 카피 등 정의 데이터만 담습니다. DOM에 접근하지 않으며 `window.DeckContent` 전역과 Node `module.exports` 양쪽에서 로드할 수 있습니다.
 - `public/deck/engine.js` — 시드 RNG, 덱 셔플/드로우/버림, 카드 효과 해석, 피해 계산(힘/약화/취약/방어도 순서), 적 의도 순환·행동 실행, 턴/런 진행, 승패 판정, 저장 직렬화·역직렬화 등 순수 계산 로직. DOM이나 `Date.now()`, `Math.random()`을 직접 참조하지 않고 난수는 항상 시드 기반 트래커를 인자로 받습니다. `window.DeckEngine` 전역과 Node `module.exports` 양쪽에서 로드할 수 있습니다.
-- `public/deck/game.js` — DOM 렌더링, 카드 탭 입력, 화면 전환, localStorage 저장/복원, `beforeunload` 처리.
+- `public/deck/game.js` — DOM 렌더링, 카드 탭 입력, 화면 전환, localStorage 저장/복원, `beforeunload` 처리. 적·플레이어·카드 타입 아이콘은 `public/shared/assets/deck-enemy-*.svg`, `shared-char-baker.svg`, `deck-icon-*.svg`(`content.js`의 `asset` 필드로 참조, [webgame-design-guide.md](webgame-design-guide.md))에 의존합니다.
 
 ## 로컬 실행 및 QA
 

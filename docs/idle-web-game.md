@@ -31,7 +31,7 @@
 - `public/idle/styles.css` — 매치3과 같은 밝은 파스텔 팔레트, 무대별 장면 스타일, 모바일(375px) 우선 + PC 480px 카드 레이아웃
 - `public/idle/content.js` — 무대/시설/업그레이드/배달/퀘스트/업적/황금 간식 등 정의 데이터와 밸런스 상수. DOM에 접근하지 않으며 `window.IdleContent` 전역과 Node `module.exports` 양쪽에서 로드할 수 있습니다.
 - `public/idle/engine.js` — 비용·생산·구매·승급·배달·환생·오프라인 수익·저장 직렬화 등 순수 계산 로직. DOM이나 `Date.now()`를 직접 참조하지 않고 시각은 항상 인자로 받습니다. `window.IdleEngine` 전역과 Node `module.exports` 양쪽에서 로드할 수 있습니다.
-- `public/idle/game.js` — DOM 렌더링, 탭 전환, 클릭 입력/애니메이션, `requestAnimationFrame` 루프, 황금 간식 스케줄링, localStorage 저장/복원, `visibilitychange` 처리, 모달 제어
+- `public/idle/game.js` — DOM 렌더링, 탭 전환, 클릭 입력/애니메이션, `requestAnimationFrame` 루프, 황금 간식 스케줄링, localStorage 저장/복원, `visibilitychange` 처리, 모달 제어. 캐릭터·장면 소품 아이콘은 `public/shared/assets/shared-char-baker.svg`와 `match3-tile-*.svg` 재사용([webgame-design-guide.md](webgame-design-guide.md))에 의존합니다.
 
 ## 로컬 실행 및 QA
 
