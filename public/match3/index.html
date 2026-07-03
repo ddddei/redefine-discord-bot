@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="프로젝트 리디파인 참여자를 위한 가벼운 브라우저 매치3 퍼즐, 간식 맞추기입니다."
+    >
+    <title>간식 맞추기</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <p class="kicker">Snack match puzzle</p>
+        <h1>간식 맞추기</h1>
+        <p class="lede">
+          같은 간식 세 개 이상을 나란히 맞춰 점수를 올리는 가벼운 매치3 퍼즐입니다. 이동 30회 안에 최고 점수를 노려 보세요.
+        </p>
+      </div>
+      <div class="header-actions">
+        <button id="restart-button" class="button primary" type="button">다시 하기</button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <section class="stage-panel" aria-labelledby="stage-title">
+        <div class="feedback-strip" aria-live="polite">
+          <div class="hud-chip"><span>남은 이동</span><strong id="moves-value">30</strong></div>
+          <div class="hud-chip"><span>점수</span><strong id="score-value">0</strong></div>
+          <div class="hud-chip"><span>콤보</span><strong id="combo-value">×1</strong></div>
+        </div>
+        <p id="status-message" class="status-message" aria-live="polite">
+          인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.
+        </p>
+        <div id="board" class="board" role="grid" aria-label="간식 맞추기 보드"></div>
+      </section>
+
+      <aside class="side-panel" aria-label="게임 안내">
+        <section class="status-card">
+          <h2>진행 방법</h2>
+          <ul class="rule-list">
+            <li>인접한 두 칸을 순서대로 클릭하면 자리가 바뀝니다.</li>
+            <li>바꾼 자리에서 매치가 만들어지지 않으면 원래대로 되돌아갑니다.</li>
+            <li>매치가 사라진 자리는 위에서 새 간식이 채워지고, 이어지는 매치는 콤보로 이어집니다.</li>
+            <li>가능한 이동이 없으면 이동 횟수 소모 없이 보드를 다시 섞습니다.</li>
+          </ul>
+        </section>
+        <section class="status-card">
+          <h2>점수 안내</h2>
+          <ul class="rule-list">
+            <li>3개 매치 30점, 4개 매치 60점, 5개 이상 매치 120점</li>
+            <li>연쇄가 이어질 때마다 배수가 ×1, ×2, ×3…으로 올라갑니다.</li>
+          </ul>
+        </section>
+      </aside>
+    </main>
+
+    <div id="result-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <div class="modal-card">
+        <p class="kicker">결과</p>
+        <h2 id="result-title">이동을 모두 사용했어요</h2>
+        <p id="result-copy" class="result-copy"></p>
+        <dl class="result-stats">
+          <div><dt>최종 점수</dt><dd id="result-score">0</dd></div>
+          <div><dt>최고 콤보</dt><dd id="result-combo">×1</dd></div>
+          <div><dt>가장 많이 지운 간식</dt><dd id="result-top-tile">-</dd></div>
+        </dl>
+        <div class="modal-actions">
+          <button id="result-retry-button" class="button primary" type="button">다시 하기</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./board.js"></script>
+    <script src="./game.js"></script>
+  </body>
+</html>

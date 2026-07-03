@@ -23,6 +23,7 @@ const {
 
 const ADMIN_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'admin');
 const DUNGEONWORLD_SURVIVORS_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'dungeonworld-survivors');
+const MATCH3_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'match3');
 
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -78,6 +79,20 @@ function resolveDungeonworldSurvivorsAsset(pathname) {
   return filePath;
 }
 
+function resolveMatch3Asset(pathname) {
+  const relativePath = pathname === '/game/match3' || pathname === '/game/match3/'
+    ? 'index.html'
+    : pathname.replace(/^\/game\/match3\//, '');
+  const normalized = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');
+  const filePath = path.join(MATCH3_PUBLIC_DIR, normalized);
+
+  if (!filePath.startsWith(MATCH3_PUBLIC_DIR)) {
+    return null;
+  }
+
+  return filePath;
+}
+
 function servePublicAsset(res, filePath) {
   if (!filePath || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     sendNotFound(res);
@@ -100,6 +115,10 @@ function serveAdminAsset(req, res, pathname) {
 
 function serveDungeonworldSurvivorsAsset(res, pathname) {
   servePublicAsset(res, resolveDungeonworldSurvivorsAsset(pathname));
+}
+
+function serveMatch3Asset(res, pathname) {
+  servePublicAsset(res, resolveMatch3Asset(pathname));
 }
 
 function handleAdminApi(req, res, pathname, searchParams, repository) {
@@ -208,6 +227,14 @@ function createAdminRequestHandler(repository) {
       || requestUrl.pathname.startsWith('/game/dungeonworld-survivors/')
     ) {
       serveDungeonworldSurvivorsAsset(res, requestUrl.pathname);
+      return;
+    }
+
+    if (
+      requestUrl.pathname === '/game/match3'
+      || requestUrl.pathname.startsWith('/game/match3/')
+    ) {
+      serveMatch3Asset(res, requestUrl.pathname);
       return;
     }
 
