@@ -57,8 +57,15 @@ async function main() {
       pointTransactions: [{ id: 'tx_1', amount: 30 }],
     };
     const missionsData = { isExample: false, missions: [{ id: 'mission_1', title: '테스트 미션' }] };
+    const dmChatData = {
+      version: 2,
+      isExample: false,
+      notices: [],
+      messages: [{ id: 'dm_chat_1', userId: 'user_1', role: 'user', content: '연습 대화' }],
+    };
     saveJsonFileAtomic(path.join(dataDir, 'points.local.json'), pointsData);
     saveJsonFileAtomic(path.join(dataDir, 'missions.local.json'), missionsData);
+    saveJsonFileAtomic(path.join(dataDir, 'dm-chat-logs.local.json'), dmChatData);
 
     const snapshotPaths = {
       points: path.join(dataDir, 'points.local.json'),
@@ -69,6 +76,7 @@ async function main() {
       submissions: path.join(dataDir, 'submissions.local.json'),
       reactionApprovals: path.join(dataDir, 'reaction-approvals.local.json'),
       operatorSupport: path.join(dataDir, 'operator-support.local.json'),
+      dmChatLogs: path.join(dataDir, 'dm-chat-logs.local.json'),
       dungeonworldLogs: path.join(dataDir, 'dungeonworld-logs.local.json'),
       dungeonworldConfig: path.join(dataDir, 'dungeonworld-config.local.json'),
       dailyMissionAnnouncements: path.join(dataDir, 'daily-mission-announcements.local.json'),
@@ -81,9 +89,10 @@ async function main() {
     assert.strictEqual(snapshot.trigger, 'scheduled');
     assert.deepStrictEqual(snapshot.files.points, pointsData);
     assert.deepStrictEqual(snapshot.files.missions, missionsData);
+    assert.deepStrictEqual(snapshot.files.dmChatLogs, dmChatData);
     assert.strictEqual(snapshot.files.shopItems, null);
     assert.strictEqual(snapshot.files.dungeonworldLogs, null);
-    assert.strictEqual(Object.keys(snapshot.files).length, 11);
+    assert.strictEqual(Object.keys(snapshot.files).length, 12);
 
     // 2. 비활성(기본) 시 스케줄러는 아무것도 하지 않는다
     delete process.env.OPERATION_BACKUP_AUTO_ENABLED;
@@ -199,6 +208,7 @@ async function main() {
 
     const restoredPointsPath = path.join(restoreDir, 'points.local.json');
     const restoredMissionsPath = path.join(restoreDir, 'missions.local.json');
+    const restoredDmChatLogsPath = path.join(restoreDir, 'dm-chat-logs.local.json');
     assert.strictEqual(
       fs.readFileSync(restoredPointsPath, 'utf8'),
       fs.readFileSync(path.join(dataDir, 'points.local.json'), 'utf8')
@@ -207,8 +217,26 @@ async function main() {
       fs.readFileSync(restoredMissionsPath, 'utf8'),
       fs.readFileSync(path.join(dataDir, 'missions.local.json'), 'utf8')
     );
+    assert.strictEqual(
+      fs.readFileSync(restoredDmChatLogsPath, 'utf8'),
+      fs.readFileSync(path.join(dataDir, 'dm-chat-logs.local.json'), 'utf8')
+    );
     // null 항목은 파일을 만들지 않는다
     assert.strictEqual(fs.existsSync(path.join(restoreDir, 'shop-items.local.json')), false);
+
+    const legacySnapshot = {
+      ...snapshot,
+      files: { ...snapshot.files },
+    };
+    delete legacySnapshot.files.dmChatLogs;
+    const legacySnapshotFilePath = path.join(createTempDir('operation-backup-legacy-snapshot-'), 'snapshot.json');
+    fs.writeFileSync(legacySnapshotFilePath, `${JSON.stringify(legacySnapshot, null, 2)}\n`, 'utf8');
+    const legacyRestoreDir = createTempDir('operation-backup-legacy-restore-');
+    const legacyApplyResult = spawnSync('node', [restoreScript, legacySnapshotFilePath, '--apply', '--force', '--data-dir', legacyRestoreDir], {
+      encoding: 'utf8',
+    });
+    assert.strictEqual(legacyApplyResult.status, 0, legacyApplyResult.stderr);
+    assert.strictEqual(fs.existsSync(path.join(legacyRestoreDir, 'dm-chat-logs.local.json')), false);
 
     // 기존 파일이 있으면 --apply만으로는 덮어쓰지 않는다
     const modifiedData = { isExample: false, users: [], pointTransactions: [] };

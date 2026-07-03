@@ -22,6 +22,14 @@ async function fetchLogChannel(client, channelId, contextLabel) {
   }
 }
 
+function getSafetyDetectionSourceLabel(record) {
+  if (record.safetyDetectionSource === 'output') {
+    return '출력 감지';
+  }
+
+  return '입력 감지';
+}
+
 async function sendDmChatOperatorLog(client, record) {
   const logChannelId = process.env.DM_CHAT_LOG_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
   const channel = await fetchLogChannel(client, logChannelId, 'DM 대화 로그');
@@ -51,7 +59,7 @@ async function sendDmChatOperatorLog(client, record) {
   if (record.safetyDetection) {
     embed.addFields({
       name: '안전 감지',
-      value: truncateEmbedValue(`${record.safetyDetection.category} / ${record.safetyDetection.severity}`, 300),
+      value: truncateEmbedValue(`${getSafetyDetectionSourceLabel(record)} / ${record.safetyDetection.category} / ${record.safetyDetection.severity}`, 300),
     });
   }
 

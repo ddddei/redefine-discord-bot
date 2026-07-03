@@ -51,11 +51,12 @@ AI_MODEL=
 OPENAI_API_KEY=
 DM_CHAT_LOG_CHANNEL_ID=
 DM_CHAT_HISTORY_LIMIT=8
+DM_CHAT_DAILY_LIMIT=30
 ```
 
 `AI_MODEL`에는 운영자가 OpenAI Platform에서 사용할 모델명을 넣습니다. `OPENAI_API_KEY`와 실제 채널 ID는 Railway Variables 또는 로컬 `.env`에만 저장하고 문서, 코드, 캡처에 남기지 않습니다.
 
-DM 대화는 첫 사용 시 기록/운영진 열람 안내를 자동 전송합니다. 모든 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되고, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`은 같은 로그에서 최근 DM 메시지를 읽기 전용으로 보여주며, safetyDetection이 있는 메시지는 별도 배지로 구분합니다. 자해, 폭력, 괴롭힘, 긴급 위험 등 민감 표현은 `SAFETY_ALERT_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `DM_CHAT_LOG_CHANNEL_ID` 또는 `LOG_CHANNEL_ID`로 알립니다.
+DM 대화는 첫 사용 시 기록/운영진 열람 안내를 자동 전송합니다. 모든 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되고, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`은 같은 로그에서 최근 DM 메시지를 읽기 전용으로 보여주며, safetyDetection이 있는 메시지는 별도 배지로 구분합니다. 자해, 폭력, 괴롭힘, 긴급 위험 등 민감 표현은 `SAFETY_ALERT_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `DM_CHAT_LOG_CHANNEL_ID` 또는 `LOG_CHANNEL_ID`로 알립니다. `DM_CHAT_DAILY_LIMIT`는 KST 당일 사용자별 `role=user` 메시지 수 기준 상한이며, 미설정 또는 숫자가 아닌 값은 30으로 처리합니다. `0`으로 설정하면 일일 제한을 해제합니다. 상한 초과 시 AI를 호출하지 않고 "오늘은 연습을 충분히 했어요. 내일 다시 이어서 연습해요. 급한 일이나 어려운 일이 있다면 운영진에게 문의해 주세요."를 저장/전송합니다.
 
 ## 5. 채널/로그 환경변수
 

@@ -42,6 +42,7 @@ function getDefaultSnapshotPaths() {
     submissions: process.env.SUBMISSIONS_DATA_PATH || path.join(DATA_DIR, 'submissions.local.json'),
     reactionApprovals: process.env.REACTION_APPROVALS_DATA_PATH || path.join(DATA_DIR, 'reaction-approvals.local.json'),
     operatorSupport: process.env.OPERATOR_SUPPORT_DATA_PATH || path.join(DATA_DIR, 'operator-support.local.json'),
+    dmChatLogs: process.env.DM_CHAT_LOG_PATH || path.join(DATA_DIR, 'dm-chat-logs.local.json'),
     dungeonworldLogs: process.env.DUNGEONWORLD_LOG_PATH || path.join(DATA_DIR, 'dungeonworld-logs.local.json'),
     dungeonworldConfig: process.env.DUNGEONWORLD_CONFIG_PATH || path.join(DATA_DIR, 'dungeonworld-config.local.json'),
     dailyMissionAnnouncements: path.join(DATA_DIR, 'daily-mission-announcements.local.json'),
