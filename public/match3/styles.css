@@ -100,11 +100,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(16px, 3.4vw, 26px);
   cursor: pointer;
   color: #fff;
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.15s ease;
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
+}
+
+.tile-asset {
+  width: 82%;
+  height: 82%;
+  max-width: var(--asset-md);
+  max-height: var(--asset-md);
+  pointer-events: none;
 }
 
 .tile:focus-visible {
