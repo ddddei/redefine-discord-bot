@@ -494,6 +494,14 @@
       }
     }
 
+    if (abs > 0 && abs < 100 && Math.floor(abs) !== abs) {
+      // 시설 1대의 초당 생산량처럼 1 미만/소수인 값이 "0"으로 뭉개지지 않도록
+      // 100 미만 소수는 첫째 자리까지 보여준다.
+      var smallRounded = Math.floor(abs * 10) / 10;
+      var smallText = smallRounded.toFixed(1).replace(/\.0$/, '');
+      return (negative ? '-' : '') + smallText;
+    }
+
     var intValue = Math.floor(abs);
     var withCommas = intValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return (negative ? '-' : '') + withCommas;
@@ -634,6 +642,7 @@
     findUpgrade: findUpgrade,
     findDelivery: findDelivery,
     createNewState: createNewState,
+    addProduced: addProduced,
     buildingCost: buildingCost,
     getBuildingCost: getBuildingCost,
     productionMultiplier: productionMultiplier,
