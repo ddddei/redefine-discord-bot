@@ -347,7 +347,7 @@ async function main() {
   assert.match(getEmbedDescription(firstClampButton.replyPayload), /이미 첫 회차/);
   assert.strictEqual(configRepository.getOverride(), 'session_01_black_bell');
 
-  configRepository.setOverride('session_09_final_gate', 'operator_1');
+  configRepository.setOverride('session_12_new_map', 'operator_1');
   const lastClampButton = createInteraction({
     customId: 'dungeonworld_manage:next',
     isButton: true,
@@ -356,7 +356,7 @@ async function main() {
   });
   await handleInteractionCreate(lastClampButton);
   assert.match(getEmbedDescription(lastClampButton.replyPayload), /이미 마지막 회차/);
-  assert.strictEqual(configRepository.getOverride(), 'session_09_final_gate');
+  assert.strictEqual(configRepository.getOverride(), 'session_12_new_map');
 
   const unknownManageButton = createInteraction({
     customId: 'dungeonworld_manage:unknown',

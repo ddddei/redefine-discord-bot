@@ -349,6 +349,21 @@ const checks = [
     args: ['--check', 'scripts/test-dungeonworld-session-09.js'],
   },
   {
+    label: 'scripts/test-dungeonworld-session-10.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-10.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-11.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-11.js'],
+  },
+  {
+    label: 'scripts/test-dungeonworld-session-12.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dungeonworld-session-12.js'],
+  },
+  {
     label: 'jsonStorage smoke test',
     command: 'node',
     args: ['scripts/test-json-storage.js'],
@@ -527,6 +542,21 @@ const checks = [
     label: 'dungeonworld session 09 content test',
     command: 'node',
     args: ['scripts/test-dungeonworld-session-09.js'],
+  },
+  {
+    label: 'dungeonworld session 10 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-10.js'],
+  },
+  {
+    label: 'dungeonworld session 11 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-11.js'],
+  },
+  {
+    label: 'dungeonworld session 12 content test',
+    command: 'node',
+    args: ['scripts/test-dungeonworld-session-12.js'],
   },
   {
     label: 'dungeonworld sessions smoke test',

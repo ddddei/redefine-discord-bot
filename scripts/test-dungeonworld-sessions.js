@@ -42,8 +42,7 @@ function main() {
   assert.strictEqual(dw.resolveAutoSessionId(new Date('2030-01-07T23:00:00Z')), 'session_01_black_bell');
   assert.strictEqual(dw.resolveAutoSessionId(new Date('2030-01-08T00:00:01Z')), 'session_02_roots_below');
   assert.strictEqual(dw.resolveAutoSessionId(new Date('2030-01-15T00:00:00Z')), 'session_03_locked_basin');
-  // 회차 수(9개)보다 더 많은 주가 지나면 마지막 회차에 고정된다.
-  assert.strictEqual(dw.resolveAutoSessionId(new Date('2032-01-01T00:00:00Z')), 'session_09_final_gate');
+  assert.strictEqual(dw.resolveAutoSessionId(new Date('2032-01-01T00:00:00Z')), 'session_12_new_map');
   delete process.env.DUNGEONWORLD_START_DATE;
   resetModule('../src/dungeonworld');
 
@@ -65,6 +64,7 @@ function main() {
   assert.strictEqual(getPreviousSessionId('session_01_black_bell'), null);
   assert.strictEqual(getPreviousSessionId('session_02_roots_below'), 'session_01_black_bell');
   assert.strictEqual(getPreviousSessionId('session_09_final_gate'), 'session_08_three_doors');
+  assert.strictEqual(getPreviousSessionId('session_10_quiet_morning'), 'session_09_final_gate');
 
   // --- introVariants 선택 로직 ---
   const fakeSession = {
