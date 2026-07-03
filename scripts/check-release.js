@@ -519,6 +519,11 @@ const checks = [
     args: ['scripts/test-dungeonworld-survivors-static.js'],
   },
   {
+    label: 'shared game ui static smoke test',
+    command: 'node',
+    args: ['scripts/test-shared-ui-static.js'],
+  },
+  {
     label: 'match3 logic smoke test',
     command: 'node',
     args: ['scripts/test-match3-logic.js'],

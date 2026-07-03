@@ -26,6 +26,7 @@ const DUNGEONWORLD_SURVIVORS_PUBLIC_DIR = path.join(__dirname, '..', 'public', '
 const MATCH3_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'match3');
 const IDLE_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'idle');
 const DECK_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'deck');
+const SHARED_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'shared');
 
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -123,6 +124,18 @@ function resolveDeckAsset(pathname) {
   return filePath;
 }
 
+function resolveSharedAsset(pathname) {
+  const relativePath = pathname.replace(/^\/game\/shared\//, '');
+  const normalized = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');
+  const filePath = path.join(SHARED_PUBLIC_DIR, normalized);
+
+  if (!filePath.startsWith(SHARED_PUBLIC_DIR)) {
+    return null;
+  }
+
+  return filePath;
+}
+
 function servePublicAsset(res, filePath) {
   if (!filePath || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     sendNotFound(res);
@@ -157,6 +170,10 @@ function serveIdleAsset(res, pathname) {
 
 function serveDeckAsset(res, pathname) {
   servePublicAsset(res, resolveDeckAsset(pathname));
+}
+
+function serveSharedAsset(res, pathname) {
+  servePublicAsset(res, resolveSharedAsset(pathname));
 }
 
 function handleAdminApi(req, res, pathname, searchParams, repository) {
@@ -289,6 +306,11 @@ function createAdminRequestHandler(repository) {
       || requestUrl.pathname.startsWith('/game/deck/')
     ) {
       serveDeckAsset(res, requestUrl.pathname);
+      return;
+    }
+
+    if (requestUrl.pathname.startsWith('/game/shared/')) {
+      serveSharedAsset(res, requestUrl.pathname);
       return;
     }
 
