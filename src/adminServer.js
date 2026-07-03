@@ -14,6 +14,7 @@ const {
   listMissionStatus,
   listPendingRedemptions,
   listPendingSubmissions,
+  listRecentDmChatMessages,
   listRecentPointTransactions,
   listRecentReactionApprovals,
   listShopItemStatus,
@@ -166,6 +167,11 @@ function handleAdminApi(req, res, pathname, searchParams, repository) {
 
     if (pathname === '/api/admin/reaction-approvals') {
       sendJson(res, 200, listRecentReactionApprovals(repository, limit));
+      return;
+    }
+
+    if (pathname === '/api/admin/dm-chat-logs') {
+      sendJson(res, 200, listRecentDmChatMessages(null, limit));
       return;
     }
 
