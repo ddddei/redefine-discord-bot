@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const {
   EXPLORE_PLACES,
+  EXPLORE_REWARD_MESSAGES,
   INITIAL_QUIZZES,
   MEMORY_PATTERNS,
   MINIGAMES,
@@ -193,28 +194,77 @@ function createInitialResult({ userId, dateString, choiceIndex }) {
   };
 }
 
-function createExploreResult({ placeKey }) {
-  const place = EXPLORE_PLACES[placeKey] || EXPLORE_PLACES.forest;
+const EXPLORE_REWARD_PERMUTATIONS = [
+  [0, 3, 5],
+  [0, 5, 3],
+  [3, 0, 5],
+  [3, 5, 0],
+  [5, 0, 3],
+  [5, 3, 0],
+];
+
+function getExploreRewardsByPlace({ userId, dateString }) {
+  const permutationIndex = deterministicNumber(
+    [userId, dateString, 'explore', 'rewards'],
+    EXPLORE_REWARD_PERMUTATIONS.length
+  );
+  const rewards = EXPLORE_REWARD_PERMUTATIONS[permutationIndex];
+  const rewardsByPlace = {};
+
+  Object.keys(EXPLORE_PLACES).forEach((placeKey, index) => {
+    rewardsByPlace[placeKey] = rewards[index];
+  });
+
+  return rewardsByPlace;
+}
+
+function createExploreResult({ userId, dateString, placeKey }) {
+  const selectedKey = EXPLORE_PLACES[placeKey] ? placeKey : 'forest';
+  const place = EXPLORE_PLACES[selectedKey];
+  const rewardPoints = getExploreRewardsByPlace({ userId, dateString })[selectedKey];
+  const messages = EXPLORE_REWARD_MESSAGES[rewardPoints];
+  const message = messages[deterministicNumber(
+    [userId, dateString, 'explore', 'story', selectedKey],
+    messages.length
+  )];
 
   return {
     gameId: MINIGAMES.explore.id,
     title: MINIGAMES.explore.title,
-    rewardPoints: place.reward,
+    rewardPoints,
     lines: [
-      place.message,
+      message,
       `선택한 장소: ${place.label}`,
-      `탐험 결과: ${place.reward}P`,
+      `탐험 결과: ${rewardPoints}P`,
     ],
   };
 }
 
-function createRogueResult({ pathKey, itemKey, exitKey }) {
-  const path = ROGUE_PATHS[pathKey] || ROGUE_PATHS.market;
-  const item = ROGUE_ITEMS[itemKey] || ROGUE_ITEMS.lantern;
-  const exit = ROGUE_EXITS[exitKey] || ROGUE_EXITS.signal;
+function getRogueFavoredChoices({ userId, dateString, pathKey }) {
+  const itemKeys = Object.keys(ROGUE_ITEMS);
+  const exitKeys = Object.keys(ROGUE_EXITS);
+
+  return {
+    favoredItem: itemKeys[deterministicNumber([userId, dateString, 'rogue', pathKey, 'item'], itemKeys.length)],
+    favoredExit: exitKeys[deterministicNumber([userId, dateString, 'rogue', pathKey, 'exit'], exitKeys.length)],
+  };
+}
+
+function createRogueResult({ userId, dateString, pathKey, itemKey, exitKey }) {
+  const selectedPathKey = ROGUE_PATHS[pathKey] ? pathKey : 'market';
+  const selectedItemKey = ROGUE_ITEMS[itemKey] ? itemKey : 'lantern';
+  const selectedExitKey = ROGUE_EXITS[exitKey] ? exitKey : 'signal';
+  const path = ROGUE_PATHS[selectedPathKey];
+  const item = ROGUE_ITEMS[selectedItemKey];
+  const exit = ROGUE_EXITS[selectedExitKey];
+  const { favoredItem, favoredExit } = getRogueFavoredChoices({
+    userId,
+    dateString,
+    pathKey: selectedPathKey,
+  });
   const matchCount = [
-    path.favoredItem === itemKey,
-    path.favoredExit === exitKey,
+    favoredItem === selectedItemKey,
+    favoredExit === selectedExitKey,
   ].filter(Boolean).length;
   const rewardPoints = matchCount === 2 ? 10 : (matchCount === 1 ? 5 : 3);
   const ending = matchCount === 2
@@ -253,4 +303,6 @@ module.exports = {
   createRogueResult,
   createRpsResult,
   deterministicNumber,
+  getExploreRewardsByPlace,
+  getRogueFavoredChoices,
 };
