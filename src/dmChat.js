@@ -21,8 +21,34 @@ const CONFIGURATION_FALLBACK = [
   '운영진이 OpenAI API 설정을 마치면 여기서 짧은 대화 연습을 할 수 있습니다.',
 ].join('\n');
 
+const DAILY_LIMIT_FALLBACK = '오늘은 연습을 충분히 했어요. 내일 다시 이어서 연습해요. 급한 일이나 어려운 일이 있다면 운영진에게 문의해 주세요.';
+const OUTPUT_SAFETY_FALLBACK = '지금은 답변을 만들지 못했어요. 잠시 후 다시 말을 걸어 주세요.';
+
 function isDmChatEnabled() {
   return process.env.DM_CHAT_ENABLED === 'true';
+}
+
+function getDmChatDailyLimit() {
+  const parsedLimit = Number.parseInt(process.env.DM_CHAT_DAILY_LIMIT || '30', 10);
+
+  if (!Number.isInteger(parsedLimit) || parsedLimit < 0) {
+    return 30;
+  }
+
+  return parsedLimit;
+}
+
+function getTodayUserMessageCount(repository, userId) {
+  if (!repository || typeof repository.countTodayUserMessages !== 'function') {
+    return 0;
+  }
+
+  return repository.countTodayUserMessages(userId);
+}
+
+function isDailyLimitReached(todayUserMessageCount) {
+  const dailyLimit = getDmChatDailyLimit();
+  return dailyLimit > 0 && todayUserMessageCount >= dailyLimit;
 }
 
 function getDmChatConfigurationStatus() {
@@ -116,6 +142,7 @@ async function handleSensitiveDmMessage(message, client, repository, userRecord,
     role: 'assistant',
     content: reply,
     safetyDetection: detection,
+    safetyDetectionSource: 'input',
   });
 
   await logAndNotify(client, repository, assistantRecord);
@@ -149,6 +176,7 @@ async function handleDmChatMessage(message, client, options = {}) {
   }
 
   const detection = detectSensitiveQuestion(message.content);
+  const todayUserMessageCount = getTodayUserMessageCount(repository, userRecord.id);
   const userMessageRecord = repository.appendMessage({
     userId: userRecord.id,
     username: userRecord.username,
@@ -156,11 +184,27 @@ async function handleDmChatMessage(message, client, options = {}) {
     role: 'user',
     content: message.content,
     safetyDetection: detection,
+    safetyDetectionSource: detection ? 'input' : null,
   });
   await logAndNotify(client, repository, userMessageRecord);
 
   if (detection) {
     await handleSensitiveDmMessage(message, client, repository, userRecord, detection, userMessageRecord);
+    return true;
+  }
+
+  if (isDailyLimitReached(todayUserMessageCount)) {
+    const assistantRecord = repository.appendMessage({
+      userId: userRecord.id,
+      username: userRecord.username,
+      displayName: userRecord.displayName,
+      role: 'assistant',
+      content: DAILY_LIMIT_FALLBACK,
+    });
+
+    await logAndNotify(client, repository, assistantRecord);
+    await sendDirectMessage(message, DAILY_LIMIT_FALLBACK);
+    console.info(`[dm-chat] daily limit reached for user=${userRecord.id}`);
     return true;
   }
 
@@ -174,13 +218,16 @@ async function handleDmChatMessage(message, client, options = {}) {
       history,
       userDisplayName: userRecord.displayName,
     }, options.ai || {});
-    const safeReply = reply || CONFIGURATION_FALLBACK;
+    const outputDetection = reply ? detectSensitiveQuestion(reply) : null;
+    const safeReply = outputDetection ? OUTPUT_SAFETY_FALLBACK : reply || CONFIGURATION_FALLBACK;
     const assistantRecord = repository.appendMessage({
       userId: userRecord.id,
       username: userRecord.username,
       displayName: userRecord.displayName,
       role: 'assistant',
       content: safeReply,
+      safetyDetection: outputDetection,
+      safetyDetectionSource: outputDetection ? 'output' : null,
     });
 
     await logAndNotify(client, repository, assistantRecord);

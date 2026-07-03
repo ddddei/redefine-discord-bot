@@ -1,9 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const { saveJsonFile } = require('./pointsStore');
+const { getKoreanDateString } = require('./pointsRepository');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_DM_CHAT_LOG_PATH = process.env.DM_CHAT_LOG_PATH || path.join(DATA_DIR, 'dm-chat-logs.local.json');
+const CURRENT_DM_CHAT_LOG_VERSION = 2;
 
 function createTimestamp() {
   return new Date().toISOString();
@@ -16,12 +18,21 @@ function createLogId(prefix) {
 
 function createInitialData() {
   return {
-    version: 1,
+    version: CURRENT_DM_CHAT_LOG_VERSION,
     isExample: false,
     description: 'Local DM chat logs for conversation-practice MVP. JSON storage is for MVP operation only.',
     notices: [],
     messages: [],
   };
+}
+
+function getRecordKoreanDateString(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return getKoreanDateString(date);
 }
 
 function loadData(logPath) {
@@ -36,6 +47,7 @@ function normalizeData(data) {
   return {
     ...createInitialData(),
     ...data,
+    version: CURRENT_DM_CHAT_LOG_VERSION,
     notices: Array.isArray(data && data.notices) ? data.notices : [],
     messages: Array.isArray(data && data.messages) ? data.messages : [],
   };
@@ -80,6 +92,7 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
       role: entry.role,
       content: entry.content,
       safetyDetection: entry.safetyDetection || null,
+      safetyDetectionSource: entry.safetyDetectionSource || null,
       error: entry.error || null,
     };
 
@@ -114,8 +127,21 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     return safeLimit ? messages.slice(0, safeLimit) : messages;
   }
 
+  function countTodayUserMessages(userId, now = new Date()) {
+    const dateString = getRecordKoreanDateString(now);
+    const data = load();
+
+    return data.messages.filter((message) => {
+      return message
+        && message.userId === userId
+        && message.role === 'user'
+        && getRecordKoreanDateString(message.createdAt) === dateString;
+    }).length;
+  }
+
   return {
     appendMessage,
+    countTodayUserMessages,
     hasNotice,
     listRecentMessagesForAdmin,
     listRecentMessages,

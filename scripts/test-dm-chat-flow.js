@@ -45,11 +45,59 @@ function createDmMessage(content, sentMessages = []) {
   };
 }
 
+function createOpenAiClient(outputText) {
+  const calls = [];
+
+  return {
+    calls,
+    responses: {
+      create: async (payload) => {
+        calls.push(payload);
+        return { output_text: outputText };
+      },
+    },
+  };
+}
+
+function getEmbedData(payload) {
+  const embed = payload && payload.embeds && payload.embeds[0];
+  if (!embed) {
+    return null;
+  }
+
+  if (typeof embed.toJSON === 'function') {
+    return embed.toJSON();
+  }
+
+  return embed.data || null;
+}
+
+function countLogsByTitle(client, title) {
+  return client.sentLogs.filter((payload) => {
+    const data = getEmbedData(payload);
+    return data && data.title === title;
+  }).length;
+}
+
+function findLogByTitle(client, title) {
+  return client.sentLogs.find((payload) => {
+    const data = getEmbedData(payload);
+    return data && data.title === title;
+  });
+}
+
+function findEmbedField(payload, name) {
+  const data = getEmbedData(payload);
+  const fields = data && Array.isArray(data.fields) ? data.fields : [];
+  return fields.find((field) => field.name === name) || null;
+}
+
 async function main() {
   const previousEnv = {
     AI_ENABLED: process.env.AI_ENABLED,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
+    DM_CHAT_DAILY_LIMIT: process.env.DM_CHAT_DAILY_LIMIT,
     DM_CHAT_ENABLED: process.env.DM_CHAT_ENABLED,
     DM_CHAT_HISTORY_LIMIT: process.env.DM_CHAT_HISTORY_LIMIT,
     DM_CHAT_LOG_CHANNEL_ID: process.env.DM_CHAT_LOG_CHANNEL_ID,
@@ -63,6 +111,7 @@ async function main() {
   process.env.AI_PROVIDER = 'mock';
   process.env.AI_MODEL = '';
   process.env.DM_CHAT_ENABLED = 'true';
+  process.env.DM_CHAT_DAILY_LIMIT = '30';
   process.env.DM_CHAT_HISTORY_LIMIT = '8';
   process.env.DM_CHAT_LOG_CHANNEL_ID = 'dm_log_channel_test';
   process.env.SAFETY_ALERT_CHANNEL_ID = 'safety_alert_channel_test';
@@ -139,6 +188,95 @@ async function main() {
     assert.strictEqual(emptyContentHandled, true);
     assert.strictEqual(emptyContentMessages.length, 1);
     assert.match(emptyContentMessages[0], /Message Content Intent/);
+
+    process.env.AI_PROVIDER = 'openai';
+    process.env.AI_MODEL = 'test-model';
+    process.env.DM_CHAT_DAILY_LIMIT = '1';
+
+    const limitRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-limit-logs.json'));
+    const limitClient = createClient();
+    const limitOpenAiClient = createOpenAiClient('좋아요. 첫 답변입니다.');
+    const firstLimitMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('오늘 첫 연습을 해보고 싶어요', firstLimitMessages),
+      limitClient,
+      { repository: limitRepository, ai: { openaiClient: limitOpenAiClient } }
+    );
+
+    assert.strictEqual(limitOpenAiClient.calls.length, 1);
+    assert.strictEqual(firstLimitMessages.length, 2);
+    assert.match(firstLimitMessages[1], /첫 답변/);
+
+    const overLimitMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('한 번 더 연습할래요', overLimitMessages),
+      limitClient,
+      { repository: limitRepository, ai: { openaiClient: limitOpenAiClient } }
+    );
+
+    assert.strictEqual(limitOpenAiClient.calls.length, 1);
+    assert.strictEqual(overLimitMessages.length, 1);
+    assert.strictEqual(
+      overLimitMessages[0],
+      '오늘은 연습을 충분히 했어요. 내일 다시 이어서 연습해요. 급한 일이나 어려운 일이 있다면 운영진에게 문의해 주세요.'
+    );
+
+    const limitData = readJson(path.join(tempDir, 'dm-chat-limit-logs.json'));
+    assert.strictEqual(limitData.messages.length, 4);
+    assert.strictEqual(limitData.messages[3].role, 'assistant');
+    assert.strictEqual(limitData.messages[3].content, overLimitMessages[0]);
+
+    const overLimitSafetyMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('계속 괴롭힘을 당하고 있어요', overLimitSafetyMessages),
+      limitClient,
+      { repository: limitRepository, ai: { openaiClient: limitOpenAiClient } }
+    );
+
+    assert.strictEqual(limitOpenAiClient.calls.length, 1);
+    assert.strictEqual(overLimitSafetyMessages.length, 1);
+    assert.match(overLimitSafetyMessages[0], /운영진 확인/);
+    assert.strictEqual(countLogsByTitle(limitClient, 'DM 안전 확인 필요'), 1);
+
+    process.env.DM_CHAT_DAILY_LIMIT = '0';
+    const unlimitedMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('제한을 끄면 다시 연습되나요?', unlimitedMessages),
+      limitClient,
+      { repository: limitRepository, ai: { openaiClient: limitOpenAiClient } }
+    );
+
+    assert.strictEqual(limitOpenAiClient.calls.length, 2);
+    assert.strictEqual(unlimitedMessages.length, 1);
+    assert.match(unlimitedMessages[0], /첫 답변/);
+
+    process.env.DM_CHAT_DAILY_LIMIT = '30';
+    const outputRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-output-logs.json'));
+    const outputClient = createClient();
+    const outputOpenAiClient = createOpenAiClient('자해하고 싶다는 말을 그대로 보내면 안 됩니다.');
+    const outputMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('평범하게 인사하는 문장을 연습하고 싶어요', outputMessages),
+      outputClient,
+      { repository: outputRepository, ai: { openaiClient: outputOpenAiClient } }
+    );
+
+    assert.strictEqual(outputOpenAiClient.calls.length, 1);
+    assert.strictEqual(outputMessages.length, 2);
+    assert.strictEqual(outputMessages[1], '지금은 답변을 만들지 못했어요. 잠시 후 다시 말을 걸어 주세요.');
+    assert.strictEqual(countLogsByTitle(outputClient, 'DM 안전 확인 필요'), 0);
+
+    const outputData = readJson(path.join(tempDir, 'dm-chat-output-logs.json'));
+    assert.strictEqual(outputData.messages.length, 2);
+    assert.strictEqual(outputData.messages[1].role, 'assistant');
+    assert.strictEqual(outputData.messages[1].content, outputMessages[1]);
+    assert.strictEqual(outputData.messages[1].safetyDetection.category, 'selfHarm');
+    assert.strictEqual(outputData.messages[1].safetyDetectionSource, 'output');
+
+    const outputBotLog = findLogByTitle(outputClient, 'DM 대화 로그: 봇');
+    const outputSafetyField = findEmbedField(outputBotLog, '안전 감지');
+    assert.ok(outputSafetyField);
+    assert.match(outputSafetyField.value, /출력 감지/);
   } finally {
     for (const [key, value] of Object.entries(previousEnv)) {
       if (value === undefined) {

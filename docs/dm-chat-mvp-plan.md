@@ -33,12 +33,13 @@ DM 대화 연습은 참여자가 봇과 1:1 DM으로 **사람들과 대화하기
 | 안전 감지 | 기존 민감 질문 규칙 재사용, 감지 시 AI 미호출 + 안전 알림 + 고정 안내 문구 | `src/safety.js`, `src/dmChat.js` |
 | 로그 저장 | `data/dm-chat-logs.local.json`(또는 `DM_CHAT_LOG_PATH`), 원자 저장(`pointsStore.saveJsonFile`) | `src/dmChatRepository.js` |
 | 운영진 로그/알림 | DM 로그 채널 embed, 안전 알림 채널 embed("자동 판단 아님" 고지 포함) | `src/dmChatLogging.js` |
+| 운영 안정 | 운영 백업 `dmChatLogs` 포함, KST 일일 사용자 메시지 제한, AI 응답 출력 안전 검사 | `src/operationBackup.js`, `src/dmChat.js`, `src/dmChatRepository.js`, `src/dmChatLogging.js` |
 | `/admin` 열람 | `/api/admin/dm-chat-logs` + 읽기 전용 섹션, example 제외, safetyDetection은 category/severity만 노출 | `src/adminApi.js`, `src/adminServer.js`, `public/admin/*` |
 | 테스트 | DM 흐름 스모크, admin 대시보드 스모크 | `scripts/test-dm-chat-flow.js`, `scripts/test-admin-dashboard-flow.js` |
 
 ### 2.3 이 계획에서 다루는 후속 범위
 
-1. 운영 안정: 백업 포함, 사용량 제한, AI 응답 출력 안전 검사
+1. 운영 안정(구현 완료): 백업 포함, 사용량 제한, AI 응답 출력 안전 검사
 2. 운영 편의: 안전 알림 스로틀, `/운영현황` DM 요약, `/admin` 필터
 3. 품질/정책: 대화 초기화, 로그 보존/삭제 정책, 비용 모니터링
 
@@ -69,14 +70,14 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
    │
    ├─► src/dmChatLogging.js ─► DM 로그 채널 / 안전 알림 채널 (embed)
    ├─► src/adminApi.js listRecentDmChatMessages ─► /api/admin/dm-chat-logs ─► /admin
-   └─► (1단계) src/operationBackup.js 스냅샷 대상 ─► 백업 채널
+   └─► src/operationBackup.js 스냅샷 대상(dmChatLogs) ─► 백업 채널
 ```
 
-### 3.2 데이터 구조 (`data/dm-chat-logs.local.json`, version 1)
+### 3.2 데이터 구조 (`data/dm-chat-logs.local.json`, version 2)
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "isExample": false,
   "notices": [{ "userId": "...", "username": "...", "displayName": "...", "sentAt": "ISO" }],
   "messages": [
@@ -87,6 +88,7 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
       "role": "user | assistant",
       "content": "...",
       "safetyDetection": { "category": "...", "severity": "...", "matchedKeyword": "..." },
+      "safetyDetectionSource": "input | output | null",
       "error": null
     }
   ]
@@ -105,10 +107,10 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 | `DM_CHAT_LOG_CHANNEL_ID` | 확정 | 운영진 DM 로그 채널 (fallback: `LOG_CHANNEL_ID`) |
 | `SAFETY_ALERT_CHANNEL_ID` | 확정 | 안전 알림 채널 (fallback: DM 로그 채널 → `LOG_CHANNEL_ID`) |
 | `AI_ENABLED` / `AI_PROVIDER` / `AI_MODEL` / `OPENAI_API_KEY` | 확정 | 응답 생성 설정 |
-| `DM_CHAT_DAILY_LIMIT` | 1단계 추가 | 사용자별 일일 user 메시지 상한 (미설정 시 기본 30, `0`이면 제한 해제) |
+| `DM_CHAT_DAILY_LIMIT` | 확정 | 사용자별 일일 user 메시지 상한 (미설정 시 기본 30, `0`이면 제한 해제) |
 | `SAFETY_ALERT_THROTTLE_MINUTES` | 2단계 추가 | 같은 사용자 반복 안전 알림 묶음 간격 (기본 10) |
 
-새 환경변수는 `.env.example`과 `docs/railway-env-guide.md`에 같은 PR에서 추가한다.
+확정된 새 환경변수는 `.env.example`과 `docs/railway-env-guide.md`에 같은 PR에서 반영한다. 향후 단계에서 추가되는 변수도 같은 원칙을 따른다.
 
 ---
 
@@ -134,7 +136,7 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 
 | 단계 | Codex 지시서 | 상태 |
 | --- | --- | --- |
-| 1단계 운영 안정 | `prompts/codex/dm-chat-hardening-v1.md` | 지시서 작성됨 |
+| 1단계 운영 안정 | `prompts/codex/dm-chat-hardening-v1.md` | 구현 완료 |
 | 2단계 운영 편의 | `prompts/codex/dm-chat-ops-visibility-v1.md` | 1단계 완료 후 작성 |
 | 3단계 품질/정책 | `prompts/codex/dm-chat-retention-v1.md` | 보존 정책 확정 후 작성 |
 
@@ -142,28 +144,30 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 
 ## 5. 단계별 개발 계획
 
-### 5.1 1단계: 운영 안정 (참여자 오픈 전 필수)
+### 5.1 1단계: 운영 안정 (구현 완료)
 
 목표: 데이터 유실, 비용 폭주, 부적절 응답 세 가지 운영 리스크를 막는다.
 
-**작업 1-a. 백업 대상에 DM 로그 포함**
+상태: 구현 완료. S1~S3는 `scripts/test-operation-backup-flow.js`와 `scripts/test-dm-chat-flow.js`에서 확인한다.
+
+**작업 1-a. 백업 대상에 DM 로그 포함 (구현 완료)**
 
 - `src/operationBackup.js`의 스냅샷 대상에 `dmChatLogs`(경로: `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`)를 추가한다.
 - 복원 스크립트(`scripts/restore-operation-backup.js`)가 새 키를 안전하게 처리하는지 확인하고, 이전 백업(키 없음)을 복원할 때 오류가 나지 않아야 한다.
 - 수정 파일: `src/operationBackup.js`, `scripts/restore-operation-backup.js`(필요 시), `scripts/test-operation-backup-flow.js`, `docs/export-and-backup-guide.md`
 
-**작업 1-b. 사용자별 일일 사용량 제한**
+**작업 1-b. 사용자별 일일 사용량 제한 (구현 완료)**
 
 - `DM_CHAT_DAILY_LIMIT`(기본 30, `0`이면 제한 해제)을 추가한다. 기준은 KST 당일 해당 사용자의 `role=user` 메시지 수이며, 별도 상태 파일 없이 기존 로그에서 계산한다.
 - 상한 도달 시: 사용자 메시지는 평소대로 저장·로그 전송하되 AI를 호출하지 않고 "오늘 연습을 충분히 했어요. 내일 다시 이어가요." 계열의 고정 안내로 응답한다.
 - 민감 감지 메시지는 상한과 무관하게 기존 안전 흐름(알림 + 안내)을 그대로 수행한다.
 - 수정 파일: `src/dmChat.js`, `src/dmChatRepository.js`(당일 카운트 조회 추가), `scripts/test-dm-chat-flow.js`, `.env.example`, `docs/railway-env-guide.md`, `README.md`
 
-**작업 1-c. AI 응답 출력 안전 검사**
+**작업 1-c. AI 응답 출력 안전 검사 (구현 완료)**
 
 - `handleDmChatMessage`에서 생성된 응답에 `detectSensitiveQuestion`을 적용한다. 감지 시 그 응답을 전송하지 않고 준비 중/재시도 안내로 대체하며, 로그 레코드에 감지 사실을 남긴다(운영진 로그 채널에서 구분 가능해야 함).
 - 출력 감지는 참여자에게 안전 알림 문구를 보내는 사유가 아니다(참여자 잘못이 아님). 운영진 알림 채널 전송 여부는 로그 채널 embed 표시로 갈음한다.
-- 수정 파일: `src/dmChat.js`, `scripts/test-dm-chat-flow.js`
+- 수정 파일: `src/dmChat.js`, `src/dmChatLogging.js`, `scripts/test-dm-chat-flow.js`
 
 완료 조건: 6장 검증 통과 + 아래 성공 기준 S1~S3 충족.
 
