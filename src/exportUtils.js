@@ -353,6 +353,7 @@ module.exports = {
   buildJsonExport,
   buildOperationExportPayload,
   buildSummaryExport,
+  formatTimestampForFilename,
   normalizeExportFormat,
   normalizeExportKind,
   toCsv,
