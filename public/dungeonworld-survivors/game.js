@@ -33,6 +33,58 @@
     upgradeOptions: document.getElementById('upgrade-options'),
     qaPanel: document.getElementById('qa-panel'),
   };
+  const CARD_IMAGE_BASE_PATH = './assets/cards/';
+  const CARD_IMAGE_BY_UPGRADE_ID = {
+    pickShortcut: 'card-01.png',
+    hawkCompanion: 'card-02.png',
+    rootMaze: 'card-03.png',
+    fanKnives: 'card-04.png',
+    sanctuaryCircle: 'card-05.png',
+    blackBell: 'card-06.png',
+    thornShield: 'card-13.png',
+    farShot: 'card-08.png',
+    backstabRhythm: 'card-09.png',
+    healingLitany: 'card-10.png',
+    wildThicket: 'card-11.png',
+    bellWave: 'card-12.png',
+    grimGrimoire: 'card-14.png',
+    hawkMark: 'card-15.png',
+    campfireRation: 'card-16.png',
+    guardedAdvance: 'card-17.png',
+    basinRune: 'card-18.png',
+    barukLine: 'card-07.png',
+    oathSpear: 'card-07.png',
+    shieldBash: 'card-13.png',
+    shadowStep: 'card-09.png',
+    beastForm: 'card-03.png',
+    ironVow: 'card-13.png',
+    smokePocket: 'card-17.png',
+    bellAbsolution: 'card-05.png',
+    moonPelt: 'card-11.png',
+    sigilBattery: 'card-14.png',
+    forkedMissile: 'card-06.png',
+    snareArrow: 'card-08.png',
+    silverThread: 'card-18.png',
+    bossOmen: 'card-15.png',
+  };
+  const CARD_IMAGE_BY_TAG = {
+    shield: 'card-13.png',
+    survival: 'card-16.png',
+    mobility: 'card-17.png',
+    control: 'card-18.png',
+    root: 'card-03.png',
+    wild: 'card-11.png',
+    bell: 'card-06.png',
+    arcane: 'card-14.png',
+    blade: 'card-04.png',
+    trick: 'card-09.png',
+    spear: 'card-07.png',
+    martial: 'card-07.png',
+    faith: 'card-05.png',
+    hunt: 'card-15.png',
+    pierce: 'card-08.png',
+    boss: 'card-15.png',
+  };
   let state = systems.createState(content, 'fighter', { mode: getRequestedMode() });
   let lastFrame = 0;
   let pendingUpgrades = [];
@@ -136,6 +188,7 @@
       button.innerHTML = [
         '<span class="card-seal" aria-hidden="true"></span>',
         '<span class="reward-card-main">',
+        renderUpgradeArt(upgrade),
         `<span class="reward-topline"><span class="recommendation-pill">${upgrade.recommendationRole || '추천'}</span><span class="option-meta">${formatRarity(upgrade.rarity)} · ${itemType}</span></span>`,
         `<strong>${upgrade.title}</strong>`,
         `<span class="level-shift" aria-label="현재 레벨 ${currentLevel}, 다음 레벨 ${nextLevel}, 최대 레벨 ${upgrade.maxLevel}"><span>Lv.${currentLevel}</span><b>→</b><strong>Lv.${nextLevel}</strong><em>/ ${upgrade.maxLevel}</em>${renderLevelPips(currentLevel, nextLevel, upgrade.maxLevel)}</span>`,
@@ -402,6 +455,25 @@
 
   function formatTags(tags) {
     return (tags || []).map((tag) => `#${tag}`).join(' ');
+  }
+
+  function getUpgradeCardImage(upgrade) {
+    if (CARD_IMAGE_BY_UPGRADE_ID[upgrade.id]) return CARD_IMAGE_BY_UPGRADE_ID[upgrade.id];
+    const tagMatch = (upgrade.tags || []).find((tag) => CARD_IMAGE_BY_TAG[tag]);
+    if (tagMatch) return CARD_IMAGE_BY_TAG[tagMatch];
+    if (upgrade.family === 'weapon') return 'card-07.png';
+    if (upgrade.family === 'control') return 'card-18.png';
+    if (upgrade.family === 'mobility') return 'card-17.png';
+    return 'card-16.png';
+  }
+
+  function renderUpgradeArt(upgrade) {
+    const imageName = getUpgradeCardImage(upgrade);
+    return [
+      '<span class="card-art" aria-hidden="true">',
+      `<img src="${CARD_IMAGE_BASE_PATH}${imageName}" alt="" width="512" height="512" loading="eager" decoding="async">`,
+      '</span>',
+    ].join('');
   }
 
   function renderLevelPips(currentLevel, nextLevel, maxLevel) {

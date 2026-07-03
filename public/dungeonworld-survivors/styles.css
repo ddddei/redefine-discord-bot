@@ -502,6 +502,71 @@ canvas {
   box-shadow: var(--shadow-ritual);
 }
 
+.modal[data-mode="upgrade"] {
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 78% 18%, color-mix(in srgb, var(--accent-bell) 12%, transparent), transparent 55%),
+    radial-gradient(90% 70% at 30% 80%, color-mix(in srgb, var(--accent-primary) 7%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-secondary) 44%, var(--surface-canvas)), var(--surface-canvas) 72%),
+    var(--surface-canvas);
+}
+
+.modal[data-mode="upgrade"]::before {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-primary) 72%, transparent), color-mix(in srgb, var(--surface-primary) 30%, transparent)),
+    radial-gradient(circle at 50% 50%, transparent 26%, color-mix(in srgb, var(--surface-primary) 72%, transparent) 100%);
+}
+
+.modal[data-mode="upgrade"] .modal-card {
+  position: relative;
+  width: min(1040px, 100%);
+  border-color: var(--border-default);
+  padding: clamp(var(--space-5), 4vw, var(--space-10));
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--text-primary) 3%, transparent) 0 1px, transparent 1px 24px),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 58%, var(--surface-secondary)), color-mix(in srgb, var(--surface-secondary) 94%, var(--surface-primary))),
+    var(--surface-secondary);
+}
+
+.modal[data-mode="upgrade"] .kicker,
+.modal[data-mode="upgrade"] .modal-card h2,
+.modal[data-mode="upgrade"] .modal-card > p {
+  text-align: center;
+}
+
+.modal[data-mode="upgrade"] .kicker {
+  color: var(--accent-brass);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.modal[data-mode="upgrade"] .modal-card h2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  font-size: clamp(30px, 5vw, 40px);
+}
+
+.modal[data-mode="upgrade"] .modal-card h2::before,
+.modal[data-mode="upgrade"] .modal-card h2::after {
+  width: 70px;
+  height: 1px;
+  flex: 0 1 70px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--accent-brass));
+}
+
+.modal[data-mode="upgrade"] .modal-card h2::after {
+  background: linear-gradient(90deg, var(--accent-brass), transparent);
+}
+
 .modal-card h2,
 .modal-card p,
 .upgrade-option,
@@ -522,6 +587,13 @@ canvas {
   display: grid;
   gap: var(--space-3);
   margin: var(--space-5) 0;
+}
+
+.modal[data-mode="upgrade"] .upgrade-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(var(--space-3), 3vw, var(--space-6));
+  align-items: stretch;
+  margin: var(--space-8) 0 var(--space-2);
 }
 
 .upgrade-option {
@@ -550,6 +622,47 @@ canvas {
   outline: 1px solid color-mix(in srgb, var(--option-accent) 76%, var(--accent-brass));
   outline-offset: 2px;
   transform: translateY(-1px);
+}
+
+.modal[data-mode="upgrade"] .upgrade-option {
+  position: relative;
+  grid-template-columns: 1fr;
+  gap: 0;
+  min-height: 520px;
+  padding: 0;
+  border-width: 2px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--option-soft) 24%, var(--surface-elevated)), color-mix(in srgb, var(--surface-primary) 68%, var(--surface-elevated))),
+    var(--surface-elevated);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--option-accent) 12%, transparent),
+    0 20px 50px color-mix(in srgb, var(--surface-primary) 72%, transparent);
+}
+
+.modal[data-mode="upgrade"] .upgrade-option::before,
+.modal[data-mode="upgrade"] .upgrade-option::after {
+  position: absolute;
+  top: var(--space-2);
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  content: "";
+  border-top: 1px solid color-mix(in srgb, var(--option-accent) 78%, var(--accent-brass));
+}
+
+.modal[data-mode="upgrade"] .upgrade-option::before {
+  left: var(--space-2);
+  border-left: 1px solid color-mix(in srgb, var(--option-accent) 78%, var(--accent-brass));
+}
+
+.modal[data-mode="upgrade"] .upgrade-option::after {
+  right: var(--space-2);
+  border-right: 1px solid color-mix(in srgb, var(--option-accent) 78%, var(--accent-brass));
+}
+
+.modal[data-mode="upgrade"] .upgrade-option:hover,
+.modal[data-mode="upgrade"] .upgrade-option:focus-visible {
+  transform: translateY(-6px);
 }
 
 .upgrade-option > strong {
@@ -586,6 +699,40 @@ canvas {
   min-width: 0;
 }
 
+.modal[data-mode="upgrade"] .reward-card-main {
+  grid-column: auto;
+  align-content: start;
+  gap: var(--space-3);
+  height: 100%;
+  padding: var(--space-4);
+}
+
+.card-art {
+  display: none;
+}
+
+.modal[data-mode="upgrade"] .card-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  border: 1px solid color-mix(in srgb, var(--option-accent) 58%, var(--border-default));
+  padding: var(--space-2);
+  background:
+    repeating-conic-gradient(color-mix(in srgb, var(--surface-primary) 94%, var(--option-accent)) 0% 25%, var(--surface-elevated) 0% 50%) 0 0 / 16px 16px,
+    var(--surface-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--option-accent) 12%, transparent);
+}
+
+.modal[data-mode="upgrade"] .card-art img {
+  display: block;
+  width: min(100%, 152px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 18px color-mix(in srgb, var(--surface-primary) 74%, transparent));
+}
+
 .reward-topline,
 .reward-quick-grid,
 .level-shift,
@@ -598,6 +745,16 @@ canvas {
 
 .reward-topline {
   justify-content: space-between;
+}
+
+.modal[data-mode="upgrade"] .reward-topline {
+  gap: var(--space-2);
+}
+
+.modal[data-mode="upgrade"] .reward-card-main > strong {
+  color: var(--text-primary);
+  font-size: clamp(18px, 2.2vw, 21px);
+  line-height: 1.25;
 }
 
 .level-shift,
@@ -614,6 +771,12 @@ canvas {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+.modal[data-mode="upgrade"] .level-shift {
+  border: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .level-shift b,
@@ -669,6 +832,26 @@ canvas {
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--option-accent, var(--accent-ember)) 46%, transparent), transparent 58%),
     color-mix(in srgb, var(--surface-primary) 64%, transparent);
+}
+
+.modal[data-mode="upgrade"] .card-seal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  grid-row: auto;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border: 0;
+  clip-path: none;
+  background: var(--option-accent);
+}
+
+.modal[data-mode="upgrade"] .card-seal::before {
+  display: block;
+  width: 36px;
+  height: 4px;
+  content: "";
 }
 
 .upgrade-option .option-meta {
@@ -830,15 +1013,23 @@ canvas {
 }
 
 .upgrade-option.rarity-class {
-  --option-accent: var(--accent-bell);
+  --option-accent: var(--accent-brass);
+  --option-soft: color-mix(in srgb, var(--accent-ember) 22%, var(--surface-parchment));
 }
 
 .upgrade-option.rarity-rare {
-  --option-accent: var(--accent-ember);
+  --option-accent: var(--status-info);
+  --option-soft: color-mix(in srgb, var(--status-info) 18%, var(--surface-parchment));
 }
 
 .upgrade-option.rarity-uncommon {
-  --option-accent: var(--status-info);
+  --option-accent: var(--accent-hover);
+  --option-soft: color-mix(in srgb, var(--accent-hover) 18%, var(--surface-parchment));
+}
+
+.upgrade-option.evolution-ready {
+  --option-accent: var(--status-warning);
+  --option-soft: color-mix(in srgb, var(--status-warning) 22%, var(--surface-parchment));
 }
 
 .synergy-hint {
@@ -1069,6 +1260,10 @@ canvas {
   .side-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .modal[data-mode="upgrade"] .upgrade-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 520px) {
@@ -1090,6 +1285,32 @@ canvas {
     font-size: clamp(24px, 8vw, 28px);
   }
 
+  .modal[data-mode="upgrade"] {
+    place-items: start center;
+  }
+
+  .modal[data-mode="upgrade"] .modal-card {
+    padding: var(--space-4);
+  }
+
+  .modal[data-mode="upgrade"] .modal-card h2 {
+    gap: var(--space-2);
+  }
+
+  .modal[data-mode="upgrade"] .modal-card h2::before,
+  .modal[data-mode="upgrade"] .modal-card h2::after {
+    flex-basis: 32px;
+  }
+
+  .modal[data-mode="upgrade"] .upgrade-options {
+    grid-template-columns: 1fr;
+    margin-top: var(--space-5);
+  }
+
+  .modal[data-mode="upgrade"] .upgrade-option {
+    min-height: 0;
+  }
+
   .upgrade-option > strong,
   .upgrade-option .reward-card-main > strong {
     font-size: clamp(17px, 5.2vw, 20px);
@@ -1100,6 +1321,23 @@ canvas {
     grid-template-columns: 24px minmax(0, 1fr);
     gap: var(--space-1) var(--space-2);
     padding: var(--space-3);
+  }
+
+  .modal[data-mode="upgrade"] .upgrade-option {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+
+  .modal[data-mode="upgrade"] .reward-card-main {
+    padding: var(--space-3);
+  }
+
+  .modal[data-mode="upgrade"] .card-art {
+    min-height: 132px;
+  }
+
+  .modal[data-mode="upgrade"] .card-art img {
+    width: min(100%, 132px);
   }
 
   .card-seal {

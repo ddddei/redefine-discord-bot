@@ -132,11 +132,13 @@ All spacing derives from 4px.
 
 ### Loot/Upgrade Card
 
-- **Structure**: recommendation role seal, rarity/family line, title, effect, reason, build direction, class/synergy notes.
-- **Variants**: class, rare, uncommon, common.
+- **Structure**: tarot-style native button with an image slot, rarity/family line, title, diamond level pips, effect, build/recommendation reason, evolution state, and compact synergy notes.
+- **Image assets**: upgrade art lives in `public/dungeonworld-survivors/assets/cards/card-01.png` through `card-18.png`; images are decorative because the button text carries the accessible name.
+- **Variants**: class, rare, uncommon, common; class/evolution-ready cards may lift slightly and use stronger brass corners.
 - **Spacing**: compact on 375px; roomy enough on tablet/desktop for scan order.
 - **States**: hover, focus, selected-by-click.
 - **Accessibility**: all text remains phrase-wrapped and no tag line may force horizontal scroll.
+- **Motion**: hover/focus uses transform lift only; evolution glow uses opacity/filter-safe box-shadow and must stop under `prefers-reduced-motion`.
 
 ### Result Ledger
 
