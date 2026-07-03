@@ -159,6 +159,21 @@ const checks = [
     args: ['--check', 'public/match3/game.js'],
   },
   {
+    label: 'public/idle/content.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/idle/content.js'],
+  },
+  {
+    label: 'public/idle/engine.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/idle/engine.js'],
+  },
+  {
+    label: 'public/idle/game.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/idle/game.js'],
+  },
+  {
     label: 'src/exportUtils.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/exportUtils.js'],
@@ -497,6 +512,16 @@ const checks = [
     label: 'match3 static smoke test',
     command: 'node',
     args: ['scripts/test-match3-static.js'],
+  },
+  {
+    label: 'idle logic smoke test',
+    command: 'node',
+    args: ['scripts/test-idle-logic.js'],
+  },
+  {
+    label: 'idle static smoke test',
+    command: 'node',
+    args: ['scripts/test-idle-static.js'],
   },
   {
     label: 'dungeonworld session 02 content test',
