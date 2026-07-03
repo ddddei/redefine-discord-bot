@@ -114,12 +114,13 @@
     }
   }
 
-  function startNewRun() {
+  // previousStats를 넘기면 통산 기록(클리어 횟수·최고 도달 칸)이 새 런에 이어진다.
+  function startNewRun(previousStats) {
     var seed = getSeedFromUrl();
     if (seed === undefined) {
       seed = generateRandomSeed();
     }
-    state = Engine.createNewRun(seed);
+    state = Engine.createNewRun(seed, previousStats);
     tracker = Engine.trackerFromState(state);
   }
 
@@ -151,6 +152,7 @@
   var advanceButton = document.getElementById('advance-button');
 
   var enemyNameEl = document.getElementById('enemy-name');
+  var enemyEmojiEl = document.querySelector('.enemy-emoji');
   var enemyHpValueEl = document.getElementById('enemy-hp-value');
   var enemyBlockValueEl = document.getElementById('enemy-block-value');
   var enemyStatusRowEl = document.getElementById('enemy-status-row');
@@ -249,6 +251,7 @@
     }
     var enemy = Engine.findEnemy(combat.enemyId);
     enemyNameEl.textContent = enemy.name;
+    enemyEmojiEl.textContent = enemy.emoji;
     enemyHpValueEl.textContent = Math.max(0, combat.enemyHp) + ' / ' + combat.enemyMaxHp;
 
     if (combat.enemyBlock > 0) {
@@ -478,7 +481,7 @@
   });
 
   restartButton.addEventListener('click', function () {
-    startNewRun();
+    startNewRun(state && state.stats);
     saveState();
     renderAll();
   });
@@ -500,7 +503,7 @@
     if (restored && seedFromUrl === undefined) {
       state = restored;
     } else {
-      startNewRun();
+      startNewRun(restored && restored.stats);
     }
 
     refreshTracker();

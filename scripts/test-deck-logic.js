@@ -425,12 +425,81 @@ function simulateFirstTwoCombats(Engine, seed) {
   };
 }
 
+function testStatusDirectionAndBlockTiming() {
+  const { Engine } = loadEngine();
+
+  // 약화 방향: 약화는 "공격자"가 주는 피해를 줄인다.
+  const state = Engine.createNewRun(5);
+  state.enemyAssignment[0] = 'crumb-ant';
+  const tracker = Engine.trackerFromState(state);
+  Engine.enterCurrentNode(state, tracker);
+  Engine.commitTracker(state, tracker);
+  state.combat.enemyHp = 100; // 전투가 끝나지 않게 넉넉히
+
+  // 적이 약화 상태: 내 공격은 그대로, 적의 공격은 감소
+  state.combat.enemyWeak = 1;
+  const myHit = Engine.playerHitsEnemy(state, 6);
+  assert.strictEqual(myHit.amount, 6, '적의 약화는 내 공격을 줄이지 않아야 함');
+  const enemyHit = Engine.enemyHitsPlayer(state, 8);
+  assert.strictEqual(enemyHit.amount, 6, '약화된 적의 공격은 25% 감소(내림)해야 함');
+  state.combat.enemyWeak = 0;
+
+  // 내가 약화 상태: 내 공격 감소
+  state.combat.playerWeak = 1;
+  const weakenedHit = Engine.playerHitsEnemy(state, 6);
+  assert.strictEqual(weakenedHit.amount, 4, '약화된 내 공격은 25% 감소(내림)해야 함');
+
+  // 방어도 타이밍: 이번 턴에 얻은 방어도는 적의 공격을 받아낸 뒤 다음 턴 시작 시 소멸한다.
+  const state2 = Engine.createNewRun(5);
+  state2.enemyAssignment[0] = 'crumb-ant'; // 첫 행동: 공격 5
+  const t2 = Engine.trackerFromState(state2);
+  Engine.enterCurrentNode(state2, t2);
+  Engine.commitTracker(state2, t2);
+  state2.combat.playerBlock = 5;
+  const hpBefore = state2.player.hp;
+  const t3 = Engine.trackerFromState(state2);
+  Engine.endTurn(state2, t3);
+  assert.strictEqual(state2.player.hp, hpBefore, '이번 턴에 얻은 방어도 5는 적의 공격 5를 전부 막아야 함');
+  assert.strictEqual(state2.combat.playerBlock, 0, '남은 방어도는 다음 플레이어 턴 시작 시 소멸해야 함');
+}
+
+function testEnemyVulnerableCurse() {
+  const { Engine } = loadEngine();
+  // 곰팡이 요정: 취약 2턴 → 공9 순환. 두 번째 턴의 공격이 9 × 1.5 = 13(내림)이어야 한다.
+  const state = Engine.createNewRun(5);
+  state.enemyAssignment[0] = 'mold-fairy';
+  const tracker = Engine.trackerFromState(state);
+  Engine.enterCurrentNode(state, tracker);
+  Engine.commitTracker(state, tracker);
+
+  const t2 = Engine.trackerFromState(state);
+  Engine.endTurn(state, t2); // 적: 취약 2 부여 → 적 턴 종료 시 1로 감소
+  assert.strictEqual(state.combat.playerVulnerable, 1, '취약 2턴 부여 후 적 턴 종료 시 1턴이 남아야 함');
+
+  const hpBefore = state.player.hp;
+  const t3 = Engine.trackerFromState(state);
+  Engine.endTurn(state, t3); // 적: 공9 → 취약으로 증폭
+  assert.strictEqual(hpBefore - state.player.hp, 13, '취약 상태의 플레이어는 9 × 1.5 = 13(내림) 피해를 받아야 함');
+  assert.strictEqual(state.combat.playerVulnerable, 0, '취약은 효력을 낸 적 턴이 끝나면 만료돼야 함');
+}
+
+function testStatsCarryOver() {
+  const { Engine } = loadEngine();
+  const next = Engine.createNewRun(3, { clearCount: 2, bestNodeReached: 7, enemiesDefeated: 99 });
+  assert.strictEqual(next.stats.clearCount, 2, '클리어 횟수는 새 런에 이어져야 함');
+  assert.strictEqual(next.stats.bestNodeReached, 7, '최고 도달 칸은 새 런에 이어져야 함');
+  assert.strictEqual(next.stats.enemiesDefeated, 0, '처치 수는 런 단위로 초기화돼야 함');
+}
+
 function main() {
   testRngAndShuffleDeterminism();
   testDrawDiscardCycle();
   testEnergy();
   testDamageCalculation();
   testStatusDurations();
+  testStatusDirectionAndBlockTiming();
+  testEnemyVulnerableCurse();
+  testStatsCarryOver();
   testEnemyBehavior();
   testRunProgression();
   testWinLose();

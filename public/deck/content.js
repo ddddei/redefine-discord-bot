@@ -209,6 +209,7 @@
   var ENEMIES = [
     {
       id: 'crumb-ant',
+      emoji: '🐜',
       name: '부스러기 개미',
       tier: 'normal',
       maxHp: 14,
@@ -220,6 +221,7 @@
     },
     {
       id: 'sugar-scent-moth',
+      emoji: '🦋',
       name: '단내 나방',
       tier: 'normal',
       maxHp: 18,
@@ -231,6 +233,7 @@
     },
     {
       id: 'greedy-pigeon',
+      emoji: '🕊️',
       name: '욕심쟁이 비둘기',
       tier: 'normal',
       maxHp: 22,
@@ -241,6 +244,7 @@
     },
     {
       id: 'sugar-slime',
+      emoji: '🫠',
       name: '설탕 슬라임',
       tier: 'normal',
       maxHp: 26,
@@ -252,6 +256,7 @@
     },
     {
       id: 'kitchen-mouse',
+      emoji: '🐭',
       name: '주방 생쥐',
       tier: 'normal',
       maxHp: 20,
@@ -263,16 +268,19 @@
     },
     {
       id: 'mold-fairy',
+      emoji: '🍄',
       name: '곰팡이 요정',
       tier: 'normal',
       maxHp: 24,
       pattern: [
-        { type: 'vulnerable', amount: 1 },
+        // 취약은 부여된 적 턴이 끝날 때 곧바로 1 감소하므로, 다음 공격을 증폭하려면 2턴 부여가 필요하다.
+        { type: 'vulnerable', amount: 2 },
         { type: 'attack', amount: 9 },
       ],
     },
     {
       id: 'caramel-golem',
+      emoji: '🗿',
       name: '캐러멜 골렘',
       tier: 'elite',
       maxHp: 45,
@@ -284,6 +292,7 @@
     },
     {
       id: 'whipped-harpy',
+      emoji: '🦅',
       name: '휘핑 하피',
       tier: 'elite',
       maxHp: 40,
@@ -295,6 +304,7 @@
     },
     {
       id: 'great-glutton-dragon',
+      emoji: '🐉',
       name: '대왕 식탐 드래곤',
       tier: 'boss',
       maxHp: 80,

@@ -152,7 +152,9 @@
     return deck;
   }
 
-  function createNewRun(seed) {
+  // previousStats: 이전 런의 stats. 통산 기록(클리어 횟수·최고 도달 칸)은 새 런에도
+  // 이어지고, 처치 수는 런 단위로 초기화한다.
+  function createNewRun(seed, previousStats) {
     var tracker = createRngTracker(seed, 0);
     var enemyAssignment = buildEnemyAssignment(tracker);
 
@@ -176,8 +178,8 @@
       pendingReward: null,
       pendingRest: false,
       stats: {
-        clearCount: 0,
-        bestNodeReached: 0,
+        clearCount: (previousStats && previousStats.clearCount) || 0,
+        bestNodeReached: (previousStats && previousStats.bestNodeReached) || 0,
         enemiesDefeated: 0,
       },
       finished: false,
@@ -268,12 +270,13 @@
   // ---- 피해 계산 ----
   // 순서: (기본 피해 + 힘) × 약화(0.75, 내림) × 취약(1.5, 내림) → 방어도 차감 → HP 차감.
   // 곱연산 직후 내림을 적용한다. 다단 히트는 히트마다 방어도 차감을 반복한다.
-  function computeHitDamage(baseDamage, attackerStrength, defenderWeak, defenderVulnerable) {
+  // 약화는 "공격자"가 주는 피해를 줄이고, 취약은 "방어자"가 받는 피해를 늘린다.
+  function computeHitDamage(baseDamage, attackerStrength, attackerWeak, defenderVulnerable) {
     var amount = baseDamage + (attackerStrength || 0);
     if (amount < 0) {
       amount = 0;
     }
-    if (defenderWeak > 0) {
+    if (attackerWeak > 0) {
       amount = Math.floor(amount * Content.WEAK_MULTIPLIER);
     }
     if (defenderVulnerable > 0) {
@@ -293,9 +296,10 @@
   }
 
   // 플레이어가 적에게 히트를 가한다 (다단 히트 시 히트마다 호출).
+  // 내 공격은 "내" 약화와 "적"의 취약에 영향을 받는다.
   function playerHitsEnemy(state, baseDamage) {
     var combat = state.combat;
-    var amount = computeHitDamage(baseDamage, combat.playerStrength, combat.enemyWeak || 0, combat.enemyVulnerable || 0);
+    var amount = computeHitDamage(baseDamage, combat.playerStrength, combat.playerWeak || 0, combat.enemyVulnerable || 0);
     var target = { block: combat.enemyBlock };
     var result = applyDamageToTarget(target, amount);
     combat.enemyBlock = target.block;
@@ -303,10 +307,10 @@
     return { amount: amount, hpLoss: result.hpLoss };
   }
 
-  // 적이 플레이어에게 히트를 가한다.
+  // 적이 플레이어에게 히트를 가한다. 적의 공격은 "적"의 약화와 "플레이어"의 취약에 영향을 받는다.
   function enemyHitsPlayer(state, baseDamage) {
     var combat = state.combat;
-    var amount = computeHitDamage(baseDamage, combat.enemyStrength, combat.playerWeak, combat.playerVulnerable);
+    var amount = computeHitDamage(baseDamage, combat.enemyStrength, combat.enemyWeak || 0, combat.playerVulnerable);
     var target = { block: combat.playerBlock };
     var result = applyDamageToTarget(target, amount);
     combat.playerBlock = target.block;
@@ -429,8 +433,11 @@
     return record;
   }
 
-  // 턴 종료: 손패 버림 → 상태효과(약화/취약) 감소 → 플레이어 방어도 소멸 →
-  // 적 행동 실행 → 다음 플레이어 턴 준비(에너지 리셋, 방어도 소멸, 드로우).
+  // 턴 종료 흐름. 각 상태 효과는 "그 효과가 발휘되는 턴"이 끝날 때 1턴 감소한다:
+  //  - 플레이어의 약화(내 공격 감소)·적의 취약(내 공격 증폭)은 플레이어 턴이 끝날 때
+  //  - 적의 약화(적 공격 감소)·플레이어의 취약(적 공격 증폭)은 적 턴이 끝날 때
+  // 방어도는 "자기 턴 시작 시" 소멸한다 — 플레이어 방어도는 적의 공격을 받아낸 뒤
+  // 다음 플레이어 턴이 시작될 때 비운다 (적 행동 전에 비우면 방어 카드가 무의미해진다).
   function endTurn(state, tracker) {
     var combat = state.combat;
     var player = state.player;
@@ -440,26 +447,27 @@
     if (combat.playerWeak > 0) {
       combat.playerWeak -= 1;
     }
-    if (combat.playerVulnerable > 0) {
-      combat.playerVulnerable -= 1;
+    if (combat.enemyVulnerable > 0) {
+      combat.enemyVulnerable -= 1;
     }
 
-    // 방어도는 "자기 턴 시작 시" 소멸한다. 플레이어 턴 종료 시점에 플레이어 방어도를 비운다.
-    combat.playerBlock = 0;
-
     if (state.combat && combat.enemyHp > 0 && player.hp > 0) {
-      // 적 턴 시작 시 적의 방어도가 소멸한다 (이번 턴에 새로 얻는 방어도는 유지됨).
+      // 적 턴 시작: 적이 이전 턴에 얻은 방어도가 소멸한다 (이번 턴에 새로 얻는 방어도는 유지됨).
       combat.enemyBlock = 0;
-      if (combat.enemyWeak > 0) {
-        combat.enemyWeak -= 1;
-      }
-      if (combat.enemyVulnerable > 0) {
-        combat.enemyVulnerable -= 1;
-      }
       executeEnemyTurn(state, tracker);
+      if (state.combat) {
+        if (combat.enemyWeak > 0) {
+          combat.enemyWeak -= 1;
+        }
+        if (combat.playerVulnerable > 0) {
+          combat.playerVulnerable -= 1;
+        }
+      }
     }
 
     if (state.combat && combat.enemyHp > 0 && state.player.hp > 0) {
+      // 플레이어 턴 시작: 지난 턴의 방어도가 소멸하고 에너지/드로우를 리셋한다.
+      combat.playerBlock = 0;
       combat.turn += 1;
       player.energy = Content.PLAYER_ENERGY_PER_TURN;
       drawCards(player, Content.PLAYER_DRAW_PER_TURN, tracker);
