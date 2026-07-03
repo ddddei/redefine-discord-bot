@@ -313,6 +313,11 @@ body {
   cursor: pointer;
   box-shadow: var(--shadow-soft);
   transition: transform 0.08s ease;
+}
+
+/* 딜-인은 실제 드로우가 일어난 렌더에만 적용한다 (카드 사용 후 재렌더마다
+   손패 전체가 다시 등장하면 깜빡이는 느낌을 준다). */
+.card.card-enter {
   animation: card-deal-in 0.2s ease both;
 }
 

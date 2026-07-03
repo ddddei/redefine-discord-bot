@@ -224,6 +224,27 @@
     retriggerAnimation(el, 'badge-gain');
   }
 
+  // 사용한 카드는 복제본을 제자리에 띄워 연출한다. 원본 손패는 곧바로
+  // 재렌더링되므로(입력 비블로킹) 원본에 클래스를 달아도 보이지 않는다.
+  function animateCardPlay(cardEl) {
+    if (!cardEl) {
+      return;
+    }
+    var rect = cardEl.getBoundingClientRect();
+    var clone = cardEl.cloneNode(true);
+    clone.classList.add('card-playing');
+    clone.style.position = 'fixed';
+    clone.style.left = rect.left + 'px';
+    clone.style.top = rect.top + 'px';
+    clone.style.width = rect.width + 'px';
+    clone.style.margin = '0';
+    clone.style.zIndex = '40';
+    document.body.appendChild(clone);
+    window.setTimeout(function () {
+      clone.remove();
+    }, 300);
+  }
+
   // ---- 렌더링 ----
 
   function showScreen(name) {
@@ -346,13 +367,21 @@
     renderHand();
   }
 
+  // 딜-인 애니메이션은 실제 드로우가 일어난 다음 렌더 한 번에만 적용한다.
+  var animateNextHandRender = false;
+
   function renderHand() {
+    var animate = animateNextHandRender;
+    animateNextHandRender = false;
     handListEl.innerHTML = '';
     state.player.hand.forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
       var el = document.createElement('div');
       el.className = 'card' + (card.rarity === 'elite' ? ' card-elite' : '');
-      el.style.animationDelay = (index * 30) + 'ms';
+      if (animate) {
+        el.classList.add('card-enter');
+        el.style.animationDelay = (index * 30) + 'ms';
+      }
 
       var playable = Engine.canPlayCard(state, cardId);
       if (!playable) {
@@ -389,11 +418,9 @@
     }
     refreshTracker();
     var cardEl = handListEl.children[index];
-    if (cardEl) {
-      cardEl.classList.add('card-playing');
-    }
     var result = Engine.playCard(state, cardId, index, tracker);
     if (result.success) {
+      animateCardPlay(cardEl);
       if (result.results && result.results.hits) {
         result.results.hits.forEach(function (hit) {
           showDamagePopup(enemyEmojiEl, hit.amount);
@@ -420,6 +447,7 @@
       showDamagePopup(hpChipEl, hpBefore - state.player.hp);
       flashPlayerHit();
     }
+    animateNextHandRender = true;
     commit();
     if (state.screen !== 'combat') {
       onScreenChanged();
@@ -428,10 +456,11 @@
 
   function renderRewardScreen() {
     rewardCardListEl.innerHTML = '';
-    (state.pendingReward || []).forEach(function (cardId) {
+    (state.pendingReward || []).forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
       var el = document.createElement('div');
-      el.className = 'card' + (card.rarity === 'elite' ? ' card-elite' : '');
+      el.className = 'card card-enter' + (card.rarity === 'elite' ? ' card-elite' : '');
+      el.style.animationDelay = (index * 30) + 'ms';
 
       var cost = document.createElement('span');
       cost.className = 'card-cost';
@@ -555,6 +584,9 @@
     refreshTracker();
     var result = Engine.enterCurrentNode(state, tracker);
     if (result.success) {
+      if (result.type === 'combat') {
+        animateNextHandRender = true;
+      }
       commit();
     }
   });
