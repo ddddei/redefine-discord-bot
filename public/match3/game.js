@@ -261,6 +261,13 @@
       return;
     }
 
+    // 클릭 경로와 동일한 가드: 연쇄 처리 중(busy)이거나 종료 후에는 스와이프도 무시한다
+    // (멀티터치로 pointerdown 이후 busy가 된 경우 대비).
+    if (busy || state.gameOver) {
+      swipeStart = null;
+      return;
+    }
+
     var direction = swipeStart.direction || getSwipeDirection(event.clientX - swipeStart.x, event.clientY - swipeStart.y);
     if (!direction) {
       swipeStart = null;
