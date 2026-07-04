@@ -10,7 +10,20 @@
       "seed": "example-seed",
       "submittedAt": "2030-01-10T09:30:00+09:00",
       "weekKey": "2030-W02",
-      "flagged": false
+      "flagged": false,
+      "mode": "free",
+      "dayKey": null
+    },
+    {
+      "discordId": "user_example_002",
+      "gameId": "deck",
+      "score": 8060,
+      "seed": "20300110",
+      "submittedAt": "2030-01-10T10:20:00+09:00",
+      "weekKey": "2030-W02",
+      "flagged": false,
+      "mode": "daily",
+      "dayKey": "2030-01-10"
     }
   ]
 }

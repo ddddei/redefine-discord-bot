@@ -8,6 +8,7 @@ const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_PATHS = {
   links: process.env.WEBGAME_LINKS_DATA_PATH || path.join(DATA_DIR, 'webgame-links.local.json'),
   scores: process.env.WEBGAME_SCORES_DATA_PATH || path.join(DATA_DIR, 'webgame-scores.local.json'),
+  social: process.env.WEBGAME_SOCIAL_DATA_PATH || path.join(DATA_DIR, 'webgame-social.local.json'),
 };
 
 const LINK_CODE_TTL_MS = 10 * 60 * 1000;
@@ -32,6 +33,16 @@ function createInitialScoresData() {
     isExample: false,
     description: 'Local webgame score submission data for redefine discord bot MVP. JSON storage is for MVP operation only.',
     scores: [],
+  };
+}
+
+function createInitialSocialData() {
+  return {
+    version: 1,
+    isExample: false,
+    description: 'Local webgame anonymous cheer data for redefine discord bot MVP. JSON storage is for MVP operation only.',
+    cheerSalt: crypto.randomBytes(16).toString('hex'),
+    cheers: [],
   };
 }
 
@@ -67,6 +78,14 @@ function getIsoWeekKey(date = new Date()) {
   return `${target.getUTCFullYear()}-W${pad(weekNumber, 2)}`;
 }
 
+function getDayKey(date = new Date()) {
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function getDailySeed(dayKey) {
+  return Number(String(dayKey).replace(/-/g, ''));
+}
+
 function generateLinkCode() {
   const code = crypto.randomInt(0, 1000000);
   return pad(code, 6);
@@ -84,11 +103,31 @@ function requireTrimmedString(value, fieldName) {
   return value.trim();
 }
 
+function normalizeMode(mode) {
+  return mode === 'daily' ? 'daily' : 'free';
+}
+
+function normalizeScoreRecord(score) {
+  const mode = normalizeMode(score.mode);
+  return {
+    ...score,
+    mode,
+    dayKey: mode === 'daily' && typeof score.dayKey === 'string' ? score.dayKey : null,
+  };
+}
+
+function createTargetId(cheerSalt, discordId) {
+  return crypto.createHash('sha256').update(`${cheerSalt}:${discordId}`).digest('hex').slice(0, 16);
+}
+
 function createWebgameRepository(paths = {}) {
   const resolvedPaths = {
     ...DEFAULT_PATHS,
     ...paths,
   };
+  if (!paths.social && paths.scores) {
+    resolvedPaths.social = path.join(path.dirname(paths.scores), 'webgame-social.local.json');
+  }
 
   function getLinksData() {
     const data = loadOrCreate(resolvedPaths.links, createInitialLinksData);
@@ -127,6 +166,28 @@ function createWebgameRepository(paths = {}) {
       isExample: false,
       description: scoresData.description || createInitialScoresData().description,
       scores: Array.isArray(scoresData.scores) ? scoresData.scores : [],
+    });
+  }
+
+  function getSocialData() {
+    const data = loadOrCreate(resolvedPaths.social, createInitialSocialData);
+    const initial = createInitialSocialData();
+    return {
+      ...initial,
+      ...data,
+      isExample: data.isExample === true,
+      cheerSalt: typeof data.cheerSalt === 'string' && data.cheerSalt ? data.cheerSalt : initial.cheerSalt,
+      cheers: Array.isArray(data.cheers) ? data.cheers : [],
+    };
+  }
+
+  function saveSocialData(socialData) {
+    saveJsonFile(resolvedPaths.social, {
+      version: 1,
+      isExample: false,
+      description: socialData.description || createInitialSocialData().description,
+      cheerSalt: socialData.cheerSalt,
+      cheers: Array.isArray(socialData.cheers) ? socialData.cheers : [],
     });
   }
 
@@ -249,6 +310,7 @@ function createWebgameRepository(paths = {}) {
 
     const scoresData = cloneJson(getScoresData());
     const weekKey = input.weekKey || getIsoWeekKey(now);
+    const mode = normalizeMode(input.mode);
     const record = {
       discordId,
       gameId,
@@ -257,6 +319,8 @@ function createWebgameRepository(paths = {}) {
       submittedAt: createTimestamp(now),
       weekKey,
       flagged: Boolean(input.flagged),
+      mode,
+      dayKey: mode === 'daily' ? requireTrimmedString(input.dayKey, 'dayKey') : null,
     };
 
     scoresData.scores.push(record);
@@ -277,10 +341,11 @@ function createWebgameRepository(paths = {}) {
   function getWeekBest(discordId, gameId, weekKey) {
     const scoresData = getScoresData();
     const candidates = scoresData.scores.filter((score) => {
-      return score.discordId === discordId
+      const normalized = normalizeScoreRecord(score);
+      return normalized.discordId === discordId
         && score.gameId === gameId
-        && score.weekKey === weekKey
-        && !score.flagged;
+        && normalized.weekKey === weekKey
+        && !normalized.flagged;
     });
 
     if (candidates.length === 0) {
@@ -293,10 +358,11 @@ function createWebgameRepository(paths = {}) {
   function getPreviousWeekBest(discordId, gameId, weekKey) {
     const scoresData = getScoresData();
     const candidates = scoresData.scores.filter((score) => {
-      return score.discordId === discordId
+      const normalized = normalizeScoreRecord(score);
+      return normalized.discordId === discordId
         && score.gameId === gameId
-        && score.weekKey < weekKey
-        && !score.flagged;
+        && normalized.weekKey < weekKey
+        && !normalized.flagged;
     });
 
     if (candidates.length === 0) {
@@ -311,17 +377,19 @@ function createWebgameRepository(paths = {}) {
     const scoresData = getScoresData();
     const linksData = getLinksData();
     const displayNameByDiscordId = new Map(linksData.links.map((link) => [link.discordId, link.displayName]));
+    const socialData = options.includeTargetId ? getSocialData() : null;
     const limit = Number.isInteger(options.limit) ? options.limit : 10;
 
     const bestByDiscordId = new Map();
     scoresData.scores.forEach((score) => {
-      if (score.gameId !== gameId || score.weekKey !== weekKey || score.flagged) {
+      const normalized = normalizeScoreRecord(score);
+      if (normalized.gameId !== gameId || normalized.weekKey !== weekKey || normalized.flagged) {
         return;
       }
 
-      const current = bestByDiscordId.get(score.discordId);
-      if (!current || score.score > current.score) {
-        bestByDiscordId.set(score.discordId, score);
+      const current = bestByDiscordId.get(normalized.discordId);
+      if (!current || normalized.score > current.score) {
+        bestByDiscordId.set(normalized.discordId, normalized);
       }
     });
 
@@ -330,8 +398,10 @@ function createWebgameRepository(paths = {}) {
       .slice(0, limit)
       .map((score, index) => ({
         rank: index + 1,
+        discordId: score.discordId,
         displayName: displayNameByDiscordId.get(score.discordId) || '알 수 없음',
         score: score.score,
+        ...(socialData ? { targetId: createTargetId(socialData.cheerSalt, score.discordId) } : {}),
       }));
 
     return ranking;
@@ -341,13 +411,14 @@ function createWebgameRepository(paths = {}) {
     const scoresData = getScoresData();
     const bestByDiscordId = new Map();
     scoresData.scores.forEach((score) => {
-      if (score.gameId !== gameId || score.weekKey !== weekKey || score.flagged) {
+      const normalized = normalizeScoreRecord(score);
+      if (normalized.gameId !== gameId || normalized.weekKey !== weekKey || normalized.flagged) {
         return;
       }
 
-      const current = bestByDiscordId.get(score.discordId);
-      if (!current || score.score > current.score) {
-        bestByDiscordId.set(score.discordId, score);
+      const current = bestByDiscordId.get(normalized.discordId);
+      if (!current || normalized.score > current.score) {
+        bestByDiscordId.set(normalized.discordId, normalized);
       }
     });
 
@@ -362,6 +433,223 @@ function createWebgameRepository(paths = {}) {
     return { rank: index + 1, score: sorted[index][1].score };
   }
 
+  function listDailyRanking(gameId, dayKey, options = {}) {
+    const scoresData = getScoresData();
+    const linksData = getLinksData();
+    const socialData = options.includeTargetId ? getSocialData() : null;
+    const displayNameByDiscordId = new Map(linksData.links.map((link) => [link.discordId, link.displayName]));
+    const limit = Number.isInteger(options.limit) ? options.limit : 10;
+
+    const bestByDiscordId = new Map();
+    scoresData.scores.forEach((score) => {
+      const normalized = normalizeScoreRecord(score);
+      if (
+        normalized.gameId !== gameId
+        || normalized.mode !== 'daily'
+        || normalized.dayKey !== dayKey
+        || normalized.flagged
+      ) {
+        return;
+      }
+
+      const current = bestByDiscordId.get(normalized.discordId);
+      if (!current || normalized.score > current.score) {
+        bestByDiscordId.set(normalized.discordId, normalized);
+      }
+    });
+
+    return Array.from(bestByDiscordId.values())
+      .sort((left, right) => right.score - left.score)
+      .slice(0, limit)
+      .map((score, index) => ({
+        rank: index + 1,
+        discordId: score.discordId,
+        displayName: displayNameByDiscordId.get(score.discordId) || '알 수 없음',
+        score: score.score,
+        ...(socialData ? { targetId: createTargetId(socialData.cheerSalt, score.discordId) } : {}),
+      }));
+  }
+
+  function getMyDailyRank(gameId, dayKey, discordId) {
+    const scoresData = getScoresData();
+    const bestByDiscordId = new Map();
+    scoresData.scores.forEach((score) => {
+      const normalized = normalizeScoreRecord(score);
+      if (
+        normalized.gameId !== gameId
+        || normalized.mode !== 'daily'
+        || normalized.dayKey !== dayKey
+        || normalized.flagged
+      ) {
+        return;
+      }
+
+      const current = bestByDiscordId.get(normalized.discordId);
+      if (!current || normalized.score > current.score) {
+        bestByDiscordId.set(normalized.discordId, normalized);
+      }
+    });
+
+    const sorted = Array.from(bestByDiscordId.entries())
+      .sort((left, right) => right[1].score - left[1].score);
+    const index = sorted.findIndex(([id]) => id === discordId);
+
+    if (index === -1) {
+      return null;
+    }
+
+    return { rank: index + 1, score: sorted[index][1].score };
+  }
+
+  function getDailyBest(discordId, gameId, dayKey) {
+    const scoresData = getScoresData();
+    const candidates = scoresData.scores
+      .map(normalizeScoreRecord)
+      .filter((score) => {
+        return score.discordId === discordId
+          && score.gameId === gameId
+          && score.mode === 'daily'
+          && score.dayKey === dayKey
+          && !score.flagged;
+      });
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    return candidates.reduce((best, current) => (current.score > best.score ? current : best));
+  }
+
+  function countDailyParticipants(gameId, dayKey) {
+    const scoresData = getScoresData();
+    const participants = new Set();
+    scoresData.scores.forEach((score) => {
+      const normalized = normalizeScoreRecord(score);
+      if (
+        normalized.gameId === gameId
+        && normalized.mode === 'daily'
+        && normalized.dayKey === dayKey
+        && !normalized.flagged
+      ) {
+        participants.add(normalized.discordId);
+      }
+    });
+    return participants.size;
+  }
+
+  function getCommunalGoalProgress(weekKey) {
+    const scoresData = getScoresData();
+    const currentByDiscordId = new Map();
+    const previousMaxByDiscordId = new Map();
+
+    scoresData.scores.map(normalizeScoreRecord).forEach((score) => {
+      if (score.gameId !== 'idle' || score.flagged) {
+        return;
+      }
+
+      if (score.weekKey === weekKey) {
+        const entry = currentByDiscordId.get(score.discordId) || { min: score.score, max: score.score };
+        entry.min = Math.min(entry.min, score.score);
+        entry.max = Math.max(entry.max, score.score);
+        currentByDiscordId.set(score.discordId, entry);
+        return;
+      }
+
+      if (score.weekKey < weekKey) {
+        const currentMax = previousMaxByDiscordId.get(score.discordId);
+        if (currentMax === undefined || score.score > currentMax) {
+          previousMaxByDiscordId.set(score.discordId, score.score);
+        }
+      }
+    });
+
+    const contributions = new Map();
+    let total = 0;
+    currentByDiscordId.forEach((current, discordId) => {
+      const baseline = previousMaxByDiscordId.has(discordId)
+        ? previousMaxByDiscordId.get(discordId)
+        : current.min;
+      const contribution = Math.max(0, current.max - baseline);
+      contributions.set(discordId, contribution);
+      total += contribution;
+    });
+
+    return {
+      weekKey,
+      total,
+      participants: currentByDiscordId.size,
+      contributions,
+    };
+  }
+
+  function addCheer(input, now = new Date()) {
+    const fromDiscordId = requireTrimmedString(input.fromDiscordId, 'fromDiscordId');
+    const targetDiscordId = requireTrimmedString(input.targetDiscordId, 'targetDiscordId');
+    const gameId = requireTrimmedString(input.gameId, 'gameId');
+    const periodKey = requireTrimmedString(input.periodKey, 'periodKey');
+    const socialData = cloneJson(getSocialData());
+
+    const duplicated = socialData.cheers.some((cheer) => {
+      return cheer.fromDiscordId === fromDiscordId
+        && cheer.targetDiscordId === targetDiscordId
+        && cheer.gameId === gameId
+        && cheer.periodKey === periodKey;
+    });
+
+    if (duplicated) {
+      return { ok: false, reason: 'ALREADY_CHEERED' };
+    }
+
+    socialData.cheers.push({
+      fromDiscordId,
+      targetDiscordId,
+      gameId,
+      periodKey,
+      createdAt: createTimestamp(now),
+    });
+    saveSocialData(socialData);
+    return { ok: true };
+  }
+
+  function countCheers(gameId, periodKey) {
+    const socialData = getSocialData();
+    const counts = new Map();
+    socialData.cheers.forEach((cheer) => {
+      if (cheer.gameId !== gameId || cheer.periodKey !== periodKey) {
+        return;
+      }
+      counts.set(cheer.targetDiscordId, (counts.get(cheer.targetDiscordId) || 0) + 1);
+    });
+    return counts;
+  }
+
+  function countCheersSentToday(fromDiscordId, dayKey) {
+    const socialData = getSocialData();
+    return socialData.cheers.filter((cheer) => {
+      return cheer.fromDiscordId === fromDiscordId
+        && cheer.createdAt
+        && getDayKey(new Date(cheer.createdAt)) === dayKey;
+    }).length;
+  }
+
+  function resolveTargetId(targetId) {
+    if (typeof targetId !== 'string' || !targetId.trim()) {
+      return null;
+    }
+
+    const normalizedTargetId = targetId.trim();
+    const linksData = getLinksData();
+    const socialData = getSocialData();
+    return linksData.links.find((link) => {
+      return createTargetId(socialData.cheerSalt, link.discordId) === normalizedTargetId;
+    }) || null;
+  }
+
+  function getTargetId(discordId) {
+    const socialData = getSocialData();
+    return createTargetId(socialData.cheerSalt, discordId);
+  }
+
   return {
     issueLinkCode,
     redeemLinkCode,
@@ -374,13 +662,26 @@ function createWebgameRepository(paths = {}) {
     getPreviousWeekBest,
     listWeeklyRanking,
     getMyWeeklyRank,
+    listDailyRanking,
+    getMyDailyRank,
+    getDailyBest,
+    countDailyParticipants,
+    getCommunalGoalProgress,
+    addCheer,
+    countCheers,
+    countCheersSentToday,
+    resolveTargetId,
+    getTargetId,
     getLinksData,
     getScoresData,
+    getSocialData,
   };
 }
 
 module.exports = {
   createWebgameRepository,
   getIsoWeekKey,
+  getDayKey,
+  getDailySeed,
   LINK_CODE_TTL_MS,
 };

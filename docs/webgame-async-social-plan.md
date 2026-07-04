@@ -1,5 +1,7 @@
 # 웹게임 비동기 소셜 v1 계획서 — 오늘의 도전·공동 목표·기록 응원 (Codex 실행용)
 
+> 구현 상태(2026-07-04): 로컬 구현 완료. `feat/webgame-async-social-v1` 브랜치에서 저장소/API/Discord 명령/클라이언트/게임 3종/테스트/문서가 반영됐습니다. 이번 작업 지시에서는 git push, PR 생성, `npm run deploy`를 수행하지 않습니다.
+
 참여자 목적 ①"함께 즐기기"(함께 즐기기·랭킹 경쟁·포인트 교환, [참여자 맥락] 2026-07-04)를 채우는 계획입니다. [webgame-discord-link-plan.md](webgame-discord-link-plan.md) 8절(후속 단계)의 실행판으로, 연동 v1(PR #59) 위에 얹힙니다. 구현 전 [AGENTS.md](../AGENTS.md), [src/AGENTS.md](../src/AGENTS.md), [data/AGENTS.md](../data/AGENTS.md), [scripts/AGENTS.md](../scripts/AGENTS.md)를 먼저 읽어 주세요.
 
 ## 0. 선행 조건과 범위 원칙

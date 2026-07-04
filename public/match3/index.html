@@ -30,9 +30,11 @@
         <p id="status-message" class="status-message" aria-live="polite">
           인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.
         </p>
+        <div id="challenge-chip" class="gk-challenge-chip hidden">오늘의 간식판</div>
         <div id="board" class="board" role="grid" aria-label="간식 맞추기 보드"></div>
         <div class="header-actions">
           <button id="help-button" class="gk-button secondary" type="button">도움말</button>
+          <button id="today-challenge-button" class="gk-button secondary" type="button">오늘의 도전</button>
           <button id="restart-button" class="gk-button primary" type="button">다시 하기</button>
         </div>
       </main>
@@ -67,6 +69,7 @@
           <div><dt>가장 많이 지운 간식</dt><dd id="result-top-tile">-</dd></div>
         </dl>
         <div id="result-link-section"></div>
+        <div id="result-daily-section"></div>
         <div id="result-ranking-section"></div>
         <div class="modal-actions">
           <button id="result-retry-button" class="gk-button primary" type="button">다시 하기</button>

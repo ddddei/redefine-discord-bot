@@ -504,7 +504,80 @@
     if (!window.GameLink || !linkSectionEl) {
       return;
     }
-    window.GameLink.renderLinkSection(linkSectionEl, {});
+    window.GameLink.renderLinkSection(linkSectionEl, {
+      onChange: function () {
+        renderGoalSection();
+      },
+    });
+  }
+
+  function renderGoalSectionState(message) {
+    var goalSectionEl = document.getElementById('goal-section');
+    if (!goalSectionEl) {
+      return;
+    }
+    goalSectionEl.innerHTML = '';
+    var panel = document.createElement('div');
+    panel.className = 'gk-panel gk-goal-panel';
+    var status = document.createElement('p');
+    status.className = 'gk-link-status';
+    status.textContent = message;
+    panel.appendChild(status);
+    goalSectionEl.appendChild(panel);
+  }
+
+  function renderGoalSection() {
+    var goalSectionEl = document.getElementById('goal-section');
+    if (!goalSectionEl || !window.GameLink || !window.GameLink.fetchGoal) {
+      return;
+    }
+
+    renderGoalSectionState('공동 목표를 불러오는 중이에요.');
+    window.GameLink.fetchGoal().then(function (result) {
+      if (!result.ok) {
+        renderGoalSectionState('공동 목표를 불러오지 못했어요. 게임 진행에는 영향이 없어요.');
+        return;
+      }
+
+      goalSectionEl.innerHTML = '';
+      var panel = document.createElement('div');
+      panel.className = 'gk-panel gk-goal-panel';
+
+      var title = document.createElement('p');
+      title.className = 'gk-ranking-title';
+      title.textContent = '이번 주 다 같이 간식 만들기';
+      panel.appendChild(title);
+
+      var summary = document.createElement('p');
+      summary.className = 'gk-goal-summary';
+      summary.textContent = '지금까지 ' + Engine.formatNumber(result.total) + '개 / 목표 '
+        + Engine.formatNumber(result.goal) + '개 · ' + result.participants + '명이 함께하고 있어요';
+      panel.appendChild(summary);
+
+      var track = document.createElement('div');
+      track.className = 'gk-goal-track';
+      var fill = document.createElement('div');
+      fill.className = 'gk-goal-fill';
+      fill.style.width = Math.min(100, Math.floor((result.total / result.goal) * 100)) + '%';
+      track.appendChild(fill);
+      panel.appendChild(track);
+
+      var meta = document.createElement('p');
+      meta.className = 'gk-goal-meta';
+      meta.textContent = result.achieved
+        ? '이번 주 목표를 함께 달성했어요! 🎉'
+        : '각자의 속도로 만든 간식이 함께 모이고 있어요.';
+      panel.appendChild(meta);
+
+      if (result.myContribution !== null && result.myContribution !== undefined) {
+        var mine = document.createElement('p');
+        mine.className = 'gk-goal-meta';
+        mine.textContent = '내 몫: ' + Engine.formatNumber(result.myContribution) + '개';
+        panel.appendChild(mine);
+      }
+
+      goalSectionEl.appendChild(panel);
+    });
   }
 
   // 방치형은 랭킹 부적합 장르 - 주간 누적 생산량을 참여 기록으로만 제출한다(랭킹 미노출).
@@ -515,14 +588,14 @@
 
   function submitWeeklyProduction() {
     if (!window.GameLink || weeklyProductionSubmitted) {
-      return;
+      return Promise.resolve({ ok: false, reason: 'SKIPPED' });
     }
     // 미연결 상태의 방문으로 세션 플래그를 소진하지 않는다 (연결 직후 방문에서 제출되도록).
     if (!window.GameLink.isLinked()) {
-      return;
+      return Promise.resolve({ ok: false, reason: 'NOT_LINKED' });
     }
     weeklyProductionSubmitted = true;
-    window.GameLink.submitScore('idle', state.lifetimeProduced, null);
+    return window.GameLink.submitScore('idle', state.lifetimeProduced, null);
   }
 
   function switchTab(target) {
@@ -535,7 +608,9 @@
 
     if (target === 'records') {
       renderLinkSection();
-      submitWeeklyProduction();
+      submitWeeklyProduction().then(function () {
+        renderGoalSection();
+      });
     }
   }
 

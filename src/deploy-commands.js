@@ -92,6 +92,16 @@ const commands = [
           { name: '간식 수호대', value: 'deck' },
           { name: '간식 공방 키우기', value: 'idle' }
         )
+    )
+    .addStringOption((option) =>
+      option
+        .setName('기간')
+        .setDescription('랭킹 기간을 선택해 주세요. 기본값은 이번 주입니다.')
+        .setRequired(false)
+        .addChoices(
+          { name: '이번 주', value: 'week' },
+          { name: '오늘의 도전', value: 'daily' }
+        )
     ),
 
   new SlashCommandBuilder()

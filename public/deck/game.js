@@ -187,13 +187,16 @@
   }
 
   // previousStats를 넘기면 통산 기록(클리어 횟수·최고 도달 칸)이 새 런에 이어진다.
-  function startNewRun(previousStats) {
+  function startNewRun(previousStats, options) {
+    options = options || {};
     scoreSubmittedForRun = false;
-    var seed = getSeedFromUrl();
+    var seed = options.seed !== undefined ? Number(options.seed) : getSeedFromUrl();
     if (seed === undefined) {
       seed = generateRandomSeed();
     }
     state = Engine.createNewRun(seed, previousStats);
+    state.challengeMode = options.mode === 'daily' ? 'daily' : 'free';
+    state.challengeDayKey = options.dayKey || null;
     tracker = Engine.trackerFromState(state);
   }
 
@@ -253,8 +256,11 @@
   var resultClearCountEl = document.getElementById('result-clear-count');
   var resultBestNodeEl = document.getElementById('result-best-node');
   var resultLinkSectionEl = document.getElementById('result-link-section');
+  var resultDailySectionEl = document.getElementById('result-daily-section');
   var resultRankingSectionEl = document.getElementById('result-ranking-section');
   var restartButton = document.getElementById('restart-button');
+  var dailyRunButton = document.getElementById('daily-run-button');
+  var dailyRunChip = document.getElementById('daily-run-chip');
 
   // ---- 연출 헬퍼 ----
 
@@ -361,6 +367,13 @@
     }
     var node = Content.RUN_LAYOUT[state.runIndex];
     runNodeDescriptionEl.textContent = '다음 칸: ' + NODE_TYPE_LABEL[node.type];
+    if (dailyRunChip) {
+      dailyRunChip.classList.toggle('hidden', state.challengeMode !== 'daily');
+    }
+    if (dailyRunButton) {
+      // 진행 중인 런(첫 칸 진입 후)에서는 숨긴다 — 탭 한 번에 런이 교체되는 사고 방지.
+      dailyRunButton.classList.toggle('hidden', state.runIndex > 0);
+    }
   }
 
   function statusBadges(container, strength, weak, vulnerable) {
@@ -608,16 +621,28 @@
       var reachedStage = Math.min(state.runIndex + 1, totalNodes);
       var remainingHp = Math.max(0, state.player.hp);
       var runScore = reachedStage * 1000 + remainingHp;
-      window.GameLink.submitScore('deck', runScore, getSeedFromUrl());
+      var submitOptions = state.challengeMode === 'daily' ? { challenge: 'daily' } : undefined;
+      window.GameLink.submitScore('deck', runScore, state.seed, submitOptions);
     }
 
     if (window.GameLink && resultLinkSectionEl) {
       window.GameLink.renderLinkSection(resultLinkSectionEl, {
         onChange: function () {
+          if (resultDailySectionEl) {
+            window.GameLink.renderDailySection(resultDailySectionEl, 'deck', {
+              onStart: startDailyRunFromSeed,
+            });
+          }
           if (resultRankingSectionEl) {
             window.GameLink.renderRankingSection(resultRankingSectionEl, 'deck');
           }
         },
+      });
+    }
+
+    if (window.GameLink && resultDailySectionEl) {
+      window.GameLink.renderDailySection(resultDailySectionEl, 'deck', {
+        onStart: startDailyRunFromSeed,
       });
     }
 
@@ -662,10 +687,43 @@
   });
 
   restartButton.addEventListener('click', function () {
-    startNewRun(state && state.stats);
+    var nextOptions = state && state.challengeMode === 'daily'
+      ? { seed: state.seed, mode: 'daily', dayKey: state.challengeDayKey }
+      : undefined;
+    startNewRun(state && state.stats, nextOptions);
     saveState();
     renderAll();
   });
+
+  function startDailyRunFromSeed(seed, daily) {
+    startNewRun(state && state.stats, {
+      seed: seed,
+      mode: 'daily',
+      dayKey: daily && daily.dayKey,
+    });
+    saveState();
+    renderAll();
+  }
+
+  function startDailyRun() {
+    if (!window.GameLink || !window.GameLink.fetchDaily) {
+      runNodeDescriptionEl.textContent = '오늘의 도전을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.';
+      return;
+    }
+
+    dailyRunButton.disabled = true;
+    runNodeDescriptionEl.textContent = '오늘의 도전을 불러오는 중이에요.';
+    window.GameLink.fetchDaily('deck').then(function (result) {
+      dailyRunButton.disabled = false;
+      if (!result.ok) {
+        runNodeDescriptionEl.textContent = '오늘의 도전을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.';
+        return;
+      }
+      startDailyRunFromSeed(result.seed, result);
+    });
+  }
+
+  dailyRunButton.addEventListener('click', startDailyRun);
 
   // ---- beforeunload 저장 ----
 
@@ -683,6 +741,8 @@
 
     if (restored && seedFromUrl === undefined) {
       state = restored;
+      state.challengeMode = state.challengeMode === 'daily' ? 'daily' : 'free';
+      state.challengeDayKey = state.challengeMode === 'daily' ? state.challengeDayKey || null : null;
     } else {
       startNewRun(restored && restored.stats);
     }

@@ -404,6 +404,16 @@ const checks = [
     args: ['--check', 'scripts/test-mobile-hardening-static.js'],
   },
   {
+    label: 'scripts/test-webgame-social-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-webgame-social-flow.js'],
+  },
+  {
+    label: 'scripts/test-webgame-social-api.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-webgame-social-api.js'],
+  },
+  {
     label: 'jsonStorage smoke test',
     command: 'node',
     args: ['scripts/test-json-storage.js'],
@@ -592,6 +602,16 @@ const checks = [
     label: 'webgame api smoke test',
     command: 'node',
     args: ['scripts/test-webgame-api.js'],
+  },
+  {
+    label: 'webgame async social repository flow smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-social-flow.js'],
+  },
+  {
+    label: 'webgame async social api smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-social-api.js'],
   },
   {
     label: 'dungeonworld session 02 content test',

@@ -34,7 +34,11 @@
       <main class="app-main">
         <section id="screen-run" class="screen" data-screen="run">
           <p id="run-node-description" class="run-node-description">다음 칸으로 진행하세요.</p>
-          <button id="advance-button" type="button" class="gk-button primary">다음 칸으로</button>
+          <div id="daily-run-chip" class="gk-challenge-chip hidden">오늘의 도전 런</div>
+          <div class="run-actions">
+            <button id="daily-run-button" type="button" class="gk-button secondary">오늘의 도전으로 시작</button>
+            <button id="advance-button" type="button" class="gk-button primary">다음 칸으로</button>
+          </div>
         </section>
 
         <section id="screen-combat" class="screen hidden" data-screen="combat">
@@ -101,6 +105,7 @@
             <div><dt>최고 도달 칸</dt><dd id="result-best-node">0</dd></div>
           </dl>
           <div id="result-link-section"></div>
+          <div id="result-daily-section"></div>
           <div id="result-ranking-section"></div>
           <button id="restart-button" type="button" class="gk-button primary">새로 시작</button>
         </section>

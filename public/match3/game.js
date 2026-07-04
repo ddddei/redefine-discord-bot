@@ -28,7 +28,9 @@
   var comboValueEl = document.getElementById('combo-value');
   var comboChipEl = document.getElementById('combo-chip');
   var statusMessageEl = document.getElementById('status-message');
+  var challengeChipEl = document.getElementById('challenge-chip');
   var restartButton = document.getElementById('restart-button');
+  var todayChallengeButton = document.getElementById('today-challenge-button');
   var helpButton = document.getElementById('help-button');
   var helpModal = document.getElementById('help-modal');
   var helpModalCloseButton = document.getElementById('help-modal-close');
@@ -56,8 +58,9 @@
     return Number.isFinite(parsed) ? parsed : undefined;
   }
 
-  function createGameState() {
-    var seed = getSeedFromUrl();
+  function createGameState(options) {
+    options = options || {};
+    var seed = options.seed !== undefined ? Number(options.seed) : getSeedFromUrl();
     var rng = Board.createRng(seed);
     var grid = Board.generateBoard(seed).grid;
 
@@ -71,6 +74,9 @@
       clearedByType: {},
       selected: null,
       gameOver: false,
+      seed: seed,
+      mode: options.mode === 'daily' ? 'daily' : 'free',
+      dayKey: options.dayKey || null,
     };
   }
 
@@ -158,6 +164,13 @@
 
   function setStatusMessage(message) {
     statusMessageEl.textContent = message;
+  }
+
+  function updateChallengeChip() {
+    if (!challengeChipEl) {
+      return;
+    }
+    challengeChipEl.classList.toggle('hidden', !state || state.mode !== 'daily');
   }
 
   function getTileFromButton(button) {
@@ -425,15 +438,27 @@
 
   function renderLinkAndRanking() {
     var linkSectionEl = document.getElementById('result-link-section');
+    var dailySectionEl = document.getElementById('result-daily-section');
     var rankingSectionEl = document.getElementById('result-ranking-section');
 
     if (window.GameLink && linkSectionEl) {
       window.GameLink.renderLinkSection(linkSectionEl, {
         onChange: function () {
+          if (dailySectionEl) {
+            window.GameLink.renderDailySection(dailySectionEl, 'match3', {
+              onStart: startDailyGameFromSeed,
+            });
+          }
           if (rankingSectionEl) {
             window.GameLink.renderRankingSection(rankingSectionEl, 'match3');
           }
         },
+      });
+    }
+
+    if (window.GameLink && dailySectionEl) {
+      window.GameLink.renderDailySection(dailySectionEl, 'match3', {
+        onStart: startDailyGameFromSeed,
       });
     }
 
@@ -453,22 +478,65 @@
 
     // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
     if (window.GameLink) {
-      window.GameLink.submitScore('match3', state.score, getSeedFromUrl());
+      var submitOptions = state.mode === 'daily' ? { challenge: 'daily' } : undefined;
+      window.GameLink.submitScore('match3', state.score, state.seed, submitOptions);
     }
     renderLinkAndRanking();
   }
 
-  function startNewGame() {
+  function startNewGame(options) {
     closeModal(resultModal);
     busy = false;
-    state = createGameState();
+    state = createGameState(options);
     renderBoard();
     updateHud();
-    setStatusMessage('인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.');
+    updateChallengeChip();
+    setStatusMessage(state.mode === 'daily'
+      ? '오늘의 간식판이에요. 같은 판에서 편하게 다시 도전할 수 있어요.'
+      : '인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.');
+  }
+
+  function startDailyGameFromSeed(seed, daily) {
+    startNewGame({
+      seed: seed,
+      mode: 'daily',
+      dayKey: daily && daily.dayKey,
+    });
+  }
+
+  function startDailyChallenge() {
+    if (!window.GameLink || !window.GameLink.fetchDaily) {
+      setStatusMessage('오늘의 도전을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+
+    todayChallengeButton.disabled = true;
+    setStatusMessage('오늘의 도전을 불러오는 중이에요.');
+    window.GameLink.fetchDaily('match3').then(function (result) {
+      todayChallengeButton.disabled = false;
+      if (!result.ok) {
+        setStatusMessage('오늘의 도전을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
+      startDailyGameFromSeed(result.seed, result);
+    });
+  }
+
+  function restartCurrentMode() {
+    if (state && state.mode === 'daily') {
+      startNewGame({
+        seed: state.seed,
+        mode: 'daily',
+        dayKey: state.dayKey,
+      });
+      return;
+    }
+    startNewGame();
   }
 
   restartButton.addEventListener('click', startNewGame);
-  resultRetryButton.addEventListener('click', startNewGame);
+  todayChallengeButton.addEventListener('click', startDailyChallenge);
+  resultRetryButton.addEventListener('click', restartCurrentMode);
 
   helpButton.addEventListener('click', function () {
     openModal(helpModal);
