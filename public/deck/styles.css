@@ -2,6 +2,11 @@
   --accent-block: #5b8dff;
   --accent-weak: #8a5bff;
   --accent-vulnerable: #e0554f;
+  /* --paper 배경 위 텍스트 전용 어둡힌 변형 (WCAG AA 4.5:1 확보) */
+  --accent-weak-text: #6e49cc;
+  --accent-vulnerable-text: #9d3b37;
+  --gold-ink-text: #7c5f28;
+  --accent-block-text: #4063b2;
 }
 
 * {
@@ -11,8 +16,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #fff9f0 0%, #ffefdd 100%);
-  color: var(--text-main);
+  background: var(--paper);
+  color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
 }
 
@@ -20,16 +25,15 @@ body {
   max-width: 520px;
   margin: 0 auto;
   min-height: 100vh;
-  background: var(--surface-cream);
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-soft);
 }
 
 .run-progress-label {
   margin: 2px 0 0;
   font-size: 16px;
   font-weight: 700;
+  color: var(--ink);
 }
 
 .gk-header-chips .gk-chip {
@@ -37,12 +41,12 @@ body {
 }
 
 .hp-chip strong {
-  color: var(--accent-danger);
+  color: var(--accent-vulnerable-text);
   transition: color var(--motion-fast) ease;
 }
 
 .hp-chip.gk-shake strong {
-  color: var(--accent-vulnerable);
+  color: #7d2521;
 }
 
 /* 진행 트랙 */
@@ -51,8 +55,8 @@ body {
   display: flex;
   gap: 4px;
   padding: 10px 16px;
-  background: var(--surface-panel);
-  border-bottom: 1px solid var(--border-soft);
+  background: var(--paper-raised);
+  border-bottom: 1.6px solid var(--ink);
   overflow-x: auto;
 }
 
@@ -60,25 +64,25 @@ body {
   flex: 0 0 auto;
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  color: var(--text-muted);
+  background: var(--paper);
+  border: 1.3px solid var(--ink);
+  color: var(--ink-soft);
 }
 
 .run-node.done {
-  background: var(--accent-primary);
-  color: #fff;
-  border-color: var(--accent-primary-dark);
+  background: var(--accent-rose);
+  color: var(--paper-raised);
+  border-color: var(--accent-rose-deep);
 }
 
 .run-node.current {
-  border: 2px solid var(--accent-primary-dark);
-  color: var(--text-main);
+  border: 2px solid var(--accent-rose-deep);
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -99,12 +103,15 @@ body {
 .screen-heading {
   margin: 0;
   font-size: 18px;
+  font-family: var(--font-display);
+  letter-spacing: 0.3px;
+  color: var(--ink);
 }
 
 .screen-copy {
   margin: 0;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   line-height: 1.5;
 }
 
@@ -123,7 +130,7 @@ body {
 .run-node-description {
   margin: 0;
   font-size: 14px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 /* 전투 화면 */
@@ -134,10 +141,12 @@ body {
   gap: 12px;
 }
 
+/* 적 패널 = 아트 창 구조(가이드 6.6절) — 종이 인셋 프레임 위에 적 실루엣을 얹어
+   래스터 원화 교체를 대비한다. */
 .enemy-panel {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
+  background: var(--paper-raised);
+  border: 1.6px solid var(--ink);
+  border-radius: var(--radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -145,12 +154,25 @@ body {
   gap: 6px;
   text-align: center;
   position: relative;
+  box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
 }
 
 .enemy-name {
   margin: 0;
   font-weight: 700;
   font-size: 15px;
+  font-family: var(--font-display);
+  color: var(--ink);
+}
+
+.enemy-art-window {
+  background: var(--paper-deep);
+  border: 1.4px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .enemy-asset {
@@ -183,12 +205,12 @@ body {
 
 .enemy-hp-value {
   font-weight: 700;
-  color: var(--accent-danger);
+  color: var(--accent-vulnerable-text);
 }
 
 .enemy-block-value,
 .player-block-value {
-  color: var(--accent-block);
+  color: var(--accent-block-text);
   font-weight: 600;
 }
 
@@ -226,27 +248,27 @@ body {
   min-height: 20px;
 }
 
+/* 의도 배지: 잉크 보더 칩 마감(가이드 6.3/6.6절) */
 .status-badge {
   font-size: 11px;
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 2px 8px;
   font-weight: 600;
+  background: var(--paper);
+  border: 1.3px solid var(--ink);
   animation: status-badge-pop-in 0.2s ease;
 }
 
 .status-badge.strength {
-  background: #fff0c2;
-  color: #8a6500;
+  color: var(--gold-ink-text);
 }
 
 .status-badge.weak {
-  background: #ece3ff;
-  color: var(--accent-weak);
+  color: var(--accent-weak-text);
 }
 
 .status-badge.vulnerable {
-  background: #ffe1e0;
-  color: var(--accent-vulnerable);
+  color: var(--accent-vulnerable-text);
 }
 
 @keyframes status-badge-pop-in {
@@ -265,19 +287,21 @@ body {
   flex-direction: column;
   gap: 2px;
   margin-top: 4px;
-  background: var(--surface-card);
-  border-radius: 12px;
+  background: var(--paper);
+  border: 1.3px solid var(--ink);
+  border-radius: 8px;
   padding: 8px 14px;
 }
 
 .intent-label {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 .intent-value {
   font-size: 14px;
   font-weight: 700;
+  color: var(--ink);
 }
 
 .intent-value.intent-changing {
@@ -315,29 +339,41 @@ body {
   min-height: 132px;
 }
 
+/* 카드 물성(가이드 6.4절): 종이 그레인 + 비네트 + 이중 잉크 프레임 + 로제트 코스트
+   메달 + 아트 창(현재는 타입 아이콘 SVG, 추후 webp로 교체) + 룰 라인·다이아 장식 +
+   하단 분류 표기. 정예급은 삼중 프레임/골드 잉크 라인으로 구분한다. */
 .card {
   position: relative;
   flex: 0 0 auto;
-  width: 96px;
-  min-height: 128px;
-  border-radius: 14px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface-panel);
-  padding: 8px;
+  width: 104px;
+  min-height: 148px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--ink);
+  background-color: var(--paper-raised);
+  background-image:
+    radial-gradient(140% 140% at 50% 0%, rgba(58, 42, 28, 0) 60%, rgba(58, 42, 28, 0.16) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch' result='t'/%3E%3CfeColorMatrix in='t' type='matrix' values='0 0 0 0 0.227   0 0 0 0 0.165   0 0 0 0 0.109  0 0 0 0.10 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, repeat;
+  background-size: cover, auto;
+  padding: 7px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   cursor: pointer;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 4px 10px rgba(58, 42, 28, 0.18);
   transition: transform 0.08s ease;
 }
 
-.card-type-icon {
+.card::before {
+  /* 내곽 0.8px 잉크 라인 (이중 프레임) */
+  content: '';
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 20px;
-  height: 20px;
+  inset: 4px;
+  border: 0.8px solid var(--ink);
+  border-radius: calc(var(--radius-md) - 2px);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 /* 딜-인은 실제 드로우가 일어난 렌더에만 적용한다 (카드 사용 후 재렌더마다
@@ -382,36 +418,100 @@ body {
   }
 }
 
+/* 정예급 구분: 삼중 프레임(외곽+내곽+골드 잉크 라인) */
 .card-elite {
-  border-color: var(--accent-gold);
+  border-color: var(--gold-ink);
+  box-shadow: 0 0 0 1.4px var(--gold-ink), 0 4px 10px rgba(58, 42, 28, 0.18);
+}
+
+.card-elite::before {
+  border-color: var(--gold-ink);
+  opacity: 0.8;
 }
 
 .card-cost {
-  align-self: flex-start;
-  background: var(--accent-primary);
-  color: #fff;
-  border-radius: 999px;
-  min-width: 20px;
-  height: 20px;
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--paper-raised);
+  border: 2px solid var(--ink);
+  box-shadow: inset 0 0 0 2px var(--paper-raised), inset 0 0 0 3px var(--ink-soft);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
-  padding: 0 4px;
+  color: var(--ink);
+  z-index: 2;
+}
+
+.card-art-window {
+  width: 100%;
+  height: 44px;
+  border-radius: 4px;
+  border: 1.4px solid var(--ink);
+  background: var(--paper-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.card-art-image {
+  width: 30px;
+  height: 30px;
 }
 
 .card-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1.3;
+  text-align: center;
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+
+.card-rule-line {
+  width: 60%;
+  height: 1px;
+  background: var(--ink);
+  opacity: 0.4;
+  position: relative;
+  margin: 1px 0;
+}
+
+.card-rule-line::before {
+  content: '◆';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 6px;
+  color: var(--ink);
+  opacity: 0.9;
+  background: var(--paper-raised);
+  padding: 0 3px;
+  line-height: 1;
 }
 
 .card-description {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 10.5px;
+  color: var(--ink-soft);
   line-height: 1.4;
   flex: 1;
+  text-align: center;
+}
+
+/* 가이드 6.4절 예시(ATTACK)를 그대로 따른다 — 대문자 소문자체 분류 표기. */
+.card-type-label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
 }
 
 .combat-controls {
@@ -422,19 +522,20 @@ body {
 }
 
 .energy-chip {
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
+  background: var(--paper);
+  border: 1.3px solid var(--ink);
+  border-radius: 8px;
   padding: 6px 12px;
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  color: var(--ink-soft);
 }
 
 .energy-chip strong {
   font-size: 16px;
-  color: var(--accent-primary-dark);
+  color: var(--accent-rose-deep);
 }
 
 /* 보상 화면 */
@@ -484,11 +585,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
+  background: var(--paper-raised);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   font-size: 13px;
+  color: var(--ink);
 }
 
 /* 결과 화면 */
@@ -502,9 +604,9 @@ body {
 }
 
 .result-stats {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  background: var(--paper-raised);
+  border: 1.6px solid var(--ink);
+  border-radius: var(--radius-lg);
   padding: 12px 20px;
   margin: 0;
   display: grid;
@@ -516,7 +618,7 @@ body {
 }
 
 .result-stats dt {
-  color: var(--text-muted);
+  color: var(--ink-soft);
   text-align: left;
 }
 
@@ -524,6 +626,7 @@ body {
   margin: 0;
   font-weight: 700;
   text-align: right;
+  color: var(--ink);
 }
 
 #screen-result:not(.hidden) {
@@ -572,7 +675,7 @@ body {
 
   .app-frame {
     min-height: auto;
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
   }
 }
 

@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <div class="app-frame">
+    <div class="app-frame gk-stage">
       <header class="gk-header">
         <div class="gk-header-title">
           <p class="gk-header-subline">간식 수호대</p>
@@ -38,7 +38,9 @@
         <section id="screen-combat" class="screen hidden" data-screen="combat">
           <div class="enemy-panel">
             <p id="enemy-name" class="enemy-name">적</p>
-            <img class="enemy-asset" src="../shared/assets/deck-enemy-crumb-ant.svg" alt="">
+            <div class="enemy-art-window">
+              <img class="enemy-asset" src="../shared/assets/deck-enemy-crumb-ant.svg" alt="">
+            </div>
             <div class="enemy-stat-row">
               <span id="enemy-hp-value" class="enemy-hp-value">0 / 0</span>
               <span id="enemy-block-value" class="enemy-block-value hidden">방어 0</span>

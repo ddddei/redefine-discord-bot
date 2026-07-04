@@ -129,8 +129,10 @@
   cursor: not-allowed;
 }
 
+/* 버튼 배경은 --accent-rose를 살짝 어둡게 섞어(color-mix) 흰 텍스트 대비
+   WCAG AA(4.5:1)를 충족한다. --accent-rose 원 토큰은 다른 강조 용도에 그대로 쓴다. */
 .gk-button.primary {
-  background: var(--accent-rose);
+  background: color-mix(in srgb, var(--accent-rose) 50%, var(--accent-rose-deep) 50%);
   color: var(--paper-raised);
   box-shadow: 0 3px 0 var(--accent-rose-deep);
 }
@@ -157,7 +159,7 @@
 }
 
 .gk-button.danger {
-  background: var(--accent-danger);
+  background: color-mix(in srgb, var(--accent-danger) 78%, black 22%);
   color: #fff;
   box-shadow: 0 3px 0 #a53f3a;
 }

@@ -38,12 +38,60 @@
     return '../shared/assets/deck-icon-skill.svg';
   }
 
-  function appendCardTypeIcon(cardEl, card) {
-    var icon = document.createElement('img');
-    icon.className = 'card-type-icon';
-    icon.src = getCardTypeAsset(card);
-    icon.alt = '';
-    cardEl.appendChild(icon);
+  // 하단 분류 표기(가이드 6.4절). 코드 판정 로직은 getCardTypeAsset과 동일 기준을 공유한다.
+  function getCardTypeLabel(card) {
+    var effect = card.effect;
+    if (effect.damage !== undefined) {
+      return 'ATTACK';
+    }
+    if (effect.block !== undefined) {
+      return 'DEFENSE';
+    }
+    return 'SKILL';
+  }
+
+  // 카드 물성(가이드 6.4절): 로제트 코스트 메달 + 아트 창(현재는 타입 아이콘 SVG를
+  // 재사용 — 래스터 원화 도착 시 .card-art-window img의 src만 교체하면 된다) +
+  // 이름 + 룰 라인 + 하단 분류 표기 + 설명. 정예 카드는 el.className으로 구분(card-elite).
+  function buildCardElement(card) {
+    var el = document.createElement('div');
+    el.className = 'card' + (card.rarity === 'elite' ? ' card-elite' : '');
+
+    var costMedal = document.createElement('span');
+    costMedal.className = 'card-cost';
+    costMedal.textContent = String(card.cost);
+    el.appendChild(costMedal);
+
+    var artWindow = document.createElement('div');
+    artWindow.className = 'card-art-window';
+    var artImg = document.createElement('img');
+    artImg.className = 'card-art-image';
+    artImg.src = getCardTypeAsset(card);
+    artImg.alt = '';
+    artWindow.appendChild(artImg);
+    el.appendChild(artWindow);
+
+    var name = document.createElement('p');
+    name.className = 'card-name';
+    name.textContent = card.name;
+    el.appendChild(name);
+
+    var ruleLine = document.createElement('div');
+    ruleLine.className = 'card-rule-line';
+    ruleLine.setAttribute('aria-hidden', 'true');
+    el.appendChild(ruleLine);
+
+    var description = document.createElement('p');
+    description.className = 'card-description';
+    description.textContent = describeEffect(card);
+    el.appendChild(description);
+
+    var typeLabel = document.createElement('span');
+    typeLabel.className = 'card-type-label';
+    typeLabel.textContent = getCardTypeLabel(card);
+    el.appendChild(typeLabel);
+
+    return el;
   }
 
   function describeEffect(card) {
@@ -403,8 +451,7 @@
     handListEl.innerHTML = '';
     state.player.hand.forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
-      var el = document.createElement('div');
-      el.className = 'card' + (card.rarity === 'elite' ? ' card-elite' : '');
+      var el = buildCardElement(card);
       if (animate) {
         el.classList.add('card-enter');
         el.style.animationDelay = (index * 30) + 'ms';
@@ -414,23 +461,6 @@
       if (!playable) {
         el.classList.add('card-disabled');
       }
-
-      var cost = document.createElement('span');
-      cost.className = 'card-cost';
-      cost.textContent = String(card.cost);
-
-      var name = document.createElement('p');
-      name.className = 'card-name';
-      name.textContent = card.name;
-
-      var description = document.createElement('p');
-      description.className = 'card-description';
-      description.textContent = describeEffect(card);
-
-      appendCardTypeIcon(el, card);
-      el.appendChild(cost);
-      el.appendChild(name);
-      el.appendChild(description);
 
       el.addEventListener('click', function () {
         handleCardTap(cardId, index);
@@ -486,26 +516,9 @@
     rewardCardListEl.innerHTML = '';
     (state.pendingReward || []).forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
-      var el = document.createElement('div');
-      el.className = 'card card-enter' + (card.rarity === 'elite' ? ' card-elite' : '');
+      var el = buildCardElement(card);
+      el.classList.add('card-enter');
       el.style.animationDelay = (index * 30) + 'ms';
-
-      var cost = document.createElement('span');
-      cost.className = 'card-cost';
-      cost.textContent = String(card.cost);
-
-      var name = document.createElement('p');
-      name.className = 'card-name';
-      name.textContent = card.name;
-
-      var description = document.createElement('p');
-      description.className = 'card-description';
-      description.textContent = describeEffect(card);
-
-      appendCardTypeIcon(el, card);
-      el.appendChild(cost);
-      el.appendChild(name);
-      el.appendChild(description);
 
       el.addEventListener('click', function () {
         var result = Engine.chooseReward(state, cardId);
