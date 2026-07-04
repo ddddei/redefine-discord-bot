@@ -46,18 +46,18 @@
 
 ### A. 웹게임 트랙
 
-게임별 상세 고도화 백로그(2026-07-05 작성): [match3](match3-improvement-backlog.md) · [idle](idle-improvement-backlog.md) · [deck](deck-improvement-backlog.md) · [생존전](survivors-improvement-backlog.md) · [신규 게임 후보](new-webgame-candidates.md) — 아래 A-6·A-9~11은 개요만, 세부는 각 문서가 기준.
+게임별 **완성 배포판 고도화 계획서**(2026-07-05 작성 — 각각 단독으로 100% 구현·배포 가능한 전체 명세): [match3](match3-improvement-plan.md) · [idle](idle-improvement-plan.md) · [deck](deck-improvement-plan.md) · [생존전](survivors-improvement-plan.md) · 신규 게임 [오늘의 간식 단어](word-daily-web-game-plan.md) ([후보 검토](new-webgame-candidates.md)) — 아래 A-6·A-9~10은 개요만, 세부는 각 계획서가 기준.
 
 1. **서버 리플레이 검증 v2** [상 / 중 / 없음] — 시드+행동 로그를 서버에서 재현해 점수를 검증. `board.js`·`engine.js`가 Node 로드 가능하게 이미 설계돼 있어 구조 준비 완료. 클라이언트가 행동 로그(스왑 좌표/카드 선택 순서)를 제출 페이로드에 추가하고, 서버가 재계산 점수와 대조. **포인트 자동 지급(A-2)의 신뢰 게이트**이므로 참여자 목적 ③의 최종 완성으로 가는 병목. 방치형은 리플레이 불가 장르라 대상 외(현행 휴리스틱 유지).
 2. **포인트 자동 지급** [상 / 중 / A-1 완료 + 운영 합의] — 주간 랭킹 수동 지급 루프를 자동화. `pointsRepository.js` 경유 필수(금기 준수), 지급 정책은 이미 확정돼 있음(1절). 자동화 후에도 첫 몇 주는 운영자 확인 후 실행하는 반자동(버튼 승인)부터 권장.
 3. **미니게임 허브/랜딩 노출** [중 / 소 / 론칭 시점 운영 판단] — 웹게임 3종 링크를 Discord 미니게임 허브에 노출. 코드 준비는 쉬우나 **노출 시점은 계속 의도적으로 보류 중** — 참여자 유입 시작 시점에 맞춰 결정. 디자인 v4의 "허브 랜딩"과 함께 갈 수도.
 4. **비동기 소셜 후속** [중 / 소~중 / v1 운영 데이터] — ⓐ 공동 목표 달성 시 Discord 채널 자동 공지(현재 수동), ⓑ 응원 알림(받은 사람에게 — "조용히 참여" 원칙과의 긴장을 별도 설계), ⓒ streak 표기(끊김 압박 때문에 신중 — 참여자 맥락상 비권장 의견 있음).
 5. **다크 모드(야간 종이 톤)** [중 / 중 / 없음] — 야간 사용 배려의 완성형. 팔레트 전면 재설계라 별도 계획 필요(모바일 하드닝 12절).
-6. **생존전 고도화** [중 / 대 / 선행 결정 2건] — [survivors-improvement-backlog.md](survivors-improvement-backlog.md)가 기준. 선행 결정: 모바일 지원 여부(저사양 성능 실측 게이트)·기본 세션 길이(10분 퀵 승격 권장). 단계: 전투 체감(S1) → 세션 구조(S2) → 메타 진행(S3) → Discord 연동(S4).
+6. **생존전 고도화 v1** [중 / 대 / 없음(결정 확정됨)] — [survivors-improvement-plan.md](survivors-improvement-plan.md)가 기준(완성 배포판). 확정: 모바일 지원 포함(성능 예산이 구현 1단계)·퀵 런 기본화·주간 랭킹 편입(deploy 동반).
 7. **디자인 v4 후보** [하 / 대 / 없음] — 카드 일러스트 21종, 방치형 무대 일러스트, 사운드(합성음 — 무음 정책 재론 필요). v3 계획서 8절.
 8. **잔여 폴리시** [하 / 소 / 없음] — 방치형 무대 이모지 소품 원화 교체(idle 백로그 I3), 매치3 드래그 연출(match3 백로그 M4), PWA/홈 화면 아이콘.
-9. **게임별 규칙 고도화** [중 / 중 / 없음] — 매치3 특수 타일(M1)·덱 카드+유물(D1)·방치형 공동 목표 연동 콘텐츠(I1)가 각 백로그의 1순위. 시드 결정성 유지가 공통 절대 조건(리플레이 검증 v2 대비).
-10. **신규 웹게임** [중 / 소~중 / 후보 선정] — [new-webgame-candidates.md](new-webgame-candidates.md). 추천 1순위: 오늘의 간식 단어(워들류 — 랭킹 없는 데일리, 경쟁 부담 최소 축 검증), 2순위: 간식 합치기(2048류).
+9. **게임별 고도화 v1 (3종)** [중 / 게임당 중~대 / 없음] — [match3](match3-improvement-plan.md)(특수 타일·요일 변형·목표 판)·[deck](deck-improvement-plan.md)(카드 30종·유물·갈림길 맵·이벤트)·[idle](idle-improvement-plan.md)(공동 목표 연동·파견 확장·통계·소품 원화). 각각 완성 배포판 계획서 — 게임당 PR 하나. 시드 결정성 유지가 공통 절대 조건.
+10. **신규 웹게임 — 오늘의 간식 단어** [중 / 중 / 없음] — [word-daily-web-game-plan.md](word-daily-web-game-plan.md)(완성 배포판). 랭킹·점수·응원이 전혀 없는 첫 게임(참여 수·분포만). 차순위 후보(간식 합치기 2048류 등)는 [new-webgame-candidates.md](new-webgame-candidates.md).
 
 ### B. Discord 미니게임 트랙
 
