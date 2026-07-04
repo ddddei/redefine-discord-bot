@@ -66,6 +66,7 @@
  */
 .gk-stage {
   position: relative;
+  overflow: hidden;
   background-color: var(--paper);
   background-image:
     radial-gradient(120% 120% at 50% 0%, rgba(58, 42, 28, 0) 55%, rgba(58, 42, 28, 0.2) 100%),
