@@ -6,7 +6,7 @@
  */
 
 :root {
-  /* 색 (기존 3종 공통값을 승격) */
+  /* 색 (기존 3종 공통값 — v3에서 프레임 사용은 중단하되 에셋·구버전 호환을 위해 유지) */
   --surface-cream: #fff7ec;
   --surface-panel: #ffffff;
   --surface-card: #fdeedd;
@@ -19,11 +19,22 @@
   --border-soft: #f1d9bd;
   --shadow-soft: 0 12px 24px rgba(154, 107, 56, 0.14);
 
-  /* radius 스케일 — 이 4단계만 사용 */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-pill: 999px;
+  /* 팔레트 v3 — 스토리북 프레임 (docs/webgame-design-guide.md 6.1절) */
+  --paper: #efe3c8;
+  --paper-deep: #e9dab6;
+  --paper-raised: #f7f0e1;
+  --ink: #3a2a1c;
+  --ink-soft: #6d5a41;
+  --accent-rose: #b06a72;
+  --accent-rose-deep: #7d454c;
+  --gold-ink: #8a6a2c;
+
+  /* radius 스케일 v3 — 프레임·패널 3~10px, 버튼 10~12px (알약형 폐기) */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 10px;
+  --radius-button: 11px;
 
   /* 모션 */
   --motion-fast: 150ms;
@@ -34,13 +45,77 @@
   --asset-sm: 28px;
   --asset-md: 44px;
   --asset-lg: 84px;
+
+  /* 타이포그래피 v3 — 디스플레이 세리프 스택 (6.5절) */
+  --font-display: Georgia, 'Apple Myungjo', 'Nanum Myeongjo', Batang, serif;
 }
 
-/* ---- 버튼 ---- */
+/* ---- 종이 질감 유틸 (gk-paper) ----
+ * feTurbulence(fractalNoise) + feColorMatrix로 세피아 알파 그레인을 만든 data-URI.
+ * 정적 이미지이며 애니메이션하지 않는다 (6.2절).
+ */
+.gk-paper {
+  background-color: var(--paper);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch' result='t'/%3E%3CfeColorMatrix in='t' type='matrix' values='0 0 0 0 0.227   0 0 0 0 0.165   0 0 0 0 0.109  0 0 0 0.10 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ---- 스테이지 프레임 (gk-stage) ----
+ * 종이 배경 + 비네트 + 이중 잉크 프레임 + 모서리 컷 마크. 화면 최외곽 컨테이너에 적용.
+ */
+.gk-stage {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(120% 120% at 50% 0%, rgba(58, 42, 28, 0) 55%, rgba(58, 42, 28, 0.2) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch' result='t'/%3E%3CfeColorMatrix in='t' type='matrix' values='0 0 0 0 0.227   0 0 0 0 0.165   0 0 0 0 0.109  0 0 0 0.10 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, repeat;
+  background-size: cover, auto;
+  box-shadow:
+    0 0 0 2.4px var(--ink),
+    0 0 0 7px transparent,
+    0 0 0 8px var(--ink);
+  outline: 1px solid transparent;
+}
+
+.gk-stage::before {
+  /* 안쪽 잉크 라인 (외곽 2.4px와 5~7px 간격을 둔 0.8~1px 라인) */
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 0.8px solid var(--ink);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gk-stage::after {
+  /* 모서리 대각 컷 마크 4개를 conic 형태 없이 배경 그라디언트로 근사 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background-image:
+    linear-gradient(135deg, var(--ink) 0, var(--ink) 7px, transparent 7px),
+    linear-gradient(-135deg, var(--ink) 0, var(--ink) 7px, transparent 7px),
+    linear-gradient(45deg, var(--ink) 0, var(--ink) 7px, transparent 7px),
+    linear-gradient(-45deg, var(--ink) 0, var(--ink) 7px, transparent 7px);
+  background-repeat: no-repeat;
+  background-size: 7px 7px;
+  background-position: top left, top right, bottom left, bottom right;
+  opacity: 0.85;
+}
+
+/* ---- 버튼 ----
+ * 주 버튼: 로즈 배경 + 눌림 밑면(box-shadow) + :active에서 translateY로 눌리는 느낌.
+ * 보조 버튼: 종이 배경 + 잉크 보더.
+ */
 
 .gk-button {
   border: none;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-button);
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 600;
@@ -49,43 +124,57 @@
   transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background var(--motion-fast) ease;
 }
 
-.gk-button:active:not(:disabled) {
-  transform: scale(0.96);
-}
-
 .gk-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+/* 버튼 배경은 --accent-rose를 살짝 어둡게 섞어(color-mix) 흰 텍스트 대비
+   WCAG AA(4.5:1)를 충족한다. --accent-rose 원 토큰은 다른 강조 용도에 그대로 쓴다. */
 .gk-button.primary {
-  background: var(--accent-primary);
-  color: #fff;
-  box-shadow: var(--shadow-soft);
+  background: color-mix(in srgb, var(--accent-rose) 50%, var(--accent-rose-deep) 50%);
+  color: var(--paper-raised);
+  box-shadow: 0 3px 0 var(--accent-rose-deep);
 }
 
 .gk-button.primary:hover:not(:disabled) {
-  background: var(--accent-primary-dark);
-  transform: translateY(-1px);
+  background: var(--accent-rose-deep);
+}
+
+.gk-button.primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--accent-rose-deep);
 }
 
 .gk-button.secondary {
-  background: var(--surface-card);
-  color: var(--text-main);
-  border: 1px solid var(--border-soft);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1.3px solid var(--ink);
+  box-shadow: 0 3px 0 rgba(58, 42, 28, 0.25);
+}
+
+.gk-button.secondary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(58, 42, 28, 0.25);
 }
 
 .gk-button.danger {
-  background: var(--accent-danger);
+  background: color-mix(in srgb, var(--accent-danger) 78%, black 22%);
   color: #fff;
+  box-shadow: 0 3px 0 #a53f3a;
 }
 
-/* ---- 칩 ---- */
+.gk-button.danger:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #a53f3a;
+}
+
+/* ---- 칩/배지 ---- */
 
 .gk-chip {
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1.3px solid var(--ink);
+  border-radius: 8px;
   padding: 8px 14px;
   display: flex;
   flex-direction: column;
@@ -95,11 +184,12 @@
 
 .gk-chip span {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 .gk-chip strong {
   font-size: 16px;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
@@ -119,14 +209,27 @@
   }
 }
 
-/* ---- 패널 ---- */
+/* ---- 패널 ----
+ * 종이보다 밝은 표면 + 이중 프레임(외곽 1.6px 잉크 + 안쪽 0.8px 잉크, 5~7px 간격).
+ */
 
 .gk-panel {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
+  position: relative;
+  background: var(--paper-raised);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
   padding: 16px;
+  box-shadow: 0 1.6px 0 0 var(--ink), 0 4px 10px rgba(58, 42, 28, 0.14);
+  border: 1.6px solid var(--ink);
+}
+
+.gk-panel::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 0.8px solid var(--ink);
+  border-radius: calc(var(--radius-lg) - 4px);
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 /* ---- 헤더 ---- */
@@ -137,8 +240,8 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: var(--surface-panel);
-  border-bottom: 1px solid var(--border-soft);
+  background: var(--paper-raised);
+  border-bottom: 1.6px solid var(--ink);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -147,12 +250,15 @@
 .gk-header-title h1 {
   margin: 2px 0 0;
   font-size: 18px;
+  font-family: var(--font-display);
+  letter-spacing: 0.4px;
+  color: var(--ink);
 }
 
 .gk-header-subline {
   margin: 0;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 .gk-header-chips {
@@ -165,7 +271,7 @@
 .gk-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(74, 53, 36, 0.35);
+  background: rgba(58, 42, 28, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -185,12 +291,25 @@
 }
 
 .gk-modal {
-  background: var(--surface-panel);
+  position: relative;
+  background: var(--paper-raised);
   border-radius: var(--radius-lg);
   padding: 24px;
   max-width: 360px;
   width: 100%;
-  box-shadow: 0 20px 40px rgba(74, 53, 36, 0.25);
+  box-shadow:
+    0 0 0 1.6px var(--ink),
+    0 20px 40px rgba(58, 42, 28, 0.35);
+}
+
+.gk-modal::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 0.8px solid var(--ink);
+  border-radius: calc(var(--radius-lg) - 4px);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .gk-modal-backdrop.gk-modal-opening .gk-modal {
@@ -225,7 +344,7 @@
   transform: translateX(-50%);
   font-size: 16px;
   font-weight: 700;
-  color: var(--accent-primary-dark);
+  color: var(--accent-rose-deep);
   pointer-events: none;
   animation: gk-float-num-rise 0.7s ease forwards;
 }
@@ -276,7 +395,7 @@
 .gk-link-status {
   margin: 0;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 .gk-link-form {
@@ -288,19 +407,19 @@
 .gk-link-input {
   flex: 1;
   min-width: 0;
-  border: 1px solid var(--border-soft);
+  border: 1.3px solid var(--ink);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
   font-size: 14px;
   font-family: inherit;
-  color: var(--text-main);
-  background: var(--surface-panel);
+  color: var(--ink);
+  background: var(--paper);
 }
 
 .gk-link-message {
   margin: 0;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   width: 100%;
 }
 
@@ -308,13 +427,15 @@
   margin: 0;
   font-weight: 600;
   font-size: 14px;
+  font-family: var(--font-display);
+  color: var(--ink);
 }
 
 .gk-ranking-list {
   margin: 0;
   padding-left: 20px;
   font-size: 13px;
-  color: var(--text-main);
+  color: var(--ink);
 }
 
 /* ---- 접근성: 모션 감소 ---- */

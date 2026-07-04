@@ -15,8 +15,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #fff9f0 0%, #ffefdd 100%);
-  color: var(--text-main);
+  /* v3 배경 원화: 종이 스테이지(gk-stage) 뒤에 깔리는 그림. 로드 실패 시 --paper 폴백. */
+  background: var(--paper) url('../shared/art/bg-match3.webp') center / cover no-repeat fixed;
+  color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
 }
 
@@ -24,10 +25,8 @@ body {
   max-width: 520px;
   margin: 0 auto;
   min-height: 100vh;
-  background: var(--surface-cream);
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-soft);
 }
 
 .gk-header-chips {
@@ -50,11 +49,12 @@ body {
 
 .status-message {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-size: 14px;
   min-height: 20px;
 }
 
+/* 보드 = 잉크 프레임 트레이. 고채도 배경 폐기, 종이 톤(--paper-deep)으로 낮춘다. */
 .board {
   position: relative;
   display: grid;
@@ -65,10 +65,11 @@ body {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  background: var(--surface-board);
+  background: var(--paper-deep);
   border-radius: var(--radius-lg);
   padding: 10px;
-  border: 1px solid var(--border-soft);
+  border: 1.6px solid var(--ink);
+  box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
 }
 
 .board.shuffling {
@@ -95,33 +96,34 @@ body {
 }
 
 .tile {
-  border: none;
+  border: 1px solid var(--ink);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #fff;
+  color: var(--ink);
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.15s ease;
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 -3px 0 rgba(58, 42, 28, 0.08);
 }
 
+/* v3 원화 타일: 정물화가 칸을 가득 채운다 (배경색은 로딩 전 폴백 역할만). */
 .tile-asset {
-  width: 82%;
-  height: 82%;
-  max-width: var(--asset-md);
-  max-height: var(--asset-md);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--radius-sm) - 2px);
   pointer-events: none;
 }
 
 .tile:focus-visible {
-  outline: 3px solid var(--accent-primary-dark);
+  outline: 3px solid var(--accent-rose-deep);
   outline-offset: 2px;
 }
 
 .tile.selected {
   transform: scale(0.92);
-  box-shadow: 0 0 0 3px var(--accent-primary-dark) inset;
+  box-shadow: 0 0 0 3px var(--accent-rose-deep) inset;
 }
 
 .tile.clearing {
@@ -170,36 +172,36 @@ body {
   }
 }
 
-/* 타일 배경은 가이드 3.2절의 "밝은 톤"을 쓴다. 본색 배경 위에 본색 아트를 얹으면
-   그림이 묻혀 종류 판별이 어려워진다 — 배경은 연하게, 색·형태는 아트가 담당. */
+/* 타일 배경은 v3에서 고채도 파스텔을 폐기하고 --paper-deep 계열(세피아 종이 톤)로
+   낮춘다. 종류 구분은 은은한 색상 차이 + 잉크 보더 + 아트 형태·본색이 담당한다. */
 .tile-strawberry {
-  background: #ffd9e0;
+  background: #e9c9bf;
 }
 
 .tile-orange {
-  background: #ffe0b8;
+  background: #e9d2b3;
 }
 
 .tile-candy {
-  background: #ffd6ef;
+  background: #e5c9d8;
 }
 
 .tile-cookie {
-  background: #ecc493;
+  background: #ddc196;
 }
 
 .tile-cupcake {
-  background: #fff0c9;
+  background: #ecd9ad;
 }
 
 .tile-jelly {
-  background: #d9c8ff;
+  background: #d6c6dd;
 }
 
 .rule-list {
   margin: 0;
   padding-left: 18px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -208,12 +210,18 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   margin: 0 0 6px;
 }
 
+.gk-modal h2 {
+  font-family: var(--font-display);
+  letter-spacing: 0.3px;
+  color: var(--ink);
+}
+
 .result-copy {
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -227,12 +235,12 @@ body {
 .result-stats div {
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px dashed var(--border-soft);
+  border-bottom: 1px dashed var(--ink);
   padding-bottom: 6px;
 }
 
 .result-stats dt {
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-size: 13px;
 }
 
@@ -255,7 +263,7 @@ body {
 
   .app-frame {
     min-height: auto;
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
   }
 }
 
