@@ -1,10 +1,12 @@
+/* 무대 배경 v3: 종이 톤 그라디언트(--paper 계열)로 재조정하되, 승급할수록
+   명도·채도가 조금씩 풍부해지는 단계별 변화는 유지한다(가이드 6.6절). */
 :root {
-  --stage-1-bg: linear-gradient(180deg, #fff3df 0%, #ffe4c4 100%);
-  --stage-2-bg: linear-gradient(180deg, #ffe9d6 0%, #ffd2a8 100%);
-  --stage-3-bg: linear-gradient(180deg, #ffe0e6 0%, #ffc2d1 100%);
-  --stage-4-bg: linear-gradient(180deg, #fde2ff 0%, #f0c2ff 100%);
-  --stage-5-bg: linear-gradient(180deg, #dceeff 0%, #b8d8ff 100%);
-  --stage-6-bg: linear-gradient(180deg, #fff0c2 0%, #ffd76b 100%);
+  --stage-1-bg: linear-gradient(180deg, #efe3c8 0%, #e6d5ae 100%);
+  --stage-2-bg: linear-gradient(180deg, #ecdcc0 0%, #ddc79c 100%);
+  --stage-3-bg: linear-gradient(180deg, #e8d6ce 0%, #d9bcae 100%);
+  --stage-4-bg: linear-gradient(180deg, #e2d3dd 0%, #cbaec2 100%);
+  --stage-5-bg: linear-gradient(180deg, #d3d9dd 0%, #aebccb 100%);
+  --stage-6-bg: linear-gradient(180deg, #ecdba6 0%, #d9b96a 100%);
 }
 
 * {
@@ -14,8 +16,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #fff9f0 0%, #ffefdd 100%);
-  color: var(--text-main);
+  background: var(--paper);
+  color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
 }
 
@@ -23,10 +25,8 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  background: var(--surface-cream);
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-soft);
 }
 
 .gk-header-chips .gk-chip {
@@ -49,15 +49,17 @@ body {
 .panel-heading {
   margin: 0 0 8px;
   font-size: 14px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
 }
 
 /* 공방 탭 */
 
 .stage-scene {
   position: relative;
-  border-radius: 20px;
-  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  border: 1.6px solid var(--ink);
+  box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
   min-height: 180px;
   display: flex;
   align-items: center;
@@ -127,16 +129,16 @@ body {
 .make-snack-button {
   position: relative;
   border: none;
-  border-radius: 20px;
-  background: var(--accent-primary);
-  color: #fff;
+  border-radius: var(--radius-lg);
+  background: var(--accent-rose);
+  color: var(--paper-raised);
   padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 3px 0 var(--accent-rose-deep);
   transition: transform 0.08s ease;
 }
 
@@ -186,7 +188,7 @@ body {
   transform: translateX(-50%);
   font-size: 16px;
   font-weight: 700;
-  color: var(--accent-primary-dark);
+  color: var(--accent-rose-deep);
   animation: popup-float 0.7s ease forwards;
   pointer-events: none;
 }
@@ -227,9 +229,9 @@ body {
 }
 
 .stage-upgrade-card {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
+  background: var(--paper-raised);
+  border: 1.6px solid var(--ink);
+  border-radius: var(--radius-lg);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -240,7 +242,7 @@ body {
 .next-stage-label {
   margin: 0;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 /* 시설 탭 */
@@ -261,9 +263,9 @@ body {
 .upgrade-row,
 .delivery-row,
 .achievement-row {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  background: var(--paper-raised);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   display: flex;
   align-items: center;
@@ -281,11 +283,12 @@ body {
 .row-title {
   font-size: 13px;
   font-weight: 600;
+  color: var(--ink);
 }
 
 .row-subtitle {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 .row-emoji {
@@ -299,15 +302,15 @@ body {
 
 .achievement-row.unlocked .row-title::after {
   content: ' ✔';
-  color: var(--accent-primary-dark);
+  color: var(--accent-rose-deep);
 }
 
 /* 배달 탭 */
 
 .delivery-active {
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  background: var(--paper-deep);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
   padding: 12px;
   margin-bottom: 12px;
   display: flex;
@@ -322,13 +325,14 @@ body {
 .delivery-name {
   margin: 0;
   font-weight: 700;
+  color: var(--ink);
 }
 
 .delivery-remaining,
 .delivery-expected-reward {
   margin: 0;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 #delivery-collect-button:not(:disabled) {
@@ -337,19 +341,19 @@ body {
 
 @keyframes delivery-ready-pulse {
   0%, 100% {
-    box-shadow: var(--shadow-soft);
+    box-shadow: 0 3px 0 var(--accent-rose-deep);
   }
   50% {
-    box-shadow: 0 12px 24px rgba(255, 138, 91, 0.4);
+    box-shadow: 0 3px 0 var(--accent-rose-deep), 0 0 12px rgba(176, 106, 114, 0.5);
   }
 }
 
 /* 기록 탭 */
 
 .stats-list {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  background: var(--paper-raised);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
   padding: 12px;
   margin: 0 0 16px;
   display: grid;
@@ -359,19 +363,20 @@ body {
 }
 
 .stats-list dt {
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 .stats-list dd {
   margin: 0;
   font-weight: 700;
   text-align: right;
+  color: var(--ink);
 }
 
 .prestige-card {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  background: var(--paper-raised);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
   padding: 12px;
   margin-bottom: 16px;
   display: flex;
@@ -383,7 +388,7 @@ body {
 .prestige-summary {
   margin: 0;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 /* 퀘스트 바 */
@@ -394,12 +399,12 @@ body {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 16px;
-  background: var(--surface-panel);
-  border-top: 1px solid var(--border-soft);
+  background: var(--paper-raised);
+  border-top: 1.6px solid var(--ink);
 }
 
 .quest-bar.achieved {
-  background: #fff2d6;
+  background: #ecd9ad;
 }
 
 .quest-info {
@@ -410,12 +415,13 @@ body {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
+  color: var(--ink);
 }
 
 .quest-reward {
   margin: 0;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
 .quest-claim {
@@ -429,8 +435,8 @@ body {
 .tab-bar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background: var(--surface-panel);
-  border-top: 1px solid var(--border-soft);
+  background: var(--paper-raised);
+  border-top: 1.6px solid var(--ink);
 }
 
 .tab-button {
@@ -438,14 +444,14 @@ body {
   background: transparent;
   padding: 12px 4px;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   cursor: pointer;
 }
 
 .tab-button.active {
-  color: var(--accent-primary-dark);
+  color: var(--accent-rose-deep);
   font-weight: 700;
-  border-top: 2px solid var(--accent-primary-dark);
+  border-top: 2px solid var(--accent-rose-deep);
 }
 
 /* 모달 */
@@ -454,12 +460,18 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   margin: 0 0 6px;
 }
 
+.gk-modal h2 {
+  font-family: var(--font-display);
+  letter-spacing: 0.3px;
+  color: var(--ink);
+}
+
 .modal-copy {
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-line;
@@ -488,12 +500,12 @@ body {
 }
 
 .toast {
-  background: var(--text-main);
-  color: #fff;
+  background: var(--ink);
+  color: var(--paper-raised);
   font-size: 13px;
   padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-soft);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 10px rgba(58, 42, 28, 0.3);
   animation: toast-in-out 2.5s ease forwards;
 }
 
@@ -523,7 +535,7 @@ body {
 
   .app-frame {
     min-height: auto;
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
   }
 }
 
