@@ -60,6 +60,14 @@ body::before {
   display: none;
 }
 
+#tab-workshop {
+  flex: 1;
+  min-height: min(640px, calc(100dvh - 220px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .panel-heading {
   margin: 0 0 8px;
   font-size: 14px;
@@ -147,6 +155,9 @@ body::before {
   background: var(--accent-rose);
   color: var(--paper-raised);
   padding: 20px;
+  width: min(100%, 320px);
+  min-height: 136px;
+  margin: auto auto 0;
   display: flex;
   flex-direction: column;
   align-items: center;

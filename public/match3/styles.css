@@ -57,7 +57,7 @@ body::before {
 
 .header-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -287,9 +287,14 @@ body::before {
     padding: calc(12px + env(safe-area-inset-top, 0px)) 12px 12px;
   }
 
+  .gk-header-subline {
+    display: none;
+  }
+
   .app-main {
     padding: 8px;
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    justify-content: center;
   }
 
   .board {

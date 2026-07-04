@@ -153,6 +153,7 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
 }
 
 /* 적 패널 = 아트 창 구조(가이드 6.6절) — 종이 인셋 프레임 위에 적 실루엣을 얹어
