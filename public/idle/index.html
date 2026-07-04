@@ -1,13 +1,15 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" style="--paper: #efe3c8; background-color: var(--paper);">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#efe3c8">
     <meta
       name="description"
       content="프로젝트 리디파인 참여자를 위한 브라우저 방치형 게임, 간식 공방 키우기입니다."
     >
     <title>간식 공방 키우기</title>
+    <link rel="preload" as="image" href="../shared/art/shared-char-baker.webp">
     <link rel="stylesheet" href="../shared/game-ui.css">
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -38,7 +40,7 @@
           </div>
 
           <button id="make-snack-button" type="button" class="make-snack-button">
-            <img id="character-asset" class="character-asset" src="../shared/art/shared-char-baker.webp" alt="">
+            <img id="character-asset" class="character-asset" src="../shared/art/shared-char-baker.webp" alt="" decoding="async" fetchpriority="high">
             <span class="make-snack-label">간식 만들기</span>
             <span id="click-amount-label" class="click-amount-label">+1</span>
           </button>

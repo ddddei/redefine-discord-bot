@@ -399,6 +399,11 @@ const checks = [
     args: ['--check', 'scripts/test-dungeonworld-session-09.js'],
   },
   {
+    label: 'scripts/test-mobile-hardening-static.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-mobile-hardening-static.js'],
+  },
+  {
     label: 'jsonStorage smoke test',
     command: 'node',
     args: ['scripts/test-json-storage.js'],
@@ -537,6 +542,11 @@ const checks = [
     label: 'shared game ui static smoke test',
     command: 'node',
     args: ['scripts/test-shared-ui-static.js'],
+  },
+  {
+    label: 'mobile hardening static smoke test',
+    command: 'node',
+    args: ['scripts/test-mobile-hardening-static.js'],
   },
   {
     label: 'match3 logic smoke test',

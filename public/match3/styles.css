@@ -15,18 +15,31 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* v3 배경 원화: 종이 스테이지(gk-stage) 뒤에 깔리는 그림. 로드 실패 시 --paper 폴백. */
-  background: var(--paper) url('../shared/art/bg-match3.webp') center / cover no-repeat fixed;
+  min-height: 100dvh;
+  background: var(--paper);
   color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper) url('../shared/art/bg-match3.webp') center / cover no-repeat;
 }
 
 .app-frame {
   max-width: 520px;
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+.gk-header {
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
 
 .gk-header-chips {
@@ -36,6 +49,7 @@ body {
 .app-main {
   flex: 1;
   padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -43,7 +57,7 @@ body {
 
 .header-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -70,6 +84,7 @@ body {
   padding: 10px;
   border: 1.6px solid var(--ink);
   box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
+  touch-action: none;
 }
 
 .board.shuffling {
@@ -268,13 +283,23 @@ body {
 }
 
 @media (max-width: 480px) {
+  .gk-header {
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px 12px;
+  }
+
+  .gk-header-subline {
+    display: none;
+  }
+
   .app-main {
-    padding: 12px;
+    padding: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    justify-content: center;
   }
 
   .board {
     max-width: 100%;
-    gap: 4px;
-    padding: 6px;
+    gap: 2px;
+    padding: 4px;
   }
 }

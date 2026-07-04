@@ -1,13 +1,15 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" style="--paper: #efe3c8; background-color: var(--paper);">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#efe3c8">
     <meta
       name="description"
       content="프로젝트 리디파인 참여자를 위한 브라우저 덱빌딩 게임, 간식 수호대입니다."
     >
     <title>간식 수호대</title>
+    <link rel="preload" as="image" href="../shared/art/shared-char-baker.webp">
     <link rel="stylesheet" href="../shared/game-ui.css">
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -19,7 +21,7 @@
           <p id="run-progress-label" class="run-progress-label">1 / 11칸</p>
         </div>
         <div class="gk-header-chips">
-          <img class="player-asset" src="../shared/art/shared-char-baker.webp" alt="">
+          <img class="player-asset" src="../shared/art/shared-char-baker.webp" alt="" decoding="async" fetchpriority="high">
           <div class="gk-chip hp-chip">
             <span>체력</span>
             <strong id="player-hp-value">60 / 60</strong>
@@ -39,7 +41,7 @@
           <div class="enemy-panel">
             <p id="enemy-name" class="enemy-name">적</p>
             <div class="enemy-art-window">
-              <img class="enemy-asset" src="../shared/assets/deck-enemy-crumb-ant.svg" alt="">
+              <img class="enemy-asset" src="../shared/assets/deck-enemy-crumb-ant.svg" alt="" loading="lazy" decoding="async">
             </div>
             <div class="enemy-stat-row">
               <span id="enemy-hp-value" class="enemy-hp-value">0 / 0</span>

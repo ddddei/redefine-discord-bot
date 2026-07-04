@@ -16,18 +16,31 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* v3 배경 원화: 종이 스테이지(gk-stage) 뒤에 깔리는 그림. 로드 실패 시 --paper 폴백. */
-  background: var(--paper) url('../shared/art/bg-deck.webp') center / cover no-repeat fixed;
+  min-height: 100dvh;
+  background: var(--paper);
   color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper) url('../shared/art/bg-deck.webp') center / cover no-repeat;
 }
 
 .app-frame {
   max-width: 520px;
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+.gk-header {
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
 }
 
 .run-progress-label {
@@ -140,6 +153,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
 }
 
 /* 적 패널 = 아트 창 구조(가이드 6.6절) — 종이 인셋 프레임 위에 적 실루엣을 얹어
@@ -528,6 +542,11 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+#end-turn-button {
+  min-height: 48px;
 }
 
 .energy-chip {
@@ -690,7 +709,7 @@ body {
 
 @media (max-width: 480px) {
   .gk-header {
-    padding: 12px;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px 12px;
   }
 
   .app-main {

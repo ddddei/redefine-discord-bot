@@ -195,6 +195,8 @@
         propImg.className = 'scene-prop-asset';
         propImg.src = BUILDING_ASSET[building.key];
         propImg.alt = '';
+        propImg.loading = 'lazy';
+        propImg.decoding = 'async';
         if (propsAdded >= lastRenderedPropCount) {
           propImg.classList.add('prop-pop-in');
         }
