@@ -67,6 +67,8 @@
 .gk-stage {
   position: relative;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
   background-color: var(--paper);
   background-image:
     radial-gradient(120% 120% at 50% 0%, rgba(58, 42, 28, 0) 55%, rgba(58, 42, 28, 0.2) 100%),
@@ -116,12 +118,22 @@
 .gk-button {
   border: none;
   border-radius: var(--radius-button);
-  padding: 10px 20px;
+  padding: 12px 20px;
+  min-height: 44px;
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background var(--motion-fast) ease;
+}
+
+button,
+.gk-button,
+.tile,
+.card,
+.tab-button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .gk-button:disabled {
@@ -300,6 +312,8 @@
   box-shadow:
     0 0 0 1.6px var(--ink),
     0 20px 40px rgba(58, 42, 28, 0.35);
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .gk-modal::before {
@@ -414,6 +428,8 @@
   font-family: inherit;
   color: var(--ink);
   background: var(--paper);
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .gk-link-message {

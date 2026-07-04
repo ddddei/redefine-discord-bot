@@ -287,13 +287,13 @@ body::before {
   }
 
   .app-main {
-    padding: 12px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
 
   .board {
     max-width: 100%;
-    gap: 4px;
-    padding: 6px;
+    gap: 2px;
+    padding: 4px;
   }
 }

@@ -462,6 +462,7 @@ body::before {
   border: none;
   background: transparent;
   padding: 12px 4px;
+  min-height: 48px;
   font-size: 13px;
   color: var(--ink-soft);
   cursor: pointer;

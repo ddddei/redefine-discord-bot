@@ -544,6 +544,10 @@ body::before {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+#end-turn-button {
+  min-height: 48px;
+}
+
 .energy-chip {
   background: var(--paper);
   border: 1.3px solid var(--ink);
