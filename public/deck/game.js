@@ -394,7 +394,9 @@
     }
     var enemy = Engine.findEnemy(combat.enemyId);
     enemyNameEl.textContent = enemy.name;
-    enemyAssetEl.src = '../shared/assets/' + enemy.asset;
+    // v3 원화: SVG 에셋 파일명에서 유도한 webp 회화 원화를 아트 창에 사용한다
+    // (content.js 무변경 — 파일명 규칙이 동일해 확장자·디렉터리만 치환).
+    enemyAssetEl.src = '../shared/art/' + enemy.asset.replace('.svg', '.webp');
     enemyAssetEl.classList.toggle('enemy-asset-elite', enemy.tier === 'elite');
     enemyAssetEl.classList.toggle('enemy-asset-boss', enemy.tier === 'boss');
     enemyHpValueEl.textContent = Math.max(0, combat.enemyHp) + ' / ' + combat.enemyMaxHp;

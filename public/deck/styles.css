@@ -165,29 +165,34 @@ body {
   color: var(--ink);
 }
 
+/* 아트 창: v3 원화(webp, 정사각 풀블리드 회화)를 담는다. 프레임 안쪽에 여백 없이
+   가득 채우고, 등급별로 창 자체의 크기를 차등한다. */
 .enemy-art-window {
   background: var(--paper-deep);
   border: 1.4px solid var(--ink);
   border-radius: var(--radius-md);
-  padding: 10px 24px;
+  padding: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .enemy-asset {
-  width: var(--asset-lg);
-  height: var(--asset-lg);
+  display: block;
+  width: 164px;
+  height: 164px;
+  object-fit: cover;
 }
 
 .enemy-asset.enemy-asset-elite {
-  width: 100px;
-  height: 100px;
+  width: 196px;
+  height: 196px;
 }
 
 .enemy-asset.enemy-asset-boss {
-  width: 116px;
-  height: 116px;
+  width: 228px;
+  height: 228px;
 }
 
 .player-asset {
