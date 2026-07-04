@@ -7,9 +7,7 @@ const DATA_DIR = path.join(__dirname, '..', 'data');
 
 const DEFAULT_PATHS = {
   links: process.env.WEBGAME_LINKS_DATA_PATH || path.join(DATA_DIR, 'webgame-links.local.json'),
-  linksFallback: path.join(DATA_DIR, 'webgame-links.example.json'),
   scores: process.env.WEBGAME_SCORES_DATA_PATH || path.join(DATA_DIR, 'webgame-scores.local.json'),
-  scoresFallback: path.join(DATA_DIR, 'webgame-scores.example.json'),
 };
 
 const LINK_CODE_TTL_MS = 10 * 60 * 1000;
@@ -37,13 +35,11 @@ function createInitialScoresData() {
   };
 }
 
-function loadWithFallback(primaryPath, fallbackPath, createInitial) {
+// 예시 픽스처(*.example.json)로는 절대 폴백하지 않는다. 픽스처의 샘플 코드/토큰이
+// 실데이터로 로드되면 저장소에 공개된 값으로 인증이 뚫린다 (CLAUDE.md 금기).
+function loadOrCreate(primaryPath, createInitial) {
   if (fs.existsSync(primaryPath)) {
     return loadJsonFile(primaryPath);
-  }
-
-  if (fs.existsSync(fallbackPath)) {
-    return loadJsonFile(fallbackPath);
   }
 
   const initialData = createInitial();
@@ -95,7 +91,7 @@ function createWebgameRepository(paths = {}) {
   };
 
   function getLinksData() {
-    const data = loadWithFallback(resolvedPaths.links, resolvedPaths.linksFallback, createInitialLinksData);
+    const data = loadOrCreate(resolvedPaths.links, createInitialLinksData);
     return {
       ...createInitialLinksData(),
       ...data,
@@ -116,7 +112,7 @@ function createWebgameRepository(paths = {}) {
   }
 
   function getScoresData() {
-    const data = loadWithFallback(resolvedPaths.scores, resolvedPaths.scoresFallback, createInitialScoresData);
+    const data = loadOrCreate(resolvedPaths.scores, createInitialScoresData);
     return {
       ...createInitialScoresData(),
       ...data,
@@ -233,9 +229,11 @@ function createWebgameRepository(paths = {}) {
 
     if (options.playerToken) {
       const link = getLinkByToken(options.playerToken);
-      if (link) {
-        scores = scores.filter((score) => score.discordId === link.discordId);
+      // 유효하지 않은 토큰이면 전체 목록이 아니라 빈 목록을 돌려준다 (discordId 노출 방지).
+      if (!link) {
+        return [];
       }
+      scores = scores.filter((score) => score.discordId === link.discordId);
     }
 
     return scores;

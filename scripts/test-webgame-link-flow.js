@@ -95,6 +95,22 @@ function main() {
   assert.ok(linkByToken);
   assert.strictEqual(linkByToken.discordId, 'user_1');
 
+  // 9. 예시 픽스처 폴백 금지 — 로컬 데이터가 없는 새 저장소에서 예시 픽스처의
+  //    코드/토큰이 절대 인증되면 안 된다 (저장소에 공개된 값이므로 보안 구멍).
+  const freshDir = fs.mkdtempSync(path.join(os.tmpdir(), 'webgame-fresh-'));
+  const freshRepository = createWebgameRepository({
+    links: path.join(freshDir, 'links.local.json'),
+    scores: path.join(freshDir, 'scores.local.json'),
+  });
+  const exampleCodeAttempt = freshRepository.redeemLinkCode('123456', now);
+  assert.strictEqual(exampleCodeAttempt.ok, false, '예시 픽스처의 코드가 새 저장소에서 인증되면 안 됩니다.');
+  assert.strictEqual(
+    freshRepository.getLinkByToken('00000000-0000-4000-8000-000000000001'),
+    null,
+    '예시 픽스처의 playerToken이 새 저장소에서 인증되면 안 됩니다.'
+  );
+  fs.rmSync(freshDir, { recursive: true, force: true });
+
   fs.rmSync(tempDir, { recursive: true, force: true });
 
   console.log('webgame 연동 흐름 스모크 테스트를 통과했습니다.');

@@ -507,10 +507,19 @@
 
   // 방치형은 랭킹 부적합 장르 - 주간 누적 생산량을 참여 기록으로만 제출한다(랭킹 미노출).
   // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
+  // 제출 한도는 게임 공통(일 50회)이라, 기록 탭을 오갈 때마다 제출하면 매치3·덱의
+  // 제출 몫까지 소진할 수 있다 — 페이지 세션당 1회만 제출한다.
+  var weeklyProductionSubmitted = false;
+
   function submitWeeklyProduction() {
-    if (!window.GameLink) {
+    if (!window.GameLink || weeklyProductionSubmitted) {
       return;
     }
+    // 미연결 상태의 방문으로 세션 플래그를 소진하지 않는다 (연결 직후 방문에서 제출되도록).
+    if (!window.GameLink.isLinked()) {
+      return;
+    }
+    weeklyProductionSubmitted = true;
     window.GameLink.submitScore('idle', state.lifetimeProduced, null);
   }
 

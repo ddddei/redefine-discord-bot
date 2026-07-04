@@ -35,6 +35,10 @@ const ONE_MINUTE_MS = 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 // 이상치 플래그: 직전 주간 최고의 3배 초과.
 const OUTLIER_MULTIPLIER = 3;
+// 연결 코드는 6자리 숫자라 무차별 대입을 막아야 한다. IP당 시도 횟수 제한(인메모리).
+// 코드 TTL(10분) 안에 15회로는 100만 조합을 사실상 탐색할 수 없다.
+const LINK_ATTEMPT_LIMIT = 15;
+const LINK_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
 
 function isKnownGame(gameId) {
   return Object.prototype.hasOwnProperty.call(GAME_DEFINITIONS, gameId);
@@ -104,11 +108,43 @@ function getBearerToken(req) {
   return match ? match[1].trim() : String(header).trim();
 }
 
+function getClientAddress(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
 function createWebgameApi(options = {}) {
   const repository = options.repository || createWebgameRepository();
   const now = typeof options.now === 'function' ? options.now : () => new Date();
 
+  // IP별 연결 코드 시도 기록. 프로세스 재시작 시 초기화되는 인메모리 억지력이며,
+  // 코드 자체의 짧은 TTL(10분)·일회성과 조합되어 무차별 대입을 막는다.
+  const linkAttemptsByAddress = new Map();
+
+  function isLinkAttemptAllowed(address, nowMs) {
+    const entry = linkAttemptsByAddress.get(address);
+    if (!entry || nowMs - entry.windowStart > LINK_ATTEMPT_WINDOW_MS) {
+      linkAttemptsByAddress.set(address, { windowStart: nowMs, count: 1 });
+      return true;
+    }
+    entry.count += 1;
+    if (linkAttemptsByAddress.size > 1000) {
+      // 오래된 항목 정리 (소규모 운영 기준 과도한 성장 방지).
+      linkAttemptsByAddress.forEach((value, key) => {
+        if (nowMs - value.windowStart > LINK_ATTEMPT_WINDOW_MS) {
+          linkAttemptsByAddress.delete(key);
+        }
+      });
+    }
+    return entry.count <= LINK_ATTEMPT_LIMIT;
+  }
+
   async function handleLink(req, res, sendJson) {
+    if (!isLinkAttemptAllowed(getClientAddress(req), now().getTime())) {
+      sendJson(res, 429, { error: 'RATE_LIMITED', message: '시도가 너무 많아요. 잠시 후 다시 해 주세요.' });
+      return;
+    }
+
     let body;
     try {
       body = await readJsonBody(req);
@@ -219,6 +255,12 @@ function createWebgameApi(options = {}) {
 
     if (!isKnownGame(gameId)) {
       sendJson(res, 400, { error: 'UNKNOWN_GAME', message: '알 수 없는 게임이에요.' });
+      return;
+    }
+
+    if (!GAME_DEFINITIONS[gameId].rankable) {
+      // 방치형 등 랭킹 부적합 게임은 참여 기록만 받고 랭킹은 노출하지 않는다 (Discord 명령과 동일 정책).
+      sendJson(res, 400, { error: 'NOT_RANKABLE', message: '랭킹 대상 게임이 아니에요.' });
       return;
     }
 
