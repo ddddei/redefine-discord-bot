@@ -124,6 +124,21 @@ const checks = [
     args: ['--check', 'src/adminServer.js'],
   },
   {
+    label: 'src/webgameRepository.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameRepository.js'],
+  },
+  {
+    label: 'src/webgameApi.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameApi.js'],
+  },
+  {
+    label: 'src/webgameLink.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameLink.js'],
+  },
+  {
     label: 'public/admin/admin.js 문법 검사',
     command: 'node',
     args: ['--check', 'public/admin/admin.js'],
