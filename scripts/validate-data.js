@@ -11,6 +11,7 @@ const dataFiles = {
   testQuestions: path.join(dataDir, 'test-questions.json'),
   webgameLinksExample: path.join(dataDir, 'webgame-links.example.json'),
   webgameScoresExample: path.join(dataDir, 'webgame-scores.example.json'),
+  webgameSocialExample: path.join(dataDir, 'webgame-social.example.json'),
 };
 
 function fail(message) {
@@ -177,6 +178,37 @@ function validateWebgameScores(scoresData) {
     if (!isNonEmptyString(score.submittedAt)) fail(`${label}의 submittedAt은 문자열이어야 합니다.`);
     if (!isNonEmptyString(score.weekKey)) fail(`${label}의 weekKey는 문자열이어야 합니다.`);
     if (typeof score.flagged !== 'boolean') fail(`${label}의 flagged는 불리언이어야 합니다.`);
+    if (score.mode !== undefined && !['free', 'daily'].includes(score.mode)) {
+      fail(`${label}의 mode는 free 또는 daily여야 합니다.`);
+    }
+    if (score.dayKey !== undefined && !isStringOrNull(score.dayKey)) {
+      fail(`${label}의 dayKey는 문자열 또는 null이어야 합니다.`);
+    }
+  });
+}
+
+function validateWebgameSocial(socialData) {
+  if (!socialData || typeof socialData !== 'object') {
+    fail('data/webgame-social.example.json은 객체여야 합니다.');
+    return;
+  }
+
+  if (!isNonEmptyString(socialData.cheerSalt)) {
+    fail('data/webgame-social.example.json의 cheerSalt는 문자열이어야 합니다.');
+  }
+
+  if (!Array.isArray(socialData.cheers)) {
+    fail('data/webgame-social.example.json의 cheers는 배열이어야 합니다.');
+    return;
+  }
+
+  socialData.cheers.forEach((cheer, index) => {
+    const label = `data/webgame-social.example.json cheers ${index + 1}번째 항목`;
+    if (!isNonEmptyString(cheer.fromDiscordId)) fail(`${label}의 fromDiscordId는 문자열이어야 합니다.`);
+    if (!isNonEmptyString(cheer.targetDiscordId)) fail(`${label}의 targetDiscordId는 문자열이어야 합니다.`);
+    if (!isNonEmptyString(cheer.gameId)) fail(`${label}의 gameId는 문자열이어야 합니다.`);
+    if (!isNonEmptyString(cheer.periodKey)) fail(`${label}의 periodKey는 문자열이어야 합니다.`);
+    if (!isNonEmptyString(cheer.createdAt)) fail(`${label}의 createdAt은 문자열이어야 합니다.`);
   });
 }
 
@@ -188,6 +220,7 @@ function main() {
   const testQuestions = readJson('data/test-questions.json', dataFiles.testQuestions);
   const webgameLinksExample = readJson('data/webgame-links.example.json', dataFiles.webgameLinksExample);
   const webgameScoresExample = readJson('data/webgame-scores.example.json', dataFiles.webgameScoresExample);
+  const webgameSocialExample = readJson('data/webgame-social.example.json', dataFiles.webgameSocialExample);
 
   if (faq) validateFaq(faq);
   if (knowledge) validateKnowledge(knowledge);
@@ -196,6 +229,7 @@ function main() {
   if (testQuestions) validateTestQuestions(testQuestions);
   if (webgameLinksExample) validateWebgameLinks(webgameLinksExample);
   if (webgameScoresExample) validateWebgameScores(webgameScoresExample);
+  if (webgameSocialExample) validateWebgameSocial(webgameSocialExample);
 
   if (process.exitCode) {
     process.exit(1);
@@ -208,6 +242,7 @@ function main() {
   console.log('data/test-questions.json 정상');
   console.log('data/webgame-links.example.json 정상');
   console.log('data/webgame-scores.example.json 정상');
+  console.log('data/webgame-social.example.json 정상');
   console.log('데이터 검증이 완료되었습니다.');
 }
 
