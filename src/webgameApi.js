@@ -53,19 +53,28 @@ function readJsonBody(req) {
     }
 
     let totalBytes = 0;
+    let tooLarge = false;
     const chunks = [];
 
     req.on('data', (chunk) => {
+      if (tooLarge) {
+        return;
+      }
+
       totalBytes += chunk.length;
       if (totalBytes > MAX_BODY_BYTES) {
-        reject(Object.assign(new Error('BODY_TOO_LARGE'), { code: 'BODY_TOO_LARGE' }));
-        req.destroy();
+        tooLarge = true;
         return;
       }
       chunks.push(chunk);
     });
 
     req.on('end', () => {
+      if (tooLarge) {
+        reject(Object.assign(new Error('BODY_TOO_LARGE'), { code: 'BODY_TOO_LARGE' }));
+        return;
+      }
+
       if (totalBytes === 0) {
         resolve({});
         return;

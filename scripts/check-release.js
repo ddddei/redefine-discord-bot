@@ -574,6 +574,16 @@ const checks = [
     args: ['scripts/test-design-assets-static.js'],
   },
   {
+    label: 'webgame link flow smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-link-flow.js'],
+  },
+  {
+    label: 'webgame api smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-api.js'],
+  },
+  {
     label: 'dungeonworld session 02 content test',
     command: 'node',
     args: ['scripts/test-dungeonworld-session-02.js'],
