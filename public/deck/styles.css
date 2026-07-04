@@ -154,6 +154,10 @@ body::before {
   flex-wrap: wrap;
 }
 
+.run-actions .gk-button.hidden {
+  display: none;
+}
+
 /* 전투 화면 */
 
 #screen-combat {

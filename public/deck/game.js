@@ -370,6 +370,10 @@
     if (dailyRunChip) {
       dailyRunChip.classList.toggle('hidden', state.challengeMode !== 'daily');
     }
+    if (dailyRunButton) {
+      // 진행 중인 런(첫 칸 진입 후)에서는 숨긴다 — 탭 한 번에 런이 교체되는 사고 방지.
+      dailyRunButton.classList.toggle('hidden', state.runIndex > 0);
+    }
   }
 
   function statusBadges(container, strength, weak, vulnerable) {

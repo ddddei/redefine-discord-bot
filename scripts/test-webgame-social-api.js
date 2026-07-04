@@ -92,7 +92,7 @@ async function main() {
   try {
     const tokenA = await linkUser(baseUrl, repository, 'api_user_a', 'API A', nowDate);
     const tokenB = await linkUser(baseUrl, repository, 'api_user_b', 'API B', nowDate);
-    await linkUser(baseUrl, repository, 'api_user_c', 'API C', nowDate);
+    const tokenC = await linkUser(baseUrl, repository, 'api_user_c', 'API C', nowDate);
 
     const emptyDaily = await requestJson(baseUrl, '/game/api/daily?gameId=match3', {
       headers: { Authorization: `Bearer ${tokenA}` },
@@ -123,6 +123,23 @@ async function main() {
       body: JSON.stringify({ token: tokenB, gameId: 'match3', score: 1800, seed: todaySeed, challenge: 'daily' }),
     });
     assert.strictEqual(dailyScoreB.status, 200);
+
+    // 자정 걸침 유예: 어제 시드는 어제 dayKey의 daily로 인정된다.
+    const yesterdayKey = getDayKey(new Date(nowDate.getTime() - 24 * 60 * 60 * 1000));
+    const graceScore = await requestJson(baseUrl, '/game/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: tokenC,
+        gameId: 'match3',
+        score: 1100,
+        seed: String(getDailySeed(yesterdayKey)),
+        challenge: 'daily',
+      }),
+    });
+    assert.strictEqual(graceScore.status, 200);
+    assert.strictEqual(graceScore.data.mode, 'daily');
+    assert.strictEqual(graceScore.data.dayKey, yesterdayKey);
 
     const downgraded = await requestJson(baseUrl, '/game/api/score', {
       method: 'POST',
