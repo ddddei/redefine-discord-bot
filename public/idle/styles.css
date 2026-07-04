@@ -16,10 +16,17 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* v3 배경 원화: 종이 스테이지(gk-stage) 뒤에 깔리는 그림. 로드 실패 시 --paper 폴백. */
-  background: var(--paper) url('../shared/art/bg-idle.webp') center / cover no-repeat fixed;
+  background: var(--paper);
   color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper) url('../shared/art/bg-idle.webp') center / cover no-repeat;
 }
 
 .app-frame {
