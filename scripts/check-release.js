@@ -124,6 +124,21 @@ const checks = [
     args: ['--check', 'src/adminServer.js'],
   },
   {
+    label: 'src/webgameRepository.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameRepository.js'],
+  },
+  {
+    label: 'src/webgameApi.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameApi.js'],
+  },
+  {
+    label: 'src/webgameLink.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameLink.js'],
+  },
+  {
     label: 'public/admin/admin.js 문법 검사',
     command: 'node',
     args: ['--check', 'public/admin/admin.js'],
@@ -557,6 +572,16 @@ const checks = [
     label: 'design assets static smoke test',
     command: 'node',
     args: ['scripts/test-design-assets-static.js'],
+  },
+  {
+    label: 'webgame link flow smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-link-flow.js'],
+  },
+  {
+    label: 'webgame api smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-api.js'],
   },
   {
     label: 'dungeonworld session 02 content test',

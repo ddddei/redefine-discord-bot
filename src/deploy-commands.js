@@ -76,6 +76,25 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('게임연결')
+    .setDescription('웹게임 계정을 Discord와 연결할 코드를 발급합니다.'),
+
+  new SlashCommandBuilder()
+    .setName('게임랭킹')
+    .setDescription('웹게임 이번 주 랭킹을 확인합니다.')
+    .addStringOption((option) =>
+      option
+        .setName('게임')
+        .setDescription('확인할 게임을 선택해 주세요.')
+        .setRequired(true)
+        .addChoices(
+          { name: '간식 맞추기', value: 'match3' },
+          { name: '간식 수호대', value: 'deck' },
+          { name: '간식 공방 키우기', value: 'idle' }
+        )
+    ),
+
+  new SlashCommandBuilder()
     .setName('포인트')
     .setDescription('내 여정 포인트를 확인합니다.'),
 

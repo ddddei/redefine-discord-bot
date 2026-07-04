@@ -9,6 +9,8 @@ const dataFiles = {
   notices: path.join(dataDir, 'notices.json'),
   channels: path.join(dataDir, 'channels.json'),
   testQuestions: path.join(dataDir, 'test-questions.json'),
+  webgameLinksExample: path.join(dataDir, 'webgame-links.example.json'),
+  webgameScoresExample: path.join(dataDir, 'webgame-scores.example.json'),
 };
 
 function fail(message) {
@@ -120,18 +122,80 @@ function validateTestQuestions(testQuestions) {
   });
 }
 
+function isStringOrNull(value) {
+  return value === null || typeof value === 'string';
+}
+
+function validateWebgameLinks(linksData) {
+  if (!linksData || typeof linksData !== 'object') {
+    fail('data/webgame-links.example.json은 객체여야 합니다.');
+    return;
+  }
+
+  if (!Array.isArray(linksData.links)) {
+    fail('data/webgame-links.example.json의 links는 배열이어야 합니다.');
+  } else {
+    linksData.links.forEach((link, index) => {
+      const label = `data/webgame-links.example.json links ${index + 1}번째 항목`;
+      if (!isNonEmptyString(link.discordId)) fail(`${label}의 discordId는 문자열이어야 합니다.`);
+      if (!isNonEmptyString(link.displayName)) fail(`${label}의 displayName은 문자열이어야 합니다.`);
+      if (!isNonEmptyString(link.playerToken)) fail(`${label}의 playerToken은 문자열이어야 합니다.`);
+      if (!isNonEmptyString(link.linkedAt)) fail(`${label}의 linkedAt은 문자열이어야 합니다.`);
+    });
+  }
+
+  if (!Array.isArray(linksData.pendingCodes)) {
+    fail('data/webgame-links.example.json의 pendingCodes는 배열이어야 합니다.');
+  } else {
+    linksData.pendingCodes.forEach((entry, index) => {
+      const label = `data/webgame-links.example.json pendingCodes ${index + 1}번째 항목`;
+      if (!isNonEmptyString(entry.code)) fail(`${label}의 code는 문자열이어야 합니다.`);
+      if (!isNonEmptyString(entry.discordId)) fail(`${label}의 discordId는 문자열이어야 합니다.`);
+      if (!isNonEmptyString(entry.displayName)) fail(`${label}의 displayName은 문자열이어야 합니다.`);
+      if (!isNonEmptyString(entry.expiresAt)) fail(`${label}의 expiresAt은 문자열이어야 합니다.`);
+    });
+  }
+}
+
+function validateWebgameScores(scoresData) {
+  if (!scoresData || typeof scoresData !== 'object') {
+    fail('data/webgame-scores.example.json은 객체여야 합니다.');
+    return;
+  }
+
+  if (!Array.isArray(scoresData.scores)) {
+    fail('data/webgame-scores.example.json의 scores는 배열이어야 합니다.');
+    return;
+  }
+
+  scoresData.scores.forEach((score, index) => {
+    const label = `data/webgame-scores.example.json scores ${index + 1}번째 항목`;
+    if (!isNonEmptyString(score.discordId)) fail(`${label}의 discordId는 문자열이어야 합니다.`);
+    if (!isNonEmptyString(score.gameId)) fail(`${label}의 gameId는 문자열이어야 합니다.`);
+    if (typeof score.score !== 'number') fail(`${label}의 score는 숫자여야 합니다.`);
+    if (!isStringOrNull(score.seed)) fail(`${label}의 seed는 문자열 또는 null이어야 합니다.`);
+    if (!isNonEmptyString(score.submittedAt)) fail(`${label}의 submittedAt은 문자열이어야 합니다.`);
+    if (!isNonEmptyString(score.weekKey)) fail(`${label}의 weekKey는 문자열이어야 합니다.`);
+    if (typeof score.flagged !== 'boolean') fail(`${label}의 flagged는 불리언이어야 합니다.`);
+  });
+}
+
 function main() {
   const faq = readJson('data/faq.json', dataFiles.faq);
   const knowledge = readJson('data/knowledge.json', dataFiles.knowledge);
   const notices = readJson('data/notices.json', dataFiles.notices);
   const channels = readJson('data/channels.json', dataFiles.channels);
   const testQuestions = readJson('data/test-questions.json', dataFiles.testQuestions);
+  const webgameLinksExample = readJson('data/webgame-links.example.json', dataFiles.webgameLinksExample);
+  const webgameScoresExample = readJson('data/webgame-scores.example.json', dataFiles.webgameScoresExample);
 
   if (faq) validateFaq(faq);
   if (knowledge) validateKnowledge(knowledge);
   if (notices) validateNotices(notices);
   if (channels) validateChannels(channels);
   if (testQuestions) validateTestQuestions(testQuestions);
+  if (webgameLinksExample) validateWebgameLinks(webgameLinksExample);
+  if (webgameScoresExample) validateWebgameScores(webgameScoresExample);
 
   if (process.exitCode) {
     process.exit(1);
@@ -142,6 +206,8 @@ function main() {
   console.log('data/notices.json 정상');
   console.log('data/channels.json 정상');
   console.log('data/test-questions.json 정상');
+  console.log('data/webgame-links.example.json 정상');
+  console.log('data/webgame-scores.example.json 정상');
   console.log('데이터 검증이 완료되었습니다.');
 }
 

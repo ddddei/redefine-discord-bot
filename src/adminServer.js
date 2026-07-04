@@ -4,6 +4,7 @@ const path = require('path');
 const { URL } = require('url');
 const { createPointsRepository } = require('./pointsRepository');
 const { requireAdminAuth, isAdminAuthConfigured } = require('./adminAuth');
+const { createWebgameApi } = require('./webgameApi');
 const {
   buildAdminSummary,
   buildFaqCandidateQueue,
@@ -259,7 +260,42 @@ function handleAdminApi(req, res, pathname, searchParams, repository) {
   }
 }
 
-function createAdminRequestHandler(repository) {
+function handleWebgameApiError(res, sendJson) {
+  sendJson(res, 500, {
+    error: 'WEBGAME_API_ERROR',
+    message: '요청을 처리하지 못했어요.',
+  });
+}
+
+async function handleWebgameApi(req, res, pathname, searchParams, webgameApi) {
+  try {
+    if (pathname === '/game/api/link' && req.method === 'POST') {
+      await webgameApi.handleLink(req, res, sendJson);
+      return;
+    }
+
+    if (pathname === '/game/api/score' && req.method === 'POST') {
+      await webgameApi.handleScore(req, res, sendJson);
+      return;
+    }
+
+    if (pathname === '/game/api/rankings' && req.method === 'GET') {
+      await webgameApi.handleRankings(req, res, sendJson, searchParams);
+      return;
+    }
+
+    if (pathname === '/game/api/me' && req.method === 'GET') {
+      await webgameApi.handleMe(req, res, sendJson);
+      return;
+    }
+
+    sendNotFound(res);
+  } catch (error) {
+    handleWebgameApiError(res, sendJson);
+  }
+}
+
+function createAdminRequestHandler(repository, webgameApi) {
   return (req, res) => {
     const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
@@ -270,6 +306,11 @@ function createAdminRequestHandler(repository) {
 
     if (requestUrl.pathname.startsWith('/api/admin/')) {
       handleAdminApi(req, res, requestUrl.pathname, requestUrl.searchParams, repository);
+      return;
+    }
+
+    if (requestUrl.pathname.startsWith('/game/api/')) {
+      handleWebgameApi(req, res, requestUrl.pathname, requestUrl.searchParams, webgameApi);
       return;
     }
 
@@ -325,8 +366,12 @@ function startAdminServer(options = {}) {
   }
 
   const repository = options.repository || createPointsRepository();
+  const webgameApi = options.webgameApi || createWebgameApi({
+    repository: options.webgameRepository,
+    now: options.now,
+  });
   const port = options.port || getAdminDashboardPort();
-  const server = http.createServer(createAdminRequestHandler(repository));
+  const server = http.createServer(createAdminRequestHandler(repository, webgameApi));
 
   server.on('error', (error) => {
     console.warn('관리자 대시보드 서버 시작 실패:', error.message);

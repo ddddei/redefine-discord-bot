@@ -111,6 +111,7 @@ const {
 } = require('./dungeonworld');
 const { createDungeonworldHandlers } = require('./dungeonworldHandlers');
 const { buildMinigameReport, createMinigameReportEmbed } = require('./minigameReport');
+const { runLinkCommand, runRankingCommand } = require('./webgameLink');
 
 const pointsRepository = createPointsRepository();
 const dungeonworldRepository = createDungeonworldRepository();
@@ -1834,6 +1835,32 @@ async function handleNoticeCommand(interaction) {
     embeds: [createNoticeEmbed(type)],
     ephemeral: true,
   });
+}
+
+async function handleWebgameLinkCommand(interaction) {
+  try {
+    recordParticipantCommandUse(interaction, '게임연결');
+    await runLinkCommand(interaction);
+  } catch (error) {
+    console.error('웹게임 연결 코드 발급 실패:', error.message);
+    await interaction.reply({
+      content: '연결 코드를 발급하지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleWebgameRankingCommand(interaction) {
+  try {
+    recordParticipantCommandUse(interaction, '게임랭킹');
+    await runRankingCommand(interaction);
+  } catch (error) {
+    console.error('웹게임 랭킹 조회 실패:', error.message);
+    await interaction.reply({
+      content: '랭킹 정보를 불러오지 못했어요. 운영진에게 알려주세요.',
+      ephemeral: true,
+    });
+  }
 }
 
 async function handlePointCommand(interaction) {
@@ -3657,6 +3684,16 @@ async function handleInteractionCreate(interaction) {
     return;
   }
 
+  if (interaction.commandName === '게임연결') {
+    await handleWebgameLinkCommand(interaction);
+    return;
+  }
+
+  if (interaction.commandName === '게임랭킹') {
+    await handleWebgameRankingCommand(interaction);
+    return;
+  }
+
   if (interaction.commandName === '포인트') {
     await handlePointCommand(interaction);
     return;
@@ -3757,6 +3794,8 @@ module.exports = {
   handleDungeonworldRecordCommand,
   handleGuideCommand,
   handleGuideHubSelect,
+  handleWebgameLinkCommand,
+  handleWebgameRankingCommand,
   handleInteractionCreate,
   handleMissionHubButton,
   handleMissionHubModal,

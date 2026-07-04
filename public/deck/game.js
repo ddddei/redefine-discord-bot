@@ -6,6 +6,7 @@
 
   var state = null;
   var tracker = null;
+  var scoreSubmittedForRun = false;
 
   var NODE_TYPE_LABEL = {
     normal: '일반 전투',
@@ -137,6 +138,7 @@
 
   // previousStats를 넘기면 통산 기록(클리어 횟수·최고 도달 칸)이 새 런에 이어진다.
   function startNewRun(previousStats) {
+    scoreSubmittedForRun = false;
     var seed = getSeedFromUrl();
     if (seed === undefined) {
       seed = generateRandomSeed();
@@ -200,6 +202,8 @@
   var resultDeckSizeEl = document.getElementById('result-deck-size');
   var resultClearCountEl = document.getElementById('result-clear-count');
   var resultBestNodeEl = document.getElementById('result-best-node');
+  var resultLinkSectionEl = document.getElementById('result-link-section');
+  var resultRankingSectionEl = document.getElementById('result-ranking-section');
   var restartButton = document.getElementById('restart-button');
 
   // ---- 연출 헬퍼 ----
@@ -579,6 +583,30 @@
     resultDeckSizeEl.textContent = String(state.player.deck.length);
     resultClearCountEl.textContent = String(state.stats.clearCount);
     resultBestNodeEl.textContent = String(state.stats.bestNodeReached);
+
+    // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
+    // 점수화 공식: 도달 스테이지 × 1000 + 잔여 HP (서버 쪽 상수와 일치).
+    if (window.GameLink && !scoreSubmittedForRun) {
+      scoreSubmittedForRun = true;
+      var reachedStage = Math.min(state.runIndex + 1, totalNodes);
+      var remainingHp = Math.max(0, state.player.hp);
+      var runScore = reachedStage * 1000 + remainingHp;
+      window.GameLink.submitScore('deck', runScore, getSeedFromUrl());
+    }
+
+    if (window.GameLink && resultLinkSectionEl) {
+      window.GameLink.renderLinkSection(resultLinkSectionEl, {
+        onChange: function () {
+          if (resultRankingSectionEl) {
+            window.GameLink.renderRankingSection(resultRankingSectionEl, 'deck');
+          }
+        },
+      });
+    }
+
+    if (window.GameLink && resultRankingSectionEl) {
+      window.GameLink.renderRankingSection(resultRankingSectionEl, 'deck');
+    }
   }
 
   function renderAll() {
