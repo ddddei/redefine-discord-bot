@@ -285,6 +285,21 @@ async function handleWebgameApi(req, res, pathname, searchParams, webgameApi) {
       return;
     }
 
+    if (pathname === '/game/api/daily' && req.method === 'GET') {
+      await webgameApi.handleDaily(req, res, sendJson, searchParams);
+      return;
+    }
+
+    if (pathname === '/game/api/goal' && req.method === 'GET') {
+      await webgameApi.handleGoal(req, res, sendJson);
+      return;
+    }
+
+    if (pathname === '/game/api/cheer' && req.method === 'POST') {
+      await webgameApi.handleCheer(req, res, sendJson);
+      return;
+    }
+
     if (pathname === '/game/api/me' && req.method === 'GET') {
       await webgameApi.handleMe(req, res, sendJson);
       return;
