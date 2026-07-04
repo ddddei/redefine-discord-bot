@@ -68,6 +68,8 @@
     artImg.className = 'card-art-image';
     artImg.src = getCardTypeAsset(card);
     artImg.alt = '';
+    artImg.loading = 'lazy';
+    artImg.decoding = 'async';
     artWindow.appendChild(artImg);
     el.appendChild(artWindow);
 

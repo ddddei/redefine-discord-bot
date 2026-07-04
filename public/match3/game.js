@@ -89,6 +89,7 @@
         tileImg.className = 'tile-asset';
         tileImg.src = TILE_ASSET[type];
         tileImg.alt = '';
+        tileImg.decoding = 'async';
         button.appendChild(tileImg);
         button.addEventListener('click', onTileClick);
         button.addEventListener('pointerdown', onTilePointerDown);
