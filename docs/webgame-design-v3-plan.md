@@ -1,5 +1,7 @@
 # 웹게임 디자인 고도화 v3 계획서 — 톤 성숙화 (탈캐주얼)
 
+> **진행 상황(2026-07-04)**: 스토리북 프레임 층(가이드 6절) 구현 완료 — `game-ui.css` v3 토큰/질감/컴포넌트, 매치3·방치형·덱 3종 적용. 래스터 원화 트랙(0.1~0.2절, [webgame-art-prompts.md](webgame-art-prompts.md))은 별도 진행.
+
 디자인 v2([webgame-design-v2-plan.md](webgame-design-v2-plan.md), PR #58)의 후속 계획입니다. v2가 "고유 아트(아이덴티티)"를 만들었다면, v3는 **톤 성숙화** — "귀엽지만 장난감 같지는 않은", 프리미엄 모바일 게임의 마감을 목표로 합니다. 구현 전 [webgame-design-guide.md](webgame-design-guide.md)와 저장소 [AGENTS.md](../AGENTS.md), [src/AGENTS.md](../src/AGENTS.md), [scripts/AGENTS.md](../scripts/AGENTS.md)를 먼저 읽어 주세요.
 
 ## 0. 선행 조건과 운영 원칙
