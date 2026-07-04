@@ -497,6 +497,23 @@
 
   // ---- 탭 전환 ----
 
+  function renderLinkSection() {
+    var linkSectionEl = document.getElementById('link-section');
+    if (!window.GameLink || !linkSectionEl) {
+      return;
+    }
+    window.GameLink.renderLinkSection(linkSectionEl, {});
+  }
+
+  // 방치형은 랭킹 부적합 장르 - 주간 누적 생산량을 참여 기록으로만 제출한다(랭킹 미노출).
+  // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
+  function submitWeeklyProduction() {
+    if (!window.GameLink) {
+      return;
+    }
+    window.GameLink.submitScore('idle', state.lifetimeProduced, null);
+  }
+
   function switchTab(target) {
     tabButtons.forEach(function (button) {
       button.classList.toggle('active', button.dataset.tabTarget === target);
@@ -504,6 +521,11 @@
     tabPanels.forEach(function (panel) {
       panel.classList.toggle('hidden', panel.dataset.tab !== target);
     });
+
+    if (target === 'records') {
+      renderLinkSection();
+      submitWeeklyProduction();
+    }
   }
 
   tabButtons.forEach(function (button) {

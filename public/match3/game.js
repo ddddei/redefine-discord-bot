@@ -309,6 +309,25 @@
     return '몸풀기로 나쁘지 않아요. 한 판 더 해보세요.';
   }
 
+  function renderLinkAndRanking() {
+    var linkSectionEl = document.getElementById('result-link-section');
+    var rankingSectionEl = document.getElementById('result-ranking-section');
+
+    if (window.GameLink && linkSectionEl) {
+      window.GameLink.renderLinkSection(linkSectionEl, {
+        onChange: function () {
+          if (rankingSectionEl) {
+            window.GameLink.renderRankingSection(rankingSectionEl, 'match3');
+          }
+        },
+      });
+    }
+
+    if (window.GameLink && rankingSectionEl) {
+      window.GameLink.renderRankingSection(rankingSectionEl, 'match3');
+    }
+  }
+
   function endGame() {
     state.gameOver = true;
     resultTitleEl.textContent = '이동을 모두 사용했어요';
@@ -317,6 +336,12 @@
     resultComboEl.textContent = '×' + state.bestCombo;
     resultTopTileEl.textContent = getTopClearedTileLabel();
     openModal(resultModal);
+
+    // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
+    if (window.GameLink) {
+      window.GameLink.submitScore('match3', state.score, getSeedFromUrl());
+    }
+    renderLinkAndRanking();
   }
 
   function startNewGame() {
