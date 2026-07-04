@@ -1,6 +1,15 @@
 const { EmbedBuilder } = require('discord.js');
-const { createWebgameRepository, getIsoWeekKey } = require('./webgameRepository');
-const { GAME_DEFINITIONS, listRankableGames } = require('./webgameApi');
+const {
+  createWebgameRepository,
+  getDailySeed,
+  getDayKey,
+  getIsoWeekKey,
+} = require('./webgameRepository');
+const {
+  GAME_DEFINITIONS,
+  getCommunalGoal,
+  listRankableGames,
+} = require('./webgameApi');
 
 const CODE_VALID_MINUTES = 10;
 
@@ -27,7 +36,10 @@ function buildLinkCodeEmbed(code) {
 
 function buildRankingEmbed(gameTitle, weekKey, ranking) {
   const lines = ranking.length > 0
-    ? ranking.map((entry) => `${entry.rank}. ${entry.displayName} — ${entry.score.toLocaleString('ko-KR')}점`)
+    ? ranking.map((entry) => {
+      const cheerText = entry.cheers > 0 ? ` 👏 ${entry.cheers}` : '';
+      return `${entry.rank}. ${entry.displayName} — ${entry.score.toLocaleString('ko-KR')}점${cheerText}`;
+    })
     : ['이번 주 기록이 아직 없어요.'];
 
   return new EmbedBuilder()
@@ -35,6 +47,56 @@ function buildRankingEmbed(gameTitle, weekKey, ranking) {
     .setTitle(`${gameTitle} 이번 주 랭킹`)
     .setDescription(lines.join('\n'))
     .setFooter({ text: `주차: ${weekKey}` });
+}
+
+function buildDailyRankingEmbed(gameTitle, dayKey, participants, ranking) {
+  const lines = [
+    `오늘 ${participants.toLocaleString('ko-KR')}명이 함께 도전했어요.`,
+    '',
+    ...(ranking.length > 0
+      ? ranking.map((entry) => {
+        const cheerText = entry.cheers > 0 ? ` 👏 ${entry.cheers}` : '';
+        return `${entry.rank}. ${entry.displayName} — ${entry.score.toLocaleString('ko-KR')}점${cheerText}`;
+      })
+      : ['오늘의 도전 기록이 아직 없어요.']),
+  ];
+
+  return new EmbedBuilder()
+    .setColor(0x57f287)
+    .setTitle(`${gameTitle} 오늘의 도전`)
+    .setDescription(lines.join('\n'))
+    .setFooter({ text: `날짜: ${dayKey} · 시드: ${getDailySeed(dayKey)}` });
+}
+
+function buildGoalProgressBar(total, goal) {
+  const percent = goal > 0 ? Math.min(100, Math.floor((total / goal) * 100)) : 0;
+  const filled = Math.min(10, Math.floor(percent / 10));
+  return `${'▓'.repeat(filled)}${'░'.repeat(10 - filled)} ${percent}%`;
+}
+
+function buildCommunalGoalEmbed(weekKey, progress, goal) {
+  const achieved = progress.total >= goal;
+  const lines = [
+    `목표량: ${goal.toLocaleString('ko-KR')}개`,
+    `현재 총합: ${progress.total.toLocaleString('ko-KR')}개`,
+    buildGoalProgressBar(progress.total, goal),
+    `참여 인원: ${progress.participants.toLocaleString('ko-KR')}명`,
+    achieved ? '이번 주 목표를 함께 달성했어요! 🎉' : '각자의 속도로 만든 간식이 함께 모이고 있어요.',
+  ];
+
+  return new EmbedBuilder()
+    .setColor(achieved ? 0x57f287 : 0xfee75c)
+    .setTitle('이번 주 다 같이 간식 만들기')
+    .setDescription(lines.join('\n'))
+    .setFooter({ text: `주차: ${weekKey}` });
+}
+
+function mergeCheers(repository, gameId, periodKey, ranking) {
+  const cheerCounts = repository.countCheers(gameId, periodKey);
+  return ranking.map((entry) => ({
+    ...entry,
+    cheers: cheerCounts.get(entry.discordId) || 0,
+  }));
 }
 
 // /게임연결 실행 로직. DM 발송을 우선 시도하고, 실패하면 에페메랄 응답으로 대체한다.
@@ -81,6 +143,7 @@ async function runRankingCommand(interaction, options = {}) {
   const repository = options.repository || createWebgameRepository();
   const now = options.now || (() => new Date());
   const gameId = interaction.options.getString('게임');
+  const period = interaction.options.getString('기간') || 'week';
 
   const gameDefinition = GAME_DEFINITIONS[gameId];
   if (!gameDefinition) {
@@ -92,15 +155,38 @@ async function runRankingCommand(interaction, options = {}) {
   }
 
   if (!gameDefinition.rankable) {
+    const weekKey = getIsoWeekKey(now());
+    const progress = repository.getCommunalGoalProgress(weekKey);
+    const embed = buildCommunalGoalEmbed(weekKey, progress, getCommunalGoal());
+    const content = period === 'daily'
+      ? '간식 공방 키우기에는 오늘의 도전이 없어요. 대신 이번 주 공동 목표가 있어요.'
+      : undefined;
     await interaction.reply({
-      content: `${gameDefinition.title}는 랭킹 대상이 아니에요. 참여 기록만 서버에 남아요.`,
-      ephemeral: true,
+      content,
+      embeds: [embed],
     });
-    return { ok: false, reason: 'NOT_RANKABLE' };
+    return { ok: true, gameId, weekKey, progress };
+  }
+
+  if (period === 'daily') {
+    const dayKey = getDayKey(now());
+    const ranking = mergeCheers(
+      repository,
+      gameId,
+      dayKey,
+      repository.listDailyRanking(gameId, dayKey, { limit: 10 })
+    );
+    const participants = repository.countDailyParticipants(gameId, dayKey);
+
+    await interaction.reply({
+      embeds: [buildDailyRankingEmbed(gameDefinition.title, dayKey, participants, ranking)],
+    });
+
+    return { ok: true, gameId, dayKey, ranking, participants };
   }
 
   const weekKey = getIsoWeekKey(now());
-  const ranking = repository.listWeeklyRanking(gameId, weekKey, { limit: 10 });
+  const ranking = mergeCheers(repository, gameId, weekKey, repository.listWeeklyRanking(gameId, weekKey, { limit: 10 }));
 
   await interaction.reply({
     embeds: [buildRankingEmbed(gameDefinition.title, weekKey, ranking)],
@@ -114,5 +200,7 @@ module.exports = {
   runRankingCommand,
   buildLinkCodeEmbed,
   buildRankingEmbed,
+  buildDailyRankingEmbed,
+  buildCommunalGoalEmbed,
   listRankableGames,
 };
