@@ -42,6 +42,9 @@
 
   var state = null;
   var busy = false;
+  var swipeStart = null;
+  var suppressNextClick = false;
+  var SWIPE_THRESHOLD_PX = 24;
 
   function getSeedFromUrl() {
     var params = new URLSearchParams(window.location.search);
@@ -88,6 +91,10 @@
         tileImg.alt = '';
         button.appendChild(tileImg);
         button.addEventListener('click', onTileClick);
+        button.addEventListener('pointerdown', onTilePointerDown);
+        button.addEventListener('pointermove', onTilePointerMove);
+        button.addEventListener('pointerup', onTilePointerUp);
+        button.addEventListener('pointercancel', onTilePointerCancel);
         boardEl.appendChild(button);
       }
     }
@@ -152,13 +159,27 @@
     statusMessageEl.textContent = message;
   }
 
+  function getTileFromButton(button) {
+    return {
+      row: Number(button.dataset.row),
+      col: Number(button.dataset.col),
+    };
+  }
+
   function onTileClick(event) {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      event.preventDefault();
+      return;
+    }
+
     if (busy || state.gameOver) {
       return;
     }
 
-    var row = Number(event.currentTarget.dataset.row);
-    var col = Number(event.currentTarget.dataset.col);
+    var tile = getTileFromButton(event.currentTarget);
+    var row = tile.row;
+    var col = tile.col;
 
     if (!state.selected) {
       state.selected = { row: row, col: col };
@@ -177,6 +198,90 @@
     state.selected = null;
     updateSelectionStyles();
     attemptSwap(first, second);
+  }
+
+  function getSwipeDirection(deltaX, deltaY) {
+    var absX = Math.abs(deltaX);
+    var absY = Math.abs(deltaY);
+    if (Math.max(absX, absY) < SWIPE_THRESHOLD_PX) {
+      return null;
+    }
+    if (absX >= absY) {
+      return deltaX > 0 ? 'right' : 'left';
+    }
+    return deltaY > 0 ? 'down' : 'up';
+  }
+
+  function getAdjacentTile(tile, direction) {
+    var target = { row: tile.row, col: tile.col };
+    if (direction === 'left') {
+      target.col -= 1;
+    } else if (direction === 'right') {
+      target.col += 1;
+    } else if (direction === 'up') {
+      target.row -= 1;
+    } else if (direction === 'down') {
+      target.row += 1;
+    }
+
+    if (target.row < 0 || target.row >= Board.BOARD_SIZE || target.col < 0 || target.col >= Board.BOARD_SIZE) {
+      return null;
+    }
+    return target;
+  }
+
+  function onTilePointerDown(event) {
+    if (busy || state.gameOver || (event.button !== undefined && event.button !== 0)) {
+      return;
+    }
+
+    swipeStart = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      tile: getTileFromButton(event.currentTarget),
+      direction: null,
+    };
+
+    if (event.currentTarget.setPointerCapture) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  }
+
+  function onTilePointerMove(event) {
+    if (!swipeStart || swipeStart.pointerId !== event.pointerId) {
+      return;
+    }
+    swipeStart.direction = getSwipeDirection(event.clientX - swipeStart.x, event.clientY - swipeStart.y);
+  }
+
+  function onTilePointerUp(event) {
+    if (!swipeStart || swipeStart.pointerId !== event.pointerId) {
+      return;
+    }
+
+    var direction = swipeStart.direction || getSwipeDirection(event.clientX - swipeStart.x, event.clientY - swipeStart.y);
+    if (!direction) {
+      swipeStart = null;
+      return;
+    }
+
+    var target = getAdjacentTile(swipeStart.tile, direction);
+    suppressNextClick = true;
+    event.preventDefault();
+
+    if (target) {
+      state.selected = null;
+      updateSelectionStyles();
+      attemptSwap(swipeStart.tile, target);
+    }
+    swipeStart = null;
+  }
+
+  function onTilePointerCancel(event) {
+    if (swipeStart && swipeStart.pointerId === event.pointerId) {
+      swipeStart = null;
+    }
   }
 
   function attemptSwap(first, second) {

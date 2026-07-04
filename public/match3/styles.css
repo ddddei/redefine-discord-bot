@@ -84,6 +84,7 @@ body::before {
   padding: 10px;
   border: 1.6px solid var(--ink);
   box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
+  touch-action: none;
 }
 
 .board.shuffling {
