@@ -3,13 +3,14 @@
 
   var Board = window.Match3Board;
 
+  // v3 원화(webp 정물화). 로직(board.js)과 무관한 표시 전용 매핑이다.
   var TILE_ASSET = {
-    strawberry: '../shared/assets/match3-tile-strawberry.svg',
-    orange: '../shared/assets/match3-tile-orange.svg',
-    candy: '../shared/assets/match3-tile-candy.svg',
-    cookie: '../shared/assets/match3-tile-cookie.svg',
-    cupcake: '../shared/assets/match3-tile-cupcake.svg',
-    jelly: '../shared/assets/match3-tile-jelly.svg',
+    strawberry: '../shared/art/match3-tile-strawberry.webp',
+    orange: '../shared/art/match3-tile-orange.webp',
+    candy: '../shared/art/match3-tile-candy.webp',
+    cookie: '../shared/art/match3-tile-cookie.webp',
+    cupcake: '../shared/art/match3-tile-cupcake.webp',
+    jelly: '../shared/art/match3-tile-jelly.webp',
   };
 
   var TILE_LABEL = {

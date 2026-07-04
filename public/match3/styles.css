@@ -15,7 +15,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--paper);
+  /* v3 배경 원화: 종이 스테이지(gk-stage) 뒤에 깔리는 그림. 로드 실패 시 --paper 폴백. */
+  background: var(--paper) url('../shared/art/bg-match3.webp') center / cover no-repeat fixed;
   color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
 }
@@ -106,11 +107,12 @@ body {
   box-shadow: inset 0 -3px 0 rgba(58, 42, 28, 0.08);
 }
 
+/* v3 원화 타일: 정물화가 칸을 가득 채운다 (배경색은 로딩 전 폴백 역할만). */
 .tile-asset {
-  width: 82%;
-  height: 82%;
-  max-width: var(--asset-md);
-  max-height: var(--asset-md);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--radius-sm) - 2px);
   pointer-events: none;
 }
 

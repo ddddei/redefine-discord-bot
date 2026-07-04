@@ -16,7 +16,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--paper);
+  /* v3 배경 원화: 종이 스테이지(gk-stage) 뒤에 깔리는 그림. 로드 실패 시 --paper 폴백. */
+  background: var(--paper) url('../shared/art/bg-idle.webp') center / cover no-repeat fixed;
   color: var(--ink);
   font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif;
 }
@@ -162,9 +163,13 @@ body {
   }
 }
 
+/* v3 초상 원화: 원형 크롭 + 잉크 링 (버튼 안의 메달 느낌). */
 .character-asset {
   width: var(--asset-lg);
   height: var(--asset-lg);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--ink);
 }
 
 .make-snack-label {

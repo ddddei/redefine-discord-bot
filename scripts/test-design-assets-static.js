@@ -115,22 +115,24 @@ function main() {
     'adminServer.js CONTENT_TYPES에 .webp → image/webp 매핑이 있어야 함'
   );
 
-  // 5. v3 원화(래스터) 검증: 덱 적 9종 webp 존재·용량 예산·출처 기록.
-  //    덱은 content.js의 asset(svg 파일명)에서 확장자·디렉터리를 치환해 원화를 참조하므로,
-  //    SVG 인벤토리의 deck-enemy-* 각각에 대응하는 webp가 있어야 한다.
+  // 5. v3 원화(래스터) 검증: 전체 인벤토리 webp 존재·용량 예산·출처 기록.
+  //    적 9종·타일 6종·캐릭터 1종은 SVG 인벤토리와 파일명이 대응하고, 배경 3종은 원화 전용.
   const ART_DIR = path.join(__dirname, '..', 'public', 'shared', 'art');
   const MAX_ART_FILE_BYTES = 150 * 1024;
-  REQUIRED_ASSET_FILES
-    .filter((fileName) => fileName.startsWith('deck-enemy-'))
-    .forEach((svgName) => {
-      const webpName = svgName.replace('.svg', '.webp');
-      const webpPath = path.join(ART_DIR, webpName);
-      assert.ok(fs.existsSync(webpPath), `${webpName} 원화가 public/shared/art/에 존재해야 함`);
-      assert.ok(
-        fs.statSync(webpPath).size <= MAX_ART_FILE_BYTES,
-        `${webpName}은 150KB 용량 예산을 지켜야 함`
-      );
-    });
+  const RASTER_ART_FILES = REQUIRED_ASSET_FILES
+    .filter((fileName) => fileName.startsWith('deck-enemy-')
+      || fileName.startsWith('match3-tile-')
+      || fileName === 'shared-char-baker.svg')
+    .map((svgName) => svgName.replace('.svg', '.webp'))
+    .concat(['bg-match3.webp', 'bg-idle.webp', 'bg-deck.webp']);
+  RASTER_ART_FILES.forEach((webpName) => {
+    const webpPath = path.join(ART_DIR, webpName);
+    assert.ok(fs.existsSync(webpPath), `${webpName} 원화가 public/shared/art/에 존재해야 함`);
+    assert.ok(
+      fs.statSync(webpPath).size <= MAX_ART_FILE_BYTES,
+      `${webpName}은 150KB 용량 예산을 지켜야 함`
+    );
+  });
   assert.ok(
     fs.existsSync(path.join(ART_DIR, 'SOURCES.md')),
     'public/shared/art/SOURCES.md 출처 기록이 있어야 함'
