@@ -147,6 +147,13 @@ body::before {
   color: var(--ink-soft);
 }
 
+.run-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* 전투 화면 */
 
 #screen-combat {
