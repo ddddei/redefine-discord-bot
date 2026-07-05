@@ -47,6 +47,7 @@
 | [discord-permission-setup-guide.md](discord-permission-setup-guide.md) | Discord 역할/채널 권한 수동 세팅 가이드 | 실제 서버에서 온보딩 역할과 채널 권한을 수동으로 설정하기 전 | 권장 역할, 채널 공개 범위, 운영진 전용 채널 숨김, 봇 권한, 테스트 체크리스트 |
 | [api-rag-plan.md](api-rag-plan.md) | 향후 API/RAG 연동 설계안 | OpenAI/Gemini API 또는 RAG 도입을 검토할 때 | 권장 답변 흐름, 개인정보 원칙, 프롬프트 방향, 단계별 도입 계획 |
 | [dm-chat-mvp-plan.md](dm-chat-mvp-plan.md) | DM 대화 연습 기능 개발 계획 문서 | DM 대화 연습의 구현 범위 확인, 단계별 개발과 Codex 작업 지시서 작성 시 기준으로 삼을 때 | 전체 구조, 접근 방식, 단계별 계획, 성공 기준, 제약 조건, 위험/롤백 |
+| [dm-chat-improvement-plan.md](dm-chat-improvement-plan.md) | DM 대화 고도화 v1 계획서 (완성 배포판) | DM 대화 2단계(운영 편의)와 대화 초기화·비용 가시성 구현에 착수하거나 Codex 지시서를 작성할 때 | 안전 알림 스로틀, /운영현황 DM 요약, /admin 필터, 대화 초기화, 테스트/QA/롤백 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
 | [faq-knowledge-refinement-plan.md](faq-knowledge-refinement-plan.md) | FAQ/Knowledge 응답 품질 점검 리포트 | 실제 데이터 수정 전 개선 후보와 검증 질문을 정리할 때 | 중복 주제, 넓은 keywords, fallback 후보, 온보딩/민감 질문 보강 후보 |
 | [test-questions-followup-report.md](test-questions-followup-report.md) | 질문 매칭 잔여 오매칭 점검 리포트 | `test:questions` 결과 기반으로 남은 오매칭, 애매한 매칭, 의도적 Fallback 후보를 확인할 때 | 개선 확인 항목, 애매한 매칭 후보, Fallback 유지 후보, 다음 데이터 수정 순서 |
