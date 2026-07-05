@@ -6,7 +6,8 @@ const { getKoreanDateString } = require('./pointsRepository');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_DM_CHAT_LOG_PATH = process.env.DM_CHAT_LOG_PATH || path.join(DATA_DIR, 'dm-chat-logs.local.json');
-const CURRENT_DM_CHAT_LOG_VERSION = 3;
+const CURRENT_DM_CHAT_LOG_VERSION = 4;
+const CURRENT_NOTICE_VERSION = 2;
 
 function createTimestamp() {
   return new Date().toISOString();
@@ -25,6 +26,7 @@ function createInitialData() {
     notices: [],
     messages: [],
     historyResets: [],
+    activeScenarios: [],
   };
 }
 
@@ -45,14 +47,23 @@ function loadData(logPath) {
   return JSON.parse(fs.readFileSync(logPath, 'utf8'));
 }
 
+function normalizeNotice(notice) {
+  return {
+    ...notice,
+    // version 3 이하 파일(noticeVersion 없음)은 v1 고지만 받은 것으로 간주한다.
+    noticeVersion: Number.isInteger(notice && notice.noticeVersion) ? notice.noticeVersion : 1,
+  };
+}
+
 function normalizeData(data) {
   return {
     ...createInitialData(),
     ...data,
     version: CURRENT_DM_CHAT_LOG_VERSION,
-    notices: Array.isArray(data && data.notices) ? data.notices : [],
+    notices: Array.isArray(data && data.notices) ? data.notices.map(normalizeNotice) : [],
     messages: Array.isArray(data && data.messages) ? data.messages : [],
     historyResets: Array.isArray(data && data.historyResets) ? data.historyResets : [],
+    activeScenarios: Array.isArray(data && data.activeScenarios) ? data.activeScenarios : [],
   };
 }
 
@@ -92,23 +103,35 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     return normalizeData(loadData(logPath));
   }
 
-  function hasNotice(userId) {
+  function getNotice(userId) {
     const data = load();
-    return data.notices.some((notice) => notice.userId === userId);
+    return data.notices.find((notice) => notice.userId === userId) || null;
+  }
+
+  function hasNotice(userId) {
+    const notice = getNotice(userId);
+    return Boolean(notice && notice.noticeVersion >= CURRENT_NOTICE_VERSION);
   }
 
   function recordNotice(user) {
     const data = load();
+    const existingIndex = data.notices.findIndex((notice) => notice.userId === user.id);
+    const record = {
+      userId: user.id,
+      username: user.username || null,
+      displayName: user.displayName || user.globalName || user.username || user.id,
+      sentAt: createTimestamp(),
+      noticeVersion: CURRENT_NOTICE_VERSION,
+    };
 
-    if (!data.notices.some((notice) => notice.userId === user.id)) {
-      data.notices.push({
-        userId: user.id,
-        username: user.username || null,
-        displayName: user.displayName || user.globalName || user.username || user.id,
-        sentAt: createTimestamp(),
-      });
-      save(data);
+    if (existingIndex >= 0) {
+      data.notices[existingIndex] = record;
+    } else {
+      data.notices.push(record);
     }
+
+    save(data);
+    return record;
   }
 
   function appendMessage(entry) {
@@ -124,6 +147,7 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
       safetyDetection: entry.safetyDetection || null,
       safetyDetectionSource: entry.safetyDetectionSource || null,
       error: entry.error || null,
+      tokens: entry.role === 'assistant' && entry.tokens ? entry.tokens : null,
     };
 
     data.messages.push(record);
@@ -160,6 +184,53 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     const data = load();
     const reset = data.historyResets.find((record) => record.userId === userId);
     return reset && reset.resetAt ? reset.resetAt : null;
+  }
+
+  function getActiveScenario(userId, now = new Date()) {
+    const data = load();
+    const scenario = data.activeScenarios.find((record) => record.userId === userId);
+
+    if (!scenario) {
+      return null;
+    }
+
+    const startedDateString = getRecordKoreanDateString(scenario.startedAt);
+    const nowDateString = getRecordKoreanDateString(now);
+
+    if (startedDateString && nowDateString && startedDateString !== nowDateString) {
+      // 다음 날(KST)이 되면 자동 해제한다.
+      return null;
+    }
+
+    return scenario;
+  }
+
+  function setActiveScenario(userId, scenarioId, startedAt = createTimestamp()) {
+    const data = load();
+    const existingIndex = data.activeScenarios.findIndex((record) => record.userId === userId);
+    const record = { userId, scenarioId, startedAt };
+
+    if (existingIndex >= 0) {
+      data.activeScenarios[existingIndex] = record;
+    } else {
+      data.activeScenarios.push(record);
+    }
+
+    save(data);
+    return record;
+  }
+
+  function clearActiveScenario(userId) {
+    const data = load();
+    const nextScenarios = data.activeScenarios.filter((record) => record.userId !== userId);
+
+    if (nextScenarios.length === data.activeScenarios.length) {
+      return false;
+    }
+
+    data.activeScenarios = nextScenarios;
+    save(data);
+    return true;
   }
 
   function listRecentMessages(userId, limit = 8) {
@@ -257,6 +328,19 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
         }).length,
         errors: todayMessages.filter((message) => message.error).length,
       },
+      tokens: assistantMessages.reduce((totals, message) => {
+        if (message.tokens && typeof message.tokens === 'object') {
+          if (Number.isFinite(message.tokens.input)) {
+            totals.input += message.tokens.input;
+            totals.hasData = true;
+          }
+          if (Number.isFinite(message.tokens.output)) {
+            totals.output += message.tokens.output;
+            totals.hasData = true;
+          }
+        }
+        return totals;
+      }, { input: 0, output: 0, hasData: false }),
       lastMessageAt: latestMessage ? latestMessage.createdAt : null,
       meta: {
         exampleRecordsExcluded: filtered.excluded,
@@ -269,18 +353,25 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
 
   return {
     appendMessage,
+    clearActiveScenario,
     countRecentUserMessages,
     countTodayUserMessages,
+    getActiveScenario,
     getHistoryResetAt,
+    getNotice,
     hasNotice,
     listRecentMessagesForAdmin,
     listRecentMessages,
     recordHistoryReset,
     recordNotice,
+    setActiveScenario,
     summarizeToday,
   };
 }
 
 module.exports = {
+  CURRENT_DM_CHAT_LOG_VERSION,
+  CURRENT_NOTICE_VERSION,
+  DEFAULT_DM_CHAT_LOG_PATH,
   createDmChatRepository,
 };

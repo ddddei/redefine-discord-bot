@@ -76,3 +76,12 @@
 ## 9. 운영 중 백업 주의사항
 
 운영 시작 후에는 `/운영내보내기`로 주기적으로 백업합니다. 내보낸 파일에는 사용자 ID, 표시 이름, 인증 내용, 운영 메모가 포함될 수 있으므로 공유 범위와 보관 위치를 제한합니다.
+
+## 10. DM 대화 로그 보존 정리와 삭제 요청 처리
+
+DM 대화 로그(`data/dm-chat-logs.local.json` 또는 `DM_CHAT_LOG_PATH`)는 `scripts/cleanup-dm-chat-logs.js`로만 정리합니다. 로그 파일을 직접 열어 편집하지 않습니다.
+
+- **보존 기간 경과 정리(월 1회 권장)**: `node scripts/cleanup-dm-chat-logs.js`로 dry-run 결과를 먼저 확인한 뒤 `node scripts/cleanup-dm-chat-logs.js --apply`로 적용합니다. `DM_CHAT_RETENTION_DAYS`(기본 90일) 경과 메시지가 제거되며, 안전 감지 레코드는 180일까지 별도로 보존됩니다.
+- **참여자 요청 삭제**: `node scripts/cleanup-dm-chat-logs.js --user <discordId> --apply`로 해당 사용자의 메시지·notices·historyResets를 전부 제거합니다. 실행 전 신원(Discord ID)을 확인합니다.
+- 두 작업 모두 적용 전 `dm-chat-logs.backup-<타임스탬프>.json` 사본을 자동 생성합니다. 이 백업 사본에는 정리 전 데이터가 남아 있으므로, 삭제 요청 회신 시 "완전 삭제는 아니며 백업 사본은 별도 보관 규정에 따른다"는 점을 정직하게 안내합니다.
+- 상세 운영 절차와 SOP는 `docs/dm-chat-operation-guide.md`의 "삭제 요청 처리"·"보존 정리 루틴" 절을 따릅니다.

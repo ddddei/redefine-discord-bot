@@ -8,14 +8,42 @@ const {
 } = require('./dmChatLogging');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 
-const FIRST_NOTICE = [
-  '리디파인 DM 대화 연습을 시작할게요.',
-  '',
-  '이 DM은 참가자 보호와 운영 지원을 위해 기록되며 운영진이 확인할 수 있어요.',
-  '자해, 폭력, 괴롭힘, 긴급한 위험과 관련된 내용은 빠른 도움을 위해 운영진에게 전달될 수 있습니다.',
-  '',
-  '이 봇은 상담이나 진단을 하지 않고, 사람들과 대화하기 전 짧게 연습하는 용도로만 도와드려요.',
-].join('\n');
+const DEFAULT_RETENTION_DAYS = 90;
+
+function getRetentionDays() {
+  const parsed = Number.parseInt(process.env.DM_CHAT_RETENTION_DAYS || `${DEFAULT_RETENTION_DAYS}`, 10);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return DEFAULT_RETENTION_DAYS;
+  }
+
+  return parsed;
+}
+
+function getRetentionNoticeLine() {
+  const retentionDays = getRetentionDays();
+
+  if (retentionDays === 0) {
+    return '대화 기록은 운영 종료 시까지 보관되며, 원하면 언제든 삭제를 요청할 수 있어요.';
+  }
+
+  return `대화 기록은 ${retentionDays}일 뒤 자동 정리되고, 원하면 언제든 삭제를 요청할 수 있어요.`;
+}
+
+function buildFirstNotice() {
+  return [
+    '리디파인 DM 대화 연습을 시작할게요.',
+    '',
+    '이 DM은 참가자 보호와 운영 지원을 위해 기록되며 운영진이 확인할 수 있어요.',
+    '자해, 폭력, 괴롭힘, 긴급한 위험과 관련된 내용은 빠른 도움을 위해 운영진에게 전달될 수 있습니다.',
+    getRetentionNoticeLine(),
+    '',
+    '이 봇은 상담이나 진단을 하지 않고, 사람들과 대화하기 전 짧게 연습하는 용도로만 도와드려요.',
+    '『연습 메뉴』라고 보내면 연습 주제를, 『새로 시작』이라고 보내면 대화를 새로 시작할 수 있어요.',
+  ].join('\n');
+}
+
+const FIRST_NOTICE = buildFirstNotice();
 
 const CONFIGURATION_FALLBACK = [
   '지금은 DM 대화 기능을 준비 중이에요.',
@@ -482,7 +510,7 @@ async function handleDmChatMessage(message, client, options = {}) {
   console.info(`[dm-chat] received DM from user=${userRecord.id}`);
 
   if (!repository.hasNotice(userRecord.id)) {
-    await sendDirectMessage(message, FIRST_NOTICE);
+    await sendDirectMessage(message, buildFirstNotice());
     repository.recordNotice(userRecord);
   }
 
@@ -565,6 +593,7 @@ module.exports = {
   HISTORY_RESET_CONFIRMATION,
   HISTORY_RESET_TRIGGER,
   NON_MEMBER_NOTICE,
+  buildFirstNotice,
   getDmChatConfigurationStatus,
   handleDmChatMessage,
   isDirectUserDm,

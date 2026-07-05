@@ -19,6 +19,36 @@ const checks = [
     args: ['--check', 'src/safety.js'],
   },
   {
+    label: 'src/dmChat.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dmChat.js'],
+  },
+  {
+    label: 'src/dmChatRepository.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dmChatRepository.js'],
+  },
+  {
+    label: 'src/dmChatLogging.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dmChatLogging.js'],
+  },
+  {
+    label: 'src/dmChatScenarios.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dmChatScenarios.js'],
+  },
+  {
+    label: 'scripts/cleanup-dm-chat-logs.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/cleanup-dm-chat-logs.js'],
+  },
+  {
+    label: 'scripts/test-dm-chat-retention.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-dm-chat-retention.js'],
+  },
+  {
     label: 'src/onboardingRoles.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/onboardingRoles.js'],
@@ -552,6 +582,16 @@ const checks = [
     label: 'operator hub flow smoke test',
     command: 'node',
     args: ['scripts/test-operator-hub-flow.js'],
+  },
+  {
+    label: 'dm chat flow smoke test',
+    command: 'node',
+    args: ['scripts/test-dm-chat-flow.js'],
+  },
+  {
+    label: 'dm chat retention cleanup test',
+    command: 'node',
+    args: ['scripts/test-dm-chat-retention.js'],
   },
   {
     label: 'admin dashboard flow smoke test',

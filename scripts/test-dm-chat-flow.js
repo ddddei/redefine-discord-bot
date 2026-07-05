@@ -152,6 +152,7 @@ async function main() {
     GUILD_ID: process.env.GUILD_ID,
     DM_CHAT_MEMBER_ONLY: process.env.DM_CHAT_MEMBER_ONLY,
     DM_CHAT_BURST_LIMIT_PER_MINUTE: process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE,
+    DM_CHAT_RETENTION_DAYS: process.env.DM_CHAT_RETENTION_DAYS,
   };
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-chat-'));
   const logPath = path.join(tempDir, 'dm-chat-logs.json');
@@ -434,7 +435,7 @@ async function main() {
     assert.ok(!afterResetInput.some((item) => /이전 대화 내용을 기억해줘/.test(item.content)));
 
     const resetData = readJson(path.join(tempDir, 'dm-chat-reset-logs.json'));
-    assert.strictEqual(resetData.version, 3);
+    assert.strictEqual(resetData.version, 4);
     assert.strictEqual(resetData.historyResets.length, 1);
     assert.strictEqual(resetData.messages.length, 6);
 
@@ -448,8 +449,71 @@ async function main() {
     assert.deepStrictEqual(versionTwoRepository.listRecentMessages('missing_user'), []);
     versionTwoRepository.recordHistoryReset({ id: 'v2_user', username: 'v2_user' }, '2026-07-03T00:00:00.000Z');
     const normalizedVersionTwoData = readJson(versionTwoPath);
-    assert.strictEqual(normalizedVersionTwoData.version, 3);
+    assert.strictEqual(normalizedVersionTwoData.version, 4);
     assert.strictEqual(normalizedVersionTwoData.historyResets.length, 1);
+
+    // --- 작업 C: 스키마 v3 파일 관용 로드 + 기존 사용자 notice v2 재고지 1회 ---
+    const versionThreePath = path.join(tempDir, 'dm-chat-v3-logs.json');
+    fs.writeFileSync(versionThreePath, `${JSON.stringify({
+      version: 3,
+      notices: [{
+        userId: 'v3_existing_user',
+        username: 'v3_existing_user',
+        displayName: 'v3 기존 사용자',
+        sentAt: '2026-06-01T00:00:00.000Z',
+        // noticeVersion 없음 (v1 취급)
+      }],
+      messages: [],
+      historyResets: [],
+    }, null, 2)}\n`);
+
+    const versionThreeRepository = createDmChatRepository(versionThreePath);
+    assert.strictEqual(versionThreeRepository.hasNotice('v3_existing_user'), false, 'v1 고지만 받은 기존 사용자는 v2 재고지 대상입니다.');
+
+    const renoticeClient = createClient();
+    const renoticeMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('안녕하세요, 다시 왔어요', renoticeMessages, 'v3_existing_user'),
+      renoticeClient,
+      { repository: versionThreeRepository }
+    );
+    assert.strictEqual(renoticeMessages.length, 2, '기존 사용자도 notice v2 재고지를 1회 받아야 합니다.');
+    assert.match(renoticeMessages[0], /자동 정리/);
+    assert.match(renoticeMessages[0], /연습 메뉴/);
+
+    const renoticeMessagesSecond = [];
+    await handleDmChatMessage(
+      createDmMessage('또 왔어요', renoticeMessagesSecond, 'v3_existing_user'),
+      renoticeClient,
+      { repository: versionThreeRepository }
+    );
+    assert.strictEqual(renoticeMessagesSecond.length, 1, '재고지는 1회만 발송되어야 합니다.');
+
+    const versionThreeData = readJson(versionThreePath);
+    assert.strictEqual(versionThreeData.version, 4);
+    assert.strictEqual(versionThreeData.notices[0].noticeVersion, 2);
+
+    // DM_CHAT_RETENTION_DAYS 값에 따라 안내 문구가 렌더링되는지 확인
+    process.env.DM_CHAT_RETENTION_DAYS = '30';
+    const customRetentionRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-retention-notice-logs.json'));
+    const customRetentionMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('안녕하세요', customRetentionMessages, 'retention_notice_user'),
+      createClient(),
+      { repository: customRetentionRepository }
+    );
+    assert.match(customRetentionMessages[0], /30일 뒤 자동 정리/);
+
+    process.env.DM_CHAT_RETENTION_DAYS = '0';
+    const unlimitedRetentionRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-retention-unlimited-logs.json'));
+    const unlimitedRetentionMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('안녕하세요', unlimitedRetentionMessages, 'retention_unlimited_user'),
+      createClient(),
+      { repository: unlimitedRetentionRepository }
+    );
+    assert.match(unlimitedRetentionMessages[0], /운영 종료 시까지 보관/);
+    process.env.DM_CHAT_RETENTION_DAYS = '90';
 
     // --- 작업 A: 서버 멤버 확인 ---
     process.env.AI_PROVIDER = 'mock';
