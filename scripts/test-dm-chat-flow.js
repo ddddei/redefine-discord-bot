@@ -8,6 +8,7 @@ const {
   NON_MEMBER_NOTICE,
   handleDmChatMessage,
   resetDmChatAccessControlStateForTest,
+  splitReplyIntoChunks,
 } = require('../src/dmChat');
 const {
   resetDmChatSafetyAlertThrottleForTest,
@@ -638,6 +639,76 @@ async function main() {
 
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_MODEL = '';
+
+    // --- 작업 B: 2,000자 문장 경계 분할 ---
+    const shortReply = '안녕하세요. 짧은 문장입니다.';
+    assert.deepStrictEqual(splitReplyIntoChunks(shortReply), [shortReply]);
+
+    const longSentence = '이 문장은 매우 깁니다. '.repeat(120); // 문장 경계 다수 포함, 2000자 초과
+    const longChunks = splitReplyIntoChunks(longSentence);
+    assert.ok(longChunks.length <= 2, '분할은 최대 2조각까지만 허용합니다.');
+    assert.ok(longChunks.every((chunk) => chunk.length <= 2000), '각 조각은 Discord 한도를 넘지 않아야 합니다.');
+
+    const veryLongSentence = 'ㄱ'.repeat(5000); // 문장 경계가 없는 초과 텍스트 (2조각 후 절단)
+    const veryLongChunks = splitReplyIntoChunks(veryLongSentence);
+    assert.strictEqual(veryLongChunks.length, 2);
+    assert.ok(veryLongChunks[1].endsWith('…'), '두 번째 조각을 넘는 내용은 절단 표시(…)로 마무리합니다.');
+
+    const splitSendRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-split-logs.json'));
+    const splitSendClient = createClient();
+    const longMockText = '안녕하세요, 짧은 응답 연습을 해봐요. '.repeat(150);
+    const splitOpenAiClient = createOpenAiClient(longMockText);
+    process.env.AI_PROVIDER = 'openai';
+    process.env.AI_MODEL = 'test-model';
+    const splitSentMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('긴 응답을 받아보고 싶어요', splitSentMessages, 'split_reply_user'),
+      splitSendClient,
+      { repository: splitSendRepository, ai: { openaiClient: splitOpenAiClient } }
+    );
+    // 첫 안내 1개 + 분할된 응답(최대 2개)
+    assert.ok(splitSentMessages.length >= 2 && splitSentMessages.length <= 3);
+    assert.ok(splitSentMessages[splitSentMessages.length - 1].length <= 2000);
+    process.env.AI_PROVIDER = 'mock';
+    process.env.AI_MODEL = '';
+
+    // --- 작업 B: 전역 AI 오류 경고 (10분 5회 스로틀 1회) ---
+    resetDmChatAccessControlStateForTest();
+    process.env.AI_PROVIDER = 'openai';
+    process.env.AI_MODEL = 'test-model';
+    const errorAlertRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-error-alert-logs.json'));
+    const erroringOpenAiClient = {
+      responses: {
+        create: async () => {
+          throw new Error('모의 OpenAI 오류');
+        },
+      },
+    };
+    const errorAlertClient = createClient();
+
+    for (let index = 0; index < 5; index += 1) {
+      const errMessages = [];
+      // eslint-disable-next-line no-await-in-loop
+      await handleDmChatMessage(
+        createDmMessage(`오류 유발 메시지 ${index}`, errMessages, `error_alert_user_${index}`),
+        errorAlertClient,
+        { repository: errorAlertRepository, ai: { openaiClient: erroringOpenAiClient } }
+      );
+    }
+
+    assert.strictEqual(countLogsByTitle(errorAlertClient, 'DM 대화 AI 응답 오류 경고'), 1, '10분 내 5회 오류 시 경고가 1회 발송되어야 합니다.');
+
+    const errMessagesSixth = [];
+    await handleDmChatMessage(
+      createDmMessage('오류 유발 메시지 6', errMessagesSixth, 'error_alert_user_5'),
+      errorAlertClient,
+      { repository: errorAlertRepository, ai: { openaiClient: erroringOpenAiClient } }
+    );
+    assert.strictEqual(countLogsByTitle(errorAlertClient, 'DM 대화 AI 응답 오류 경고'), 1, '스로틀 구간 내 추가 경고는 생략됩니다.');
+
+    process.env.AI_PROVIDER = 'mock';
+    process.env.AI_MODEL = '';
+    resetDmChatAccessControlStateForTest();
   } finally {
     for (const [key, value] of Object.entries(previousEnv)) {
       if (value === undefined) {

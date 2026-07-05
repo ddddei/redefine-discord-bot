@@ -2,6 +2,7 @@ const { ChannelType } = require('discord.js');
 const { getDmChatReply } = require('./ai');
 const { createDmChatRepository } = require('./dmChatRepository');
 const {
+  sendDmChatGlobalErrorAlert,
   sendDmChatOperatorLog,
   sendDmChatSafetyAlert,
 } = require('./dmChatLogging');
@@ -29,10 +30,111 @@ const NON_MEMBER_NOTICE = '이 DM 연습은 리디파인 참여자에게 열려 
 const BURST_LIMIT_FALLBACK = '조금 천천히 이야기해요. 잠시 후 다시 보내 주세요.';
 const DEFAULT_BURST_LIMIT_PER_MINUTE = 5;
 const BURST_WINDOW_MS = 60 * 1000;
+const DISCORD_MESSAGE_LIMIT = 2000;
+const MAX_MESSAGE_CHUNKS = 2;
+const CHUNK_TRUNCATION_SUFFIX = '…';
+const GLOBAL_AI_ERROR_WINDOW_MS = 10 * 60 * 1000;
+const GLOBAL_AI_ERROR_THRESHOLD = 5;
+const GLOBAL_AI_ERROR_ALERT_THROTTLE_MS = 10 * 60 * 1000;
 
 const nonMemberNoticeSent = new Set();
 const burstLimitLastNoticeAt = new Map();
 const userProcessingChains = new Map();
+let globalAiErrorTimestamps = [];
+let globalAiErrorAlertLastSentAt = 0;
+
+function splitReplyIntoChunks(content) {
+  if (typeof content !== 'string' || content.length <= DISCORD_MESSAGE_LIMIT) {
+    return [content];
+  }
+
+  const chunks = [];
+  let remaining = content;
+
+  while (remaining.length > 0 && chunks.length < MAX_MESSAGE_CHUNKS) {
+    if (remaining.length <= DISCORD_MESSAGE_LIMIT) {
+      chunks.push(remaining);
+      remaining = '';
+      break;
+    }
+
+    const isLastAllowedChunk = chunks.length === MAX_MESSAGE_CHUNKS - 1;
+    const limit = isLastAllowedChunk
+      ? DISCORD_MESSAGE_LIMIT - CHUNK_TRUNCATION_SUFFIX.length
+      : DISCORD_MESSAGE_LIMIT;
+    const window = remaining.slice(0, limit);
+
+    let splitIndex = -1;
+    for (const boundary of ['. ', '! ', '? ', '\n']) {
+      const index = window.lastIndexOf(boundary);
+      if (index > splitIndex) {
+        splitIndex = index + boundary.length;
+      }
+    }
+
+    if (splitIndex <= 0) {
+      splitIndex = window.length;
+    }
+
+    let chunk = remaining.slice(0, splitIndex).trimEnd();
+    remaining = remaining.slice(splitIndex).trimStart();
+
+    if (isLastAllowedChunk && remaining.length > 0) {
+      chunk = `${chunk}${CHUNK_TRUNCATION_SUFFIX}`;
+      remaining = '';
+    }
+
+    chunks.push(chunk);
+  }
+
+  return chunks;
+}
+
+async function sendPossiblySplitReply(message, content) {
+  const chunks = splitReplyIntoChunks(content);
+
+  for (const chunk of chunks) {
+    // eslint-disable-next-line no-await-in-loop
+    await sendDirectMessage(message, chunk);
+  }
+}
+
+function recordGlobalAiError(now = Date.now()) {
+  globalAiErrorTimestamps.push(now);
+  globalAiErrorTimestamps = globalAiErrorTimestamps.filter(
+    (timestamp) => now - timestamp < GLOBAL_AI_ERROR_WINDOW_MS
+  );
+  return globalAiErrorTimestamps.length;
+}
+
+function shouldSendGlobalAiErrorAlert(now = Date.now()) {
+  if (now - globalAiErrorAlertLastSentAt < GLOBAL_AI_ERROR_ALERT_THROTTLE_MS) {
+    return false;
+  }
+
+  globalAiErrorAlertLastSentAt = now;
+  return true;
+}
+
+async function maybeSendGlobalAiErrorAlert(client, errorMessage) {
+  const now = Date.now();
+  const recentErrorCount = recordGlobalAiError(now);
+
+  if (recentErrorCount < GLOBAL_AI_ERROR_THRESHOLD) {
+    return false;
+  }
+
+  if (!shouldSendGlobalAiErrorAlert(now)) {
+    return false;
+  }
+
+  await sendDmChatGlobalErrorAlert(client, {
+    recentErrorCount,
+    windowMinutes: Math.round(GLOBAL_AI_ERROR_WINDOW_MS / 60000),
+    lastErrorMessage: errorMessage,
+  });
+  return true;
+}
 
 function getMemberCache() {
   if (!global.__dmChatMemberCache) {
@@ -146,6 +248,8 @@ function resetDmChatAccessControlStateForTest() {
   burstLimitLastNoticeAt.clear();
   userProcessingChains.clear();
   getMemberCache().clear();
+  globalAiErrorTimestamps = [];
+  globalAiErrorAlertLastSentAt = 0;
 }
 
 function isDmChatEnabled() {
@@ -332,12 +436,13 @@ async function generateAndSendAiReply(message, client, repository, userRecord, u
     await logAndNotify(client, repository, assistantRecord);
     await sendDirectMessage(message, fallback);
     console.warn('DM 대화 응답 생성 실패:', error.message);
+    await maybeSendGlobalAiErrorAlert(client, error.message);
     return true;
   }
 }
 
 async function sendDmChatReply(message, content) {
-  await sendDirectMessage(message, content);
+  await sendPossiblySplitReply(message, content);
 }
 
 async function handleDmChatMessage(message, client, options = {}) {
@@ -466,4 +571,5 @@ module.exports = {
   isDirectUserMessage,
   logDmChatConfiguration,
   resetDmChatAccessControlStateForTest,
+  splitReplyIntoChunks,
 };

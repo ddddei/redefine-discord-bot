@@ -171,12 +171,50 @@ async function sendDmChatSafetyAlert(client, record, detection, options = {}) {
   return true;
 }
 
+async function sendDmChatGlobalErrorAlert(client, details = {}) {
+  const alertChannelId = process.env.SAFETY_ALERT_CHANNEL_ID || process.env.DM_CHAT_LOG_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+  const channel = await fetchLogChannel(client, alertChannelId, 'DM AI 오류 경고');
+
+  if (!channel) {
+    return false;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0xb8935c)
+    .setTitle('DM 대화 AI 응답 오류 경고')
+    .addFields(
+      {
+        name: '최근 오류 건수',
+        value: `${details.windowMinutes || 10}분 내 ${details.recentErrorCount || 0}건`,
+      },
+      {
+        name: '시간',
+        value: formatKoreanTime(),
+      },
+      {
+        name: '안내',
+        value: 'OpenAI 응답 생성이 반복 실패하고 있어요. 운영 런북의 장애 대응 절차를 확인해 주세요.',
+      }
+    );
+
+  if (details.lastErrorMessage) {
+    embed.addFields({
+      name: '최근 오류 메시지',
+      value: truncateEmbedValue(details.lastErrorMessage, 300),
+    });
+  }
+
+  await channel.send({ embeds: [embed] });
+  return true;
+}
+
 function resetDmChatSafetyAlertThrottleForTest() {
   safetyAlertThrottleState.clear();
 }
 
 module.exports = {
   resetDmChatSafetyAlertThrottleForTest,
+  sendDmChatGlobalErrorAlert,
   sendDmChatOperatorLog,
   sendDmChatSafetyAlert,
 };
