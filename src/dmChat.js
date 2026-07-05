@@ -1,5 +1,5 @@
 const { ChannelType } = require('discord.js');
-const { getDmChatReply } = require('./ai');
+const { getDmChatRecap, getDmChatReply } = require('./ai');
 const { createDmChatRepository } = require('./dmChatRepository');
 const {
   sendDmChatGlobalErrorAlert,
@@ -7,6 +7,20 @@ const {
   sendDmChatSafetyAlert,
 } = require('./dmChatLogging');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
+const {
+  RECAP_EMPTY_MESSAGE,
+  RECAP_INSTRUCTIONS,
+  SCENARIO_END_MESSAGE,
+  buildScenarioDeveloperInstructions,
+  buildScenarioMenuMessage,
+  findScenarioById,
+  findScenarioByName,
+  isRecapTrigger,
+  isScenarioEndTrigger,
+  isScenarioMenuTrigger,
+  parseScenarioStartTrigger,
+} = require('./dmChatScenarios');
+const { getKoreanDateString } = require('./pointsRepository');
 
 const DEFAULT_RETENTION_DAYS = 90;
 
@@ -420,16 +434,148 @@ async function handleHistoryResetMessage(message, client, repository, userRecord
   await sendDirectMessage(message, HISTORY_RESET_CONFIRMATION);
 }
 
+async function handleScenarioMenuMessage(message, client, repository, userRecord) {
+  const menuMessage = buildScenarioMenuMessage();
+  const assistantRecord = repository.appendMessage({
+    userId: userRecord.id,
+    username: userRecord.username,
+    displayName: userRecord.displayName,
+    role: 'assistant',
+    content: menuMessage,
+  });
+
+  await logAndNotify(client, repository, assistantRecord);
+  await sendDirectMessage(message, menuMessage);
+}
+
+async function handleScenarioStartMessage(message, client, repository, userRecord, scenarioName) {
+  const scenario = findScenarioByName(scenarioName);
+
+  if (!scenario) {
+    const notFoundMessage = `『${scenarioName}』 연습 주제를 찾을 수 없어요. 『연습 메뉴』로 가능한 주제를 확인해 보세요.`;
+    const assistantRecord = repository.appendMessage({
+      userId: userRecord.id,
+      username: userRecord.username,
+      displayName: userRecord.displayName,
+      role: 'assistant',
+      content: notFoundMessage,
+    });
+
+    await logAndNotify(client, repository, assistantRecord);
+    await sendDirectMessage(message, notFoundMessage);
+    return;
+  }
+
+  repository.setActiveScenario(userRecord.id, scenario.id);
+
+  const startReply = [scenario.startMessage, scenario.firstLine].join('\n\n');
+  const assistantRecord = repository.appendMessage({
+    userId: userRecord.id,
+    username: userRecord.username,
+    displayName: userRecord.displayName,
+    role: 'assistant',
+    content: startReply,
+  });
+
+  await logAndNotify(client, repository, assistantRecord);
+  await sendDirectMessage(message, startReply);
+}
+
+async function handleScenarioEndMessage(message, client, repository, userRecord) {
+  repository.clearActiveScenario(userRecord.id);
+
+  const assistantRecord = repository.appendMessage({
+    userId: userRecord.id,
+    username: userRecord.username,
+    displayName: userRecord.displayName,
+    role: 'assistant',
+    content: SCENARIO_END_MESSAGE,
+  });
+
+  await logAndNotify(client, repository, assistantRecord);
+  await sendDirectMessage(message, SCENARIO_END_MESSAGE);
+}
+
+async function handleRecapMessage(message, client, repository, userRecord) {
+  const historyLimit = Number.parseInt(process.env.DM_CHAT_HISTORY_LIMIT || '8', 10);
+  const todayDateString = getRecordKoreanDateStringForRecap(new Date());
+  const todayHistory = repository.listRecentMessages(userRecord.id, Math.max(historyLimit, 20))
+    .filter((record) => getRecordKoreanDateStringForRecap(record.createdAt) === todayDateString);
+
+  if (!todayHistory.length) {
+    const assistantRecord = repository.appendMessage({
+      userId: userRecord.id,
+      username: userRecord.username,
+      displayName: userRecord.displayName,
+      role: 'assistant',
+      content: RECAP_EMPTY_MESSAGE,
+    });
+
+    await logAndNotify(client, repository, assistantRecord);
+    await sendDirectMessage(message, RECAP_EMPTY_MESSAGE);
+    return;
+  }
+
+  try {
+    const result = await getDmChatRecap({
+      recapInstructions: RECAP_INSTRUCTIONS,
+      history: todayHistory,
+    }, message.__dmChatAiOptions || {});
+    const recapText = result && typeof result === 'object' ? result.text : result;
+    const usage = result && typeof result === 'object' ? result.usage : null;
+    const safeRecap = recapText || RECAP_EMPTY_MESSAGE;
+    const assistantRecord = repository.appendMessage({
+      userId: userRecord.id,
+      username: userRecord.username,
+      displayName: userRecord.displayName,
+      role: 'assistant',
+      content: safeRecap,
+      tokens: usage,
+    });
+
+    await logAndNotify(client, repository, assistantRecord);
+    await sendDirectMessage(message, safeRecap);
+  } catch (error) {
+    const fallback = '지금은 오늘 연습을 정리하지 못했어요. 잠시 후 다시 시도해 주세요.';
+    const assistantRecord = repository.appendMessage({
+      userId: userRecord.id,
+      username: userRecord.username,
+      displayName: userRecord.displayName,
+      role: 'assistant',
+      content: fallback,
+      error: error.message,
+    });
+
+    await logAndNotify(client, repository, assistantRecord);
+    await sendDirectMessage(message, fallback);
+    console.warn('DM 연습 정리 생성 실패:', error.message);
+    await maybeSendGlobalAiErrorAlert(client, error.message);
+  }
+}
+
+function getRecordKoreanDateStringForRecap(value) {
+  // dmChatRepository와 동일한 KST 날짜 규칙을 재사용한다.
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return getKoreanDateString(date);
+}
+
 async function generateAndSendAiReply(message, client, repository, userRecord, userMessageRecord) {
   const historyLimit = Number.parseInt(process.env.DM_CHAT_HISTORY_LIMIT || '8', 10);
   const history = repository.listRecentMessages(userRecord.id, historyLimit)
     .filter((record) => record.id !== userMessageRecord.id);
+  const activeScenario = repository.getActiveScenario(userRecord.id);
+  const scenario = activeScenario ? findScenarioById(activeScenario.scenarioId) : null;
+  const scenarioInstructions = scenario ? buildScenarioDeveloperInstructions(scenario) : '';
 
   try {
     const result = await getDmChatReply({
       message: message.content,
       history,
       userDisplayName: userRecord.displayName,
+      scenarioInstructions,
     }, message.__dmChatAiOptions || {});
     const reply = result && typeof result === 'object' ? result.text : result;
     const usage = result && typeof result === 'object' ? result.usage : null;
@@ -535,6 +681,46 @@ async function handleDmChatMessage(message, client, options = {}) {
 
   if (message.content.trim() === HISTORY_RESET_TRIGGER) {
     await handleHistoryResetMessage(message, client, repository, userRecord, userMessageRecord);
+    return true;
+  }
+
+  if (isScenarioMenuTrigger(message.content)) {
+    await handleScenarioMenuMessage(message, client, repository, userRecord);
+    return true;
+  }
+
+  const scenarioStartName = parseScenarioStartTrigger(message.content);
+  if (scenarioStartName !== null) {
+    await handleScenarioStartMessage(message, client, repository, userRecord, scenarioStartName);
+    return true;
+  }
+
+  if (isScenarioEndTrigger(message.content)) {
+    await handleScenarioEndMessage(message, client, repository, userRecord);
+    return true;
+  }
+
+  if (isRecapTrigger(message.content)) {
+    if (isBurstLimitReached(repository, userRecord.id)) {
+      console.info(`[dm-chat] burst limit reached for user=${userRecord.id}`);
+      return true;
+    }
+
+    if (isDailyLimitReached(todayUserMessageCount)) {
+      const assistantRecord = repository.appendMessage({
+        userId: userRecord.id,
+        username: userRecord.username,
+        displayName: userRecord.displayName,
+        role: 'assistant',
+        content: DAILY_LIMIT_FALLBACK,
+      });
+
+      await logAndNotify(client, repository, assistantRecord);
+      await sendDirectMessage(message, DAILY_LIMIT_FALLBACK);
+      return true;
+    }
+
+    await handleRecapMessage(message, client, repository, userRecord);
     return true;
   }
 

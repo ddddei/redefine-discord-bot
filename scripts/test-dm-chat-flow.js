@@ -15,6 +15,7 @@ const {
   sendDmChatSafetyAlert,
 } = require('../src/dmChatLogging');
 const { createDmChatRepository } = require('../src/dmChatRepository');
+const { SCENARIOS } = require('../src/dmChatScenarios');
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -773,6 +774,149 @@ async function main() {
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_MODEL = '';
     resetDmChatAccessControlStateForTest();
+
+    // --- 작업 E: 연습 시나리오 6종 + 연습 정리 ---
+    assert.strictEqual(SCENARIOS.length, 6);
+
+    process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE = '0';
+    const scenarioRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-scenario-logs.json'));
+    const scenarioClient = createClient();
+
+    const menuMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('연습 메뉴', menuMessages, 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository }
+    );
+    // 첫 안내 1개 + 메뉴 안내
+    assert.strictEqual(menuMessages.length, 2);
+    assert.match(menuMessages[1], /첫인사/);
+    assert.match(menuMessages[1], /자기소개/);
+    assert.match(menuMessages[1], /부탁하기/);
+    assert.match(menuMessages[1], /거절하기/);
+    assert.match(menuMessages[1], /잡담/);
+    assert.match(menuMessages[1], /면접/);
+
+    const startMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('연습: 첫인사', startMessages, 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository }
+    );
+    assert.strictEqual(startMessages.length, 1);
+    assert.match(startMessages[0], /첫인사/);
+
+    const invalidScenarioMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('연습: 없는주제', invalidScenarioMessages, 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository }
+    );
+    assert.strictEqual(invalidScenarioMessages.length, 1);
+    assert.match(invalidScenarioMessages[0], /찾을 수 없어요/);
+
+    // 시작 실패 후에도 이전 시나리오(첫인사)가 유지되어 있어야 한다.
+    await handleDmChatMessage(
+      createDmMessage('연습: 첫인사', [], 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository }
+    );
+
+    process.env.AI_PROVIDER = 'openai';
+    process.env.AI_MODEL = 'test-model';
+    const scenarioAiClient = createOpenAiClient('안녕하세요! 만나서 반가워요.');
+    const scenarioReplyMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('안녕하세요, 처음 뵙겠습니다', scenarioReplyMessages, 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository, ai: { openaiClient: scenarioAiClient } }
+    );
+    assert.strictEqual(scenarioReplyMessages.length, 1);
+    const scenarioCallInput = scenarioAiClient.calls[scenarioAiClient.calls.length - 1].input;
+    const scenarioDeveloperMessage = scenarioCallInput.find((item) => item.role === 'developer');
+    assert.match(scenarioDeveloperMessage.content, /상대 역/);
+    assert.match(scenarioDeveloperMessage.content, /평가·점수·등급/);
+
+    // 시나리오 중에도 민감 감지가 우선한다.
+    const scenarioSensitiveMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('계속 괴롭힘을 당하고 있어요', scenarioSensitiveMessages, 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository, ai: { openaiClient: scenarioAiClient } }
+    );
+    assert.strictEqual(scenarioSensitiveMessages.length, 1);
+    assert.match(scenarioSensitiveMessages[0], /운영진 확인/);
+
+    const endMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('연습 끝', endMessages, 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository }
+    );
+    assert.strictEqual(endMessages.length, 1);
+    assert.match(endMessages[0], /연습을 마칠게요/);
+
+    // 연습 끝 이후에는 시나리오 지침 없이 평소대로 응답한다.
+    const afterEndAiClient = createOpenAiClient('평소 응답입니다.');
+    const afterEndMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('그냥 평소처럼 이야기해요', afterEndMessages, 'scenario_user'),
+      scenarioClient,
+      { repository: scenarioRepository, ai: { openaiClient: afterEndAiClient } }
+    );
+    const afterEndInput = afterEndAiClient.calls[afterEndAiClient.calls.length - 1].input;
+    const afterEndDeveloperMessage = afterEndInput.find((item) => item.role === 'developer');
+    assert.ok(!/상대 역을 연기한다/.test(afterEndDeveloperMessage.content));
+
+    process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE = '5';
+
+    // --- 작업 E: 오늘 연습 정리 ---
+    const recapRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-recap-logs.json'));
+    const recapClient = createClient();
+
+    const emptyRecapMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('오늘 연습 정리', emptyRecapMessages, 'recap_user'),
+      recapClient,
+      { repository: recapRepository }
+    );
+    // 첫 안내 + "기록 없음" 안내
+    assert.strictEqual(emptyRecapMessages.length, 2);
+    assert.match(emptyRecapMessages[1], /아직 연습 기록이 없어요/);
+
+    process.env.AI_PROVIDER = 'mock';
+    process.env.AI_MODEL = '';
+    const recapPreMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('오늘 처음 말 걸어봤어요', recapPreMessages, 'recap_user'),
+      recapClient,
+      { repository: recapRepository }
+    );
+
+    const recapMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('오늘 연습 정리', recapMessages, 'recap_user'),
+      recapClient,
+      { repository: recapRepository }
+    );
+    assert.strictEqual(recapMessages.length, 1);
+    assert.ok(!/\d+점|등급|평가 결과/.test(recapMessages[0]), '리캡 문구에는 평가·점수·등급 표현이 없어야 합니다.');
+
+    const recapData = readJson(path.join(tempDir, 'dm-chat-recap-logs.json'));
+    const recapAssistantRecord = recapData.messages
+      .filter((record) => record.userId === 'recap_user' && record.role === 'assistant')
+      .slice(-1)[0];
+    assert.strictEqual(recapAssistantRecord.content, recapMessages[0]);
+
+    process.env.AI_PROVIDER = 'mock';
+    process.env.AI_MODEL = '';
+    resetDmChatAccessControlStateForTest();
+
+    // --- 작업 E: activeScenarios는 다음 날(KST) 자동 해제된다 ---
+    const scenarioResetRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-scenario-reset-logs.json'));
+    scenarioResetRepository.setActiveScenario('scenario_reset_user', 'greeting', '2026-07-01T00:00:00.000Z');
+    assert.ok(scenarioResetRepository.getActiveScenario('scenario_reset_user', new Date('2026-07-01T12:00:00.000Z')));
+    assert.strictEqual(scenarioResetRepository.getActiveScenario('scenario_reset_user', new Date('2026-07-02T12:00:00.000Z')), null);
   } finally {
     for (const [key, value] of Object.entries(previousEnv)) {
       if (value === undefined) {
