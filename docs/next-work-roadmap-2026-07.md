@@ -1,10 +1,10 @@
-# 남은 작업 로드맵 — 저장소 전수 점검 (2026-07-04 기준)
+# 남은 작업 로드맵 — 저장소 전수 점검 (2026-07-04 기준, 2026-07-05 갱신)
 
 저장소 전체(63개 docs, src, prompts/codex, 메모리 트랙, 머지 이력)를 점검해 **남은 작업·후속 후보·발견된 갭**을 한 문서로 정리한 것입니다. 이후 작업은 이 문서를 기준으로 이어갑니다 — 항목을 착수할 때 계획서(docs/)를 만들고, 승인 후 Codex 지시서(prompts/codex/)를 작성하는 기존 흐름(9절)을 따릅니다. 항목이 끝나면 이 문서의 상태를 갱신합니다.
 
 ## 1. 현재 상태 스냅샷
 
-완결된 큰 트랙 (전부 main 머지, 2026-07-03~04):
+완결된 큰 트랙 (전부 main 머지, 2026-07-03~05):
 
 | 트랙 | 결과 |
 | --- | --- |
@@ -13,8 +13,9 @@
 | 모바일 퍼스트 하드닝 | iOS 배경 버그·safe-area·스와이프·전송량 400KB 예산(#61) |
 | Discord 연동 v1 | 계정 연결·점수 기록·주간 랭킹(#59), `/게임연결`·`/게임랭킹` |
 | 비동기 소셜 v1 | 오늘의 도전·공동 목표·기록 응원(#62), deploy 완료 |
+| 랭킹 없는 데일리 게임 | 오늘의 간식 단어(`/game/word/`), 참여 수·성공 시도 분포 |
 | 운영 안정성 1차 | 원자 저장(#48)·백업 자동화(#49)·미니게임 참여 리포트(#51) |
-| DM 대화 | v1 코어 + admin 로그(#52) + 1단계 하드닝(#53, 일일 제한·출력 안전 검사) |
+| DM 대화 | v1 코어 + admin 로그(#52) + 1단계 하드닝(#53, 일일 제한·출력 안전 검사) + 운영 가시성 v1(#64) |
 
 확정된 운영 정책: 주간 랭킹 1위 3,000/2위 2,000/3위 1,000/참여 500P(중복 없음), 공동 목표 달성 시 그 주 idle 제출자 전원 500P(랭킹 보상과 **중복 허용**), 목표량 기본 40억(`WEBGAME_COMMUNAL_GOAL`).
 
@@ -24,16 +25,14 @@
 
 이번 전수 점검에서 새로 확인된 것들 — 작은 것이지만 방치하면 운영 사고나 혼선이 됩니다:
 
-1. **admin 대시보드에 웹게임 섹션이 없다.** [webgame-rankings-ops.md](webgame-rankings-ops.md)와 연동 v1 계획서는 "대시보드에서 flagged 기록 확인"을 안내하지만, `src/adminApi.js`에 webgame 데이터가 전혀 없다. 현재 flagged 확인 수단은 서버의 `data/webgame-scores.local.json` 직접 열람뿐. → 4-E-1 항목으로 백로그 등재.
+1. **admin 대시보드에 웹게임 섹션이 없다.** [webgame-rankings-ops.md](webgame-rankings-ops.md)와 연동 v1 계획서는 "대시보드에서 flagged 기록 확인"을 안내하지만, `src/adminApi.js`에 webgame 데이터가 전혀 없다. 현재 flagged 확인 수단은 서버의 `data/webgame-scores.local.json` 직접 열람뿐. → 4-E-1 항목으로 백로그 등재, 지시서 `prompts/codex/admin-dashboard-webgame-visibility-v1.md` 작성.
 2. **던전월드 에필로그 계획서가 docs/에 없다.** 진행 기록상 "계획서 작성됨"이었으나 실제로 커밋된 적이 없음(`docs/dungeonworld-epilogue-plan.md` 부재). 착수하려면 계획서부터 다시. → 4-B-1.
-3. **이전 점검의 미푸시 로컬 커밋 항목은 해소됨.** 공동 목표 보상 정책 기입(f663031)은 이후 main에 반영됐다. 현재 로컬 미커밋 항목은 DM 고도화 문서/지시서 묶음과 `.claude/launch.json`.
-4. **`.claude/launch.json`이 untracked로 남아 있음** (QA용 adminServer 실행 설정). 커밋해서 공유하거나 `.gitignore`에 추가 — 커밋 권장(QA 재현 절차의 일부). → 6절.
-5. **원격에 머지 완료된 `feat/*`·`fix/*` 브랜치 약 20개**가 남아 있음. 정리 대상. → 6절.
-6. 상점 항목 3종(프린트 카드·밀리의 서재·왓챠) 가격이 "추후 확정" 상태로 hidden — 운영 결정 대기 ([operation-default-items-plan.md](operation-default-items-plan.md)).
+3. **이전 점검의 미푸시 로컬 커밋 항목은 해소됨.** 공동 목표 보상 정책 기입(f663031), DM 고도화 문서/지시서 묶음, `.claude/launch.json`, DM 운영 가시성 v1 구현은 이후 main에 반영됐다.
+4. **원격에 머지 완료된 `feat/*`·`fix/*` 브랜치 약 20개**가 남아 있음. 정리 대상. → 6절.
+5. 상점 항목 3종(프린트 카드·밀리의 서재·왓챠) 가격이 "추후 확정" 상태로 hidden — 운영 결정 대기 ([operation-default-items-plan.md](operation-default-items-plan.md)).
 
 ## 3. 즉시 확인 항목 (개발 아님 — 운영·배포 잔무)
 
-- [ ] DM 고도화 문서/지시서 묶음과 `.claude/launch.json` 커밋/푸시 여부 결정
 - [ ] Railway 재배포 확인 후 **Discord 실계정 체크**: `/게임랭킹 기간:오늘의 도전`, `게임:간식 공방 키우기` 공동 목표 embed, 실기기 인앱 브라우저에서 오늘의 도전·응원 1회
 - [ ] Railway에 백업 자동화 env가 실제로 켜져 있는지 확인 (`OPERATION_BACKUP_*` — [railway-env-guide.md](railway-env-guide.md))
 - [ ] 공동 목표 첫 주 달성률 확인 → 필요 시 `WEBGAME_COMMUNAL_GOAL` 조정 (2주 연속 20% 미만 하향 / 첫날 달성 상향)
@@ -57,7 +56,7 @@
 7. **디자인 v4 후보** [하 / 대 / 없음] — 카드 일러스트 21종, 방치형 무대 일러스트, 사운드(합성음 — 무음 정책 재론 필요). v3 계획서 8절.
 8. **잔여 폴리시** [하 / 소 / 없음] — 방치형 무대 이모지 소품 원화 교체(idle 백로그 I3), 매치3 드래그 연출(match3 백로그 M4), PWA/홈 화면 아이콘.
 9. **게임별 고도화 v1 (3종)** [중 / 게임당 중~대 / 없음] — [match3](match3-improvement-plan.md)(특수 타일·요일 변형·목표 판)·[deck](deck-improvement-plan.md)(카드 30종·유물·갈림길 맵·이벤트)·[idle](idle-improvement-plan.md)(공동 목표 연동·파견 확장·통계·소품 원화). 각각 완성 배포판 계획서 — 게임당 PR 하나. 시드 결정성 유지가 공통 절대 조건.
-10. **신규 웹게임 — 오늘의 간식 단어** [중 / 중 / 없음] — [word-daily-web-game-plan.md](word-daily-web-game-plan.md)(완성 배포판). 랭킹·점수·응원이 전혀 없는 첫 게임(참여 수·분포만). 차순위 후보(간식 합치기 2048류 등)는 [new-webgame-candidates.md](new-webgame-candidates.md).
+10. **신규 웹게임 — 오늘의 간식 단어** [완료 / main] — [word-daily-web-game-plan.md](word-daily-web-game-plan.md)(완성 배포판) 기준으로 랭킹·점수 공개·응원이 없는 데일리 게임이 구현됐다. 남은 것은 admin 웹게임 섹션(E-1)에서 참여 수·분포를 운영자가 확인할 수 있게 하는 일이다. 차순위 후보(간식 합치기 2048류 등)는 [new-webgame-candidates.md](new-webgame-candidates.md).
 
 ### B. Discord 미니게임 트랙
 
@@ -66,7 +65,7 @@
 
 ### C. DM 대화 트랙 ([dm-chat-mvp-plan.md](dm-chat-mvp-plan.md) + [dm-chat-improvement-plan.md](dm-chat-improvement-plan.md)가 기준 문서)
 
-1. **DM 고도화 v1 (2단계 운영 편의 + 3-a/3-c)** [중 / 중 / 없음] — [dm-chat-improvement-plan.md](dm-chat-improvement-plan.md)가 완성 배포판 명세. 지시서 `prompts/codex/dm-chat-ops-visibility-v1.md` 작성 완료, 운영자 승인 후 구현 착수. 범위는 안전 알림 스로틀, `/운영현황` DM 요약, `/admin` DM 로그 필터, "새로 시작" 대화 초기화, 로그 기반 AI 응답 수 가시성.
+1. **DM 고도화 v1 (2단계 운영 편의 + 3-a/3-c)** [완료 / PR #64] — 안전 알림 스로틀, `/운영현황 종류:DM대화`, `/admin` DM 로그 필터, "새로 시작" 대화 초기화, 로그 기반 AI 응답 수 가시성이 main에 반영됐다. 남은 DM 트랙은 아래 3-b 로그 보존 정책뿐이다.
 2. **3-b 로그 보존 정책** [중 / 중 / 로그 보존 기간 정책 확정(3절)] — 지시서 `dm-chat-retention-v1.md`는 정책 확정 후 작성. 정책 확정 전 구현 보류가 공식 방침.
 
 ### D. 운영 안정성 트랙 (합의된 순서: 리마인더 → handlers 분할 → AI 폴백)
@@ -79,7 +78,7 @@
 
 ### E. 관리자 도구
 
-1. **admin 대시보드 웹게임 섹션** [상 / 소~중 / 없음] — 2절 1의 갭 해소. 읽기 전용으로 주간 랭킹·**flagged 기록 목록**·오늘의 도전 참여 수·응원 통계. 운영 문서가 이미 안내하고 있는 기능이므로 우선순위 상향. discordId 비노출 원칙은 admin에서는 예외(운영자 열람용 — 기존 admin 섹션과 동일 기준), 예시 데이터 제외 금기 준수.
+1. **admin 대시보드 웹게임 섹션** [상 / 소~중 / 없음] — 2절 1의 갭 해소. 읽기 전용으로 주간 랭킹·**flagged 기록 목록**·오늘의 도전 참여 수·응원 통계·공동 목표·단어 게임 참여 분포를 표시한다. 운영 문서가 이미 안내하고 있는 기능이므로 우선순위 상향. discordId 비노출 원칙은 admin에서는 예외(운영자 열람용 — 기존 admin 섹션과 동일 기준), 예시 데이터 제외 금기 준수. 지시서: `prompts/codex/admin-dashboard-webgame-visibility-v1.md`.
 2. admin 쓰기 기능(지급/승인/수정) [하 / 대 / MVP 범위 변경 결정] — "읽기 전용" MVP 원칙을 바꾸는 일이라 명시적 결정 + 문서/테스트 동반 필요(금기 조항). 당분간 보류 권장.
 
 ### F. 온보딩·콘텐츠
@@ -91,14 +90,13 @@
 
 1. **admin 웹게임 섹션 (E-1)** — 작고, 문서-구현 불일치를 메우며, 랭킹 지급 운영이 이번 주부터 실제로 돌기 때문에 flagged 확인 수단이 지금 필요하다.
 2. **서버 리플레이 검증 v2 (A-1)** — 참여자 목적 ③(포인트 자동 지급)으로 가는 병목. 웹게임 트랙의 다음 큰 걸음.
-3. **일정 관리 리마인더 (D-1) 또는 DM 고도화 v1 (C-1)** — 운영 부담을 줄이는 쪽. 론칭이 가까우면 리마인더 우선, 여유 있으면 DM 고도화 v1.
+3. **일정 관리 리마인더 (D-1)** — DM 고도화 v1은 완료됐으므로, 다음 운영 부담 완화 후보는 체크인·미션 마감·교환 처리 지연 알림이다.
 
 handlers.js 분할(D-2)은 위 기능 작업과 충돌하지 않는 시점(트랙 사이 공백)에 끼워 넣는 것을 권장 — 미룰수록 비싸진다.
 
 ## 6. 정리·부채 (기능 아님, 짬 나는 대로)
 
 - [ ] 머지 완료된 원격 브랜치 정리 (`git push origin --delete <branch>` 또는 GitHub UI 일괄)
-- [ ] `.claude/launch.json` 커밋 (QA용 adminServer 설정 — 재현 절차 공유)
 - [ ] [docs/README.md](README.md) 색인에 최근 문서 반영 확인 (webgame-async-social-plan, mobile-first-plan, dm-chat-improvement-plan, 이 문서)
 - [ ] `webgame-rankings-ops.md`의 "대시보드에서 flagged 확인" 문구 — E-1 완료 전까지는 "서버 데이터 파일 확인"으로 임시 정정하거나 E-1을 먼저 처리
 - [ ] 로컬에 남은 QA용 프로세스 확인 (포트 3300 등)
