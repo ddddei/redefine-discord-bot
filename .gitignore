@@ -5,3 +5,4 @@ data/*.tmp
 
 # Local AI agent working files
 .omo/
+data/*.backup-*.json

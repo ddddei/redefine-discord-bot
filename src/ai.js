@@ -55,7 +55,7 @@ function getConfiguredMaxOutputTokens() {
   return Math.min(configuredValue, 1000);
 }
 
-function createDmChatInput({ message, history = [], userDisplayName = '' }) {
+function createDmChatInput({ message, history = [], userDisplayName = '', scenarioInstructions = '' }) {
   const recentMessages = history.slice(-8).map((item) => ({
     role: item.role === 'assistant' ? 'assistant' : 'user',
     content: item.content,
@@ -66,6 +66,7 @@ function createDmChatInput({ message, history = [], userDisplayName = '' }) {
       role: 'developer',
       content: [
         DM_CHAT_INSTRUCTIONS,
+        scenarioInstructions || '',
         userDisplayName ? `현재 대화 상대 표시명: ${userDisplayName}` : '',
       ].filter(Boolean).join('\n\n'),
     },
@@ -77,47 +78,171 @@ function createDmChatInput({ message, history = [], userDisplayName = '' }) {
   ];
 }
 
+const DEFAULT_DM_CHAT_TIMEOUT_MS = 30000;
+
+function getDmChatTimeoutMs() {
+  const parsed = Number.parseInt(process.env.DM_CHAT_AI_TIMEOUT_MS || `${DEFAULT_DM_CHAT_TIMEOUT_MS}`, 10);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return DEFAULT_DM_CHAT_TIMEOUT_MS;
+  }
+
+  return parsed;
+}
+
 async function getDmChatReply(input, options = {}) {
   const message = input && input.message;
 
   if (typeof message !== 'string' || !message.trim()) {
-    return null;
+    return { text: null, usage: null };
   }
 
   if (process.env.AI_ENABLED !== 'true') {
-    return null;
+    return { text: null, usage: null };
   }
 
   if (hasSensitiveKeyword(message)) {
-    return null;
+    return { text: null, usage: null };
   }
 
   const provider = String(process.env.AI_PROVIDER || '').trim().toLowerCase();
 
   if (provider === 'mock') {
-    return '좋아요. 여기서는 아주 짧게 연습해도 괜찮아요. 먼저 “안녕하세요, 저도 처음이라 조금 어색한데 같이 이야기해도 될까요?” 정도로 시작해볼 수 있어요.';
+    return {
+      text: '좋아요. 여기서는 아주 짧게 연습해도 괜찮아요. 먼저 “안녕하세요, 저도 처음이라 조금 어색한데 같이 이야기해도 될까요?” 정도로 시작해볼 수 있어요.',
+      usage: null,
+    };
   }
 
   if (provider !== 'openai') {
-    return null;
+    return { text: null, usage: null };
   }
 
   const model = String(process.env.AI_MODEL || '').trim();
   const client = options.openaiClient || getOpenAiClient();
 
   if (!model || !client) {
-    return null;
+    return { text: null, usage: null };
   }
 
-  const response = await client.responses.create({
-    model,
-    input: createDmChatInput(input),
-    max_output_tokens: getConfiguredMaxOutputTokens(),
-  });
-
-  return typeof response.output_text === 'string' && response.output_text.trim()
-    ? response.output_text.trim()
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timeoutMs = getDmChatTimeoutMs();
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
     : null;
+
+  try {
+    const requestOptions = controller ? { signal: controller.signal } : undefined;
+    const response = await client.responses.create(
+      {
+        model,
+        input: createDmChatInput(input),
+        max_output_tokens: getConfiguredMaxOutputTokens(),
+      },
+      requestOptions
+    );
+
+    const text = typeof response.output_text === 'string' && response.output_text.trim()
+      ? response.output_text.trim()
+      : null;
+    const usage = response && response.usage
+      ? {
+        input: Number.isFinite(response.usage.input_tokens) ? response.usage.input_tokens : null,
+        output: Number.isFinite(response.usage.output_tokens) ? response.usage.output_tokens : null,
+      }
+      : null;
+
+    return { text, usage };
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+function createRecapInput({ recapInstructions, history = [] }) {
+  const recentMessages = history.slice(-20).map((item) => ({
+    role: item.role === 'assistant' ? 'assistant' : 'user',
+    content: item.content,
+  }));
+
+  return [
+    {
+      role: 'developer',
+      content: recapInstructions,
+    },
+    ...recentMessages,
+    {
+      role: 'user',
+      content: '오늘 연습한 대화를 돌아보고 정리해 주세요.',
+    },
+  ];
+}
+
+async function getDmChatRecap(input, options = {}) {
+  const history = (input && input.history) || [];
+
+  if (!history.length) {
+    return { text: null, usage: null };
+  }
+
+  if (process.env.AI_ENABLED !== 'true') {
+    return { text: null, usage: null };
+  }
+
+  const provider = String(process.env.AI_PROVIDER || '').trim().toLowerCase();
+
+  if (provider === 'mock') {
+    return {
+      text: '오늘 먼저 말을 걸어본 점이 좋았어요. 다음에는 상대의 답변에 한 번 더 질문을 이어가 보는 것도 시도해 보세요.',
+      usage: null,
+    };
+  }
+
+  if (provider !== 'openai') {
+    return { text: null, usage: null };
+  }
+
+  const model = String(process.env.AI_MODEL || '').trim();
+  const client = options.openaiClient || getOpenAiClient();
+
+  if (!model || !client) {
+    return { text: null, usage: null };
+  }
+
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timeoutMs = getDmChatTimeoutMs();
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+
+  try {
+    const requestOptions = controller ? { signal: controller.signal } : undefined;
+    const response = await client.responses.create(
+      {
+        model,
+        input: createRecapInput(input),
+        max_output_tokens: getConfiguredMaxOutputTokens(),
+      },
+      requestOptions
+    );
+
+    const text = typeof response.output_text === 'string' && response.output_text.trim()
+      ? response.output_text.trim()
+      : null;
+    const usage = response && response.usage
+      ? {
+        input: Number.isFinite(response.usage.input_tokens) ? response.usage.input_tokens : null,
+        output: Number.isFinite(response.usage.output_tokens) ? response.usage.output_tokens : null,
+      }
+      : null;
+
+    return { text, usage };
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 function getAiFallbackAnswer(question, options = {}) {
@@ -147,6 +272,7 @@ function getAiFallbackAnswer(question, options = {}) {
 
 module.exports = {
   createDmChatInput,
+  getDmChatRecap,
   getDmChatReply,
   getAiFallbackAnswer,
 };

@@ -29,7 +29,7 @@ const {
   buildOperatorSubmissionsEmbed,
   buildOperatorTodayQueueEmbed,
 } = require('../src/embeds');
-const { buildDmChatTodaySummary, buildTodayOperationsQueue } = require('../src/adminApi');
+const { buildDmChatTodaySummary, buildTodayOperationsQueue, listRecentDmChatMessages } = require('../src/adminApi');
 const { createDmChatRepository } = require('../src/dmChatRepository');
 const {
   getBackupReminderDelay,
@@ -355,6 +355,7 @@ async function main() {
         role: 'assistant',
         content: '요약 테스트 응답',
         createdAt: dmChatNow,
+        tokens: { input: 120, output: 45 },
       },
       {
         id: 'dm_chat_operator_output_safety',
@@ -401,11 +402,19 @@ async function main() {
     assert.strictEqual(dmChatSummary.counts.outputSafetyDetections, 1);
     assert.strictEqual(dmChatSummary.counts.errors, 1);
     assert.strictEqual(dmChatSummary.meta.exampleRecordsExcluded, 1);
+    assert.strictEqual(dmChatSummary.tokens.input, 120);
+    assert.strictEqual(dmChatSummary.tokens.output, 45);
+    assert.strictEqual(dmChatSummary.tokens.hasData, true);
 
     const dmChatEmbed = buildOperatorDmChatSummaryEmbed(dmChatSummary);
     assert.strictEqual(getEmbedTitle(dmChatEmbed), 'DM 대화 현황');
     assert.match(getEmbedDescription(dmChatEmbed), /오늘 AI 응답 수: 3건/);
     assert.match(getEmbedDescription(dmChatEmbed), /출력 1건/);
+    assert.match(getEmbedDescription(dmChatEmbed), /오늘 토큰: 입력 120 · 출력 45/);
+
+    const dmChatAdminList = listRecentDmChatMessages(createDmChatRepository(dmChatLogPath), 10);
+    assert.ok(dmChatAdminList.data.length > 0);
+    assert.ok(dmChatAdminList.data.every((record) => !Object.prototype.hasOwnProperty.call(record, 'tokens')), '/admin DM 로그 응답에는 토큰을 노출하지 않습니다.');
 
     let dmChatCommandPayload = null;
     await handleInteractionCreate({
