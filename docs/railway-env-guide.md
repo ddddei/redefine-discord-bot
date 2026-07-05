@@ -94,9 +94,12 @@ SAFETY_ALERT_CHANNEL_ID=
 
 ```env
 WEBGAME_COMMUNAL_GOAL=4000000000
+WEBGAME_WORD_SALT=
 ```
 
 비워두면 코드 기본값 `4000000000`을 사용합니다. 이 값은 간식 공방 키우기 주간 공동 목표 생산량이며, 매치3/덱 랭킹이나 포인트 자동 지급에는 영향을 주지 않습니다.
+
+`WEBGAME_WORD_SALT`는 `오늘의 간식 단어`의 날짜별 정답 배정에 쓰는 비밀 salt입니다. 운영 환경에서는 임의의 긴 문자열을 Railway Variables에만 저장하는 것을 권장합니다. 비워두면 서버가 커밋되지 않는 `data/webgame-social.local.json`의 `cheerSalt`를 재사용하므로 기능은 동작하지만, 운영 환경별로 명시 값을 두면 백업/이전 시 정답 배정이 더 예측 가능하게 유지됩니다.
 
 운영 환경 점검 기준:
 

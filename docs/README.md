@@ -24,6 +24,7 @@
 | [dungeonworld-survivors-web-game.md](dungeonworld-survivors-web-game.md) | 던전월드 브라우저 액션 미니게임 가이드 | `public/dungeonworld-survivors/` 정적 웹게임 실행과 QA를 확인할 때 | 검은 종 생존전, 키보드 이동, 자동 공격, 웨이브, 경험치/레벨업, 포인트/Discord 연동 없음, 로컬 브라우저 QA |
 | [webgame-discord-link-plan.md](webgame-discord-link-plan.md) | 웹게임↔Discord 연동 v1 설계안 | 계정 연결·점수 기록·주간 랭킹 구조와 API/부정 방지 기준을 확인할 때 | 아키텍처, 데이터 스키마, `/게임연결`·`/게임랭킹` 명령, `/game/api/*` API, 부정 방지 v1, 클라이언트 연동, 후속 단계 |
 | [webgame-rankings-ops.md](webgame-rankings-ops.md) | 웹게임 랭킹 운영 절차 (연동 v1) | 매치3/덱빌딩/방치형 웹게임 주간 랭킹으로 수동 포인트를 지급할 때 | 참여자 사용 흐름, 운영자 주간 점검 절차, 지급 기준 초안, 부정 방지 v1 요약, 확인이 필요한 상황 |
+| [word-daily-web-game-plan.md](word-daily-web-game-plan.md) | 오늘의 간식 단어 웹게임 계획서 | 랭킹 없는 데일리 단어 게임의 구현·QA·운영 기준을 확인할 때 | 서버 채점, 정답 비노출, 6×6 자모 그리드, 성공 분포, 단어 풀, 브라우저 QA |
 | [google-sheets-integration-plan.md](google-sheets-integration-plan.md) | Google Sheets 운영 데이터 연동 설계안 | local JSON 운영 데이터 유실 위험을 줄이고 Sheets 보조 로그 저장소를 검토할 때 | append-only 포인트/인증 로그, 탭 구조, Apps Script 방식, fallback, DB 전환 고려사항 |
 | [mission-template-guide.md](mission-template-guide.md) | 미션 템플릿 운영 가이드 | `/운영현황` 미션 관리 허브에서 템플릿과 요일별 오늘의 미션을 운영할 때 | 템플릿 개념, 요일별 추천, 오늘의 미션 적용, 자동 게시 보류, 운영자 QA |
 | [participant-command-guide.md](participant-command-guide.md) | 참여자 명령어 가이드 | 참여자 안내문이나 운영진 응대 문구를 정리할 때 | 참여자 명령어 목적, 공개 범위, 안내 톤, 교환/인증 주의사항 |

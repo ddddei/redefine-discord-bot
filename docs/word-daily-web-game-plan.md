@@ -2,6 +2,8 @@
 
 다섯 번째 웹게임의 전체 명세입니다. **전 항목 구현 시 배포 가능한 완성 상태.** 핵심 정체성: **랭킹이 전혀 없는 첫 게임** — 참여 수와 시도 분포만 보여주는, 경쟁 부담 0의 데일리 참여 장치(참여자 목적 ① 전담). [new-webgame-candidates.md](new-webgame-candidates.md) 후보 1의 실행판.
 
+> 구현 상태(2026-07-05): v1 로컬 구현 완료. `/game/word/` 정적 화면, 서버 채점, 연결 사용자 하루 1회 기록, 성공 시도 분포, 단어 풀 검증, API/로직 테스트, adminServer 모바일 QA까지 완료했습니다. Discord slash command 변경은 없으므로 `npm run deploy` 대상이 아닙니다.
+
 ## 0. 확정 설계 결정 (2026-07-05 사용자 확정 — 랭킹 배제, 참여 수·맞춘 횟수 분포만 노출)
 
 1. **랭킹 없음, 응원 없음, 점수 없음.** 노출하는 사회적 신호는 "오늘 N명이 도전했어요"와 시도 횟수 분포뿐. `GAME_DEFINITIONS.word = { rankable: false, dailyCapable: true }`.
