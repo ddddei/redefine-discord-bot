@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "require('./src/adminServer').startAdminServer({ port: 3311 })"],
+      "port": 3311,
+      "env": {
+        "ADMIN_DASHBOARD_ENABLED": "true",
+        "ADMIN_DASHBOARD_PASSWORD": "qa-password"
+      }
+    }
+  ]
+}

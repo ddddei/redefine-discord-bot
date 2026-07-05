@@ -119,7 +119,7 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 ### 4.1 원칙
 
 1. **안전 우선.** 안전 감지/알림 경로는 사용량 제한 등 어떤 제한보다 우선한다. 제한에 걸린 사용자의 민감 메시지도 감지·알림·기록은 항상 수행한다.
-2. **기본값은 보수적으로.** 새 동작은 env로 게이트하고, 미설정 시 기존 동작과 동일하게 유지한다.
+2. **기본값은 보수적으로.** 새 동작은 env로 게이트하고, 미설정 시 기존 동작과 동일하게 유지한다. 단, 2단계 안전 알림 스로틀은 운영 알림 피로를 줄이기 위해 기본값 10분으로 켜며, `SAFETY_ALERT_THROTTLE_MINUTES=0`으로 기존 전량 알림 동작을 복구할 수 있어야 한다.
 3. **작은 단계, 독립 PR.** 각 단계는 단독으로 배포/롤백 가능해야 한다. 한 PR이 여러 단계를 묶지 않는다.
 4. **기존 구조 재사용.** 감지는 `safety.js`, 저장은 `dmChatRepository.js`(원자 저장), 리포트는 미니게임 리포트(PR #51) 패턴, 백업은 `operationBackup.js` 스냅샷 패턴을 따른다. 새 저장 파일과 새 dependency를 만들지 않는다.
 5. **개인정보 최소화.** 대시보드/리포트에는 표시명·ID 일부·시간·role·내용 일부·감지 요약만 노출한다. `matchedKeyword`, 토큰, 채널 ID는 노출하지 않는다.
@@ -137,8 +137,8 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 | 단계 | Codex 지시서 | 상태 |
 | --- | --- | --- |
 | 1단계 운영 안정 | `prompts/codex/dm-chat-hardening-v1.md` | 구현 완료 |
-| 2단계 운영 편의 | `prompts/codex/dm-chat-ops-visibility-v1.md` | 1단계 완료 후 작성 |
-| 3단계 품질/정책 | `prompts/codex/dm-chat-retention-v1.md` | 보존 정책 확정 후 작성 |
+| 2단계 운영 편의 + 3-a/3-c | `prompts/codex/dm-chat-ops-visibility-v1.md` | 지시서 작성 완료, 운영자 승인 후 구현 착수 |
+| 3단계 중 3-b 보존 정책 | `prompts/codex/dm-chat-retention-v1.md` | 보존 정책 확정 후 작성 |
 
 ---
 
@@ -185,9 +185,9 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 
 목표: 장기 운영을 위한 데이터 정책과 비용 가시성.
 
-- **3-a. 대화 초기화**: DM에서 "새로 시작" 트리거(또는 `/대화초기화`)로 AI에 전달하는 history 기준점만 이동한다. 로그는 삭제하지 않는다.
+- **3-a. 대화 초기화**: DM에서 정확히 "새로 시작"이라고 보낸 경우 AI에 전달하는 history 기준점만 이동한다. 새 Slash Command는 추가하지 않고, 로그는 삭제하지 않는다.
 - **3-b. 로그 보존 정책**: 보존 기간(운영진 확정, 예: 90일) 경과 메시지 정리 스크립트 + 참여자 요청 시 특정 사용자 기록 삭제 절차. `docs/production-data-reset-guide.md`와 연결한다. **개인 대화 데이터이므로 보존 기간과 고지 문구를 운영진이 확정하기 전에는 구현하지 않는다.**
-- **3-c. 비용 모니터링**: OpenAI 호출 수를 일 단위로 기록하고 `/운영현황` DM 요약에 노출한다.
+- **3-c. 비용 모니터링**: v1에서는 별도 카운터 없이 기존 로그의 assistant 레코드 수를 당일 AI 응답 수로 파생해 `/운영현황` DM 요약에 노출한다. 토큰/비용 단위 정밀 집계는 후속 범위로 둔다.
 
 ---
 
@@ -238,7 +238,7 @@ npm run check:release
 **공통 (모든 단계)**
 
 - S9. `npm run check:release` 전체 통과, 기존 명령어/흐름 회귀 없음.
-- S10. `DM_CHAT_ENABLED=false` 또는 새 env 미설정 시 기존 동작과 완전히 동일하다.
+- S10. `DM_CHAT_ENABLED=false`일 때 DM 대화 기능은 계속 침묵한다. `SAFETY_ALERT_THROTTLE_MINUTES=0`이면 스로틀 없이 기존 전량 알림 동작으로 돌아간다.
 - S11. 새 env가 `.env.example`과 railway 가이드에 반영되어 있다.
 
 ---
@@ -272,3 +272,5 @@ npm run check:release
 ## 10. 문서 이력
 
 - 2026-07-03: 최초 작성. v1 구현 완료 범위 정리, 1~3단계 계획·성공 기준·제약 확정. 1단계 Codex 지시서 `prompts/codex/dm-chat-hardening-v1.md` 작성.
+- 2026-07-05: 고도화 v1 계획서 [dm-chat-improvement-plan.md](dm-chat-improvement-plan.md) 분리 작성 (2단계 전부 + 3-a 대화 초기화 + 3-c 비용 가시성 파생 지표). 3-b 보존 정책은 이 문서 기준 그대로 확정 대기.
+- 2026-07-05: 고도화 v1 Codex 작업 지시서 `prompts/codex/dm-chat-ops-visibility-v1.md` 작성. 구현은 운영자 승인 후 착수.
