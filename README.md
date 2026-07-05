@@ -158,9 +158,12 @@ OPENAI_API_KEY=실제_API_KEY
 DM_CHAT_LOG_CHANNEL_ID=운영진_DM_로그_채널_ID
 SAFETY_ALERT_CHANNEL_ID=안전_알림_채널_ID
 DM_CHAT_DAILY_LIMIT=30
+SAFETY_ALERT_THROTTLE_MINUTES=10
 ```
 
-첫 DM에는 대화가 기록되고 운영진이 확인할 수 있다는 안내가 자동 전송됩니다. 모든 DM 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되며, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`의 최근 DM 대화 로그 섹션에서도 표시명/ID, 시간, role, 메시지 일부, safetyDetection 여부를 읽기 전용으로 확인할 수 있습니다. 자해, 폭력, 괴롭힘, 개인정보 노출 등 안전 관련 표현은 기존 민감 질문 감지 규칙을 사용해 `SAFETY_ALERT_CHANNEL_ID` 또는 fallback 로그 채널로 즉시 알립니다. `DM_CHAT_DAILY_LIMIT`는 KST 당일 사용자별 user 메시지 수 기준이며 기본값은 30, `0`이면 제한을 끕니다. AI 응답에 민감 표현이 감지되면 원문을 보내지 않고 "지금은 답변을 만들지 못했어요. 잠시 후 다시 말을 걸어 주세요."로 대체해 저장/전송합니다.
+첫 DM에는 대화가 기록되고 운영진이 확인할 수 있다는 안내가 자동 전송됩니다. 모든 DM 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되며, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`의 최근 DM 대화 로그 섹션에서도 사용자 ID, 안전 감지 여부, 개수 필터로 읽기 전용 확인을 할 수 있습니다. `/운영현황 종류:DM대화`는 KST 당일 DM 사용자 수, user 메시지 수, assistant 응답 수, 안전 감지, 오류 수를 로그에서 파생해 보여줍니다. 자해, 폭력, 괴롭힘, 개인정보 노출 등 안전 관련 표현은 기존 민감 질문 감지 규칙을 사용해 `SAFETY_ALERT_CHANNEL_ID` 또는 fallback 로그 채널로 알립니다. 같은 사용자 반복 안전 감지는 기본 10분 동안 안전 알림 채널 전송만 묶으며, 로그 저장과 DM 로그 채널 전송은 모두 유지합니다. 기존처럼 전량 알림을 받으려면 `SAFETY_ALERT_THROTTLE_MINUTES=0`으로 설정합니다. `DM_CHAT_DAILY_LIMIT`는 KST 당일 사용자별 user 메시지 수 기준이며 기본값은 30, `0`이면 제한을 끕니다. 참여자가 DM에 정확히 `새로 시작`을 보내면 이전 로그는 보존하되 이후 AI history 기준점만 새로 잡습니다. AI 응답에 민감 표현이 감지되면 원문을 보내지 않고 "지금은 답변을 만들지 못했어요. 잠시 후 다시 말을 걸어 주세요."로 대체해 저장/전송합니다.
+
+`/운영현황`의 `종류` 선택지에 `DM대화`가 추가됐으므로, 이 변경이 배포된 뒤 대상 Discord 환경에서 운영자가 `npm run deploy`를 실행해 slash command 스키마를 갱신해야 합니다.
 
 관리자 대시보드와 `/api/admin/*` 응답은 `data/*.example.json`의 example/demo/sample 데이터를 실제 운영 데이터처럼 보이지 않도록 제외합니다. 실제 운영 전에는 `data/*.local.json` 상태를 확인하고, 테스트용 local 데이터가 남아 있으면 정리한 뒤 운영용 미션과 상점 항목을 `/미션관리`, `/상점관리`로 등록합니다.
 

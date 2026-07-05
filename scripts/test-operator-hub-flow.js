@@ -12,6 +12,7 @@ const {
 } = require('../src/components');
 const {
   buildOperatorChecklistEmbed,
+  buildOperatorDmChatSummaryEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorFaqCandidatesEmbed,
@@ -28,7 +29,8 @@ const {
   buildOperatorSubmissionsEmbed,
   buildOperatorTodayQueueEmbed,
 } = require('../src/embeds');
-const { buildTodayOperationsQueue } = require('../src/adminApi');
+const { buildDmChatTodaySummary, buildTodayOperationsQueue } = require('../src/adminApi');
+const { createDmChatRepository } = require('../src/dmChatRepository');
 const {
   getBackupReminderDelay,
   sendOperationBackupReminder,
@@ -106,6 +108,7 @@ async function main() {
       'reaction_followups',
       'onboarding_signals',
       'faq_candidates',
+      'dm_chat',
       'invitation_notice',
       'prelaunch_check',
       'environment_check',
@@ -118,7 +121,7 @@ async function main() {
   const menu = row.components[0];
   assert.strictEqual(menu.data.custom_id, 'operator_hub_select');
   assert.strictEqual(menu.data.placeholder, '확인할 운영 메뉴를 선택해 주세요');
-  assert.strictEqual(menu.options.length, 18);
+  assert.strictEqual(menu.options.length, 19);
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'invitation_notice'
     && /초대 안내문|초대 공지/.test(`${option.label} ${option.description}`)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'prelaunch_check'
@@ -135,6 +138,8 @@ async function main() {
     && /도움/.test(option.label)));
   assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'faq_candidates'
     && /FAQ/.test(option.label)));
+  assert.ok(OPERATOR_HUB_OPTIONS.some((option) => option.value === 'dm_chat'
+    && /DM/.test(option.label)));
 
   const invitationButtonRow = createOperatorInvitationNoticeButtonRow();
   const hubButtons = invitationButtonRow.components.map((component) => component.data);
@@ -324,6 +329,128 @@ async function main() {
   });
   assert.strictEqual(getEmbedTitle(faqCandidates), 'FAQ 개선 후보');
   assert.match(getEmbedDescription(faqCandidates), /자동으로 FAQ에 반영하지 않습니다/);
+
+  const previousDmChatLogPath = process.env.DM_CHAT_LOG_PATH;
+  const dmChatTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'operator-hub-dm-chat-'));
+  const dmChatLogPath = path.join(dmChatTempDir, 'dm-chat-logs.json');
+  const dmChatNow = new Date().toISOString();
+  fs.writeFileSync(dmChatLogPath, `${JSON.stringify({
+    version: 3,
+    isExample: false,
+    notices: [],
+    historyResets: [],
+    messages: [
+      {
+        id: 'dm_chat_operator_user',
+        userId: 'operator_hub_dm_user',
+        displayName: 'DM 요약 사용자',
+        role: 'user',
+        content: '오늘 DM 요약 테스트',
+        createdAt: dmChatNow,
+      },
+      {
+        id: 'dm_chat_operator_assistant',
+        userId: 'operator_hub_dm_user',
+        displayName: 'DM 요약 사용자',
+        role: 'assistant',
+        content: '요약 테스트 응답',
+        createdAt: dmChatNow,
+      },
+      {
+        id: 'dm_chat_operator_output_safety',
+        userId: 'operator_hub_dm_user',
+        displayName: 'DM 요약 사용자',
+        role: 'assistant',
+        content: '지금은 답변을 만들지 못했어요.',
+        createdAt: dmChatNow,
+        safetyDetection: {
+          category: 'selfHarm',
+          severity: 'high',
+          matchedKeyword: '자해',
+        },
+        safetyDetectionSource: 'output',
+      },
+      {
+        id: 'dm_chat_operator_error',
+        userId: 'operator_hub_dm_user',
+        displayName: 'DM 요약 사용자',
+        role: 'assistant',
+        content: '오류 fallback',
+        error: 'test error',
+        createdAt: dmChatNow,
+      },
+      {
+        id: 'dm_chat_operator_example',
+        userId: 'operator_hub_dm_example',
+        displayName: 'DM 예시',
+        role: 'user',
+        content: '예시 DM',
+        createdAt: '2030-01-01T00:00:00.000Z',
+      },
+    ],
+  }, null, 2)}\n`);
+
+  try {
+    process.env.DM_CHAT_LOG_PATH = dmChatLogPath;
+    const dmChatSummary = buildDmChatTodaySummary(createDmChatRepository(dmChatLogPath), new Date());
+    assert.strictEqual(dmChatSummary.counts.users, 1);
+    assert.strictEqual(dmChatSummary.counts.userMessages, 1);
+    assert.strictEqual(dmChatSummary.counts.assistantMessages, 3);
+    assert.strictEqual(dmChatSummary.counts.aiResponses, 3);
+    assert.strictEqual(dmChatSummary.counts.safetyDetections, 1);
+    assert.strictEqual(dmChatSummary.counts.outputSafetyDetections, 1);
+    assert.strictEqual(dmChatSummary.counts.errors, 1);
+    assert.strictEqual(dmChatSummary.meta.exampleRecordsExcluded, 1);
+
+    const dmChatEmbed = buildOperatorDmChatSummaryEmbed(dmChatSummary);
+    assert.strictEqual(getEmbedTitle(dmChatEmbed), 'DM 대화 현황');
+    assert.match(getEmbedDescription(dmChatEmbed), /오늘 AI 응답 수: 3건/);
+    assert.match(getEmbedDescription(dmChatEmbed), /출력 1건/);
+
+    let dmChatCommandPayload = null;
+    await handleInteractionCreate({
+      commandName: '운영현황',
+      options: {
+        getString: () => 'dmChat',
+        getInteger: () => null,
+      },
+      member: {
+        permissions: {
+          has: () => true,
+        },
+      },
+      isChatInputCommand: () => true,
+      isStringSelectMenu: () => false,
+      isButton: () => false,
+      isModalSubmit: () => false,
+      reply: async (payload) => {
+        dmChatCommandPayload = payload;
+      },
+    });
+    assert.ok(dmChatCommandPayload);
+    assert.strictEqual(dmChatCommandPayload.ephemeral, true);
+    assert.strictEqual(getEmbedTitle(dmChatCommandPayload.embeds[0]), 'DM 대화 현황');
+    assert.match(getEmbedDescription(dmChatCommandPayload.embeds[0]), /대화 사용자: 1명/);
+
+    let dmChatSelectPayload = null;
+    await handleOperatorHubSelect({
+      customId: OPERATOR_HUB_SELECT_ID,
+      values: ['dm_chat'],
+      member: {
+        permissions: {
+          has: () => true,
+        },
+      },
+      reply: async (payload) => {
+        dmChatSelectPayload = payload;
+      },
+    });
+    assert.ok(dmChatSelectPayload);
+    assert.strictEqual(dmChatSelectPayload.ephemeral, true);
+    assert.strictEqual(getEmbedTitle(dmChatSelectPayload.embeds[0]), 'DM 대화 현황');
+  } finally {
+    restoreEnv('DM_CHAT_LOG_PATH', previousDmChatLogPath);
+  }
 
   const invitationNotice = buildOperatorInvitationNoticeEmbed();
   const invitationDescription = getEmbedDescription(invitationNotice);

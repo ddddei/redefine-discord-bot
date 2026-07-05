@@ -52,11 +52,12 @@ OPENAI_API_KEY=
 DM_CHAT_LOG_CHANNEL_ID=
 DM_CHAT_HISTORY_LIMIT=8
 DM_CHAT_DAILY_LIMIT=30
+SAFETY_ALERT_THROTTLE_MINUTES=10
 ```
 
 `AI_MODEL`에는 운영자가 OpenAI Platform에서 사용할 모델명을 넣습니다. `OPENAI_API_KEY`와 실제 채널 ID는 Railway Variables 또는 로컬 `.env`에만 저장하고 문서, 코드, 캡처에 남기지 않습니다.
 
-DM 대화는 첫 사용 시 기록/운영진 열람 안내를 자동 전송합니다. 모든 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되고, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`은 같은 로그에서 최근 DM 메시지를 읽기 전용으로 보여주며, safetyDetection이 있는 메시지는 별도 배지로 구분합니다. 자해, 폭력, 괴롭힘, 긴급 위험 등 민감 표현은 `SAFETY_ALERT_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `DM_CHAT_LOG_CHANNEL_ID` 또는 `LOG_CHANNEL_ID`로 알립니다. `DM_CHAT_DAILY_LIMIT`는 KST 당일 사용자별 `role=user` 메시지 수 기준 상한이며, 미설정 또는 숫자가 아닌 값은 30으로 처리합니다. `0`으로 설정하면 일일 제한을 해제합니다. 상한 초과 시 AI를 호출하지 않고 "오늘은 연습을 충분히 했어요. 내일 다시 이어서 연습해요. 급한 일이나 어려운 일이 있다면 운영진에게 문의해 주세요."를 저장/전송합니다.
+DM 대화는 첫 사용 시 기록/운영진 열람 안내를 자동 전송합니다. 모든 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되고, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`은 같은 로그에서 최근 DM 메시지를 읽기 전용으로 보여주며, 사용자 ID, 안전 감지 여부, 개수 필터를 지원합니다. 자해, 폭력, 괴롭힘, 긴급 위험 등 민감 표현은 `SAFETY_ALERT_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `DM_CHAT_LOG_CHANNEL_ID` 또는 `LOG_CHANNEL_ID`로 알립니다. `SAFETY_ALERT_THROTTLE_MINUTES`는 같은 사용자 반복 안전 감지의 안전 알림 채널 전송만 묶는 시간이며 기본값은 10분입니다. 로그 저장, DM 로그 채널 전송, 참여자 안내는 스로틀하지 않습니다. 기존처럼 모든 안전 알림을 받으려면 `0`으로 설정합니다. `DM_CHAT_DAILY_LIMIT`는 KST 당일 사용자별 `role=user` 메시지 수 기준 상한이며, 미설정 또는 숫자가 아닌 값은 30으로 처리합니다. `0`으로 설정하면 일일 제한을 해제합니다. 상한 초과 시 AI를 호출하지 않고 "오늘은 연습을 충분히 했어요. 내일 다시 이어서 연습해요. 급한 일이나 어려운 일이 있다면 운영진에게 문의해 주세요."를 저장/전송합니다. 참여자가 DM에 정확히 `새로 시작`을 보내면 로그는 삭제하지 않고 이후 AI history 기준점만 초기화합니다.
 
 ## 5. 채널/로그 환경변수
 
@@ -115,6 +116,7 @@ WEBGAME_WORD_SALT=
 | `MISSION_SUBMISSION_CHANNEL_ID` | 선택 | 별도 인증 채널을 운영할 때 |
 | `DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID` | 선택 | 별도 안내 채널을 운영할 때 |
 | `SAFETY_ALERT_CHANNEL_ID` | 선택 | 민감 질문 알림을 기본 로그와 분리할 때 |
+| `SAFETY_ALERT_THROTTLE_MINUTES` | 선택 | 같은 사용자 반복 DM 안전 알림 채널 전송 묶음 간격, 기본 10분, `0`이면 해제 |
 
 `/운영현황`의 `환경 설정 점검`에서는 각 채널 환경변수의 설정 여부, 채널 ID, Discord 채널 조회 여부, 봇 접근 권한, 메시지 전송 권한을 확인합니다. 선택 항목이 미설정인 것은 오류가 아니라 현재 운영 방식 안내입니다.
 
@@ -198,4 +200,5 @@ Variables를 바꾼 뒤 Railway가 자동 재배포하지 않으면 서비스 �
 - Public Domain 접속이 안 되면 Railway Networking에서 도메인이 생성되어 있는지 확인합니다.
 - 알림이 오지 않으면 봇이 채널을 볼 수 있고 메시지를 보낼 수 있는지 확인합니다.
 - example 데이터가 대시보드에 보이면 `/api/admin/summary`의 `exampleRecordsExcluded` 값과 `data/*.local.json`에 남은 테스트 데이터를 확인합니다.
-- `/admin`의 DM 대화 로그가 비어 있으면 `DM_CHAT_ENABLED=true`, `DM_CHAT_LOG_PATH`, 봇 DM 수신 권한, 실제 참여자 DM 발생 여부를 확인합니다.
+- `/admin`의 DM 대화 로그가 비어 있으면 `DM_CHAT_ENABLED=true`, `DM_CHAT_LOG_PATH`, 봇 DM 수신 권한, 실제 참여자 DM 발생 여부, 사용자 ID/안전 감지 필터 상태를 확인합니다.
+- `/운영현황 종류:DM대화` 선택지가 보이지 않으면 대상 Discord 환경에서 `npm run deploy`를 실행했는지 확인합니다.

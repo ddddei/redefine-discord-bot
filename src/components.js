@@ -171,6 +171,11 @@ const OPERATOR_HUB_OPTIONS = [
     description: '반복 fallback 질문 묶음 확인',
   },
   {
+    label: 'DM 대화',
+    value: 'dm_chat',
+    description: '오늘 DM 대화 수와 안전 감지 요약',
+  },
+  {
     label: '참여자 초대 안내문',
     value: 'invitation_notice',
     description: '초대 전 복사용 공지문 미리보기',

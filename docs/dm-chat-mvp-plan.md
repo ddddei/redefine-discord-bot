@@ -34,7 +34,8 @@ DM 대화 연습은 참여자가 봇과 1:1 DM으로 **사람들과 대화하기
 | 로그 저장 | `data/dm-chat-logs.local.json`(또는 `DM_CHAT_LOG_PATH`), 원자 저장(`pointsStore.saveJsonFile`) | `src/dmChatRepository.js` |
 | 운영진 로그/알림 | DM 로그 채널 embed, 안전 알림 채널 embed("자동 판단 아님" 고지 포함) | `src/dmChatLogging.js` |
 | 운영 안정 | 운영 백업 `dmChatLogs` 포함, KST 일일 사용자 메시지 제한, AI 응답 출력 안전 검사 | `src/operationBackup.js`, `src/dmChat.js`, `src/dmChatRepository.js`, `src/dmChatLogging.js` |
-| `/admin` 열람 | `/api/admin/dm-chat-logs` + 읽기 전용 섹션, example 제외, safetyDetection은 category/severity만 노출 | `src/adminApi.js`, `src/adminServer.js`, `public/admin/*` |
+| 운영 편의 | 안전 알림 스로틀, `/운영현황` DM 요약, `/admin` DM 로그 필터, 대화 초기화 | `src/dmChat.js`, `src/dmChatLogging.js`, `src/dmChatRepository.js`, `src/handlers.js`, `public/admin/*` |
+| `/admin` 열람 | `/api/admin/dm-chat-logs` + 읽기 전용 섹션, example 제외, 사용자/안전/개수 필터, safetyDetection은 category/severity만 노출 | `src/adminApi.js`, `src/adminServer.js`, `public/admin/*` |
 | 테스트 | DM 흐름 스모크, admin 대시보드 스모크 | `scripts/test-dm-chat-flow.js`, `scripts/test-admin-dashboard-flow.js` |
 
 ### 2.3 이 계획에서 다루는 후속 범위
@@ -73,13 +74,14 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
    └─► src/operationBackup.js 스냅샷 대상(dmChatLogs) ─► 백업 채널
 ```
 
-### 3.2 데이터 구조 (`data/dm-chat-logs.local.json`, version 2)
+### 3.2 데이터 구조 (`data/dm-chat-logs.local.json`, version 3)
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "isExample": false,
   "notices": [{ "userId": "...", "username": "...", "displayName": "...", "sentAt": "ISO" }],
+  "historyResets": [{ "userId": "...", "username": "...", "displayName": "...", "resetAt": "ISO" }],
   "messages": [
     {
       "id": "dm_chat_<ts>_<rand>",
@@ -108,7 +110,7 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 | `SAFETY_ALERT_CHANNEL_ID` | 확정 | 안전 알림 채널 (fallback: DM 로그 채널 → `LOG_CHANNEL_ID`) |
 | `AI_ENABLED` / `AI_PROVIDER` / `AI_MODEL` / `OPENAI_API_KEY` | 확정 | 응답 생성 설정 |
 | `DM_CHAT_DAILY_LIMIT` | 확정 | 사용자별 일일 user 메시지 상한 (미설정 시 기본 30, `0`이면 제한 해제) |
-| `SAFETY_ALERT_THROTTLE_MINUTES` | 2단계 추가 | 같은 사용자 반복 안전 알림 묶음 간격 (기본 10) |
+| `SAFETY_ALERT_THROTTLE_MINUTES` | 확정 | 같은 사용자 반복 안전 알림 묶음 간격 (기본 10, `0`이면 해제) |
 
 확정된 새 환경변수는 `.env.example`과 `docs/railway-env-guide.md`에 같은 PR에서 반영한다. 향후 단계에서 추가되는 변수도 같은 원칙을 따른다.
 
@@ -137,7 +139,7 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 | 단계 | Codex 지시서 | 상태 |
 | --- | --- | --- |
 | 1단계 운영 안정 | `prompts/codex/dm-chat-hardening-v1.md` | 구현 완료 |
-| 2단계 운영 편의 + 3-a/3-c | `prompts/codex/dm-chat-ops-visibility-v1.md` | 지시서 작성 완료, 운영자 승인 후 구현 착수 |
+| 2단계 운영 편의 + 3-a/3-c | `prompts/codex/dm-chat-ops-visibility-v1.md` | 구현 완료 |
 | 3단계 중 3-b 보존 정책 | `prompts/codex/dm-chat-retention-v1.md` | 보존 정책 확정 후 작성 |
 
 ---
@@ -171,13 +173,13 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 
 완료 조건: 6장 검증 통과 + 아래 성공 기준 S1~S3 충족.
 
-### 5.2 2단계: 운영 편의
+### 5.2 2단계: 운영 편의 (구현 완료)
 
 목표: 운영진이 DM 운영 상태를 Discord와 `/admin`에서 빠르게 파악한다.
 
-- **2-a. 안전 알림 스로틀**: 같은 사용자에 대해 `SAFETY_ALERT_THROTTLE_MINUTES`(기본 10) 내 반복 감지 시 알림 채널 전송을 생략하고, 로그 저장과 DM 로그 채널 전송은 모두 유지한다. 스로틀 상태는 메모리로만 유지한다(재시작 시 초기화 허용).
-- **2-b. `/운영현황` DM 대화 요약**: 오늘 DM 사용자 수 / user 메시지 수 / 안전 감지 수 / 오류 수. `src/minigameReport.js` 패턴을 따른다. 새 Slash Command는 추가하지 않고 기존 `/운영현황` 종류 선택에 추가한다(command 스키마 변경 시 `npm run deploy` 필요 여부를 PR에 명시).
-- **2-c. `/admin` DM 로그 필터**: `/api/admin/dm-chat-logs`에 `userId`, `safetyOnly`, `limit`(최대 100) 쿼리 지원과 프런트 필터 UI. 읽기 전용 유지.
+- **2-a. 안전 알림 스로틀 (구현 완료)**: 같은 사용자에 대해 `SAFETY_ALERT_THROTTLE_MINUTES`(기본 10) 내 반복 감지 시 알림 채널 전송을 생략하고, 로그 저장과 DM 로그 채널 전송은 모두 유지한다. 스로틀 상태는 메모리로만 유지한다(재시작 시 초기화 허용).
+- **2-b. `/운영현황` DM 대화 요약 (구현 완료)**: 오늘 DM 사용자 수 / user 메시지 수 / assistant 응답 수 / 안전 감지 input-output / 오류 수. 새 Slash Command는 추가하지 않고 기존 `/운영현황` 종류 선택에 `DM대화`를 추가했다. command 스키마 변경이므로 배포 후 대상 Discord 환경에서 `npm run deploy`가 필요하다.
+- **2-c. `/admin` DM 로그 필터 (구현 완료)**: `/api/admin/dm-chat-logs`에 `userId`, `safetyOnly`, `limit`(최대 100) 쿼리 지원과 프런트 필터 UI를 추가했다. 읽기 전용을 유지하고 `matchedKeyword`는 응답에 노출하지 않는다.
 
 수정 파일 후보: `src/dmChatLogging.js`, `src/handlers.js`, `src/dmChatRepository.js`, `src/adminApi.js`, `src/adminServer.js`, `public/admin/*`, `scripts/test-dm-chat-flow.js`, `scripts/test-admin-dashboard-flow.js`, `scripts/test-operator-hub-flow.js`, 관련 문서.
 
@@ -185,9 +187,9 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 
 목표: 장기 운영을 위한 데이터 정책과 비용 가시성.
 
-- **3-a. 대화 초기화**: DM에서 정확히 "새로 시작"이라고 보낸 경우 AI에 전달하는 history 기준점만 이동한다. 새 Slash Command는 추가하지 않고, 로그는 삭제하지 않는다.
+- **3-a. 대화 초기화 (구현 완료)**: DM에서 정확히 "새로 시작"이라고 보낸 경우 AI에 전달하는 history 기준점만 이동한다. 새 Slash Command는 추가하지 않고, 로그는 삭제하지 않는다.
 - **3-b. 로그 보존 정책**: 보존 기간(운영진 확정, 예: 90일) 경과 메시지 정리 스크립트 + 참여자 요청 시 특정 사용자 기록 삭제 절차. `docs/production-data-reset-guide.md`와 연결한다. **개인 대화 데이터이므로 보존 기간과 고지 문구를 운영진이 확정하기 전에는 구현하지 않는다.**
-- **3-c. 비용 모니터링**: v1에서는 별도 카운터 없이 기존 로그의 assistant 레코드 수를 당일 AI 응답 수로 파생해 `/운영현황` DM 요약에 노출한다. 토큰/비용 단위 정밀 집계는 후속 범위로 둔다.
+- **3-c. 비용 모니터링 (구현 완료)**: v1에서는 별도 카운터 없이 기존 로그의 assistant 레코드 수를 당일 AI 응답 수로 파생해 `/운영현황` DM 요약에 노출한다. 토큰/비용 단위 정밀 집계는 후속 범위로 둔다.
 
 ---
 
@@ -205,7 +207,7 @@ npm run check:release
 ```
 
 - `npm run deploy`는 slash command 스키마를 바꾼 경우에만, 운영자가 직접 실행한다.
-- git commit/push는 운영자 승인 후 진행한다 (Codex는 커밋하지 않는다).
+- git commit/push/PR/merge는 운영자 승인 후 진행한다.
 - 실서버 수동 확인(각 단계 PR 설명에 결과 기재):
   1. `DM_CHAT_ENABLED=true`로 테스트 계정 DM → 첫 안내 1회 → 로그 채널 embed → `/admin` 표시.
   2. 민감 키워드 DM → 안전 알림 도착, AI 미호출.
@@ -274,3 +276,4 @@ npm run check:release
 - 2026-07-03: 최초 작성. v1 구현 완료 범위 정리, 1~3단계 계획·성공 기준·제약 확정. 1단계 Codex 지시서 `prompts/codex/dm-chat-hardening-v1.md` 작성.
 - 2026-07-05: 고도화 v1 계획서 [dm-chat-improvement-plan.md](dm-chat-improvement-plan.md) 분리 작성 (2단계 전부 + 3-a 대화 초기화 + 3-c 비용 가시성 파생 지표). 3-b 보존 정책은 이 문서 기준 그대로 확정 대기.
 - 2026-07-05: 고도화 v1 Codex 작업 지시서 `prompts/codex/dm-chat-ops-visibility-v1.md` 작성. 구현은 운영자 승인 후 착수.
+- 2026-07-05: 고도화 v1 구현 완료. 안전 알림 스로틀, `/운영현황 종류:DM대화`, `/admin` DM 필터, `새로 시작` history 초기화, assistant 로그 파생 응답 수를 반영.

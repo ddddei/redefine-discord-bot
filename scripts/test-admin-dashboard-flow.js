@@ -435,6 +435,15 @@ async function main() {
           createdAt: '2030-01-01T00:00:00.000Z',
         },
         {
+          id: 'dm_chat_is_example',
+          userId: 'participant_dm_example_flag',
+          displayName: '플래그 예시',
+          role: 'user',
+          content: 'isExample 플래그 레코드',
+          createdAt: '2026-07-03T01:09:00.000Z',
+          isExample: true,
+        },
+        {
           id: 'dm_chat_001',
           userId: 'participant_dm_001',
           username: 'participant_dm',
@@ -477,6 +486,7 @@ async function main() {
     assert.strictEqual(safeComparePassword('wrong', 'secret'), false);
     assert.strictEqual(safeComparePassword('secret', 'secret'), true);
     assert.strictEqual(isExampleLikeRecord({ id: 'rd_example_pending' }), true);
+    assert.strictEqual(isExampleLikeRecord({ id: 'rd1', isExample: true }), true);
     assert.strictEqual(isExampleLikeRecord({ id: 'rd1', title: '운영 미션' }), false);
     assert.deepStrictEqual(filterOperationalRecords([{ id: 'rd1' }, { id: 'rd_example_pending' }]), {
       data: [{ id: 'rd1' }],
@@ -626,7 +636,21 @@ async function main() {
       category: 'danger',
       severity: 'high',
     });
-    assert.strictEqual(dmChatMessages.meta.exampleRecordsExcluded, 1);
+    assert.strictEqual(JSON.stringify(dmChatMessages.data).includes('matchedKeyword'), false);
+    assert.strictEqual(JSON.stringify(dmChatMessages.data).includes('괴롭힘'), false);
+    assert.strictEqual(dmChatMessages.meta.exampleRecordsExcluded, 2);
+
+    const filteredDmChatMessages = listRecentDmChatMessages(null, {
+      userId: 'participant_dm_001',
+      safetyOnly: true,
+      limit: 101,
+    });
+    assert.strictEqual(filteredDmChatMessages.data.length, 1);
+    assert.strictEqual(filteredDmChatMessages.data[0].id, 'dm_chat_001');
+    assert.strictEqual(filteredDmChatMessages.meta.filters.userId, 'participant_dm_001');
+    assert.strictEqual(filteredDmChatMessages.meta.filters.safetyOnly, true);
+    assert.strictEqual(filteredDmChatMessages.meta.filters.limit, 100);
+    assert.strictEqual(JSON.stringify(filteredDmChatMessages).includes('matchedKeyword'), false);
 
     const handler = createAdminRequestHandler(repository);
     const unauthorized = await invokeHandler(handler, '/api/admin/summary');
@@ -672,7 +696,19 @@ async function main() {
     assert.strictEqual(dmChatPayload.data[0].role, 'assistant');
     assert.strictEqual(dmChatPayload.data[1].safetyDetection.category, 'danger');
     assert.strictEqual(dmChatPayload.meta.readOnly, true);
-    assert.strictEqual(dmChatPayload.meta.exampleRecordsExcluded, 1);
+    assert.strictEqual(dmChatPayload.meta.exampleRecordsExcluded, 2);
+
+    const filteredDmChatResponse = await invokeHandler(
+      handler,
+      '/api/admin/dm-chat-logs?userId=participant_dm_001&safetyOnly=true&limit=101',
+      basic('admin', 'secret')
+    );
+    assert.strictEqual(filteredDmChatResponse.statusCode, 200);
+    const filteredDmChatPayload = JSON.parse(filteredDmChatResponse.body);
+    assert.strictEqual(filteredDmChatPayload.data.length, 1);
+    assert.strictEqual(filteredDmChatPayload.data[0].id, 'dm_chat_001');
+    assert.strictEqual(filteredDmChatPayload.meta.filters.limit, 100);
+    assert.strictEqual(JSON.stringify(filteredDmChatPayload).includes('matchedKeyword'), false);
 
     const onboardingResponse = await invokeHandler(handler, '/api/admin/onboarding-signals', basic('admin', 'secret'));
     assert.strictEqual(onboardingResponse.statusCode, 200);
@@ -696,6 +732,8 @@ async function main() {
     assert.ok(page.body.includes('first-day-check'));
     assert.ok(page.body.includes('faq-candidates'));
     assert.ok(page.body.includes('dm-chat-logs'));
+    assert.ok(page.body.includes('dm-chat-user-filter'));
+    assert.ok(page.body.includes('dm-chat-safety-filter'));
 
     const gamePage = await invokeHandler(handler, '/game/dungeonworld-survivors');
     assert.strictEqual(gamePage.statusCode, 200);

@@ -117,6 +117,25 @@
             </div>
             <p id="dm-chat-status">읽기 전용 로그를 불러오는 중입니다.</p>
           </div>
+          <div class="filter-bar" aria-label="DM 대화 로그 필터">
+            <label>
+              사용자 ID
+              <input id="dm-chat-user-filter" type="text" autocomplete="off" inputmode="text" placeholder="전체">
+            </label>
+            <label class="checkbox-control">
+              <input id="dm-chat-safety-filter" type="checkbox">
+              안전 감지만
+            </label>
+            <label>
+              개수
+              <select id="dm-chat-limit-filter">
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <button id="dm-chat-filter-button" type="button">적용</button>
+          </div>
           <div id="dm-chat-logs" class="table-wrap"></div>
           <p class="guide">대화 확인 전용입니다. 참여자 응대와 후속 조치는 Discord에서 진행해 주세요.</p>
         </article>

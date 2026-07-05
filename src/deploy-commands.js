@@ -291,6 +291,7 @@ const commands = [
           { name: '반응후속확인', value: 'reactionFollowUps' },
           { name: '도움필요신호', value: 'onboardingSignals' },
           { name: 'FAQ후보', value: 'faqCandidates' },
+          { name: 'DM대화', value: 'dmChat' },
           { name: '미션', value: 'missions' },
           { name: '상점', value: 'shop' },
           { name: '미니게임', value: 'minigames' }
