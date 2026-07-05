@@ -90,6 +90,24 @@ function testCalculateFeedbackWhenOneDuplicateCanBePresent() {
   ]);
 }
 
+function testCalculateFeedbackWhenEmptyJongseongNeverPresent() {
+  // Given: 정답 '가방'의 첫 글자와 추측 '밥비'의 둘째 글자가 모두 종성 없음(_)이지만 자리가 다르다.
+  const answer = WordLogic.decomposeWord('가방');
+  const guess = WordLogic.decomposeWord('밥비');
+
+  // When: feedback is calculated.
+  const feedback = WordLogic.calculateFeedback(answer, guess);
+
+  // Then: 종성 없음 칸은 자리 일치(exact)가 아니면 항상 absent다 — "빈 칸이 다른
+  // 자리에 있다"는 present 표시는 참여자에게 의미가 없다.
+  assert.strictEqual(feedback[5].cell, WordLogic.EMPTY_JAMO);
+  assert.strictEqual(feedback[5].state, 'absent');
+  // 자리까지 일치하는 종성 없음 칸은 여전히 exact다.
+  const sameSpot = WordLogic.calculateFeedback(WordLogic.decomposeWord('나무'), WordLogic.decomposeWord('바다'));
+  assert.strictEqual(sameSpot[2].state, 'exact');
+  assert.strictEqual(sameSpot[5].state, 'exact');
+}
+
 function testNormalizeAndValidateGuessWhenInputIsInvalid() {
   // Given: mixed invalid inputs around the two-syllable Hangul boundary.
   const inputs = [' 사과 ', '사', '사과!', 'abc', '닭고기', 'ㄱㅏ'];
@@ -123,6 +141,7 @@ testDecomposeWordWhenNoFinalConsonant();
 testCreateCellLabelsWhenCellsContainEmptyMarker();
 testCalculateFeedbackWhenGuessHasDuplicateJamo();
 testCalculateFeedbackWhenOneDuplicateCanBePresent();
+testCalculateFeedbackWhenEmptyJongseongNeverPresent();
 testNormalizeAndValidateGuessWhenInputIsInvalid();
 testCreateEmojiGridWhenRowsContainFeedback();
 

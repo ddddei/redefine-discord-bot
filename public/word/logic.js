@@ -126,11 +126,23 @@
         return;
       }
 
+      // 종성 없음(_)은 문자가 아니므로 "다른 자리에 존재" 후보로 세지 않는다.
+      if (answerCell === EMPTY_JAMO) {
+        return;
+      }
+
       remaining[answerCell] = (remaining[answerCell] || 0) + 1;
     });
 
     guessCells.forEach(function (guessCell, index) {
       if (states[index] !== null) {
+        return;
+      }
+
+      // 종성 없음(_)은 자리 일치가 아니면 항상 absent — "빈 칸이 다른 자리에
+      // 있어요"라는 피드백은 참여자에게 의미가 없다.
+      if (guessCell === EMPTY_JAMO) {
+        states[index] = 'absent';
         return;
       }
 
