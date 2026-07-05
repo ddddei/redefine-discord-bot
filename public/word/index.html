@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#efe3c8">
+  <title>오늘의 간식 단어</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/game/shared/game-ui.css">
+  <link rel="stylesheet" href="/game/word/styles.css">
+</head>
+<body>
+  <main class="word-shell gk-paper" aria-labelledby="gameTitle">
+    <header class="word-header">
+      <svg class="word-mark" viewBox="0 0 96 96" role="img" aria-label="간식 트레이">
+        <rect x="12" y="58" width="72" height="14" rx="5"></rect>
+        <path d="M22 58c3-16 14-27 27-27s24 11 27 27"></path>
+        <circle cx="36" cy="51" r="6"></circle>
+        <circle cx="51" cy="44" r="6"></circle>
+        <circle cx="62" cy="53" r="5"></circle>
+      </svg>
+      <div class="word-title-group">
+        <p id="dayLabel" class="word-kicker">오늘의 단어</p>
+        <h1 id="gameTitle">오늘의 간식 단어</h1>
+      </div>
+      <div class="word-count" aria-live="polite">
+        <strong id="participantCount">0</strong>
+        <span>도전</span>
+      </div>
+    </header>
+
+    <p id="statusText" class="word-status" aria-live="polite">오늘의 단어를 불러오는 중...</p>
+
+    <section class="word-play" aria-label="단어 입력판">
+      <div id="grid" class="word-grid" role="grid" aria-label="6번의 시도와 6칸 자모 피드백"></div>
+      <div class="word-actions" aria-label="입력 도구">
+        <button id="eraseButton" class="gk-button secondary" type="button">지우기</button>
+        <button id="emptyButton" class="gk-button secondary" type="button">없음</button>
+        <button id="enterButton" class="gk-button primary" type="button">입력</button>
+      </div>
+      <div id="keyboard" class="word-keyboard" aria-label="두벌식 자모 키보드"></div>
+    </section>
+
+    <section id="resultPanel" class="word-result gk-panel" aria-live="polite" hidden>
+      <h2 id="resultTitle">결과</h2>
+      <p id="resultText"></p>
+      <button id="copyButton" class="gk-button primary" type="button">결과 복사</button>
+    </section>
+
+    <section class="word-distribution gk-panel" aria-labelledby="distributionTitle">
+      <div class="word-panel-head">
+        <h2 id="distributionTitle">오늘의 시도 분포</h2>
+        <span id="distributionCaption">성공한 기록만 보여요.</span>
+      </div>
+      <div id="distributionBars" class="distribution-bars"></div>
+    </section>
+
+    <section class="word-link" aria-labelledby="linkTitle">
+      <div class="word-panel-head">
+        <h2 id="linkTitle">Discord 연결</h2>
+        <span>연결하면 결과가 오늘 분포에 반영돼요.</span>
+      </div>
+      <div id="linkSection"></div>
+    </section>
+  </main>
+
+  <script src="/game/shared/link.js"></script>
+  <script src="/game/word/logic.js"></script>
+  <script src="/game/word/game.js"></script>
+</body>
+</html>

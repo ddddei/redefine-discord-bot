@@ -21,10 +21,9 @@
   var JONGSEONG_COUNT = 28;
   var SYLLABLE_SIZE = JUNGSEONG_COUNT * JONGSEONG_COUNT;
   var EMOJI_BY_STATE = {
-    exact: '🟩',
+    exact: '🟫',
     present: '🟨',
     absent: '⬜',
-    empty: '⬛',
   };
 
   function isHangulSyllable(value) {
@@ -77,6 +76,29 @@
     }, []);
   }
 
+  function composeSyllable(choseong, jungseong, jongseong) {
+    var choseongIndex = CHOSEONG.indexOf(choseong);
+    var jungseongIndex = JUNGSEONG.indexOf(jungseong);
+    var jongseongIndex = JONGSEONG.indexOf(jongseong || EMPTY_JAMO);
+
+    if (choseongIndex === -1 || jungseongIndex === -1 || jongseongIndex === -1) {
+      throw new Error('Invalid jamo cells for Hangul syllable');
+    }
+
+    return String.fromCharCode(
+      HANGUL_BASE
+      + (choseongIndex * SYLLABLE_SIZE)
+      + (jungseongIndex * JONGSEONG_COUNT)
+      + jongseongIndex
+    );
+  }
+
+  function composeWord(cells) {
+    assertCells(cells, 'cells');
+    return composeSyllable(cells[0], cells[1], cells[2])
+      + composeSyllable(cells[3], cells[4], cells[5]);
+  }
+
   function assertCells(cells, name) {
     if (!Array.isArray(cells) || cells.length !== 6) {
       throw new Error(name + ' must be an array of six jamo cells');
@@ -99,18 +121,12 @@
 
     guessCells.forEach(function (guessCell, index) {
       var answerCell = answerCells[index];
-      if (guessCell !== EMPTY_JAMO && guessCell === answerCell) {
+      if (guessCell === answerCell) {
         states[index] = 'exact';
         return;
       }
 
-      if (guessCell === EMPTY_JAMO) {
-        states[index] = 'empty';
-      }
-
-      if (answerCell !== EMPTY_JAMO) {
-        remaining[answerCell] = (remaining[answerCell] || 0) + 1;
-      }
+      remaining[answerCell] = (remaining[answerCell] || 0) + 1;
     });
 
     guessCells.forEach(function (guessCell, index) {
@@ -147,6 +163,7 @@
   var WordLogic = {
     EMPTY_JAMO: EMPTY_JAMO,
     decomposeWord: decomposeWord,
+    composeWord: composeWord,
     createCellLabels: createCellLabels,
     composeCellLabels: createCellLabels,
     calculateFeedback: calculateFeedback,

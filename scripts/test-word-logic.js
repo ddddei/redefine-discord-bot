@@ -19,6 +19,7 @@ try {
 [
   'EMPTY_JAMO',
   'decomposeWord',
+  'composeWord',
   'createCellLabels',
   'calculateFeedback',
   'normalizeGuess',
@@ -37,6 +38,7 @@ function testDecomposeWordWhenNoFinalConsonant() {
 
   // Then: each syllable contributes choseong, jungseong, and the stable empty marker.
   assert.deepStrictEqual(cells, ['ㅅ', 'ㅏ', WordLogic.EMPTY_JAMO, 'ㄱ', 'ㅘ', WordLogic.EMPTY_JAMO]);
+  assert.strictEqual(WordLogic.composeWord(cells), word);
 }
 
 function testCreateCellLabelsWhenCellsContainEmptyMarker() {
@@ -62,10 +64,10 @@ function testCalculateFeedbackWhenGuessHasDuplicateJamo() {
   assert.deepStrictEqual(feedback.map((cell) => cell.state), [
     'exact',
     'exact',
-    'empty',
+    'exact',
     'absent',
     'exact',
-    'empty',
+    'exact',
   ]);
 }
 
@@ -81,10 +83,10 @@ function testCalculateFeedbackWhenOneDuplicateCanBePresent() {
   assert.deepStrictEqual(feedback.map((cell) => cell.state), [
     'exact',
     'exact',
-    'empty',
+    'absent',
     'present',
     'exact',
-    'empty',
+    'exact',
   ]);
 }
 
@@ -112,7 +114,7 @@ function testCreateEmojiGridWhenRowsContainFeedback() {
   const grid = WordLogic.createEmojiGrid(rows);
 
   // Then: the grid contains only feedback emoji and no answer text or jamo labels.
-  assert.strictEqual(grid, '🟩🟩⬛⬜⬜⬛\n🟩🟩⬛🟩🟩⬛');
+  assert.strictEqual(grid, '🟫🟫🟫⬜⬜🟫\n🟫🟫🟫🟫🟫🟫');
   assert.strictEqual(grid.includes('사과'), false);
   assert.strictEqual(/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(grid), false);
 }
