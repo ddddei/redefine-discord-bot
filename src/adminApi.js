@@ -507,6 +507,14 @@ function buildFaqCandidateQueue(repository = createDefaultRepository(), limit = 
   };
 }
 
+function buildDmChatTodaySummary(repository = null, now = new Date()) {
+  const dmRepository = repository && typeof repository.summarizeToday === 'function'
+    ? repository
+    : createDefaultDmChatRepository();
+
+  return dmRepository.summarizeToday(now);
+}
+
 function listPendingRedemptions(repository = createDefaultRepository(), limit = 10) {
   if (repository && typeof repository.listPendingRedemptions === 'function') {
     const state = readStateForMeta(repository);
@@ -630,15 +638,45 @@ function summarizeSafetyDetection(detection) {
   };
 }
 
-function listRecentDmChatMessages(repository = null, limit = 10) {
+function normalizeDmChatLogOptions(options = {}) {
+  if (typeof options !== 'object' || options === null) {
+    return {
+      limit: parseLimit(options, 10),
+      safetyOnly: false,
+      userId: null,
+    };
+  }
+
+  return {
+    limit: parseLimit(options.limit, 10),
+    safetyOnly: options.safetyOnly === true || String(options.safetyOnly || '').toLowerCase() === 'true',
+    userId: typeof options.userId === 'string' && options.userId.trim()
+      ? options.userId.trim()
+      : null,
+  };
+}
+
+function listRecentDmChatMessages(repository = null, options = 10) {
+  const normalizedOptions = normalizeDmChatLogOptions(options);
   const dmRepository = repository && typeof repository.listRecentMessagesForAdmin === 'function'
     ? repository
     : createDefaultDmChatRepository();
   const records = dmRepository.listRecentMessagesForAdmin();
   const filtered = filterOperationalRecords(records);
+  const visibleRecords = filtered.data.filter((message) => {
+    if (normalizedOptions.userId && message.userId !== normalizedOptions.userId) {
+      return false;
+    }
+
+    if (normalizedOptions.safetyOnly && !message.safetyDetection) {
+      return false;
+    }
+
+    return true;
+  });
 
   return {
-    data: clone(sortNewestFirst(filtered.data, ['createdAt']).slice(0, parseLimit(limit, 10)).map((message) => ({
+    data: clone(sortNewestFirst(visibleRecords, ['createdAt']).slice(0, normalizedOptions.limit).map((message) => ({
       id: message.id || null,
       createdAt: message.createdAt || null,
       userId: message.userId || null,
@@ -649,7 +687,14 @@ function listRecentDmChatMessages(repository = null, limit = 10) {
       hasSafetyDetection: Boolean(message.safetyDetection),
       safetyDetection: summarizeSafetyDetection(message.safetyDetection),
     }))),
-    meta: buildAdminMeta(filtered.excluded),
+    meta: {
+      ...buildAdminMeta(filtered.excluded),
+      filters: {
+        userId: normalizedOptions.userId,
+        safetyOnly: normalizedOptions.safetyOnly,
+        limit: normalizedOptions.limit,
+      },
+    },
   };
 }
 
@@ -763,6 +808,7 @@ function buildTodayOperationsQueue(repository = createDefaultRepository(), limit
 
 module.exports = {
   buildAdminSummary,
+  buildDmChatTodaySummary,
   buildFaqCandidateQueue,
   buildFirstDayCheck,
   buildOnboardingSignals,

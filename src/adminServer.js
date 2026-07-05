@@ -267,7 +267,11 @@ function handleAdminApi(req, res, pathname, searchParams, repository) {
     }
 
     if (pathname === '/api/admin/dm-chat-logs') {
-      sendJson(res, 200, listRecentDmChatMessages(null, limit));
+      sendJson(res, 200, listRecentDmChatMessages(null, {
+        limit,
+        userId: searchParams.get('userId'),
+        safetyOnly: searchParams.get('safetyOnly'),
+      }));
       return;
     }
 

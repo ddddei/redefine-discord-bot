@@ -1,6 +1,8 @@
 # DM 대화 고도화 v1 계획서 — 운영 편의·대화 초기화·비용 가시성 (완성 배포판)
 
-DM 대화 연습 기능의 고도화 v1 전체 명세입니다. **이 계획서의 전 항목을 구현하면 배포 가능한 완성 상태**이며, QA·피드백 반영은 배포 후 별도 작업입니다. 기준 문서는 [dm-chat-mvp-plan.md](dm-chat-mvp-plan.md)이고, 이 계획서는 그 2단계(운영 편의) 전부와 3단계 중 **보존 정책과 무관한 항목(대화 초기화·비용 가시성)** 을 완성 배포판 수준으로 상세화한 것입니다. 절대 조건: **안전 흐름 후퇴 금지** — 어떤 변경도 "민감 감지 시 AI 미호출 + 운영진 알림 + 기록"을 약화시킬 수 없다.
+DM 대화 연습 기능의 고도화 v1 전체 명세이자 구현 완료 기록입니다. 기준 문서는 [dm-chat-mvp-plan.md](dm-chat-mvp-plan.md)이고, 이 계획서는 그 2단계(운영 편의) 전부와 3단계 중 **보존 정책과 무관한 항목(대화 초기화·비용 가시성)** 을 완성 배포판 수준으로 상세화한 것입니다. 절대 조건: **안전 흐름 후퇴 금지** — 어떤 변경도 "민감 감지 시 AI 미호출 + 운영진 알림 + 기록"을 약화시킬 수 없다.
+
+상태: 2026-07-05 구현 완료. 배포 후 대상 Discord 환경에서 slash command 스키마 갱신을 위해 `npm run deploy`를 실행해야 한다.
 
 ## 0. 완성 정의 (이것이 전부 참이면 완료)
 
@@ -68,7 +70,7 @@ DM 대화 연습 기능의 고도화 v1 전체 명세입니다. **이 계획서�
 - 권장 커밋 4: ① 스로틀+테스트 ② 운영현황 dmChat 요약+테스트 ③ admin 필터+테스트 ④ 대화 초기화(스키마 v3)+fixture+문서(이 계획서·mvp-plan 완료 표기, README, railway 가이드, operator-dashboard 가이드)
 - 완료 조건: 0절 완성 정의 전부 + [dm-chat-mvp-plan.md](dm-chat-mvp-plan.md) 성공 기준 S4~S7·S9~S11 충족 + 신규 카피 목록 보고 + `npm run deploy` 필요 사실 PR 명시. PR 하나.
 - 롤백: 스로틀·초기화는 env/트리거 단위 소규모 diff — PR revert 또는 `SAFETY_ALERT_THROTTLE_MINUTES=0`. 스키마 v3은 하위 호환 읽기라 revert 후에도 version 3 파일을 v1 코드가 읽지 못하는 문제가 없도록 `normalizeData`가 미지의 키를 무시하는지 revert 경로를 QA에 포함.
-- Codex 지시서: `prompts/codex/dm-chat-ops-visibility-v1.md` 작성 완료. 운영자 승인 후 착수한다 (기존 진행 절차 준수).
+- Codex 지시서: `prompts/codex/dm-chat-ops-visibility-v1.md` 기준 구현 완료.
 
 ## 9. 범위 밖 (이번에 진행하지 않음 — 확정 배제 아님)
 

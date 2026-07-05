@@ -23,6 +23,8 @@ const CONFIGURATION_FALLBACK = [
 
 const DAILY_LIMIT_FALLBACK = '오늘은 연습을 충분히 했어요. 내일 다시 이어서 연습해요. 급한 일이나 어려운 일이 있다면 운영진에게 문의해 주세요.';
 const OUTPUT_SAFETY_FALLBACK = '지금은 답변을 만들지 못했어요. 잠시 후 다시 말을 걸어 주세요.';
+const HISTORY_RESET_TRIGGER = '새로 시작';
+const HISTORY_RESET_CONFIRMATION = '좋아요, 새 마음으로 다시 시작해요. 편하게 말을 걸어 주세요.';
 
 function isDmChatEnabled() {
   return process.env.DM_CHAT_ENABLED === 'true';
@@ -149,6 +151,21 @@ async function handleSensitiveDmMessage(message, client, repository, userRecord,
   await sendDirectMessage(message, reply);
 }
 
+async function handleHistoryResetMessage(message, client, repository, userRecord, userMessageRecord) {
+  repository.recordHistoryReset(userRecord, userMessageRecord.createdAt);
+
+  const assistantRecord = repository.appendMessage({
+    userId: userRecord.id,
+    username: userRecord.username,
+    displayName: userRecord.displayName,
+    role: 'assistant',
+    content: HISTORY_RESET_CONFIRMATION,
+  });
+
+  await logAndNotify(client, repository, assistantRecord);
+  await sendDirectMessage(message, HISTORY_RESET_CONFIRMATION);
+}
+
 async function handleDmChatMessage(message, client, options = {}) {
   if (!isDirectUserDm(message)) {
     return false;
@@ -190,6 +207,11 @@ async function handleDmChatMessage(message, client, options = {}) {
 
   if (detection) {
     await handleSensitiveDmMessage(message, client, repository, userRecord, detection, userMessageRecord);
+    return true;
+  }
+
+  if (message.content.trim() === HISTORY_RESET_TRIGGER) {
+    await handleHistoryResetMessage(message, client, repository, userRecord, userMessageRecord);
     return true;
   }
 
@@ -254,6 +276,8 @@ async function handleDmChatMessage(message, client, options = {}) {
 
 module.exports = {
   FIRST_NOTICE,
+  HISTORY_RESET_CONFIRMATION,
+  HISTORY_RESET_TRIGGER,
   getDmChatConfigurationStatus,
   handleDmChatMessage,
   isDirectUserDm,

@@ -27,6 +27,7 @@
 - 반응 승인 후속 확인
 - 도움 필요 신호
 - FAQ 후보
+- DM 대화
 - 오늘 포인트 거래 수
 - 미션 관리 허브
 - 상점 관리 허브
@@ -57,9 +58,15 @@
 
 ## 2-1-1. `/admin` DM 대화 로그
 
-DM 대화 연습 MVP를 켜면 `/admin`의 `최근 DM 대화 로그`에서 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장된 최근 메시지를 읽기 전용으로 확인합니다. 표시 항목은 사용자 표시명/ID, 시간, role, 메시지 일부, safetyDetection 여부입니다. safetyDetection이 있는 행은 붉은 계열 배경과 배지로 구분됩니다.
+DM 대화 연습 MVP를 켜면 `/admin`의 `최근 DM 대화 로그`에서 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장된 최근 메시지를 읽기 전용으로 확인합니다. 표시 항목은 사용자 표시명/ID, 시간, role, 메시지 일부, safetyDetection 여부입니다. 사용자 ID 완전 일치, 안전 감지만, 표시 개수(최대 100건) 필터를 사용할 수 있습니다. safetyDetection이 있는 행은 붉은 계열 배경과 배지로 구분됩니다.
 
 이 영역은 대화 열람 전용입니다. 응대, 안전 확인, 후속 조치는 Discord 운영 채널과 기존 절차에서 처리합니다. example/demo/sample로 보이는 기록과 2030년대 예시 날짜는 운영 데이터처럼 표시하지 않습니다.
+
+## 2-1-2. `/운영현황` DM 대화 요약
+
+`/운영현황` 실행 후 `DM 대화`를 선택하거나 slash command 옵션에서 `종류:DM대화`를 고릅니다. 이 화면은 KST 당일 기준으로 대화 사용자 수, user 메시지 수, assistant 응답 수, 안전 감지(input/output 구분), 오류 수, 마지막 DM 로그 시각을 보여줍니다.
+
+이 숫자는 별도 카운터 파일이 아니라 기존 DM 로그의 assistant 레코드와 safetyDetection 필드에서 파생합니다. Slash command 선택지에 `DM대화`가 보이지 않으면 대상 Discord 환경에서 `npm run deploy`로 명령어 스키마를 갱신해야 합니다.
 
 ## 2-2. 첫날 점검
 

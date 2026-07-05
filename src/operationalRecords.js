@@ -35,6 +35,10 @@ function isExampleLikeRecord(record) {
     return false;
   }
 
+  if (record.isExample === true) {
+    return true;
+  }
+
   return Object.entries(record).some(([key, value]) => isExampleLikeValue(value, key));
 }
 

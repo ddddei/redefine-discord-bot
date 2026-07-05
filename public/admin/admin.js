@@ -12,7 +12,6 @@
     missions: '/api/admin/missions?limit=10',
     shopItems: '/api/admin/shop-items?limit=10',
     reactions: '/api/admin/reaction-approvals?limit=10',
-    dmChatLogs: '/api/admin/dm-chat-logs?limit=20',
   };
 
   const queueLabels = {
@@ -97,6 +96,27 @@
     }
 
     return response.json();
+  }
+
+  function getDmChatLogsEndpoint() {
+    const params = new URLSearchParams();
+    const userFilter = $('dm-chat-user-filter');
+    const safetyFilter = $('dm-chat-safety-filter');
+    const limitFilter = $('dm-chat-limit-filter');
+    const userId = userFilter && userFilter.value ? userFilter.value.trim() : '';
+    const limit = limitFilter && limitFilter.value ? limitFilter.value : '20';
+
+    params.set('limit', limit);
+
+    if (userId) {
+      params.set('userId', userId);
+    }
+
+    if (safetyFilter && safetyFilter.checked) {
+      params.set('safetyOnly', 'true');
+    }
+
+    return '/api/admin/dm-chat-logs?' + params.toString();
   }
 
   function rowsFromResponse(response) {
@@ -361,7 +381,13 @@
       };
     });
     const meta = response && response.meta ? response.meta : {};
-    $('dm-chat-status').textContent = '읽기 전용 · ' + text(meta.storageMode, 'local-json') + ' · example 데이터 제외'
+    const filters = meta.filters || {};
+    const filterText = [
+      filters.userId ? '사용자 ' + shortId(filters.userId) : '전체 사용자',
+      filters.safetyOnly ? '안전 감지만' : '전체 메시지',
+      '최대 ' + text(filters.limit, 20) + '건',
+    ].join(' · ');
+    $('dm-chat-status').textContent = '읽기 전용 · ' + text(meta.storageMode, 'local-json') + ' · ' + filterText + ' · example 데이터 제외'
       + (Number(meta.exampleRecordsExcluded || 0) > 0 ? ' ' + meta.exampleRecordsExcluded + '건' : '');
 
     renderTable('dm-chat-logs', rows, [
@@ -373,6 +399,16 @@
       { label: '안전', render: function (row) { return safetyBadge(row.safetyDetection); } },
       { label: '메시지 일부', render: function (row) { return '<span class="message-preview">' + escapeHtml(row.content || '-') + '</span>'; } },
     ], '아직 표시할 DM 대화 로그가 없습니다.\n참여자가 DM 대화 연습을 시작하면 이곳에 최근 메시지가 표시됩니다.');
+  }
+
+  async function loadDmChatLogs() {
+    $('dm-chat-status').textContent = '읽기 전용 로그를 불러오는 중입니다.';
+    try {
+      renderDmChatLogs(await fetchJson(getDmChatLogsEndpoint()));
+    } catch (error) {
+      $('dm-chat-status').textContent = 'DM 대화 로그를 불러오지 못했습니다.';
+      $('dm-chat-logs').innerHTML = '<p class="empty">DM 대화 로그를 불러오지 못했습니다.</p>';
+    }
   }
 
   async function loadDashboard() {
@@ -391,7 +427,7 @@
         fetchJson(endpoints.missions),
         fetchJson(endpoints.shopItems),
         fetchJson(endpoints.reactions),
-        fetchJson(endpoints.dmChatLogs),
+        fetchJson(getDmChatLogsEndpoint()),
       ]);
 
       renderSummary(results[0]);
@@ -421,5 +457,13 @@
   }
 
   $('refresh-button').addEventListener('click', loadDashboard);
+  $('dm-chat-filter-button').addEventListener('click', loadDmChatLogs);
+  $('dm-chat-safety-filter').addEventListener('change', loadDmChatLogs);
+  $('dm-chat-limit-filter').addEventListener('change', loadDmChatLogs);
+  $('dm-chat-user-filter').addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      loadDmChatLogs();
+    }
+  });
   loadDashboard();
 }());

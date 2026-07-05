@@ -1,11 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+const { filterOperationalRecords } = require('./operationalRecords');
 const { saveJsonFile } = require('./pointsStore');
 const { getKoreanDateString } = require('./pointsRepository');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_DM_CHAT_LOG_PATH = process.env.DM_CHAT_LOG_PATH || path.join(DATA_DIR, 'dm-chat-logs.local.json');
-const CURRENT_DM_CHAT_LOG_VERSION = 2;
+const CURRENT_DM_CHAT_LOG_VERSION = 3;
 
 function createTimestamp() {
   return new Date().toISOString();
@@ -23,6 +24,7 @@ function createInitialData() {
     description: 'Local DM chat logs for conversation-practice MVP. JSON storage is for MVP operation only.',
     notices: [],
     messages: [],
+    historyResets: [],
   };
 }
 
@@ -50,7 +52,35 @@ function normalizeData(data) {
     version: CURRENT_DM_CHAT_LOG_VERSION,
     notices: Array.isArray(data && data.notices) ? data.notices : [],
     messages: Array.isArray(data && data.messages) ? data.messages : [],
+    historyResets: Array.isArray(data && data.historyResets) ? data.historyResets : [],
   };
+}
+
+function resolveUserId(user) {
+  if (!user || typeof user !== 'object') {
+    return null;
+  }
+
+  return user.id || user.userId || null;
+}
+
+function isAfterReset(message, resetAt) {
+  if (!resetAt) {
+    return true;
+  }
+
+  const messageTime = new Date(message && message.createdAt).getTime();
+  const resetTime = new Date(resetAt).getTime();
+
+  if (Number.isNaN(messageTime) || Number.isNaN(resetTime)) {
+    return true;
+  }
+
+  return messageTime > resetTime;
+}
+
+function isSafetyRecord(message) {
+  return Boolean(message && message.safetyDetection);
 }
 
 function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
@@ -101,12 +131,44 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     return record;
   }
 
+  function recordHistoryReset(user, resetAt = createTimestamp()) {
+    const userId = resolveUserId(user);
+    if (!userId) {
+      return null;
+    }
+
+    const data = load();
+    const existingIndex = data.historyResets.findIndex((reset) => reset.userId === userId);
+    const record = {
+      userId,
+      username: user.username || null,
+      displayName: user.displayName || user.globalName || user.username || userId,
+      resetAt,
+    };
+
+    if (existingIndex >= 0) {
+      data.historyResets[existingIndex] = record;
+    } else {
+      data.historyResets.push(record);
+    }
+
+    save(data);
+    return record;
+  }
+
+  function getHistoryResetAt(userId) {
+    const data = load();
+    const reset = data.historyResets.find((record) => record.userId === userId);
+    return reset && reset.resetAt ? reset.resetAt : null;
+  }
+
   function listRecentMessages(userId, limit = 8) {
     const safeLimit = Math.min(20, Math.max(1, Number(limit || 8)));
     const data = load();
+    const resetAt = getHistoryResetAt(userId);
 
     return data.messages
-      .filter((message) => message.userId === userId && !message.error)
+      .filter((message) => message.userId === userId && !message.error && isAfterReset(message, resetAt))
       .slice(-safeLimit);
   }
 
@@ -139,13 +201,62 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     }).length;
   }
 
+  function summarizeToday(now = new Date()) {
+    const dateString = getRecordKoreanDateString(now);
+    const data = load();
+    const filtered = filterOperationalRecords(data.messages);
+    const todayMessages = filtered.data.filter((message) => {
+      return message && getRecordKoreanDateString(message.createdAt) === dateString;
+    });
+    const userMessages = todayMessages.filter((message) => message.role === 'user');
+    const assistantMessages = todayMessages.filter((message) => message.role === 'assistant');
+    const safetyMessages = todayMessages.filter(isSafetyRecord);
+    const distinctUserIds = new Set(userMessages.map((message) => message.userId).filter(Boolean));
+    const latestMessage = todayMessages.slice().sort((left, right) => {
+      return new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime();
+    })[0] || null;
+
+    return {
+      title: 'DM 대화 현황',
+      readOnly: true,
+      storageMode: 'local-json',
+      date: dateString,
+      generatedAt: createTimestamp(),
+      counts: {
+        users: distinctUserIds.size,
+        userMessages: userMessages.length,
+        assistantMessages: assistantMessages.length,
+        aiResponses: assistantMessages.length,
+        safetyDetections: safetyMessages.length,
+        inputSafetyDetections: safetyMessages.filter((message) => {
+          return message.safetyDetectionSource === 'input'
+            || (!message.safetyDetectionSource && message.role === 'user');
+        }).length,
+        outputSafetyDetections: safetyMessages.filter((message) => {
+          return message.safetyDetectionSource === 'output';
+        }).length,
+        errors: todayMessages.filter((message) => message.error).length,
+      },
+      lastMessageAt: latestMessage ? latestMessage.createdAt : null,
+      meta: {
+        exampleRecordsExcluded: filtered.excluded,
+        storageMode: 'local-json',
+        readOnly: true,
+        generatedAt: createTimestamp(),
+      },
+    };
+  }
+
   return {
     appendMessage,
     countTodayUserMessages,
+    getHistoryResetAt,
     hasNotice,
     listRecentMessagesForAdmin,
     listRecentMessages,
+    recordHistoryReset,
     recordNotice,
+    summarizeToday,
   };
 }
 

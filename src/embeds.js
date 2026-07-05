@@ -407,6 +407,42 @@ function buildOperatorTodayQueueEmbed(queue = {}) {
   );
 }
 
+function buildOperatorDmChatSummaryEmbed(summary = {}) {
+  const counts = summary.counts || {};
+  const lastMessageLine = summary.lastMessageAt
+    ? `마지막 DM 로그: ${formatTransactionDateTime(summary.lastMessageAt)}`
+    : '마지막 DM 로그: 오늘 기록 없음';
+  const excluded = summary.meta && Number(summary.meta.exampleRecordsExcluded || 0) > 0
+    ? `example/demo/sample 데이터 제외 ${summary.meta.exampleRecordsExcluded}건`
+    : 'example/demo/sample 데이터 제외 적용';
+
+  return createGuideEmbed(
+    'DM 대화 현황',
+    [
+      `KST ${summary.date || formatTransactionDate(new Date().toISOString())} 기준 DM 대화 로그 요약입니다.`,
+      '읽기 전용이며, 응대와 후속 조치는 Discord에서 진행해 주세요.',
+      '',
+      '오늘 요약',
+      `- 대화 사용자: ${counts.users || 0}명`,
+      `- user 메시지: ${counts.userMessages || 0}건`,
+      `- assistant 응답: ${counts.assistantMessages || 0}건`,
+      `- 오늘 AI 응답 수: ${counts.aiResponses || 0}건`,
+      '',
+      '안전/오류',
+      `- 안전 감지: ${counts.safetyDetections || 0}건 (입력 ${counts.inputSafetyDetections || 0}건 / 출력 ${counts.outputSafetyDetections || 0}건)`,
+      `- 오류 로그: ${counts.errors || 0}건`,
+      '',
+      lastMessageLine,
+      excluded,
+      '',
+      '상세 확인: `/admin` 최근 DM 대화 로그',
+    ].join('\n'),
+    {
+      footer: OPERATOR_CHECK_FOOTER,
+    }
+  );
+}
+
 function formatChannelReadySummary(checks = []) {
   if (!checks.length) {
     return 'Discord 채널 실시간 점검은 `/운영현황` Discord 화면에서 확인해 주세요.';
@@ -1190,6 +1226,7 @@ module.exports = {
   buildDungeonworldIntroEmbed,
   buildDungeonworldResultEmbed,
   buildOperatorChecklistEmbed,
+  buildOperatorDmChatSummaryEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorFaqCandidatesEmbed,

@@ -13,6 +13,7 @@ const {
 const {
   OPERATOR_CHECK_FOOTER,
   buildOperatorChecklistEmbed,
+  buildOperatorDmChatSummaryEmbed,
   buildOperatorEnvironmentCheckEmbed,
   buildOperatorExportGuideEmbed,
   buildOperatorFaqCandidatesEmbed,
@@ -44,6 +45,7 @@ const {
   truncateText,
 } = require('./embeds');
 const {
+  buildDmChatTodaySummary,
   buildFaqCandidateQueue,
   buildFirstDayCheck,
   buildOnboardingSignals,
@@ -2709,6 +2711,10 @@ function getOperatorHubEmbed(value, limit = 10) {
     return buildOperatorFaqCandidatesEmbed(buildFaqCandidateQueue(pointsRepository, limit));
   }
 
+  if (value === 'dm_chat') {
+    return buildOperatorDmChatSummaryEmbed(buildDmChatTodaySummary());
+  }
+
   if (value === 'environment_check') {
     return buildOperatorEnvironmentCheckEmbed();
   }
@@ -3127,6 +3133,9 @@ async function handleOperationStatusCommand(interaction) {
     } else if (type === 'faqCandidates') {
       selectedValue = 'faq_candidates';
       embed = buildOperatorFaqCandidatesEmbed(buildFaqCandidateQueue(pointsRepository, limit));
+    } else if (type === 'dmChat') {
+      selectedValue = 'dm_chat';
+      embed = buildOperatorDmChatSummaryEmbed(buildDmChatTodaySummary());
     } else if (type === 'minigames') {
       embed = createMinigameReportEmbed(buildMinigameReport({
         pointsRepository,
