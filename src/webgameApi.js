@@ -4,6 +4,9 @@ const {
   getDayKey,
   getIsoWeekKey,
 } = require('./webgameRepository');
+const crypto = require('crypto');
+const WordLogic = require('../public/word/logic');
+const WORD_POOL = require('../data/word-pool.json');
 
 const MAX_BODY_BYTES = 4 * 1024;
 
@@ -14,6 +17,7 @@ const GAME_DEFINITIONS = {
     id: 'match3',
     title: '간식 맞추기',
     rankable: true,
+    dailyCapable: true,
     // 30수 * 컷당 이론상 최대(5매치 다중 캐스케이드)를 넉넉히 넘는 상한.
     maxScore: 50000,
   },
@@ -21,6 +25,7 @@ const GAME_DEFINITIONS = {
     id: 'deck',
     title: '간식 수호대',
     rankable: true,
+    dailyCapable: true,
     // 점수화 공식: 도달 스테이지 * 1000 + 잔여 HP. 스테이지 11개, 최대 HP 60.
     maxScore: 11 * 1000 + 60,
   },
@@ -28,9 +33,17 @@ const GAME_DEFINITIONS = {
     id: 'idle',
     title: '간식 공방 키우기',
     rankable: false,
+    dailyCapable: false,
     // 방치형은 랭킹 부적합 장르 - 참여 기록만 남기고 랭킹에는 노출하지 않는다.
     // 프레스티지 반복을 감안해 넉넉한 상한만 둔다.
     maxScore: 1e15,
+  },
+  word: {
+    id: 'word',
+    title: '오늘의 간식 단어',
+    rankable: false,
+    dailyCapable: true,
+    maxScore: 6,
   },
 };
 
@@ -46,7 +59,9 @@ const LINK_ATTEMPT_LIMIT = 15;
 const LINK_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
 const CHEER_RATE_LIMIT_PER_MINUTE = 10;
 const CHEER_RATE_LIMIT_PER_DAY = 30;
+const WORD_GUESS_RATE_LIMIT_PER_MINUTE = 30;
 const DEFAULT_COMMUNAL_GOAL = 4000000000;
+const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isKnownGame(gameId) {
   return Object.prototype.hasOwnProperty.call(GAME_DEFINITIONS, gameId);
@@ -54,6 +69,10 @@ function isKnownGame(gameId) {
 
 function listRankableGames() {
   return Object.values(GAME_DEFINITIONS).filter((game) => game.rankable);
+}
+
+function isDailyCapable(gameDefinition) {
+  return gameDefinition.dailyCapable === true;
 }
 
 function getCommunalGoal() {
@@ -126,6 +145,34 @@ function getClientAddress(req) {
   return forwarded || (req.socket && req.socket.remoteAddress) || 'unknown';
 }
 
+function isAllowedWordDayKey(dayKey, nowDate) {
+  if (typeof dayKey !== 'string' || !DAY_KEY_PATTERN.test(dayKey)) {
+    return false;
+  }
+
+  const todayKey = getDayKey(nowDate);
+  const yesterdayKey = getDayKey(new Date(nowDate.getTime() - ONE_DAY_MS));
+  return dayKey === todayKey || dayKey === yesterdayKey;
+}
+
+function selectWordAnswer(dayKey, salt) {
+  const digest = crypto.createHash('sha256').update(`${salt}:${dayKey}`).digest('hex');
+  const index = Number(BigInt(`0x${digest}`) % BigInt(WORD_POOL.answers.length));
+  return WORD_POOL.answers[index];
+}
+
+function createWordResult(record) {
+  if (!record) {
+    return null;
+  }
+
+  if (Number.isInteger(record.score) && record.score >= 1 && record.score <= 6) {
+    return { tries: 7 - record.score };
+  }
+
+  return { tries: null };
+}
+
 function createWebgameApi(options = {}) {
   const repository = options.repository || createWebgameRepository();
   const now = typeof options.now === 'function' ? options.now : () => new Date();
@@ -134,6 +181,8 @@ function createWebgameApi(options = {}) {
   // 코드 자체의 짧은 TTL(10분)·일회성과 조합되어 무차별 대입을 막는다.
   const linkAttemptsByAddress = new Map();
   const cheerAttemptsByToken = new Map();
+  const wordGuessAttemptsByAddress = new Map();
+  const validWordGuesses = new Set(WORD_POOL.validGuesses);
 
   function isLinkAttemptAllowed(address, nowMs) {
     const entry = linkAttemptsByAddress.get(address);
@@ -168,6 +217,30 @@ function createWebgameApi(options = {}) {
       });
     }
     return entry.count <= CHEER_RATE_LIMIT_PER_MINUTE;
+  }
+
+  function isWordGuessAttemptAllowed(address, nowMs) {
+    const entry = wordGuessAttemptsByAddress.get(address);
+    if (!entry || nowMs - entry.windowStart > ONE_MINUTE_MS) {
+      wordGuessAttemptsByAddress.set(address, { windowStart: nowMs, count: 1 });
+      return true;
+    }
+    entry.count += 1;
+    if (wordGuessAttemptsByAddress.size > 1000) {
+      wordGuessAttemptsByAddress.forEach((value, key) => {
+        if (nowMs - value.windowStart > ONE_MINUTE_MS) {
+          wordGuessAttemptsByAddress.delete(key);
+        }
+      });
+    }
+    return entry.count <= WORD_GUESS_RATE_LIMIT_PER_MINUTE;
+  }
+
+  function getWordSalt() {
+    const envSalt = typeof process.env.WEBGAME_WORD_SALT === 'string'
+      ? process.env.WEBGAME_WORD_SALT.trim()
+      : '';
+    return envSalt || repository.getSocialData().cheerSalt;
   }
 
   function decorateRankingEntries(ranking, gameId, periodKey, myDiscordId) {
@@ -240,6 +313,68 @@ function createWebgameApi(options = {}) {
     sendJson(res, 200, { playerToken: result.playerToken, displayName: result.displayName });
   }
 
+  function handleWordScore(res, sendJson, input) {
+    const { body, link, score, challenge, nowDate } = input;
+    const dayKey = typeof body.dayKey === 'string' ? body.dayKey.trim() : '';
+
+    if (challenge !== 'daily') {
+      sendJson(res, 400, { error: 'NOT_DAILY', message: '이 게임은 오늘의 도전만 기록할 수 있어요.' });
+      return;
+    }
+
+    if (!Number.isInteger(score) || score < 0 || score > GAME_DEFINITIONS.word.maxScore) {
+      sendJson(res, 400, { error: 'SCORE_OUT_OF_RANGE', message: '점수 값이 허용 범위를 넘었어요.' });
+      return;
+    }
+
+    if (!isAllowedWordDayKey(dayKey, nowDate)) {
+      sendJson(res, 400, { error: 'INVALID_DAY', message: '기록할 수 있는 날짜가 아니에요.' });
+      return;
+    }
+
+    const existingResult = repository.getDailyBest(link.discordId, 'word', dayKey);
+    if (existingResult) {
+      sendJson(res, 200, {
+        accepted: true,
+        duplicate: true,
+        mode: 'daily',
+        dayKey,
+        myResult: createWordResult(existingResult),
+      });
+      return;
+    }
+
+    const perMinute = repository.countRecentSubmissions(link.discordId, ONE_MINUTE_MS, nowDate);
+    if (perMinute >= RATE_LIMIT_PER_MINUTE) {
+      sendJson(res, 429, { error: 'RATE_LIMITED', message: '잠시 후 다시 시도해 주세요.' });
+      return;
+    }
+
+    const perDay = repository.countRecentSubmissions(link.discordId, ONE_DAY_MS, nowDate);
+    if (perDay >= RATE_LIMIT_PER_DAY) {
+      sendJson(res, 429, { error: 'RATE_LIMITED', message: '오늘 제출 가능한 횟수를 넘었어요.' });
+      return;
+    }
+
+    const record = repository.recordScore({
+      discordId: link.discordId,
+      gameId: 'word',
+      score,
+      seed: null,
+      flagged: false,
+      mode: 'daily',
+      dayKey,
+    }, nowDate);
+
+    sendJson(res, 200, {
+      accepted: true,
+      flagged: false,
+      mode: 'daily',
+      dayKey,
+      myResult: createWordResult(record),
+    });
+  }
+
   async function handleScore(req, res, sendJson) {
     let body;
     try {
@@ -277,6 +412,12 @@ function createWebgameApi(options = {}) {
     }
 
     const nowDate = now();
+    const gameDefinition = GAME_DEFINITIONS[gameId];
+
+    if (gameId === 'word') {
+      handleWordScore(res, sendJson, { body, link, score, challenge, nowDate });
+      return;
+    }
 
     const perMinute = repository.countRecentSubmissions(link.discordId, ONE_MINUTE_MS, nowDate);
     if (perMinute >= RATE_LIMIT_PER_MINUTE) {
@@ -290,8 +431,7 @@ function createWebgameApi(options = {}) {
       return;
     }
 
-    const gameDefinition = GAME_DEFINITIONS[gameId];
-    if (challenge === 'daily' && !gameDefinition.rankable) {
+    if (challenge === 'daily' && !isDailyCapable(gameDefinition)) {
       sendJson(res, 400, { error: 'NOT_DAILY', message: '이 게임에는 오늘의 도전이 없어요.' });
       return;
     }
@@ -383,7 +523,8 @@ function createWebgameApi(options = {}) {
       return;
     }
 
-    if (!GAME_DEFINITIONS[gameId].rankable) {
+    const gameDefinition = GAME_DEFINITIONS[gameId];
+    if (!isDailyCapable(gameDefinition)) {
       sendJson(res, 400, { error: 'NOT_DAILY', message: '이 게임에는 오늘의 도전이 없어요.' });
       return;
     }
@@ -391,6 +532,27 @@ function createWebgameApi(options = {}) {
     const nowDate = now();
     const dayKey = getDayKey(nowDate);
     const token = getBearerToken(req);
+    if (gameId === 'word') {
+      const resultSummary = repository.getDailyResultDistribution(gameId, dayKey);
+      let myResult = null;
+
+      if (token) {
+        const link = repository.getLinkByToken(token);
+        if (link) {
+          myResult = createWordResult(repository.getDailyBest(link.discordId, gameId, dayKey));
+        }
+      }
+
+      sendJson(res, 200, {
+        gameId,
+        dayKey,
+        participants: resultSummary.participants,
+        distribution: resultSummary.distribution,
+        myResult,
+      });
+      return;
+    }
+
     let myDiscordId = null;
     let myBest = null;
     let myRank = null;
@@ -525,6 +687,49 @@ function createWebgameApi(options = {}) {
     sendJson(res, 200, { ok: true, cheers });
   }
 
+  async function handleWordGuess(req, res, sendJson) {
+    const nowDate = now();
+    if (!isWordGuessAttemptAllowed(getClientAddress(req), nowDate.getTime())) {
+      sendJson(res, 429, { error: 'RATE_LIMITED', message: '잠시 후 다시 시도해 주세요.' });
+      return;
+    }
+
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (error) {
+      sendJson(res, 400, { error: 'INVALID_REQUEST', message: '요청 본문을 확인해 주세요.' });
+      return;
+    }
+
+    const dayKey = typeof body.dayKey === 'string' ? body.dayKey.trim() : '';
+    if (!isAllowedWordDayKey(dayKey, nowDate)) {
+      sendJson(res, 400, { error: 'INVALID_DAY', message: '풀 수 있는 날짜가 아니에요.' });
+      return;
+    }
+
+    const normalizedGuess = WordLogic.normalizeGuess(body.guess);
+    if (!normalizedGuess.valid || !validWordGuesses.has(normalizedGuess.value)) {
+      sendJson(res, 200, {
+        valid: false,
+        message: '사전에 있는 두 글자 단어를 입력해 주세요.',
+      });
+      return;
+    }
+
+    const answer = selectWordAnswer(dayKey, getWordSalt());
+    const feedback = WordLogic.calculateFeedback(
+      WordLogic.decomposeWord(answer),
+      WordLogic.decomposeWord(normalizedGuess.value)
+    );
+
+    sendJson(res, 200, {
+      valid: true,
+      feedback,
+      solved: normalizedGuess.value === answer,
+    });
+  }
+
   async function handleMe(req, res, sendJson) {
     const token = getBearerToken(req);
     if (!token) {
@@ -548,6 +753,7 @@ function createWebgameApi(options = {}) {
     handleDaily,
     handleGoal,
     handleCheer,
+    handleWordGuess,
     handleMe,
   };
 }
@@ -562,6 +768,7 @@ module.exports = {
   RATE_LIMIT_PER_DAY,
   CHEER_RATE_LIMIT_PER_MINUTE,
   CHEER_RATE_LIMIT_PER_DAY,
+  WORD_GUESS_RATE_LIMIT_PER_MINUTE,
   OUTLIER_MULTIPLIER,
   DEFAULT_COMMUNAL_GOAL,
   getCommunalGoal,

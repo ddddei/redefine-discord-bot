@@ -537,6 +537,45 @@ function createWebgameRepository(paths = {}) {
     return participants.size;
   }
 
+  function getDailyResultDistribution(gameId, dayKey) {
+    const scoresData = getScoresData();
+    const bestByDiscordId = new Map();
+    scoresData.scores.map(normalizeScoreRecord).forEach((score) => {
+      if (
+        score.gameId !== gameId
+        || score.mode !== 'daily'
+        || score.dayKey !== dayKey
+        || score.flagged
+      ) {
+        return;
+      }
+
+      const current = bestByDiscordId.get(score.discordId);
+      if (!current || score.score > current.score) {
+        bestByDiscordId.set(score.discordId, score);
+      }
+    });
+
+    const distribution = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+      6: 0,
+    };
+    bestByDiscordId.forEach((score) => {
+      if (Number.isInteger(score.score) && score.score >= 1 && score.score <= 6) {
+        distribution[String(7 - score.score)] += 1;
+      }
+    });
+
+    return {
+      participants: bestByDiscordId.size,
+      distribution,
+    };
+  }
+
   function getCommunalGoalProgress(weekKey) {
     const scoresData = getScoresData();
     const currentByDiscordId = new Map();
@@ -666,6 +705,7 @@ function createWebgameRepository(paths = {}) {
     getMyDailyRank,
     getDailyBest,
     countDailyParticipants,
+    getDailyResultDistribution,
     getCommunalGoalProgress,
     addCheer,
     countCheers,
