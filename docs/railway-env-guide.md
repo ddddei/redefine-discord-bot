@@ -53,11 +53,20 @@ DM_CHAT_LOG_CHANNEL_ID=
 DM_CHAT_HISTORY_LIMIT=8
 DM_CHAT_DAILY_LIMIT=30
 SAFETY_ALERT_THROTTLE_MINUTES=10
+DM_CHAT_MEMBER_ONLY=true
+DM_CHAT_BURST_LIMIT_PER_MINUTE=5
+DM_CHAT_RETENTION_DAYS=90
 ```
 
 `AI_MODEL`에는 운영자가 OpenAI Platform에서 사용할 모델명을 넣습니다. `OPENAI_API_KEY`와 실제 채널 ID는 Railway Variables 또는 로컬 `.env`에만 저장하고 문서, 코드, 캡처에 남기지 않습니다.
 
 DM 대화는 첫 사용 시 기록/운영진 열람 안내를 자동 전송합니다. 모든 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되고, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`은 같은 로그에서 최근 DM 메시지를 읽기 전용으로 보여주며, 사용자 ID, 안전 감지 여부, 개수 필터를 지원합니다. 자해, 폭력, 괴롭힘, 긴급 위험 등 민감 표현은 `SAFETY_ALERT_CHANNEL_ID`가 있으면 해당 채널로, 없으면 `DM_CHAT_LOG_CHANNEL_ID` 또는 `LOG_CHANNEL_ID`로 알립니다. `SAFETY_ALERT_THROTTLE_MINUTES`는 같은 사용자 반복 안전 감지의 안전 알림 채널 전송만 묶는 시간이며 기본값은 10분입니다. 로그 저장, DM 로그 채널 전송, 참여자 안내는 스로틀하지 않습니다. 기존처럼 모든 안전 알림을 받으려면 `0`으로 설정합니다. `DM_CHAT_DAILY_LIMIT`는 KST 당일 사용자별 `role=user` 메시지 수 기준 상한이며, 미설정 또는 숫자가 아닌 값은 30으로 처리합니다. `0`으로 설정하면 일일 제한을 해제합니다. 상한 초과 시 AI를 호출하지 않고 "오늘은 연습을 충분히 했어요. 내일 다시 이어서 연습해요. 급한 일이나 어려운 일이 있다면 운영진에게 문의해 주세요."를 저장/전송합니다. 참여자가 DM에 정확히 `새로 시작`을 보내면 로그는 삭제하지 않고 이후 AI history 기준점만 초기화합니다.
+
+`DM_CHAT_MEMBER_ONLY`(기본 `true`)는 `GUILD_ID`가 설정된 서버의 멤버만 DM 대화를 사용하도록 제한합니다. `GUILD_ID`가 없으면 이 값과 무관하게 제한이 적용되지 않습니다. 비멤버에게는 "이 DM 연습은 리디파인 참여자에게 열려 있어요."를 1회만 보내고 이후 침묵하며, AI 호출·안전 감지·기록을 하지 않습니다. 멤버 확인 API 오류는 허용 쪽으로 폴백하고 콘솔 경고를 남기므로 기존 사용자가 실수로 차단되지 않습니다. `false`로 설정하면 멤버 확인 자체를 끕니다.
+
+`DM_CHAT_BURST_LIMIT_PER_MINUTE`(기본 `5`)는 롤링 60초 동안 사용자별 `role=user` 메시지 수 상한입니다. 초과 시 메시지는 그대로 저장·로그 전송되지만 AI는 호출하지 않고 "조금 천천히 이야기해요. 잠시 후 다시 보내 주세요."를 1분에 1회만 보냅니다. 민감 감지는 이 제한과 무관하게 항상 수행됩니다. `0`으로 설정하면 해제됩니다.
+
+`DM_CHAT_RETENTION_DAYS`(기본 `90`, `0`이면 무기한)는 `scripts/cleanup-dm-chat-logs.js`가 사용하는 로그 보존 기간입니다. 안전 감지 레코드는 이 값과 무관하게 180일 상수를 적용합니다. 첫 안내문에는 이 값을 반영한 보존 기간 안내가 포함되며, 값이 바뀌면 아직 안내를 받지 않은 사용자에게는 새 값이, 이미 v1 고지를 받은 기존 사용자에게는 v2 고지가 1회 재발송됩니다. 정리 절차는 `docs/dm-chat-operation-guide.md`를 참고합니다.
 
 ## 5. 채널/로그 환경변수
 

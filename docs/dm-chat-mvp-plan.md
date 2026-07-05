@@ -111,6 +111,9 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 | `AI_ENABLED` / `AI_PROVIDER` / `AI_MODEL` / `OPENAI_API_KEY` | 확정 | 응답 생성 설정 |
 | `DM_CHAT_DAILY_LIMIT` | 확정 | 사용자별 일일 user 메시지 상한 (미설정 시 기본 30, `0`이면 제한 해제) |
 | `SAFETY_ALERT_THROTTLE_MINUTES` | 확정 | 같은 사용자 반복 안전 알림 묶음 간격 (기본 10, `0`이면 해제) |
+| `DM_CHAT_MEMBER_ONLY` | 확정 | 서버 멤버만 DM 대화 허용 (기본 `true`, `GUILD_ID` 필요, `false`로 해제) |
+| `DM_CHAT_BURST_LIMIT_PER_MINUTE` | 확정 | 분당 user 메시지 상한 (기본 5, `0`이면 해제) |
+| `DM_CHAT_RETENTION_DAYS` | 확정 | 로그 보존 기간(일) (기본 90, `0`이면 무기한, 안전 감지 레코드는 180일 상수) |
 
 확정된 새 환경변수는 `.env.example`과 `docs/railway-env-guide.md`에 같은 PR에서 반영한다. 향후 단계에서 추가되는 변수도 같은 원칙을 따른다.
 
@@ -140,7 +143,7 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 | --- | --- | --- |
 | 1단계 운영 안정 | `prompts/codex/dm-chat-hardening-v1.md` | 구현 완료 |
 | 2단계 운영 편의 + 3-a/3-c | `prompts/codex/dm-chat-ops-visibility-v1.md` | 구현 완료 |
-| 3단계 중 3-b 보존 정책 | `prompts/codex/dm-chat-retention-v1.md` | 보존 정책 확정 후 작성 |
+| 3단계 중 3-b 보존 정책 + 완성 운영판(접근 제어·견고성·연습 콘텐츠·런북) | `prompts/codex/dm-chat-complete-v1.md` | 구현 완료 (`docs/dm-chat-complete-plan.md` 기준) |
 
 ---
 
@@ -188,7 +191,7 @@ src/dmChatRepository.js ── data/dm-chat-logs.local.json (원자 저장)
 목표: 장기 운영을 위한 데이터 정책과 비용 가시성.
 
 - **3-a. 대화 초기화 (구현 완료)**: DM에서 정확히 "새로 시작"이라고 보낸 경우 AI에 전달하는 history 기준점만 이동한다. 새 Slash Command는 추가하지 않고, 로그는 삭제하지 않는다.
-- **3-b. 로그 보존 정책**: 보존 기간(운영진 확정, 예: 90일) 경과 메시지 정리 스크립트 + 참여자 요청 시 특정 사용자 기록 삭제 절차. `docs/production-data-reset-guide.md`와 연결한다. **개인 대화 데이터이므로 보존 기간과 고지 문구를 운영진이 확정하기 전에는 구현하지 않는다.**
+- **3-b. 로그 보존 정책 (구현 완료)**: 보존 기간 90일(안전 감지 레코드 180일), `DM_CHAT_MEMBER_ONLY`/`DM_CHAT_BURST_LIMIT_PER_MINUTE`와 함께 2026-07-05 운영진 승인으로 확정. `scripts/cleanup-dm-chat-logs.js`(기본 dry-run, `--apply`, `--user <discordId>`)로 보존 정리와 참여자 요청 삭제를 처리하며, `docs/production-data-reset-guide.md`·`docs/dm-chat-operation-guide.md`와 연결됐다. 상세는 `docs/dm-chat-complete-plan.md` 3절 참고.
 - **3-c. 비용 모니터링 (구현 완료)**: v1에서는 별도 카운터 없이 기존 로그의 assistant 레코드 수를 당일 AI 응답 수로 파생해 `/운영현황` DM 요약에 노출한다. 토큰/비용 단위 정밀 집계는 후속 범위로 둔다.
 
 ---
