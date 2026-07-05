@@ -409,12 +409,16 @@ function buildOperatorTodayQueueEmbed(queue = {}) {
 
 function buildOperatorDmChatSummaryEmbed(summary = {}) {
   const counts = summary.counts || {};
+  const tokens = summary.tokens || {};
   const lastMessageLine = summary.lastMessageAt
     ? `마지막 DM 로그: ${formatTransactionDateTime(summary.lastMessageAt)}`
     : '마지막 DM 로그: 오늘 기록 없음';
   const excluded = summary.meta && Number(summary.meta.exampleRecordsExcluded || 0) > 0
     ? `example/demo/sample 데이터 제외 ${summary.meta.exampleRecordsExcluded}건`
     : 'example/demo/sample 데이터 제외 적용';
+  const tokenLine = tokens.hasData
+    ? `오늘 토큰: 입력 ${tokens.input || 0} · 출력 ${tokens.output || 0}`
+    : '오늘 토큰: 집계된 사용량 없음(mock 응답 또는 데이터 없음)';
 
   return createGuideEmbed(
     'DM 대화 현황',
@@ -427,6 +431,7 @@ function buildOperatorDmChatSummaryEmbed(summary = {}) {
       `- user 메시지: ${counts.userMessages || 0}건`,
       `- assistant 응답: ${counts.assistantMessages || 0}건`,
       `- 오늘 AI 응답 수: ${counts.aiResponses || 0}건`,
+      `- ${tokenLine}`,
       '',
       '안전/오류',
       `- 안전 감지: ${counts.safetyDetections || 0}건 (입력 ${counts.inputSafetyDetections || 0}건 / 출력 ${counts.outputSafetyDetections || 0}건)`,
