@@ -9,10 +9,26 @@ const dataFiles = {
   notices: path.join(dataDir, 'notices.json'),
   channels: path.join(dataDir, 'channels.json'),
   testQuestions: path.join(dataDir, 'test-questions.json'),
+  wordPool: path.join(dataDir, 'word-pool.json'),
   webgameLinksExample: path.join(dataDir, 'webgame-links.example.json'),
   webgameScoresExample: path.join(dataDir, 'webgame-scores.example.json'),
   webgameSocialExample: path.join(dataDir, 'webgame-social.example.json'),
 };
+
+const blockedWordPoolTerms = new Set([
+  '자살',
+  '자해',
+  '죽음',
+  '사망',
+  '질병',
+  '부상',
+  '상처',
+  '폭력',
+  '학대',
+  '혐오',
+  '차별',
+  '욕설',
+]);
 
 function fail(message) {
   console.error(`검증 실패: ${message}`);
@@ -123,6 +139,52 @@ function validateTestQuestions(testQuestions) {
   });
 }
 
+function validateWordList(label, words, expectedCount) {
+  const hangulTwoSyllables = /^[가-힣]{2}$/;
+  const seen = new Set();
+
+  if (!Array.isArray(words)) {
+    fail(`${label}는 배열이어야 합니다.`);
+    return null;
+  }
+
+  if (words.length !== expectedCount) {
+    fail(`${label}는 ${expectedCount}개여야 합니다. 현재 ${words.length}개입니다.`);
+  }
+
+  words.forEach((word, index) => {
+    if (typeof word !== 'string' || !hangulTwoSyllables.test(word)) {
+      fail(`${label} ${index + 1}번째 항목은 두 글자 한글이어야 합니다.`);
+    } else if (blockedWordPoolTerms.has(word)) {
+      fail(`${label}에는 상처를 줄 수 있는 단어를 넣을 수 없습니다: ${word}`);
+    } else if (seen.has(word)) {
+      fail(`${label}에 중복 단어가 있습니다: ${word}`);
+    } else {
+      seen.add(word);
+    }
+  });
+
+  return seen;
+}
+
+function validateWordPool(wordPool) {
+  if (!wordPool || typeof wordPool !== 'object' || Array.isArray(wordPool)) {
+    fail('data/word-pool.json은 객체여야 합니다.');
+    return;
+  }
+
+  const answers = validateWordList('data/word-pool.json answers', wordPool.answers, 300);
+  const validGuesses = validateWordList('data/word-pool.json validGuesses', wordPool.validGuesses, 1500);
+
+  if (!answers || !validGuesses) return;
+
+  answers.forEach((answer) => {
+    if (!validGuesses.has(answer)) {
+      fail(`data/word-pool.json answers가 validGuesses에 포함되지 않았습니다: ${answer}`);
+    }
+  });
+}
+
 function isStringOrNull(value) {
   return value === null || typeof value === 'string';
 }
@@ -218,6 +280,7 @@ function main() {
   const notices = readJson('data/notices.json', dataFiles.notices);
   const channels = readJson('data/channels.json', dataFiles.channels);
   const testQuestions = readJson('data/test-questions.json', dataFiles.testQuestions);
+  const wordPool = readJson('data/word-pool.json', dataFiles.wordPool);
   const webgameLinksExample = readJson('data/webgame-links.example.json', dataFiles.webgameLinksExample);
   const webgameScoresExample = readJson('data/webgame-scores.example.json', dataFiles.webgameScoresExample);
   const webgameSocialExample = readJson('data/webgame-social.example.json', dataFiles.webgameSocialExample);
@@ -227,6 +290,7 @@ function main() {
   if (notices) validateNotices(notices);
   if (channels) validateChannels(channels);
   if (testQuestions) validateTestQuestions(testQuestions);
+  if (wordPool) validateWordPool(wordPool);
   if (webgameLinksExample) validateWebgameLinks(webgameLinksExample);
   if (webgameScoresExample) validateWebgameScores(webgameScoresExample);
   if (webgameSocialExample) validateWebgameSocial(webgameSocialExample);
@@ -240,6 +304,7 @@ function main() {
   console.log('data/notices.json 정상');
   console.log('data/channels.json 정상');
   console.log('data/test-questions.json 정상');
+  console.log('data/word-pool.json 정상');
   console.log('data/webgame-links.example.json 정상');
   console.log('data/webgame-scores.example.json 정상');
   console.log('data/webgame-social.example.json 정상');
