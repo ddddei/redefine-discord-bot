@@ -189,6 +189,26 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     return safeLimit ? messages.slice(0, safeLimit) : messages;
   }
 
+  function countRecentUserMessages(userId, sinceDate, now = new Date()) {
+    const sinceMs = sinceDate instanceof Date ? sinceDate.getTime() : new Date(sinceDate).getTime();
+    const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+
+    if (Number.isNaN(sinceMs)) {
+      return 0;
+    }
+
+    const data = load();
+
+    return data.messages.filter((message) => {
+      if (!message || message.userId !== userId || message.role !== 'user') {
+        return false;
+      }
+
+      const messageMs = new Date(message.createdAt).getTime();
+      return !Number.isNaN(messageMs) && messageMs >= sinceMs && messageMs <= nowMs;
+    }).length;
+  }
+
   function countTodayUserMessages(userId, now = new Date()) {
     const dateString = getRecordKoreanDateString(now);
     const data = load();
@@ -249,6 +269,7 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
 
   return {
     appendMessage,
+    countRecentUserMessages,
     countTodayUserMessages,
     getHistoryResetAt,
     hasNotice,

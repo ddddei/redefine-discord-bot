@@ -3,7 +3,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { ChannelType } = require('discord.js');
-const { handleDmChatMessage } = require('../src/dmChat');
+const {
+  BURST_LIMIT_FALLBACK,
+  NON_MEMBER_NOTICE,
+  handleDmChatMessage,
+  resetDmChatAccessControlStateForTest,
+} = require('../src/dmChat');
 const {
   resetDmChatSafetyAlertThrottleForTest,
   sendDmChatSafetyAlert,
@@ -30,11 +35,11 @@ function createClient() {
   };
 }
 
-function createDmMessage(content, sentMessages = []) {
+function createDmMessage(content, sentMessages = [], authorId = 'participant_dm_test') {
   return {
     content,
     author: {
-      id: 'participant_dm_test',
+      id: authorId,
       username: 'participant_dm',
       globalName: '참가자 DM',
       bot: false,
@@ -45,6 +50,41 @@ function createDmMessage(content, sentMessages = []) {
         sentMessages.push(payload);
         return payload;
       },
+      sendTyping: async () => true,
+    },
+  };
+}
+
+function createGuildClient({ memberIds = [], failMembersFetch = false } = {}) {
+  const sentLogs = [];
+  const memberSet = new Set(memberIds);
+
+  return {
+    sentLogs,
+    channels: {
+      fetch: async () => ({
+        send: async (payload) => {
+          sentLogs.push(payload);
+          return payload;
+        },
+      }),
+    },
+    guilds: {
+      cache: new Map(),
+      fetch: async () => ({
+        members: {
+          cache: new Map(),
+          fetch: async (userId) => {
+            if (failMembersFetch) {
+              throw new Error('member fetch failed (test)');
+            }
+            if (memberSet.has(userId)) {
+              return { id: userId };
+            }
+            return null;
+          },
+        },
+      }),
     },
   };
 }
@@ -108,6 +148,9 @@ async function main() {
     SAFETY_ALERT_CHANNEL_ID: process.env.SAFETY_ALERT_CHANNEL_ID,
     SAFETY_ALERT_THROTTLE_MINUTES: process.env.SAFETY_ALERT_THROTTLE_MINUTES,
     LOG_CHANNEL_ID: process.env.LOG_CHANNEL_ID,
+    GUILD_ID: process.env.GUILD_ID,
+    DM_CHAT_MEMBER_ONLY: process.env.DM_CHAT_MEMBER_ONLY,
+    DM_CHAT_BURST_LIMIT_PER_MINUTE: process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE,
   };
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-chat-'));
   const logPath = path.join(tempDir, 'dm-chat-logs.json');
@@ -406,6 +449,195 @@ async function main() {
     const normalizedVersionTwoData = readJson(versionTwoPath);
     assert.strictEqual(normalizedVersionTwoData.version, 3);
     assert.strictEqual(normalizedVersionTwoData.historyResets.length, 1);
+
+    // --- 작업 A: 서버 멤버 확인 ---
+    process.env.AI_PROVIDER = 'mock';
+    process.env.AI_MODEL = '';
+    process.env.DM_CHAT_DAILY_LIMIT = '30';
+    process.env.GUILD_ID = 'guild_test';
+    process.env.DM_CHAT_MEMBER_ONLY = 'true';
+    resetDmChatAccessControlStateForTest();
+    resetDmChatSafetyAlertThrottleForTest();
+
+    const memberRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-member-logs.json'));
+    const nonMemberClient = createGuildClient({ memberIds: [] });
+    const nonMemberMessagesFirst = [];
+    const nonMemberHandledFirst = await handleDmChatMessage(
+      createDmMessage('안녕하세요, 비멤버입니다', nonMemberMessagesFirst, 'non_member_user'),
+      nonMemberClient,
+      { repository: memberRepository }
+    );
+    assert.strictEqual(nonMemberHandledFirst, true);
+    assert.strictEqual(nonMemberMessagesFirst.length, 1);
+    assert.strictEqual(nonMemberMessagesFirst[0], NON_MEMBER_NOTICE);
+
+    const nonMemberMessagesSecond = [];
+    await handleDmChatMessage(
+      createDmMessage('또 보냅니다', nonMemberMessagesSecond, 'non_member_user'),
+      nonMemberClient,
+      { repository: memberRepository }
+    );
+    assert.strictEqual(nonMemberMessagesSecond.length, 0, '비멤버는 두 번째부터 침묵해야 합니다.');
+
+    assert.strictEqual(fs.existsSync(path.join(tempDir, 'dm-chat-member-logs.json')), false, '비멤버 메시지는 기록/AI 호출 대상이 아닙니다.');
+
+    // 민감 표현을 보낸 비멤버도 감지·알림 대상이 아니다(계획서 1.1 예외).
+    resetDmChatAccessControlStateForTest();
+    const nonMemberSensitiveMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('계속 괴롭힘을 당하고 있어요', nonMemberSensitiveMessages, 'non_member_sensitive_user'),
+      nonMemberClient,
+      { repository: memberRepository }
+    );
+    assert.strictEqual(nonMemberSensitiveMessages.length, 1);
+    assert.strictEqual(nonMemberSensitiveMessages[0], NON_MEMBER_NOTICE);
+    assert.strictEqual(fs.existsSync(path.join(tempDir, 'dm-chat-member-logs.json')), false);
+
+    // 멤버 확인 API 오류는 허용 쪽 폴백
+    resetDmChatAccessControlStateForTest();
+    const failingMembersClient = createGuildClient({ failMembersFetch: true });
+    const fallbackMessages = [];
+    const fallbackHandled = await handleDmChatMessage(
+      createDmMessage('멤버 확인 실패 상황', fallbackMessages, 'fallback_user'),
+      failingMembersClient,
+      { repository: memberRepository }
+    );
+    assert.strictEqual(fallbackHandled, true);
+    assert.ok(fallbackMessages.length >= 1);
+    assert.match(fallbackMessages[0], /운영진이 확인할 수 있어요/);
+
+    // 정상 멤버는 평소대로 응답
+    resetDmChatAccessControlStateForTest();
+    const memberClient = createGuildClient({ memberIds: ['real_member_user'] });
+    const memberMessages = [];
+    const memberHandled = await handleDmChatMessage(
+      createDmMessage('저는 서버 멤버예요', memberMessages, 'real_member_user'),
+      memberClient,
+      { repository: memberRepository }
+    );
+    assert.strictEqual(memberHandled, true);
+    assert.strictEqual(memberMessages.length, 2);
+    assert.match(memberMessages[1], /짧게 연습/);
+
+    // DM_CHAT_MEMBER_ONLY=false로 개별 해제 가능해야 한다.
+    resetDmChatAccessControlStateForTest();
+    process.env.DM_CHAT_MEMBER_ONLY = 'false';
+    const disabledMemberCheckClient = createGuildClient({ memberIds: [] });
+    const disabledMemberCheckMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('멤버 확인이 꺼진 상태', disabledMemberCheckMessages, 'no_member_check_user'),
+      disabledMemberCheckClient,
+      { repository: memberRepository }
+    );
+    assert.strictEqual(disabledMemberCheckMessages.length, 2, 'DM_CHAT_MEMBER_ONLY=false면 비멤버도 응답을 받는다.');
+    process.env.DM_CHAT_MEMBER_ONLY = 'true';
+    delete process.env.GUILD_ID;
+    resetDmChatAccessControlStateForTest();
+
+    // --- 작업 A: 분당 버스트 제한 ---
+    process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE = '2';
+    const burstRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-burst-logs.json'));
+    const burstClient = createClient();
+
+    for (let index = 0; index < 2; index += 1) {
+      const burstMessages = [];
+      // eslint-disable-next-line no-await-in-loop
+      await handleDmChatMessage(
+        createDmMessage(`빠르게 보내는 메시지 ${index}`, burstMessages, 'burst_user'),
+        burstClient,
+        { repository: burstRepository }
+      );
+      const expectedLength = index === 0 ? 2 : 1; // 첫 메시지에는 첫 안내가 함께 전송된다.
+      assert.strictEqual(burstMessages.length, expectedLength, `초과 전 ${index}번째 메시지는 정상 응답해야 합니다.`);
+    }
+
+    const burstOverMessagesFirst = [];
+    await handleDmChatMessage(
+      createDmMessage('세 번째 빠른 메시지', burstOverMessagesFirst, 'burst_user'),
+      burstClient,
+      { repository: burstRepository }
+    );
+    assert.strictEqual(burstOverMessagesFirst.length, 1);
+    assert.strictEqual(burstOverMessagesFirst[0], BURST_LIMIT_FALLBACK);
+
+    const burstOverMessagesSecond = [];
+    await handleDmChatMessage(
+      createDmMessage('네 번째 빠른 메시지', burstOverMessagesSecond, 'burst_user'),
+      burstClient,
+      { repository: burstRepository }
+    );
+    assert.strictEqual(burstOverMessagesSecond.length, 0, '분당 제한 안내는 1분에 1회만 발송해야 합니다.');
+
+    // 분당 제한 상태에서도 민감 메시지는 안전 알림 흐름을 그대로 수행한다.
+    const burstSensitiveMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('계속 괴롭힘을 당하고 있어요', burstSensitiveMessages, 'burst_user'),
+      burstClient,
+      { repository: burstRepository }
+    );
+    assert.strictEqual(burstSensitiveMessages.length, 1);
+    assert.match(burstSensitiveMessages[0], /운영진 확인/);
+
+    process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE = '0';
+    const burstDisabledMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('제한이 꺼진 상태에서 계속 보내기', burstDisabledMessages, 'burst_user'),
+      burstClient,
+      { repository: burstRepository }
+    );
+    assert.strictEqual(burstDisabledMessages.length, 1, 'DM_CHAT_BURST_LIMIT_PER_MINUTE=0이면 제한이 해제됩니다.');
+    process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE = '5';
+
+    // --- 작업 A: 사용자별 순차 처리 ---
+    const sequentialRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-sequential-logs.json'));
+    const sequentialClient = createClient();
+    const callOrder = [];
+    let releaseFirst;
+    const firstGate = new Promise((resolve) => {
+      releaseFirst = resolve;
+    });
+    const sequentialOpenAiClient = {
+      responses: {
+        create: async (payload) => {
+          const text = payload.input[payload.input.length - 1].content;
+          if (text.includes('첫 번째')) {
+            callOrder.push('start-1');
+            await firstGate;
+            callOrder.push('end-1');
+            return { output_text: '첫 응답' };
+          }
+          callOrder.push('start-2');
+          callOrder.push('end-2');
+          return { output_text: '두 번째 응답' };
+        },
+      },
+    };
+    process.env.AI_PROVIDER = 'openai';
+    process.env.AI_MODEL = 'test-model';
+
+    const sequentialMessagesA = [];
+    const sequentialMessagesB = [];
+    const firstCallPromise = handleDmChatMessage(
+      createDmMessage('첫 번째 메시지', sequentialMessagesA, 'sequential_user'),
+      sequentialClient,
+      { repository: sequentialRepository, ai: { openaiClient: sequentialOpenAiClient } }
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const secondCallPromise = handleDmChatMessage(
+      createDmMessage('두 번째 메시지', sequentialMessagesB, 'sequential_user'),
+      sequentialClient,
+      { repository: sequentialRepository, ai: { openaiClient: sequentialOpenAiClient } }
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    releaseFirst();
+    await Promise.all([firstCallPromise, secondCallPromise]);
+
+    assert.deepStrictEqual(callOrder, ['start-1', 'end-1', 'start-2', 'end-2'], '같은 사용자의 두 번째 AI 호출은 첫 번째 완료 후 순차 실행되어야 합니다.');
+    assert.match(sequentialMessagesA[sequentialMessagesA.length - 1], /첫 응답/);
+    assert.match(sequentialMessagesB[sequentialMessagesB.length - 1], /두 번째 응답/);
+
+    process.env.AI_PROVIDER = 'mock';
+    process.env.AI_MODEL = '';
   } finally {
     for (const [key, value] of Object.entries(previousEnv)) {
       if (value === undefined) {

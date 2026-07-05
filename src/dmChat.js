@@ -25,6 +25,128 @@ const DAILY_LIMIT_FALLBACK = '오늘은 연습을 충분히 했어요. 내일 �
 const OUTPUT_SAFETY_FALLBACK = '지금은 답변을 만들지 못했어요. 잠시 후 다시 말을 걸어 주세요.';
 const HISTORY_RESET_TRIGGER = '새로 시작';
 const HISTORY_RESET_CONFIRMATION = '좋아요, 새 마음으로 다시 시작해요. 편하게 말을 걸어 주세요.';
+const NON_MEMBER_NOTICE = '이 DM 연습은 리디파인 참여자에게 열려 있어요.';
+const BURST_LIMIT_FALLBACK = '조금 천천히 이야기해요. 잠시 후 다시 보내 주세요.';
+const DEFAULT_BURST_LIMIT_PER_MINUTE = 5;
+const BURST_WINDOW_MS = 60 * 1000;
+
+const nonMemberNoticeSent = new Set();
+const burstLimitLastNoticeAt = new Map();
+const userProcessingChains = new Map();
+
+function getMemberCache() {
+  if (!global.__dmChatMemberCache) {
+    global.__dmChatMemberCache = new Map();
+  }
+  return global.__dmChatMemberCache;
+}
+
+const MEMBER_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function isMemberOnlyEnabled() {
+  return process.env.DM_CHAT_MEMBER_ONLY !== 'false';
+}
+
+async function isGuildMember(client, userId) {
+  const guildId = process.env.GUILD_ID;
+
+  if (!guildId) {
+    return true;
+  }
+
+  const cache = getMemberCache();
+  const cached = cache.get(userId);
+  const now = Date.now();
+
+  if (cached && now - cached.checkedAt < MEMBER_CACHE_TTL_MS) {
+    return cached.isMember;
+  }
+
+  try {
+    const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId);
+
+    if (!guild) {
+      console.warn('[dm-chat] member check: guild not found, falling back to allow.');
+      return true;
+    }
+
+    let member = guild.members.cache.get(userId);
+
+    if (!member) {
+      member = await guild.members.fetch(userId).catch((error) => {
+        // Discord의 "알 수 없는 멤버" 오류는 정상적인 비멤버 판정이다.
+        // 그 외 오류(네트워크/권한 등)는 상위 catch로 전달해 허용 쪽으로 폴백한다.
+        if (error && (error.code === 10007 || error.code === 'UNKNOWN_MEMBER')) {
+          return null;
+        }
+        throw error;
+      });
+    }
+
+    const isMember = Boolean(member);
+    cache.set(userId, { isMember, checkedAt: now });
+    return isMember;
+  } catch (error) {
+    console.warn('[dm-chat] member check failed, falling back to allow:', error.message);
+    return true;
+  }
+}
+
+function getBurstLimitPerMinute() {
+  const parsed = Number.parseInt(process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE || `${DEFAULT_BURST_LIMIT_PER_MINUTE}`, 10);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return DEFAULT_BURST_LIMIT_PER_MINUTE;
+  }
+
+  return parsed;
+}
+
+function isBurstLimitReached(repository, userId, now = new Date()) {
+  const limit = getBurstLimitPerMinute();
+
+  if (limit <= 0) {
+    return false;
+  }
+
+  if (!repository || typeof repository.countRecentUserMessages !== 'function') {
+    return false;
+  }
+
+  const since = new Date(now.getTime() - BURST_WINDOW_MS);
+  return repository.countRecentUserMessages(userId, since, now) > limit;
+}
+
+function shouldSendBurstNotice(userId, now = Date.now()) {
+  const lastSentAt = burstLimitLastNoticeAt.get(userId);
+
+  if (lastSentAt && now - lastSentAt < BURST_WINDOW_MS) {
+    return false;
+  }
+
+  burstLimitLastNoticeAt.set(userId, now);
+  return true;
+}
+
+function runSequential(userId, task) {
+  const previous = userProcessingChains.get(userId) || Promise.resolve();
+  const next = previous.then(task, task);
+  const settled = next.catch(() => {});
+  userProcessingChains.set(userId, settled);
+  settled.finally(() => {
+    if (userProcessingChains.get(userId) === settled) {
+      userProcessingChains.delete(userId);
+    }
+  });
+  return next;
+}
+
+function resetDmChatAccessControlStateForTest() {
+  nonMemberNoticeSent.clear();
+  burstLimitLastNoticeAt.clear();
+  userProcessingChains.clear();
+  getMemberCache().clear();
+}
 
 function isDmChatEnabled() {
   return process.env.DM_CHAT_ENABLED === 'true';
@@ -166,6 +288,58 @@ async function handleHistoryResetMessage(message, client, repository, userRecord
   await sendDirectMessage(message, HISTORY_RESET_CONFIRMATION);
 }
 
+async function generateAndSendAiReply(message, client, repository, userRecord, userMessageRecord) {
+  const historyLimit = Number.parseInt(process.env.DM_CHAT_HISTORY_LIMIT || '8', 10);
+  const history = repository.listRecentMessages(userRecord.id, historyLimit)
+    .filter((record) => record.id !== userMessageRecord.id);
+
+  try {
+    const result = await getDmChatReply({
+      message: message.content,
+      history,
+      userDisplayName: userRecord.displayName,
+    }, message.__dmChatAiOptions || {});
+    const reply = result && typeof result === 'object' ? result.text : result;
+    const usage = result && typeof result === 'object' ? result.usage : null;
+    const outputDetection = reply ? detectSensitiveQuestion(reply) : null;
+    const safeReply = outputDetection ? OUTPUT_SAFETY_FALLBACK : reply || CONFIGURATION_FALLBACK;
+    const assistantRecord = repository.appendMessage({
+      userId: userRecord.id,
+      username: userRecord.username,
+      displayName: userRecord.displayName,
+      role: 'assistant',
+      content: safeReply,
+      safetyDetection: outputDetection,
+      safetyDetectionSource: outputDetection ? 'output' : null,
+      tokens: usage,
+    });
+
+    await logAndNotify(client, repository, assistantRecord);
+    await sendDmChatReply(message, safeReply);
+    console.info(`[dm-chat] replied to user=${userRecord.id}`);
+    return true;
+  } catch (error) {
+    const fallback = '지금은 답변을 만드는 중에 문제가 생겼어요. 잠시 후 다시 말을 걸어 주세요.';
+    const assistantRecord = repository.appendMessage({
+      userId: userRecord.id,
+      username: userRecord.username,
+      displayName: userRecord.displayName,
+      role: 'assistant',
+      content: fallback,
+      error: error.message,
+    });
+
+    await logAndNotify(client, repository, assistantRecord);
+    await sendDirectMessage(message, fallback);
+    console.warn('DM 대화 응답 생성 실패:', error.message);
+    return true;
+  }
+}
+
+async function sendDmChatReply(message, content) {
+  await sendDirectMessage(message, content);
+}
+
 async function handleDmChatMessage(message, client, options = {}) {
   if (!isDirectUserDm(message)) {
     return false;
@@ -178,6 +352,21 @@ async function handleDmChatMessage(message, client, options = {}) {
 
   const repository = options.repository || createDmChatRepository();
   const userRecord = createUserRecord(message);
+
+  if (isMemberOnlyEnabled()) {
+    const isMember = await isGuildMember(client, userRecord.id);
+
+    if (!isMember) {
+      if (!nonMemberNoticeSent.has(userRecord.id)) {
+        nonMemberNoticeSent.add(userRecord.id);
+        await sendDirectMessage(message, NON_MEMBER_NOTICE);
+        console.info(`[dm-chat] non-member DM from user=${userRecord.id}, sent notice once and will stay silent.`);
+      } else {
+        console.info(`[dm-chat] non-member DM from user=${userRecord.id}, staying silent.`);
+      }
+      return true;
+    }
+  }
 
   if (!isDirectUserMessage(message)) {
     console.warn(`[dm-chat] received DM event from user=${userRecord.id} but message content is empty. Check Discord Message Content Intent and DM payload permissions.`);
@@ -206,12 +395,32 @@ async function handleDmChatMessage(message, client, options = {}) {
   await logAndNotify(client, repository, userMessageRecord);
 
   if (detection) {
+    // 안전 흐름은 어떤 제한(분당/순차 처리 포함)보다 우선한다.
     await handleSensitiveDmMessage(message, client, repository, userRecord, detection, userMessageRecord);
     return true;
   }
 
   if (message.content.trim() === HISTORY_RESET_TRIGGER) {
     await handleHistoryResetMessage(message, client, repository, userRecord, userMessageRecord);
+    return true;
+  }
+
+  if (isBurstLimitReached(repository, userRecord.id)) {
+    console.info(`[dm-chat] burst limit reached for user=${userRecord.id}`);
+
+    if (shouldSendBurstNotice(userRecord.id)) {
+      const assistantRecord = repository.appendMessage({
+        userId: userRecord.id,
+        username: userRecord.username,
+        displayName: userRecord.displayName,
+        role: 'assistant',
+        content: BURST_LIMIT_FALLBACK,
+      });
+
+      await logAndNotify(client, repository, assistantRecord);
+      await sendDirectMessage(message, BURST_LIMIT_FALLBACK);
+    }
+
     return true;
   }
 
@@ -230,57 +439,31 @@ async function handleDmChatMessage(message, client, options = {}) {
     return true;
   }
 
-  const historyLimit = Number.parseInt(process.env.DM_CHAT_HISTORY_LIMIT || '8', 10);
-  const history = repository.listRecentMessages(userRecord.id, historyLimit)
-    .filter((record) => record.id !== userMessageRecord.id);
+  message.__dmChatAiOptions = options.ai || {};
 
   try {
-    const reply = await getDmChatReply({
-      message: message.content,
-      history,
-      userDisplayName: userRecord.displayName,
-    }, options.ai || {});
-    const outputDetection = reply ? detectSensitiveQuestion(reply) : null;
-    const safeReply = outputDetection ? OUTPUT_SAFETY_FALLBACK : reply || CONFIGURATION_FALLBACK;
-    const assistantRecord = repository.appendMessage({
-      userId: userRecord.id,
-      username: userRecord.username,
-      displayName: userRecord.displayName,
-      role: 'assistant',
-      content: safeReply,
-      safetyDetection: outputDetection,
-      safetyDetectionSource: outputDetection ? 'output' : null,
-    });
-
-    await logAndNotify(client, repository, assistantRecord);
-    await sendDirectMessage(message, safeReply);
-    console.info(`[dm-chat] replied to user=${userRecord.id}`);
-    return true;
+    await message.channel.sendTyping();
   } catch (error) {
-    const fallback = '지금은 답변을 만드는 중에 문제가 생겼어요. 잠시 후 다시 말을 걸어 주세요.';
-    const assistantRecord = repository.appendMessage({
-      userId: userRecord.id,
-      username: userRecord.username,
-      displayName: userRecord.displayName,
-      role: 'assistant',
-      content: fallback,
-      error: error.message,
-    });
-
-    await logAndNotify(client, repository, assistantRecord);
-    await sendDirectMessage(message, fallback);
-    console.warn('DM 대화 응답 생성 실패:', error.message);
-    return true;
+    // 타이핑 표시 실패는 무시한다 (응답 자체에는 영향 없음).
   }
+
+  await runSequential(userRecord.id, () => (
+    generateAndSendAiReply(message, client, repository, userRecord, userMessageRecord)
+  ));
+
+  return true;
 }
 
 module.exports = {
+  BURST_LIMIT_FALLBACK,
   FIRST_NOTICE,
   HISTORY_RESET_CONFIRMATION,
   HISTORY_RESET_TRIGGER,
+  NON_MEMBER_NOTICE,
   getDmChatConfigurationStatus,
   handleDmChatMessage,
   isDirectUserDm,
   isDirectUserMessage,
   logDmChatConfiguration,
+  resetDmChatAccessControlStateForTest,
 };
