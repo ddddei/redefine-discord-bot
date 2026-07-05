@@ -420,6 +420,8 @@ async function handleSensitiveDmMessage(message, client, repository, userRecord,
 }
 
 async function handleHistoryResetMessage(message, client, repository, userRecord, userMessageRecord) {
+  // '새로 시작'은 진행 중이던 연습 시나리오도 함께 해제한다 (계획서 5.1).
+  repository.clearActiveScenario(userRecord.id);
   repository.recordHistoryReset(userRecord, userMessageRecord.createdAt);
 
   const assistantRecord = repository.appendMessage({
@@ -523,13 +525,17 @@ async function handleRecapMessage(message, client, repository, userRecord) {
     }, message.__dmChatAiOptions || {});
     const recapText = result && typeof result === 'object' ? result.text : result;
     const usage = result && typeof result === 'object' ? result.usage : null;
-    const safeRecap = recapText || RECAP_EMPTY_MESSAGE;
+    // 리캡도 AI 출력이므로 일반 응답과 동일한 출력 안전 검사를 거친다.
+    const outputDetection = recapText ? detectSensitiveQuestion(recapText) : null;
+    const safeRecap = outputDetection ? OUTPUT_SAFETY_FALLBACK : (recapText || RECAP_EMPTY_MESSAGE);
     const assistantRecord = repository.appendMessage({
       userId: userRecord.id,
       username: userRecord.username,
       displayName: userRecord.displayName,
       role: 'assistant',
       content: safeRecap,
+      safetyDetection: outputDetection,
+      safetyDetectionSource: outputDetection ? 'output' : null,
       tokens: usage,
     });
 
@@ -655,6 +661,9 @@ async function handleDmChatMessage(message, client, options = {}) {
 
   console.info(`[dm-chat] received DM from user=${userRecord.id}`);
 
+  // AI 옵션 주입은 리캡 경로도 사용하므로 트리거 분기보다 먼저 설정한다.
+  message.__dmChatAiOptions = options.ai || {};
+
   if (!repository.hasNotice(userRecord.id)) {
     await sendDirectMessage(message, buildFirstNotice());
     repository.recordNotice(userRecord);
@@ -757,8 +766,6 @@ async function handleDmChatMessage(message, client, options = {}) {
     console.info(`[dm-chat] daily limit reached for user=${userRecord.id}`);
     return true;
   }
-
-  message.__dmChatAiOptions = options.ai || {};
 
   try {
     await message.channel.sendTyping();

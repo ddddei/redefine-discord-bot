@@ -912,6 +912,55 @@ async function main() {
     process.env.AI_MODEL = '';
     resetDmChatAccessControlStateForTest();
 
+    // --- 리뷰 보강: '새로 시작'은 진행 중 시나리오도 해제한다 ---
+    const resetScenarioRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-reset-scenario-logs.json'));
+    const resetScenarioClient = createClient();
+    await handleDmChatMessage(
+      createDmMessage('연습: 첫인사', [], 'reset_scenario_user'),
+      resetScenarioClient,
+      { repository: resetScenarioRepository }
+    );
+    assert.ok(resetScenarioRepository.getActiveScenario('reset_scenario_user'));
+    await handleDmChatMessage(
+      createDmMessage('새로 시작', [], 'reset_scenario_user'),
+      resetScenarioClient,
+      { repository: resetScenarioRepository }
+    );
+    assert.strictEqual(
+      resetScenarioRepository.getActiveScenario('reset_scenario_user'),
+      null,
+      "'새로 시작' 후에는 진행 중이던 시나리오가 해제되어야 합니다."
+    );
+
+    // --- 리뷰 보강: 리캡 출력에도 안전 검사가 적용된다 ---
+    process.env.AI_PROVIDER = 'openai';
+    process.env.AI_MODEL = 'test-model';
+    const recapSafetyRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-recap-safety-logs.json'));
+    const recapSafetyClient = createClient();
+    const recapSafetyAiClient = createOpenAiClient('오늘 대화 좋았어요.');
+    await handleDmChatMessage(
+      createDmMessage('가볍게 인사 연습을 했어요', [], 'recap_safety_user'),
+      recapSafetyClient,
+      { repository: recapSafetyRepository, ai: { openaiClient: recapSafetyAiClient } }
+    );
+    const recapSafetyOutputClient = createOpenAiClient('자해하고 싶다는 말을 정리에 그대로 담으면 안 됩니다.');
+    const recapSafetyMessages = [];
+    await handleDmChatMessage(
+      createDmMessage('오늘 연습 정리', recapSafetyMessages, 'recap_safety_user'),
+      recapSafetyClient,
+      { repository: recapSafetyRepository, ai: { openaiClient: recapSafetyOutputClient } }
+    );
+    assert.strictEqual(recapSafetyMessages.length, 1);
+    assert.match(recapSafetyMessages[0], /답변을 만들지 못했어요/, '민감 키워드가 든 리캡은 대체 안내로 바뀌어야 합니다.');
+    const recapSafetyData = readJson(path.join(tempDir, 'dm-chat-recap-safety-logs.json'));
+    const recapSafetyRecord = recapSafetyData.messages
+      .filter((record) => record.userId === 'recap_safety_user' && record.role === 'assistant')
+      .slice(-1)[0];
+    assert.strictEqual(recapSafetyRecord.safetyDetectionSource, 'output');
+    process.env.AI_PROVIDER = 'mock';
+    process.env.AI_MODEL = '';
+    resetDmChatAccessControlStateForTest();
+
     // --- 작업 E: activeScenarios는 다음 날(KST) 자동 해제된다 ---
     const scenarioResetRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-scenario-reset-logs.json'));
     scenarioResetRepository.setActiveScenario('scenario_reset_user', 'greeting', '2026-07-01T00:00:00.000Z');
