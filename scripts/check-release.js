@@ -204,6 +204,16 @@ const checks = [
     args: ['--check', 'public/deck/game.js'],
   },
   {
+    label: 'public/word/logic.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/word/logic.js'],
+  },
+  {
+    label: 'public/word/game.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/word/game.js'],
+  },
+  {
     label: 'src/exportUtils.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/exportUtils.js'],
@@ -414,6 +424,16 @@ const checks = [
     args: ['--check', 'scripts/test-webgame-social-api.js'],
   },
   {
+    label: 'scripts/test-word-logic.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-word-logic.js'],
+  },
+  {
+    label: 'scripts/test-word-api.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-word-api.js'],
+  },
+  {
     label: 'jsonStorage smoke test',
     command: 'node',
     args: ['scripts/test-json-storage.js'],
@@ -582,6 +602,16 @@ const checks = [
     label: 'deck logic smoke test',
     command: 'node',
     args: ['scripts/test-deck-logic.js'],
+  },
+  {
+    label: 'word logic smoke test',
+    command: 'node',
+    args: ['scripts/test-word-logic.js'],
+  },
+  {
+    label: 'word api smoke test',
+    command: 'node',
+    args: ['scripts/test-word-api.js'],
   },
   {
     label: 'deck static smoke test',
