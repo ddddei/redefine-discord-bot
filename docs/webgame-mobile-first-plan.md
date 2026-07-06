@@ -1,6 +1,8 @@
 # 웹게임 3종 모바일 퍼스트 하드닝 계획서 (Codex 실행용)
 
-매치3(`public/match3/`)·방치형(`public/idle/`)·덱(`public/deck/`)의 주 사용 기기가 **모바일**로 확정됨(2026-07-04 운영 결정, 생존전은 데스크톱 전용 — 별도 트랙)에 따른 하드닝 계획입니다. 구현 전 [AGENTS.md](../AGENTS.md), [src/AGENTS.md](../src/AGENTS.md), [scripts/AGENTS.md](../scripts/AGENTS.md), [webgame-design-guide.md](webgame-design-guide.md)를 먼저 읽어 주세요.
+매치3(`public/match3/`)·방치형(`public/idle/`)·덱(`public/deck/`)의 주 사용 기기가 **모바일**로 확정됨(2026-07-04 운영 결정)에 따른 하드닝 계획입니다. 구현 전 [AGENTS.md](../AGENTS.md), [src/AGENTS.md](../src/AGENTS.md), [scripts/AGENTS.md](../scripts/AGENTS.md), [webgame-design-guide.md](webgame-design-guide.md)를 먼저 읽어 주세요.
+
+생존전(`public/dungeonworld-survivors/`)은 이 계획서 작성 시점(2026-07-04)에는 데스크톱 전용이었으나, 고도화 v1(2026-07-06 - [survivors-improvement-plan.md](survivors-improvement-plan.md) 2절)에서 가상 스틱·safe-area·viewport-fit 등 모바일 대응이 추가되어 별도 트랙으로 처리됐습니다. 이 문서의 범위(3종)는 그대로 유지합니다.
 
 - 선행: PR #60(디자인 v3) 머지 후 `main`에서 브랜치 `feat/webgame-mobile-first-v1`
 - 게임 로직 무변경 원칙 유지: `board.js`/`engine.js`/`content.js` 수정 금지, 로직 스모크 테스트 3본 무수정 통과. **단 하나의 예외 없음** — 스와이프 입력도 기존 로직 함수 호출로만 구현한다.

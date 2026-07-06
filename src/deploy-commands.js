@@ -90,7 +90,8 @@ const commands = [
         .addChoices(
           { name: '간식 맞추기', value: 'match3' },
           { name: '간식 수호대', value: 'deck' },
-          { name: '간식 공방 키우기', value: 'idle' }
+          { name: '간식 공방 키우기', value: 'idle' },
+          { name: '검은 종 생존전', value: 'survivors' }
         )
     )
     .addStringOption((option) =>

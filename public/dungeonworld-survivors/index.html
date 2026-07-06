@@ -2,15 +2,17 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#090a09">
     <meta
       name="description"
       content="프로젝트 리디파인 던전월드 세계관을 바탕으로 한 반복 플레이형 브라우저 로그라이크 생존전입니다."
     >
     <title>검은 종 생존전</title>
+    <link rel="stylesheet" href="../shared/game-ui.css">
     <link rel="stylesheet" href="./styles.css">
   </head>
-  <body>
+  <body style="background-color: #090a09;">
     <header class="page-header">
       <div>
         <p class="kicker">Dungeon World survivor run</p>
@@ -22,6 +24,10 @@
       <div class="header-actions">
         <button id="start-button" class="button primary" type="button">시작</button>
         <button id="pause-button" class="button secondary" type="button" disabled>일시정지</button>
+        <label class="damage-number-toggle">
+          <input type="checkbox" id="damage-numbers-toggle" checked>
+          데미지 숫자 표시
+        </label>
       </div>
     </header>
 
@@ -54,7 +60,13 @@
             이 게임은 HTML canvas를 지원하는 브라우저에서 플레이할 수 있습니다.
           </canvas>
           <div id="qa-panel" class="qa-panel hidden" aria-live="polite"></div>
+          <div id="virtual-stick-zone" class="virtual-stick-zone" aria-hidden="true">
+            <div id="virtual-stick-base" class="virtual-stick-base hidden">
+              <div id="virtual-stick-knob" class="virtual-stick-knob"></div>
+            </div>
+          </div>
         </div>
+        <p class="orientation-hint">화면이 좁으면 기기를 가로로 돌리면 더 넓게 보입니다. 세로 모드에서도 플레이할 수 있습니다.</p>
       </section>
 
       <aside class="side-panel" aria-label="게임 상태">
@@ -102,9 +114,11 @@
         <p id="modal-kicker" class="kicker">준비</p>
         <h2 id="modal-title">검은 종이 울립니다</h2>
         <p id="modal-copy">
-          마지막 웨이브의 검은 종 파수꾼을 쓰러뜨리면 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.
+          마지막 웨이브의 검은 종 파수꾼을 쓰러뜨리면 문이 열립니다. 포인트는 지급되지 않습니다.
         </p>
         <div id="upgrade-options" class="upgrade-options"></div>
+        <div id="survivors-link-section" class="survivors-gk-section"></div>
+        <div id="survivors-ranking-section" class="survivors-gk-section"></div>
         <div class="modal-actions">
           <button id="modal-primary" class="button primary" type="button">시작</button>
           <button id="modal-secondary" class="button secondary" type="button">닫기</button>
@@ -112,7 +126,9 @@
       </div>
     </div>
 
+    <script src="../shared/link.js"></script>
     <script src="./content.js"></script>
+    <script src="./meta.js"></script>
     <script src="./systems.js"></script>
     <script src="./renderer.js"></script>
     <script src="./game.js"></script>

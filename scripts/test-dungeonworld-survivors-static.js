@@ -9,6 +9,7 @@ const REQUIRED_FILES = [
   'index.html',
   'styles.css',
   'content.js',
+  'meta.js',
   'systems.js',
   'renderer.js',
   'game.js',
@@ -195,7 +196,8 @@ function testRunModesAndStandardTimeline() {
   const quick = systems.createState(content, 'fighter', { mode: 'quick' });
   const standard = systems.createState(content, 'fighter', { mode: 'standard' });
 
-  assert.strictEqual(defaultRun.mode.id, 'standard');
+  // 세션 구조 고도화(계획서 4절): 기본 URL/모드가 10분 퀵 런으로 바뀌었다(구 기본값 standard).
+  assert.strictEqual(defaultRun.mode.id, 'quick');
   assert.strictEqual(demo.mode.id, 'demo');
   assert.strictEqual(demo.mode.label, '4분 데모');
   assert.strictEqual(demo.duration, 240);
@@ -732,6 +734,175 @@ function testClassUltimatesAndBuildNames() {
   assert.match(thiefSummary.buildName, /그림자 칼비꾼|칼날 박자/);
 }
 
+function testMobileHardeningAndSilence() {
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('viewport-fit=cover'), 'viewport meta should include viewport-fit=cover');
+  assert.ok(html.includes('theme-color'), 'theme-color meta should exist');
+  assert.ok(html.includes('background-color: #090a09'), 'body should inline background color to avoid white flash');
+  assert.ok(html.includes('virtual-stick-zone'), 'virtual stick zone element should exist');
+  assert.ok(html.includes('virtual-stick-base'));
+  assert.ok(html.includes('virtual-stick-knob'));
+  assert.ok(html.includes('orientation-hint'), 'landscape recommendation copy should exist');
+
+  const styles = readGameFile('styles.css');
+  assert.ok(styles.includes('100dvh'), 'dvh unit should be used for viewport height');
+  assert.ok(!styles.includes('background-attachment: fixed'), 'iOS-problematic fixed background should not be used');
+  assert.ok(styles.includes('env(safe-area-inset-bottom'), 'safe-area padding should exist');
+  assert.ok(styles.includes('.virtual-stick-zone'));
+  assert.ok(styles.includes('.virtual-stick-base'));
+  assert.ok(styles.includes('.virtual-stick-knob'));
+
+  const game = readGameFile('game.js');
+  assert.ok(game.includes('setPointerCapture'), 'virtual stick should use Pointer Events with setPointerCapture');
+  assert.ok(game.includes('pointerdown'));
+  assert.ok(game.includes('pointermove'));
+  assert.ok(game.includes('pointerup'));
+  assert.ok(game.includes('STICK_DEAD_ZONE'));
+  assert.ok(game.includes('STICK_RADIUS'));
+  assert.ok(game.includes('loadDeferredSprites'), '첫 화면 전송량 예산 - 적/배경 원화는 런 시작 시점에 지연 로드해야 합니다');
+  assert.ok(game.includes('renderer.preloadEnemySprites();'));
+  assert.ok(game.includes('renderer.preloadBackgroundSprites();'));
+  // 부팅 시점 최상위 호출(2-space 들여쓰기, IIFE 바로 아래)만 클래스 스프라이트여야 하고
+  // 적/배경 스프라이트 호출은 loadDeferredSprites 함수 본문(4칸 이상 들여쓰기) 안에만 있어야 한다.
+  const topLevelPreloadCalls = game.match(/^  renderer\.preload\w+\(\);$/gm) || [];
+  assert.deepStrictEqual(topLevelPreloadCalls, ['  renderer.preloadClassSprites();'], '부팅 시 최상위 호출은 클래스 스프라이트 하나만이어야 합니다(첫 화면 전송량 예산)');
+
+  [readGameFile('game.js'), readGameFile('systems.js'), readGameFile('renderer.js'), html].forEach((source) => {
+    assert.ok(!source.includes('new Audio'), '무음 유지 - new Audio 사용 금지');
+    assert.ok(!source.includes('navigator.vibrate'), '무진동 유지 - navigator.vibrate 사용 금지');
+    assert.ok(!/Notification\(/.test(source), '네이티브 알림 사용 금지');
+  });
+}
+
+function testDiscordRankingIntegration() {
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('../shared/link.js'), 'GameLink(shared/link.js)가 로드되어야 합니다');
+  assert.ok(html.includes('../shared/game-ui.css'), '공용 gk 컴포넌트 CSS가 로드되어야 합니다');
+  assert.ok(html.includes('survivors-link-section'));
+  assert.ok(html.includes('survivors-ranking-section'));
+
+  const game = readGameFile('game.js');
+  assert.ok(game.includes('function calculateSurvivorsScore'));
+  assert.ok(game.includes("survivalSeconds * 10"), '점수 공식이 생존초 x 10을 포함해야 합니다');
+  assert.ok(game.includes('* 2'), '점수 공식이 처치 x 2를 포함해야 합니다');
+  assert.ok(game.includes('2000'), '점수 공식이 보스 격파 2000점을 포함해야 합니다');
+  assert.ok(game.includes('function isScoreSubmittableMode'));
+  assert.ok(game.includes("state.mode.id === 'quick'"), '점수 제출은 퀵 런만 허용해야 합니다');
+  assert.ok(game.includes("window.GameLink.submitScore('survivors'"));
+  assert.ok(game.includes('renderSurvivorsLinkAndRanking'));
+
+  const webgameApiSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'webgameApi.js'), 'utf8');
+  assert.ok(webgameApiSource.includes("survivors:"), 'GAME_DEFINITIONS에 survivors가 있어야 합니다');
+  assert.ok(webgameApiSource.includes('maxScore: 12000'));
+  assert.ok(/survivors:\s*\{[^}]*dailyCapable:\s*false/s.test(webgameApiSource), 'survivors는 dailyCapable:false여야 합니다');
+  assert.ok(/survivors:\s*\{[^}]*rankable:\s*true/s.test(webgameApiSource), 'survivors는 rankable:true여야 합니다');
+
+  const deployCommandsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'deploy-commands.js'), 'utf8');
+  assert.ok(deployCommandsSource.includes("{ name: '검은 종 생존전', value: 'survivors' }"), '/게임랭킹 choices에 생존전이 추가되어야 합니다(배포 필요)');
+
+  const replaySource = fs.readFileSync(path.join(__dirname, '..', 'src', 'webgameReplay.js'), 'utf8');
+  assert.ok(!/REPLAYABLE_GAMES = new Set\(\[[^\]]*survivors/.test(replaySource), 'survivors는 리플레이 검증 대상에 포함되면 안 됩니다');
+}
+
+function testMetaProgressionIntegration() {
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('./meta.js'), 'meta.js가 로드되어야 합니다');
+  const game = readGameFile('game.js');
+  assert.ok(game.includes('survivors-meta-v1') || game.includes('meta.STORAGE_KEY'), '메타 저장 키를 사용해야 합니다');
+  assert.ok(game.includes('function loadMetaState'));
+  assert.ok(game.includes('function saveMetaState'));
+  assert.ok(game.includes('function renderUnlockShop'));
+  assert.ok(game.includes('meta.applyRunResult'));
+  assert.ok(game.includes('meta.getUnlockedPlayerAdjustments'));
+  assert.ok(game.includes('renderMetaProgressSection'));
+  assert.ok(game.includes('종잔향과 다음 목표'));
+
+  const Meta = require(path.join(GAME_DIR, 'meta.js'));
+  assert.strictEqual(Meta.UNLOCKS.length, 12);
+  assert.strictEqual(Meta.ACHIEVEMENTS.length, 12);
+}
+
+function testBossEncounterPresentation() {
+  const systemsSource = readGameFile('systems.js');
+  assert.ok(systemsSource.includes('검은 종 파수꾼이 문을 등지고 섰다'), '보스 등장 경고 배너 문구가 계획서 그대로여야 합니다');
+  const renderer = readGameFile('renderer.js');
+  assert.ok(renderer.includes('function drawBossStatusHud'), '보스 전용 체력바 렌더 함수가 있어야 합니다');
+  assert.ok(renderer.includes("boss ? '검은 종 파수꾼'"), '보스 전용 체력바에 보스명이 표시되어야 합니다');
+  assert.ok(renderer.includes('phaseLabel'), '보스 체력바에 패턴/페이즈명 캡션이 있어야 합니다');
+
+  const { content, systems } = loadGameRuntime();
+  const state = systems.createState(content, 'fighter', { mode: 'demo' });
+  state.spawnTimer = 99;
+  state.elapsed = 204.99;
+  state.enemies = [];
+  systems.tick(state, { up: false, down: false, left: false, right: false }, 0.02);
+  assert.ok(state.floaters.some((floater) => floater.text === '검은 종 파수꾼이 문을 등지고 섰다'));
+  const banner = state.floaters.find((floater) => floater.text === '검은 종 파수꾼이 문을 등지고 섰다');
+  assert.strictEqual(banner.maxLife, 2, '보스 경고 배너는 2초 노출이어야 합니다');
+}
+
+function testCombatFeedbackHitVignetteAndDamageNumbers() {
+  const { content, systems } = loadGameRuntime();
+  const renderer = readGameFile('renderer.js');
+  assert.ok(renderer.includes('function drawHitVignette'), '피격 비네트 렌더 함수가 있어야 합니다');
+  assert.ok(renderer.includes('function drawDamageNumbers'), '데미지 숫자 렌더 함수가 있어야 합니다');
+  assert.ok(renderer.includes('drawHitVignette(ctx, state, palette, canvas);'), 'drawScreenOverlays가 비네트를 그려야 합니다');
+  assert.ok(renderer.includes("gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');") && renderer.includes('createRadialGradient'), '비네트는 중앙이 비고 가장자리만 강조되는 방사형이어야 합니다(풀스크린 플래시 금지)');
+
+  const state = systems.createState(content, 'fighter', { mode: 'quick' });
+  state.spawnTimer = 99;
+  state.player.attackTimer = 99;
+  state.enemies = [createRuntimeEnemy(state, 'goblin', 46)];
+  // windup(0.38초)이 아주 조금 남을 때까지 잘게 진행한 뒤, 마지막 한 프레임만 작은 dt로
+  // 넘겨 명중을 발동시킨다 - hitVignette(0.2초 감쇠)가 같은 프레임 감쇠로 곧장 지워지지
+  // 않게 dt를 작게 유지한다(실제 게임 프레임(약 16ms)과 유사한 크기).
+  const startHealth = state.player.health;
+  let hit = false;
+  for (let step = 0; step < 200 && !hit; step += 1) {
+    systems.tick(state, { up: false, down: false, left: false, right: false }, 0.016);
+    if (state.player.health < startHealth) hit = true;
+  }
+  assert.ok(hit, '공격이 명중해 체력이 줄어야 합니다');
+  assert.ok(state.effects.hitVignette > 0, '피격 시 hitVignette가 트리거되어야 합니다(피격 직후 프레임)');
+
+  const dmgState = systems.createState(content, 'fighter', { mode: 'quick' });
+  dmgState.spawnTimer = 99;
+  dmgState.player.attackTimer = 0;
+  dmgState.enemies = [createRuntimeEnemy(dmgState, 'goblin', 40)];
+  systems.tick(dmgState, { up: false, down: false, left: false, right: false }, 0.016);
+  assert.ok(Array.isArray(dmgState.damageNumbers));
+  assert.ok(dmgState.damageNumbers.length > 0, '전사 베기 명중 시 데미지 숫자가 생성되어야 합니다');
+
+  const toggledOff = systems.createState(content, 'fighter', { mode: 'quick' });
+  toggledOff.damageNumbersEnabled = false;
+  toggledOff.spawnTimer = 99;
+  toggledOff.player.attackTimer = 0;
+  toggledOff.enemies = [createRuntimeEnemy(toggledOff, 'goblin', 40)];
+  systems.tick(toggledOff, { up: false, down: false, left: false, right: false }, 0.016);
+  assert.strictEqual(toggledOff.damageNumbers.length, 0, '토글을 끄면 데미지 숫자가 생성되지 않아야 합니다');
+
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('damage-numbers-toggle'), '데미지 숫자 토글 UI가 있어야 합니다');
+}
+
+function testVirtualStickDrivesSharedMovementPath() {
+  const { content, systems } = loadGameRuntime();
+  const state = systems.createState(content, 'fighter', { mode: 'quick' });
+  const before = { x: state.player.x, y: state.player.y };
+  systems.tick(state, { up: false, down: false, left: false, right: false, vx: 1, vy: 0 }, 0.5);
+  assert.ok(state.player.x > before.x, '가상 스틱 analog vx가 기존 이동 로직을 통해 반영되어야 합니다');
+
+  const keyboardState = systems.createState(content, 'fighter', { mode: 'quick' });
+  const keyboardBefore = { x: keyboardState.player.x, y: keyboardState.player.y };
+  systems.tick(keyboardState, { up: false, down: false, left: false, right: true, vx: null, vy: null }, 0.5);
+  assert.ok(keyboardState.player.x > keyboardBefore.x, '키보드 digital 입력도 동일 경로로 계속 동작해야 합니다(회귀 없음)');
+  assert.strictEqual(
+    Math.round(state.player.x * 100),
+    Math.round(keyboardState.player.x * 100),
+    '가상 스틱과 키보드가 동일한 이동 로직 함수를 타야 합니다(분기 신설 금지)'
+  );
+}
+
 function main() {
   REQUIRED_FILES.forEach((fileName) => {
     assert.ok(fs.existsSync(path.join(GAME_DIR, fileName)), `${fileName} should exist`);
@@ -810,7 +981,7 @@ function main() {
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('RUN_MODES'));
-  assert.ok(systems.includes("DEFAULT_RUN_MODE = 'standard'"));
+  assert.ok(systems.includes("DEFAULT_RUN_MODE = 'quick'"));
   assert.ok(systems.includes('eliteSchedule: [300, 600, 900, 1200, 1500]'));
   assert.ok(systems.includes('width: 2400'));
   assert.ok(systems.includes('height: 1600'));
@@ -872,7 +1043,8 @@ function main() {
   assert.ok(game.includes('function formatRarity'));
   assert.ok(game.includes('dataset.mode'));
   assert.ok(game.includes("params.get('qa') === '1'"));
-  assert.ok(game.includes('quick 모드에서는 10분 빠른 런'));
+  assert.ok(game.includes('기본 모드인 10분 퀵 런'));
+  assert.ok(game.includes('?mode=long'), '30분 정식 런 URL 안내가 있어야 합니다');
   assert.ok(game.includes('MODE ${state.mode.id.toUpperCase()}'));
   assert.ok(game.includes('evolution-ready-chip'));
   assert.ok(game.includes('진화 가능: 다음 엘리트 상자를 노리세요'));
@@ -1047,6 +1219,8 @@ function main() {
   assert.ok(webGameDoc.includes('v3 전투 가독성'));
   assert.ok(webGameDoc.includes('엘리트 패턴'));
   assert.ok(webGameDoc.includes('직업별 궁극기'));
+  assert.ok(webGameDoc.includes('기본 URL은 10분 퀵 런으로 시작'), '운영 문서가 새 기본 모드(퀵 런)를 반영해야 합니다');
+  assert.ok(webGameDoc.includes('?mode=long'), '운영 문서가 30분 런 URL 파라미터를 안내해야 합니다');
 
   testDesignReferenceBoards();
   testEnemySpriteRendererSharpness();
@@ -1066,6 +1240,12 @@ function main() {
   testRunGoalsSmartRecommendationsAndBossTelemetry();
   testBossFlowCanSpawnAndResolveWin();
   testClassUltimatesAndBuildNames();
+  testMobileHardeningAndSilence();
+  testVirtualStickDrivesSharedMovementPath();
+  testCombatFeedbackHitVignetteAndDamageNumbers();
+  testBossEncounterPresentation();
+  testMetaProgressionIntegration();
+  testDiscordRankingIntegration();
 
   console.log('dungeonworld survivors static test passed');
 }

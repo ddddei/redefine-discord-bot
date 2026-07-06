@@ -37,7 +37,9 @@
       eliteSchedule: [300, 600, 900, 1200, 1500],
     },
   };
-  const DEFAULT_RUN_MODE = 'standard';
+  // 세션 구조(계획서 4절): 기본 URL은 10분 퀵 런. 30분은 ?mode=long(standard 내부
+  // 식별자 유지, URL 파라미터만 long으로 매핑 - game.js getRequestedMode).
+  const DEFAULT_RUN_MODE = 'quick';
   const UPGRADE_ITEM_LINKS = {
     shieldBash: { type: 'weapon', id: 'cleave' },
     ironVow: { type: 'passive', id: 'shieldLine' },
@@ -74,7 +76,23 @@
     return { x: x / length, y: y / length };
   }
 
-  function createPlayer(playbook, balance) {
+  // 메타 진행 해금 보정(계획서 5절): systems.js는 localStorage를 모르므로, game.js가
+  // meta.js(getUnlockedPlayerAdjustments)로 계산한 순수 값만 옵션으로 받는다. 해금은
+  // 난이도 완화 방향만이라 공격력에는 손대지 않는다(대장간 신세=시작 무기 Lv.2 예외는
+  // inventory 생성 쪽에서 반영 - createInventory).
+  function applyUnlockAdjustments(player, unlockAdjustments) {
+    if (!unlockAdjustments) return;
+    if (unlockAdjustments.startHealthBonus) {
+      player.maxHealth += unlockAdjustments.startHealthBonus;
+      player.health = player.maxHealth;
+    }
+    if (unlockAdjustments.moveSpeedPercent) player.speed *= 1 + unlockAdjustments.moveSpeedPercent;
+    if (unlockAdjustments.invulnerabilityBonus) player.unlockInvulnerabilityBonus = unlockAdjustments.invulnerabilityBonus;
+    if (unlockAdjustments.magnetPercent) player.magnet *= 1 + unlockAdjustments.magnetPercent;
+    if (unlockAdjustments.levelUpRerolls) player.levelUpRerollsRemaining = unlockAdjustments.levelUpRerolls;
+  }
+
+  function createPlayer(playbook, balance, unlockAdjustments) {
     const player = {
       x: WORLD.startX, y: WORLD.startY,
       radius: 15, maxHealth: 100, health: 100, speed: 168,
@@ -134,6 +152,7 @@
       playbook.apply(player);
       applyBalanceAdjustments(player, playbook.id, balance);
     }
+    applyUnlockAdjustments(player, unlockAdjustments);
     return player;
   }
 
@@ -168,11 +187,14 @@
     return list && list.length > 0 ? list : content[fallbackKey];
   }
 
-  function createInventory(content, playbook) {
+  function createInventory(content, playbook, unlockAdjustments) {
     const catalog = content.itemCatalog || { weapons: [], passives: [], evolutions: [] };
     const weapon = catalog.weapons.find((item) => item.attack === playbook.attack) || catalog.weapons[0];
+    // 대장간 신세 예외(계획서 5절): 시작 무기 Lv.2. 다른 해금과 달리 난이도 완화가
+    // 아니라 시작 상태 강화이므로 명시적으로만 적용한다.
+    const startWeaponLevel = unlockAdjustments && unlockAdjustments.startWeaponLevel ? unlockAdjustments.startWeaponLevel : 1;
     return {
-      weapons: weapon ? [{ id: weapon.id, title: weapon.title, level: 1, maxLevel: weapon.maxLevel }] : [],
+      weapons: weapon ? [{ id: weapon.id, title: weapon.title, level: clamp(startWeaponLevel, 1, weapon.maxLevel), maxLevel: weapon.maxLevel }] : [],
       passives: [],
       evolvedWeapons: [],
     };
@@ -181,6 +203,7 @@
   function createState(content, playbookId = 'fighter', options = {}) {
     const playbook = findPlaybook(content, playbookId);
     const mode = resolveRunMode(options);
+    const unlockAdjustments = options.unlockAdjustments || null;
     const waves = selectModeList(content, mode, 'wavesKey', 'wavePatterns');
     const scenes = selectModeList(content, mode, 'scenesKey', 'scenes');
     return {
@@ -199,7 +222,7 @@
       lastMoveResult: '아직 판정 없음',
       kills: 0,
       attackMarks: [],
-      player: createPlayer(playbook, content.balance),
+      player: createPlayer(playbook, content.balance, unlockAdjustments),
       enemies: [],
       projectiles: [],
       particles: [],
@@ -210,9 +233,15 @@
       hazards: [],
       enemyWarnings: [],
       bossWarnings: [],
-      effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0, levelShockwave: 0 },
+      effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0, levelShockwave: 0, hitVignette: 0 },
       upgradeLevels: {},
-      inventory: createInventory(content, playbook),
+      damageNumbersEnabled: true,
+      damageNumbers: [],
+      inventory: createInventory(content, playbook, unlockAdjustments),
+      eliteKills: 0,
+      chestsOpened: 0,
+      longestNoHitStreak: 0,
+      currentNoHitStreak: 0,
       learnedUpgrades: [playbook.learned, playbook.loadout],
       selectedUpgrades: [],
       buildTags: {},
@@ -343,7 +372,13 @@
     const pressure = wave.pressure + state.elapsed / 230 + state.player.spawnPressure + state.player.tension * 0.022;
     state.spawnTimer -= dt * pressure;
     if (state.spawnTimer <= 0) {
-      wave.packs.forEach((pack) => spawnPack(state, pack));
+      // 성능 예산 안전망(계획서 1절 작업 A): 동시 적 상한 도달 시 이번 팩 스폰을 건너뛴다.
+      // 스폰 밀도(간격)는 유지하고 상한만 지켜, 다음 tick에 다시 시도해 압박감은 보존한다.
+      const budget = state.content.performanceBudget;
+      const enemyCap = budget ? budget.maxConcurrentEnemies : 120;
+      if (state.enemies.length < enemyCap) {
+        wave.packs.forEach((pack) => spawnPack(state, pack));
+      }
       state.spawnTimer = Math.max(0.28, wave.cadence * baseCadence - state.elapsed / 560);
     }
 
@@ -361,7 +396,8 @@
       state.effects.flash = 0.45;
       state.effects.shake = 0.7;
       state.effects.bossPulse = 1;
-      addFloater(state, '검은 종 파수꾼이 문을 밀고 나옵니다', state.player.x, state.player.y - 110, '--accent-bell', 2.1, true);
+      // 보스 등장 경고 배너(계획서 3절 문구 그대로) - 2초 노출, 화면 고정(screenSpace).
+      addFloater(state, '검은 종 파수꾼이 문을 등지고 섰다', state.player.x, state.player.y - 110, '--accent-bell', 2, true);
     }
 
     updateWaveHazards(state, wave, dt);
@@ -549,10 +585,24 @@
     state.effects.shake = 0.45;
   }
 
+  // 가상 스틱(계획서 2절)이 analog vx/vy를 채우면 그 값을, 아니면 키보드 digital
+  // up/down/left/right를 사용한다. 이동 로직 자체는 분기 없이 동일한 (dx, dy) 벡터
+  // 소비 경로 하나만 탄다 - 입력 소스만 다를 뿐 updatePlayer 아래 로직은 공용.
+  function resolveMoveVector(input) {
+    if (input.vx !== null && input.vx !== undefined) {
+      return { dx: input.vx || 0, dy: input.vy || 0 };
+    }
+    return {
+      dx: (input.right ? 1 : 0) - (input.left ? 1 : 0),
+      dy: (input.down ? 1 : 0) - (input.up ? 1 : 0),
+    };
+  }
+
   function updatePlayer(state, input, dt) {
     const player = state.player;
-    const dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    const dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
+    const moveVector = resolveMoveVector(input);
+    const dx = moveVector.dx;
+    const dy = moveVector.dy;
     const direction = normalize(dx, dy);
     const moving = dx !== 0 || dy !== 0;
     const tensionScale = 1 + player.tension * player.tensionSpeed;
@@ -711,6 +761,7 @@
         if (enemy.behavior === 'boss' && bossBonus > 0) recordBossBonusDamage(state, baseDamage * bossBonus);
         enemy.hitFlash = 0.16;
         enemy.slowTimer = Math.max(enemy.slowTimer, player.cleaveSlow);
+        spawnDamageNumber(state, finalDamage, enemy.x, enemy.y - enemy.radius - 6, enemy);
         hits += 1;
       }
     });
@@ -802,6 +853,13 @@
       && projectile.y > -120
       && projectile.y < WORLD.height + 120
     ));
+    // 성능 예산 안전망(계획서 1절): 투사체 상한 초과 시 가장 오래된 것부터 정리(오프스크린
+    // 컬링 강화 - 계획서 조정 순서 2단계).
+    const budget = state.content.performanceBudget;
+    const projectileCap = budget ? budget.maxConcurrentProjectiles : 80;
+    if (state.projectiles.length > projectileCap) {
+      state.projectiles.splice(0, state.projectiles.length - projectileCap);
+    }
   }
 
   function updateAttackMarks(state, dt) {
@@ -950,7 +1008,9 @@
     player.invulnerableTimer = invulnerableTime || 0.7;
     state.effects.flash = Math.max(state.effects.flash, 0.12);
     state.effects.shake = Math.max(state.effects.shake, 0.18);
+    triggerHitVignette(state);
     addFloater(state, label || '위험', player.x, player.y - 22, colorToken || '--status-error');
+    spawnDamageNumber(state, damageTaken, player.x, player.y - 30);
     return true;
   }
 
@@ -1024,9 +1084,11 @@
       state.enemies.forEach((enemy) => {
         if (projectile.life <= 0 || distance(projectile, enemy) > projectile.radius + enemy.radius) return;
         const bossBonus = enemy.behavior === 'boss' ? getBossDamageBonus(state, enemy) : 0;
-        enemy.hp -= projectile.damage * (1 + bossBonus);
+        const projectileDamage = projectile.damage * (1 + bossBonus);
+        enemy.hp -= projectileDamage;
         if (enemy.behavior === 'boss' && bossBonus > 0) recordBossBonusDamage(state, projectile.damage * bossBonus);
         enemy.hitFlash = 0.13;
+        spawnDamageNumber(state, projectileDamage, enemy.x, enemy.y - enemy.radius - 6, enemy);
         spawnImpactSparks(state, enemy, projectile.impactKind || projectile.kind, 4);
         state.attackMarks.push({
           x: enemy.x,
@@ -1055,6 +1117,7 @@
       state.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 6, age: 0 });
       spawnDeathParticles(state, enemy);
       if (enemy.elite) {
+        state.eliteKills += 1;
         dropChest(state, enemy);
       }
       if (enemy.behavior === 'boss') {
@@ -1175,12 +1238,53 @@
     state.floaters = state.floaters.filter((floater) => floater.life > 0);
   }
 
+  // 피격(플레이어) 피드백은 화면 가장자리 비네트 200ms(계획서 3절) - 풀스크린 플래시
+  // 금지(광과민 배려). hitVignette는 0.2초 동안 선형 감쇠하는 독립 이펙트 값이다.
+  const HIT_VIGNETTE_DURATION = 0.2;
+
   function updateEffects(state, dt) {
     state.effects.flash = Math.max(0, state.effects.flash - dt);
     state.effects.shake = Math.max(0, state.effects.shake - dt);
     state.effects.pulse = Math.max(0, state.effects.pulse - dt);
     state.effects.bossPulse = Math.max(0, state.effects.bossPulse - dt * 0.5);
     state.effects.levelShockwave = Math.max(0, state.effects.levelShockwave - dt * 1.3);
+    state.effects.hitVignette = Math.max(0, state.effects.hitVignette - dt / HIT_VIGNETTE_DURATION);
+  }
+
+  function triggerHitVignette(state) {
+    state.effects.hitVignette = 1;
+  }
+
+  // 데미지 숫자(계획서 3절): 설정 토글 기본 켬, 개체당 최대 1개 표시·풀링(성능 예산 내).
+  // entityKey가 있으면 같은 개체의 기존 숫자를 교체(누적)해 개체당 1개만 유지한다.
+  function spawnDamageNumber(state, amount, x, y, entityKey) {
+    if (!state.damageNumbersEnabled || amount <= 0) return;
+    const rounded = Math.round(amount);
+    if (entityKey) {
+      const existing = state.damageNumbers.find((entry) => entry.entityKey === entityKey);
+      if (existing) {
+        existing.amount += rounded;
+        existing.x = x;
+        existing.y = y;
+        existing.life = Math.max(existing.life, 0.6);
+        existing.maxLife = 0.6;
+        return;
+      }
+    }
+    state.damageNumbers.push({ entityKey: entityKey || null, amount: rounded, x, y, life: 0.6, maxLife: 0.6 });
+    const budget = state.content.performanceBudget;
+    const cap = budget ? budget.maxConcurrentParticles : 60;
+    if (state.damageNumbers.length > cap) {
+      state.damageNumbers.splice(0, state.damageNumbers.length - cap);
+    }
+  }
+
+  function updateDamageNumbers(state, dt) {
+    state.damageNumbers.forEach((entry) => {
+      entry.y -= 26 * dt;
+      entry.life -= dt;
+    });
+    state.damageNumbers = state.damageNumbers.filter((entry) => entry.life > 0);
   }
 
   function updateParticles(state, dt) {
@@ -1192,6 +1296,12 @@
       particle.life -= dt;
     });
     state.particles = state.particles.filter((particle) => particle.life > 0);
+    // 성능 예산 안전망(계획서 1절): 파티클 상한 초과 시 가장 오래된 것부터 정리한다.
+    const budget = state.content.performanceBudget;
+    const particleCap = budget ? budget.maxConcurrentParticles : 60;
+    if (state.particles.length > particleCap) {
+      state.particles.splice(0, state.particles.length - particleCap);
+    }
   }
 
   function updateHazards(state, dt) {
@@ -1282,7 +1392,9 @@
     state.hazardDamageTaken += hazard.damage;
     player.invulnerableTimer = 0.42;
     state.effects.flash = Math.max(state.effects.flash, 0.1);
+    triggerHitVignette(state);
     addFloater(state, hazard.label || '위험 구역', player.x, player.y - 26, hazard.colorToken || '--status-error', 0.8);
+    spawnDamageNumber(state, hazard.damage, player.x, player.y - 30);
   }
 
   function updateTension(state) {
@@ -1636,6 +1748,7 @@
   function claimChestReward(state) {
     const reward = state.pendingChestRewards.shift();
     if (!reward) return null;
+    state.chestsOpened += 1;
     if (reward.type === 'evolution') {
       const evolution = reward.evolution;
       state.inventory.evolvedWeapons.push({ id: evolution.id, title: evolution.title, level: 1, maxLevel: 1 });
@@ -1754,6 +1867,7 @@
     const classUltimate = evaluateClassUltimate(state);
     return {
       playbook: state.playbook.title,
+      playbookId: state.playbook.id,
       buildName: buildIdentity.name,
       buildVerdict: buildIdentity.verdict,
       buildSummary: buildIdentity.summary,
@@ -1762,6 +1876,13 @@
       kills: state.kills,
       level: state.player.level,
       won: state.bossDefeated,
+      // 메타 진행(계획서 5절) 종잔향·도전 과제 판정에 쓰이는 필드 - meta.js가 순수하게 소비.
+      levelAtBoss: state.levelAtBoss,
+      eliteKills: state.eliteKills,
+      chestsOpened: state.chestsOpened,
+      evolvedWeaponCount: state.inventory.evolvedWeapons.length,
+      longestNoHitStreak: Math.round(state.longestNoHitStreak * 10) / 10,
+      runMode: state.mode.id,
       selectedUpgrades: state.selectedUpgrades.slice(),
       buildTags: sortedTags,
       synergies: state.synergies.slice(),
@@ -1855,6 +1976,7 @@
 
   function tick(state, input, dt) {
     state.elapsed += dt;
+    const healthBeforeFrame = state.player.health;
     updateScene(state);
     updateWave(state, dt);
     updatePlayer(state, input, dt);
@@ -1862,6 +1984,7 @@
     updateProjectiles(state, dt);
     updateAttackMarks(state, dt);
     updateParticles(state, dt);
+    updateDamageNumbers(state, dt);
     updateOrbitingSpears(state, dt);
     updateEnemies(state, dt);
     resolveHits(state);
@@ -1873,10 +1996,81 @@
     updateWarnings(state, dt);
     updateEffects(state, dt);
     updateTension(state);
+    // 무피격 스트릭(도전 과제 5절 '무피격 3분') - 이번 프레임에 체력이 줄지 않았으면 누적.
+    if (state.player.health < healthBeforeFrame) {
+      state.currentNoHitStreak = 0;
+    } else {
+      state.currentNoHitStreak += dt;
+      state.longestNoHitStreak = Math.max(state.longestNoHitStreak, state.currentNoHitStreak);
+    }
     if (state.player.health <= 0) return 'lost';
     if (state.bossDefeated) return 'won';
     if (consumeLevelUps(state)) return 'level';
     return 'running';
+  }
+
+  // QA/성능 측정 전용 - 임의 개체 수로 state를 채워 스로틀 프로파일에서 프레임 비용을
+  // 실측한다(계획서 1절 작업 A 게이트). 실제 스폰 로직과 무관하게 개체 배열만 채운다.
+  function fillStressEntities(state, counts) {
+    const enemyCount = counts && counts.enemies || 0;
+    const projectileCount = counts && counts.projectiles || 0;
+    const particleCount = counts && counts.particles || 0;
+    for (let index = 0; index < enemyCount; index += 1) {
+      const typeId = ['goblin', 'slime', 'armor', 'wolf', 'mimic', 'cultist'][index % 6];
+      const type = state.content.enemyTypes[typeId];
+      const angle = (index / enemyCount) * Math.PI * 2;
+      state.enemies.push({
+        ...type,
+        x: state.player.x + Math.cos(angle) * (140 + (index % 5) * 30),
+        y: state.player.y + Math.sin(angle) * (140 + (index % 5) * 30),
+        hp: type.hp * 500,
+        maxHp: type.hp * 500,
+        slowTimer: 0,
+        behaviorTimer: Math.random() * 0.6,
+        hitFlash: 0,
+        attackCooldown: 5,
+        attackWindup: 0,
+        attackRecovery: 0,
+        attackTarget: null,
+        warning: null,
+        attackProfile: { ...type.attackProfile, range: type.attackProfile.range || 60 },
+      });
+    }
+    for (let index = 0; index < projectileCount; index += 1) {
+      const angle = (index / projectileCount) * Math.PI * 2;
+      state.projectiles.push({
+        x: state.player.x,
+        y: state.player.y,
+        originX: state.player.x,
+        originY: state.player.y,
+        vx: Math.cos(angle) * 300,
+        vy: Math.sin(angle) * 300,
+        radius: 5,
+        damage: 10,
+        pierce: 999,
+        life: 5,
+        maxLife: 5,
+        kind: 'missile',
+        source: 'wizard',
+        angle,
+        trail: 'rune',
+        impactKind: 'missile',
+      });
+    }
+    for (let index = 0; index < particleCount; index += 1) {
+      const angle = (index / particleCount) * Math.PI * 2;
+      state.particles.push({
+        kind: 'impactSpark',
+        x: state.player.x,
+        y: state.player.y,
+        vx: Math.cos(angle) * 80,
+        vy: Math.sin(angle) * 80,
+        radius: 3,
+        colorToken: '--accent-ember',
+        life: 5,
+        maxLife: 5,
+      });
+    }
   }
 
   window.DungeonworldSurvivorsSystems = {
@@ -1898,5 +2092,6 @@
     setInventoryItemLevel,
     tick,
     clamp,
+    fillStressEntities,
   };
 })();

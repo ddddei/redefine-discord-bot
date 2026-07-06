@@ -168,6 +168,26 @@ async function runRankingCommand(interaction, options = {}) {
     return { ok: true, gameId, weekKey, progress };
   }
 
+  if (period === 'daily' && !gameDefinition.dailyCapable) {
+    // rankable:true지만 dailyCapable:false인 게임(검은 종 생존전 - 실시간 입력 의존
+    // 장르라 "같은 판" 보장이 안 돼 오늘의 도전 비대상, docs/survivors-improvement-plan.md
+    // 0·6절). idle(rankable:false)과는 다른 경로라 여기서 명시적으로 안내한다.
+    await interaction.reply({
+      content: `${gameDefinition.title}에는 오늘의 도전이 없어요. 이번 주 랭킹을 보여드릴게요.`,
+    });
+    const weekKeyForFallback = getIsoWeekKey(now());
+    const fallbackRanking = mergeCheers(
+      repository,
+      gameId,
+      weekKeyForFallback,
+      repository.listWeeklyRanking(gameId, weekKeyForFallback, { limit: 10 })
+    );
+    await interaction.followUp({
+      embeds: [buildRankingEmbed(gameDefinition.title, weekKeyForFallback, fallbackRanking)],
+    });
+    return { ok: true, gameId, weekKey: weekKeyForFallback, ranking: fallbackRanking, notDaily: true };
+  }
+
   if (period === 'daily') {
     const dayKey = getDayKey(now());
     const ranking = mergeCheers(

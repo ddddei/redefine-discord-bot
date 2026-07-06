@@ -4,7 +4,7 @@
   const renderer = window.DungeonworldSurvivorsRenderer;
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
-  const input = { up: false, down: false, left: false, right: false };
+  const input = { up: false, down: false, left: false, right: false, vx: null, vy: null };
   const elements = {
     start: document.getElementById('start-button'),
     pause: document.getElementById('pause-button'),
@@ -32,6 +32,7 @@
     modalSecondary: document.getElementById('modal-secondary'),
     upgradeOptions: document.getElementById('upgrade-options'),
     qaPanel: document.getElementById('qa-panel'),
+    damageNumbersToggle: document.getElementById('damage-numbers-toggle'),
   };
   const CARD_IMAGE_BASE_PATH = './assets/cards/';
   const CARD_IMAGE_BY_UPGRADE_ID = {
@@ -85,26 +86,65 @@
     pierce: 'card-08.png',
     boss: 'card-15.png',
   };
-  let state = systems.createState(content, 'fighter', { mode: getRequestedMode() });
+  const meta = window.DungeonworldSurvivorsMeta;
+
+  // 메타 진행 저장(계획서 5절, localStorage survivors-meta-v1). 저장/로드 부수효과는
+  // game.js에만 두고 meta.js는 순수 함수로 유지한다(Node 테스트 가능성 - scripts/
+  // test-survivors-meta.js).
+  function loadMetaState() {
+    try {
+      return meta.parseMeta(window.localStorage.getItem(meta.STORAGE_KEY));
+    } catch (error) {
+      return meta.getDefaultMeta();
+    }
+  }
+
+  function saveMetaState(nextMeta) {
+    try {
+      window.localStorage.setItem(meta.STORAGE_KEY, meta.serializeMeta(nextMeta));
+    } catch (error) {
+      // 저장 실패(프라이빗 모드, 용량 초과 등)해도 게임 진행을 막지 않는다.
+    }
+  }
+
+  let metaState = loadMetaState();
+  let state = systems.createState(content, 'fighter', { mode: getRequestedMode(), unlockAdjustments: meta.getUnlockedPlayerAdjustments(metaState) });
   let lastFrame = 0;
   let pendingUpgrades = [];
   let pendingChestReward = null;
   let previousFocus = null;
 
+  // 첫 화면 전송량 예산(계획서 2절, ≤ 500KB): 배경/적 원화 총량이 예산을 크게 초과해
+  // 즉시 선로드하지 않는다(스프라이트 지연 로드 - 계획서 초과 시 대응). 클래스 스프라이트
+  // (6장, 약 30KB)만 플레이북 선택 화면에 바로 보이므로 즉시 로드하고, 적·배경 원화는
+  // 실제 런 시작(startGame/resetGame) 시점에 로드해 게임플레이 전에는 받지 않는다.
   renderer.preloadClassSprites();
-  renderer.preloadEnemySprites();
-  renderer.preloadBackgroundSprites();
+  let deferredSpritesLoaded = false;
+  function loadDeferredSprites() {
+    if (deferredSpritesLoaded) return;
+    deferredSpritesLoaded = true;
+    renderer.preloadEnemySprites();
+    renderer.preloadBackgroundSprites();
+  }
 
+  // 세션 구조(계획서 4절): 기본 URL = 10분 퀵 런. ?mode=long은 기존 30분 standard
+  // 모드로 매핑(내부 식별자는 유지 - RUN_MODES.standard), ?mode=demo도 유지.
   function getRequestedMode() {
     const params = new URLSearchParams(window.location.search);
     const requestedMode = params.get('mode');
+    if (requestedMode === 'long') return 'standard';
     if (requestedMode) return requestedMode;
     if (params.get('qa') === '1') return 'demo';
-    return 'standard';
+    return 'quick';
   }
 
   function resetGame(playbookId) {
-    state = systems.createState(content, playbookId, { mode: getRequestedMode() });
+    loadDeferredSprites();
+    state = systems.createState(content, playbookId, {
+      mode: getRequestedMode(),
+      unlockAdjustments: meta.getUnlockedPlayerAdjustments(metaState),
+    });
+    if (elements.damageNumbersToggle) state.damageNumbersEnabled = elements.damageNumbersToggle.checked;
     lastFrame = performance.now();
     elements.pause.disabled = false;
     elements.pause.textContent = '일시정지';
@@ -205,8 +245,9 @@
     });
   }
 
-  function renderPlaybookOptions() {
-    elements.upgradeOptions.innerHTML = '';
+  function renderPlaybookOptions(container) {
+    const target = container || elements.upgradeOptions;
+    if (!container) target.innerHTML = '';
     content.playbooks.forEach((playbook) => {
       const button = document.createElement('button');
       button.className = `upgrade-option playbook-option ${playbook.id}`;
@@ -224,7 +265,7 @@
         `<span>${playbook.survival}</span>`,
       ].join('');
       button.addEventListener('click', () => startGame(playbook.id));
-      elements.upgradeOptions.appendChild(button);
+      target.appendChild(button);
     });
   }
 
@@ -287,15 +328,36 @@
     canvas.focus();
   }
 
+  // Discord 연동·랭킹(계획서 6절): 점수 제출은 퀵 런만. long(standard)·데모는 클라
+  // 가드로 제출하지 않는다 - 예산이 퀵 런 처치 상한 기준으로만 산정되어 있어(webgameApi
+  // GAME_DEFINITIONS.survivors.maxScore) long 런은 상한을 초과할 수 있기 때문이다.
+  function isScoreSubmittableMode() {
+    return state.mode.id === 'quick';
+  }
+
+  // 점수 공식(계획서 6절): 생존초 x 10 + 처치 x 2 + (보스 격파 ? 2000 : 0).
+  function calculateSurvivorsScore(runSummary) {
+    const survivalSeconds = Math.floor(runSummary.survivalTime || 0);
+    const killScore = (runSummary.kills || 0) * 2;
+    const bossScore = runSummary.won ? 2000 : 0;
+    return survivalSeconds * 10 + killScore + bossScore;
+  }
+
   function finishGame(won) {
     state.status = won ? 'won' : 'lost';
     state.runSummary = systems.getRunSummary(state);
+    // 메타 진행(계획서 5절): 런 종료 시 종잔향 지급 + 도전 과제 판정. 점수 랭킹과
+    // 무관한 로컬 전용 진행이라 어떤 모드(퀵/정식/데모)든 동일하게 적용한다.
+    const metaResult = meta.applyRunResult(metaState, state.runSummary);
+    metaState = metaResult.meta;
+    saveMetaState(metaState);
+    state.runSummary.metaReward = metaResult;
     elements.pause.disabled = true;
     elements.modalKicker.textContent = won ? '생존 성공' : '다시 정비';
     elements.modalTitle.textContent = won ? '마지막 문이 열렸습니다' : '검은 종소리에 밀렸습니다';
     elements.modalCopy.textContent = won
-      ? '검은 종 파수꾼을 쓰러뜨렸습니다. 아래 기록은 브라우저 안에서만 끝나며 포인트 지급은 없습니다.'
-      : '여관으로 물러나 숨을 고릅니다. 다시 시작해도 포인트나 Discord 기록은 남지 않습니다.';
+      ? '검은 종 파수꾼을 쓰러뜨렸습니다. 이번 런 기록은 브라우저 안에서만 끝나며 포인트는 지급되지 않습니다.'
+      : '여관으로 물러나 숨을 고릅니다. 다시 시작해도 포인트는 지급되지 않습니다.';
     elements.modalPrimary.classList.remove('hidden');
     elements.modalSecondary.classList.remove('hidden');
     elements.modalPrimary.textContent = '다시 시작';
@@ -303,7 +365,29 @@
     elements.modalSecondary.textContent = '닫기';
     elements.modalSecondary.onclick = hideModalOnly;
     renderResultSummary(state.runSummary);
+    renderSurvivorsLinkAndRanking();
     showModal('result');
+  }
+
+  // 결과 화면 연결·랭킹 섹션(계획서 6절) - 공용 gk 컴포넌트(GameLink) 재사용.
+  function renderSurvivorsLinkAndRanking() {
+    const linkSection = document.getElementById('survivors-link-section');
+    const rankingSection = document.getElementById('survivors-ranking-section');
+    if (!window.GameLink || !linkSection || !rankingSection) return;
+
+    window.GameLink.renderLinkSection(linkSection, {
+      onChange: () => submitSurvivorsScoreIfEligible(rankingSection),
+    });
+    window.GameLink.renderRankingSection(rankingSection, 'survivors');
+    submitSurvivorsScoreIfEligible(rankingSection);
+  }
+
+  function submitSurvivorsScoreIfEligible(rankingSection) {
+    if (!window.GameLink || !window.GameLink.isLinked() || !isScoreSubmittableMode()) return;
+    const score = calculateSurvivorsScore(state.runSummary);
+    window.GameLink.submitScore('survivors', score).then((result) => {
+      if (result.ok) window.GameLink.renderRankingSection(rankingSection, 'survivors');
+    });
   }
 
   function updateDom() {
@@ -364,15 +448,89 @@
     const modeCopy = state.mode.id === 'demo'
       ? '현재는 4분 데모/QA 흐름입니다. 보스까지 빠르게 확인할 수 있습니다.'
       : state.mode.id === 'quick'
-        ? 'quick 모드에서는 10분 빠른 런으로 엘리트와 마지막 문 흐름을 압축해 확인합니다.'
-        : 'standard 모드에서는 30분까지 버티면 마지막 문이 열립니다.';
-    elements.modalCopy.textContent = `보석을 먹으면 경험치가 오르고, 레벨업하면 무기나 패시브를 고릅니다. 같은 무기를 여러 번 고르면 강해지며, 무기 Lv.8과 특정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화할 수 있습니다. 엘리트를 잡으면 상자가 나오고, ${modeCopy} 포인트나 Discord 계정 연동은 없습니다.`;
+        ? '기본 모드인 10분 퀵 런에서는 엘리트와 마지막 문 흐름을 압축해 확인합니다. 30분 정식 런은 주소 끝에 ?mode=long을 붙이면 됩니다.'
+        : '30분 정식 런(?mode=long)에서는 끝까지 버티면 마지막 문이 열립니다.';
+    elements.modalCopy.textContent = `보석을 먹으면 경험치가 오르고, 레벨업하면 무기나 패시브를 고릅니다. 같은 무기를 여러 번 고르면 강해지며, 무기 Lv.8과 특정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화할 수 있습니다. 엘리트를 잡으면 상자가 나오고, ${modeCopy} 결과 화면에서 Discord 계정을 연결하면 퀵 런 점수가 주간 랭킹에 반영됩니다(포인트 지급은 없습니다).`;
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.remove('hidden');
     elements.modalSecondary.textContent = '닫기';
     elements.modalSecondary.onclick = hideModalOnly;
-    renderPlaybookOptions();
+    renderIntroTabs('playbooks');
     showModal('intro');
+  }
+
+  // 해금 상점(계획서 5절): 시작 화면(직업 선택 옆 탭)에서 종잔향으로 해금 12종을 구매한다.
+  function renderIntroTabs(activeTab) {
+    elements.upgradeOptions.innerHTML = '';
+    const tabBar = document.createElement('div');
+    tabBar.className = 'intro-tab-bar';
+    const playbookTabButton = document.createElement('button');
+    playbookTabButton.type = 'button';
+    playbookTabButton.className = `button secondary intro-tab-button${activeTab === 'playbooks' ? ' active' : ''}`;
+    playbookTabButton.textContent = '플레이북 선택';
+    playbookTabButton.addEventListener('click', () => renderIntroTabs('playbooks'));
+    const shopTabButton = document.createElement('button');
+    shopTabButton.type = 'button';
+    shopTabButton.className = `button secondary intro-tab-button${activeTab === 'shop' ? ' active' : ''}`;
+    shopTabButton.textContent = `해금 상점 (종잔향 ${metaState.bellEssence})`;
+    shopTabButton.addEventListener('click', () => renderIntroTabs('shop'));
+    tabBar.appendChild(playbookTabButton);
+    tabBar.appendChild(shopTabButton);
+    elements.upgradeOptions.appendChild(tabBar);
+
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'intro-tab-content';
+    elements.upgradeOptions.appendChild(contentContainer);
+
+    if (activeTab === 'shop') renderUnlockShop(contentContainer);
+    else renderPlaybookOptions(contentContainer);
+  }
+
+  function renderUnlockShop(container) {
+    const groups = [];
+    const seenGroups = new Set();
+    meta.UNLOCKS.forEach((unlock) => {
+      if (seenGroups.has(unlock.groupId)) return;
+      seenGroups.add(unlock.groupId);
+      groups.push(unlock.groupId);
+    });
+    const list = document.createElement('div');
+    list.className = 'unlock-shop-list';
+    groups.forEach((groupId) => {
+      const tiers = meta.UNLOCKS.filter((entry) => entry.groupId === groupId);
+      const currentLevel = meta.getUnlockGroupLevel(metaState, groupId);
+      const next = meta.getNextUnlockInGroup(metaState, groupId);
+      const item = document.createElement('div');
+      item.className = 'unlock-shop-item';
+      const status = !next
+        ? '<span class="unlock-status unlock-complete">모든 단계 해금 완료</span>'
+        : '';
+      const purchaseInfo = next ? meta.canPurchaseUnlock(metaState, next.id) : null;
+      item.innerHTML = [
+        `<strong>${tiers[0].title.replace(/ I{1,3}$/, '')}</strong>`,
+        `<span class="unlock-progress">${currentLevel} / ${tiers.length}단계</span>`,
+        next ? `<span>${next.copy}</span>` : '',
+        next ? `<span class="unlock-price">가격 ${next.price} 종잔향</span>` : '',
+        status,
+      ].join('');
+      if (next) {
+        const buyButton = document.createElement('button');
+        buyButton.type = 'button';
+        buyButton.className = 'button secondary unlock-buy-button';
+        buyButton.textContent = purchaseInfo && purchaseInfo.ok ? '해금하기' : '종잔향 부족';
+        buyButton.disabled = !(purchaseInfo && purchaseInfo.ok);
+        buyButton.addEventListener('click', () => {
+          const result = meta.purchaseUnlock(metaState, next.id);
+          if (!result.ok) return;
+          metaState = result.meta;
+          saveMetaState(metaState);
+          renderIntroTabs('shop');
+        });
+        item.appendChild(buyButton);
+      }
+      list.appendChild(item);
+    });
+    container.appendChild(list);
   }
 
   function formatLevel(level) {
@@ -557,6 +715,7 @@
     )).join('');
     const contribution = summary.bossContribution;
     const ultimate = summary.classUltimate || { title: '궁극기 없음', ready: false, progress: '조건 없음', copy: '' };
+    const metaSection = renderMetaProgressSection(summary.metaReward);
     elements.upgradeOptions.innerHTML = [
       '<section class="result-ledger-head">',
       `<span class="card-seal" aria-hidden="true"></span><div><p class="retry-copy">${summary.buildVerdict}</p>`,
@@ -570,11 +729,32 @@
       '</div>',
       `<div class="result-tags">${tags}</div>`,
       '<p class="retry-copy">다음 런에서는 같은 룬 배지를 두 장 이상 모아 시너지를 먼저 여는 쪽이 보스 도달이 안정적입니다.</p>',
+      metaSection,
       `<h3 class="result-heading">직업별 궁극기</h3><ul class="result-list"><li><strong>${ultimate.ready ? '궁극기 완성' : '궁극기 미완성'} · ${ultimate.title}</strong><span>${ultimate.progress}</span><span>${ultimate.copy}</span></li></ul>`,
       `<h3 class="result-heading">런 목표</h3><ul class="result-list goal-result-list">${goals}</ul>`,
       `<h3 class="result-heading">보스전 기여</h3><ul class="result-list"><li><strong>${contribution.label}</strong><span>${contribution.text}</span><span>발동 ${contribution.triggers}회 · 추가 피해 ${contribution.bonusDamage} · 완화 ${contribution.preventedDamage} · 회복 ${contribution.recoveredHealth} · 제어 ${contribution.controlTime}초</span></li></ul>`,
       `<h3 class="result-heading">선택한 업그레이드</h3><ul class="result-list">${upgrades}</ul>`,
       `<h3 class="result-heading">빌드 시너지</h3><ul class="result-list">${synergies}</ul>`,
+    ].join('');
+  }
+
+  // 메타 진행 결과 화면 섹션(계획서 4·5절): 이번 런 종잔향 획득·누적, 새 도전 과제,
+  // 다음 목표 1줄을 보여준다. localStorage 저장은 finishGame에서 이미 끝난 뒤 호출된다.
+  function renderMetaProgressSection(metaReward) {
+    if (!metaReward) return '';
+    const newAchievements = metaReward.newlyAchieved.length > 0
+      ? metaReward.newlyAchieved.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.copy}</span><span>종잔향 +${entry.reward}</span></li>`).join('')
+      : '<li><strong>새 도전 과제 없음</strong><span>다음 런에서 다시 도전해 보세요.</span></li>';
+    const nextGoal = meta.getNextGoalPreview(metaReward.meta);
+    return [
+      '<h3 class="result-heading">종잔향과 다음 목표</h3>',
+      '<div class="result-grid">',
+      `<article><span>이번 런 종잔향</span><strong>+${metaReward.totalEarned}</strong></article>`,
+      `<article><span>누적 종잔향</span><strong>${metaReward.meta.bellEssence}</strong></article>`,
+      '</div>',
+      `<p class="retry-copy">${nextGoal}</p>`,
+      '<h3 class="result-heading">새로 달성한 도전 과제</h3>',
+      `<ul class="result-list">${newAchievements}</ul>`,
     ].join('');
   }
 
@@ -725,6 +905,56 @@
         updateDom();
         return buildQaSnapshot();
       },
+      // 성능 예산 실측 전용(계획서 1절 작업 A). 임의 개체 수를 채운 뒤 tick+render를
+      // 지정 프레임 수만큼 반복 실행해 프레임당 ms를 측정한다. CPU 스로틀은 DevTools
+      // Performance 패널/브라우저 CPU throttle 설정이 이 루프 실행 시간에 그대로 반영된다.
+      runPerfProbe(counts, frames) {
+        // 자연 스폰/전투 상호작용이 개체 수를 흔들지 않도록 격리한다 - 순수 프레임 비용만 잰다.
+        state.spawnTimer = Infinity;
+        state.player.attackTimer = Infinity;
+        state.enemies = [];
+        state.projectiles = [];
+        state.particles = [];
+        systems.fillStressEntities(state, counts || {});
+        const frameCount = frames || 120;
+        const tickSamples = [];
+        const renderSamples = [];
+        for (let index = 0; index < frameCount; index += 1) {
+          state.player.attackTimer = Infinity;
+          state.spawnTimer = Infinity;
+          const t0 = performance.now();
+          systems.tick(state, input, 1 / 60);
+          const t1 = performance.now();
+          renderer.render(ctx, state, systems.WORLD);
+          const t2 = performance.now();
+          tickSamples.push(t1 - t0);
+          renderSamples.push(t2 - t1);
+        }
+        const summarize = (samples) => {
+          const sorted = samples.slice().sort((a, b) => a - b);
+          const avg = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
+          const p95 = sorted[Math.floor(sorted.length * 0.95)];
+          return { avgMs: avg, p95Ms: p95, avgFps: 1000 / avg, p95Fps: 1000 / p95 };
+        };
+        const tickStats = summarize(tickSamples);
+        const renderStats = summarize(renderSamples);
+        const combinedSamples = tickSamples.map((value, index) => value + renderSamples[index]);
+        const combinedStats = summarize(combinedSamples);
+        return {
+          entityCounts: {
+            enemies: state.enemies.length,
+            projectiles: state.projectiles.length,
+            particles: state.particles.length,
+          },
+          tick: tickStats,
+          render: renderStats,
+          combined: combinedStats,
+          avgMs: combinedStats.avgMs,
+          p95Ms: combinedStats.p95Ms,
+          avgFps: combinedStats.avgFps,
+          p95Fps: combinedStats.p95Fps,
+        };
+      },
     };
   }
 
@@ -778,6 +1008,89 @@
     return false;
   }
 
+  // 가상 스틱(계획서 2절): 화면 왼쪽 60% 영역 플로팅형, 반경 56px·데드존 12%,
+  // Pointer Events(setPointerCapture). 산출한 벡터는 input.vx/vy에 담아
+  // updatePlayer(systems.js resolveMoveVector)가 기존 이동 로직 함수로 그대로 소비한다 -
+  // 키보드와 동일한 코드 경로, 이동 로직 분기 신설 없음.
+  const STICK_RADIUS = 56;
+  const STICK_DEAD_ZONE = 0.12;
+  const stickZone = document.getElementById('virtual-stick-zone');
+  const stickBase = document.getElementById('virtual-stick-base');
+  const stickKnob = document.getElementById('virtual-stick-knob');
+  let activeStickPointerId = null;
+  let stickOriginX = 0;
+  let stickOriginY = 0;
+
+  function setStickVector(vx, vy) {
+    input.vx = vx;
+    input.vy = vy;
+  }
+
+  function clearStickVector() {
+    input.vx = null;
+    input.vy = null;
+  }
+
+  function showStickAt(clientX, clientY) {
+    const rect = stickZone.getBoundingClientRect();
+    stickOriginX = clientX - rect.left;
+    stickOriginY = clientY - rect.top;
+    stickBase.style.left = `${stickOriginX}px`;
+    stickBase.style.top = `${stickOriginY}px`;
+    stickKnob.style.left = '50%';
+    stickKnob.style.top = '50%';
+    stickBase.classList.remove('hidden');
+  }
+
+  function updateStickKnob(dx, dy) {
+    const distance = Math.min(STICK_RADIUS, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const knobX = Math.cos(angle) * distance;
+    const knobY = Math.sin(angle) * distance;
+    stickKnob.style.left = `calc(50% + ${knobX}px)`;
+    stickKnob.style.top = `calc(50% + ${knobY}px)`;
+  }
+
+  function handleStickPointerDown(event) {
+    if (activeStickPointerId !== null) return;
+    activeStickPointerId = event.pointerId;
+    stickZone.setPointerCapture(event.pointerId);
+    showStickAt(event.clientX, event.clientY);
+    setStickVector(0, 0);
+    event.preventDefault();
+  }
+
+  function handleStickPointerMove(event) {
+    if (event.pointerId !== activeStickPointerId) return;
+    const rect = stickZone.getBoundingClientRect();
+    const dx = (event.clientX - rect.left) - stickOriginX;
+    const dy = (event.clientY - rect.top) - stickOriginY;
+    const distance = Math.hypot(dx, dy);
+    updateStickKnob(dx, dy);
+    if (distance < STICK_RADIUS * STICK_DEAD_ZONE) {
+      setStickVector(0, 0);
+      return;
+    }
+    const normalizedX = dx / (distance || 1);
+    const normalizedY = dy / (distance || 1);
+    setStickVector(normalizedX, normalizedY);
+    event.preventDefault();
+  }
+
+  function handleStickPointerUp(event) {
+    if (event.pointerId !== activeStickPointerId) return;
+    activeStickPointerId = null;
+    stickBase.classList.add('hidden');
+    clearStickVector();
+  }
+
+  if (stickZone && stickBase && stickKnob) {
+    stickZone.addEventListener('pointerdown', handleStickPointerDown);
+    stickZone.addEventListener('pointermove', handleStickPointerMove);
+    stickZone.addEventListener('pointerup', handleStickPointerUp);
+    stickZone.addEventListener('pointercancel', handleStickPointerUp);
+  }
+
   window.addEventListener('keydown', (event) => {
     if (handleQaShortcut(event)) return;
     setKey(event, true);
@@ -791,6 +1104,11 @@
     }
     if (state.status === 'ready' || state.status === 'won' || state.status === 'lost') hideModalOnly();
   });
+  if (elements.damageNumbersToggle) {
+    elements.damageNumbersToggle.addEventListener('change', () => {
+      state.damageNumbersEnabled = elements.damageNumbersToggle.checked;
+    });
+  }
   elements.start.addEventListener('click', showIntro);
   elements.pause.addEventListener('click', togglePause);
   elements.modalPrimary.onclick = startGame;

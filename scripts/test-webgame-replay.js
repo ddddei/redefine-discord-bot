@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { createWebgameRepository } = require('../src/webgameRepository');
-const { verifyReplay, REPLAY_STATUS, isStrictModeEnabled } = require('../src/webgameReplay');
+const { verifyReplay, REPLAY_STATUS, isStrictModeEnabled, REPLAYABLE_GAMES, REPLAY_LOG_VERSION } = require('../src/webgameReplay');
 const Board = require('../public/match3/board.js');
 const Scoring = require('../public/match3/scoring.js');
 const Content = require('../public/deck/content.js');
@@ -157,6 +157,16 @@ function testUnsupportedGameIsSkipped() {
 
   const wordResult = verifyReplay({ gameId: 'word', score: 3, seed: null, replayLog: null });
   assert.strictEqual(wordResult.status, REPLAY_STATUS.SKIPPED);
+
+  // 검은 종 생존전(survivors) - 고도화 v1(docs/survivors-improvement-plan.md 6절)에서
+  // 랭킹 대상으로 편입됐지만 리플레이 검증 대상은 아니다(REPLAYABLE_GAMES에 없음).
+  // replayLog 유무와 무관하게 항상 skipped여야 한다.
+  const survivorsResult = verifyReplay({ gameId: 'survivors', score: 5000, seed: null, replayLog: null });
+  assert.strictEqual(survivorsResult.status, REPLAY_STATUS.SKIPPED);
+  assert.ok(!REPLAYABLE_GAMES.has('survivors'));
+
+  const survivorsWithLog = verifyReplay({ gameId: 'survivors', score: 5000, seed: '123', replayLog: { v: REPLAY_LOG_VERSION, actions: [] } });
+  assert.strictEqual(survivorsWithLog.status, REPLAY_STATUS.SKIPPED, 'replayLog가 있어도 대상 외 게임은 skipped여야 합니다');
 }
 
 // ---- deck 픽스처 헬퍼 ----

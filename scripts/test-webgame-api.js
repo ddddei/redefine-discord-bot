@@ -131,6 +131,47 @@ async function main() {
     assert.strictEqual(outOfRange.status, 400);
     assert.strictEqual(outOfRange.data.error, 'SCORE_OUT_OF_RANGE');
 
+    // 6.5. 검은 종 생존전(survivors) 점수 제출·상한·리플레이 skipped 검증. 별도 사용자로
+    // 연결해 기존 토큰의 분당 제출 한도 테스트(7번)와 간섭하지 않게 한다.
+    const survivorsIssued = repository.issueLinkCode({ discordId: 'api_user_survivors', displayName: 'API생존전참여자' }, fixedNow());
+    const survivorsLink = await requestJson(baseUrl, '/game/api/link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: survivorsIssued.code }),
+    });
+    assert.strictEqual(survivorsLink.status, 200);
+    const survivorsToken = survivorsLink.data.playerToken;
+
+    const survivorsScore = await requestJson(baseUrl, '/game/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: survivorsToken, gameId: 'survivors', score: 5000 }),
+    });
+    assert.strictEqual(survivorsScore.status, 200);
+    assert.strictEqual(survivorsScore.data.accepted, true);
+    // survivors는 리플레이 검증 대상 외(REPLAYABLE_GAMES에 없음) - replayLog 유무와
+    // 무관하게 항상 skipped로 기록되어야 한다(missing이 아님).
+    assert.strictEqual(survivorsScore.data.replay, 'skipped');
+
+    const survivorsOverCap = await requestJson(baseUrl, '/game/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: survivorsToken, gameId: 'survivors', score: 12001 }),
+    });
+    assert.strictEqual(survivorsOverCap.status, 400);
+    assert.strictEqual(survivorsOverCap.data.error, 'SCORE_OUT_OF_RANGE');
+
+    const survivorsAtCap = await requestJson(baseUrl, '/game/api/rankings?gameId=survivors', {
+      headers: { Authorization: `Bearer ${survivorsToken}` },
+    });
+    assert.strictEqual(survivorsAtCap.status, 200);
+    assert.ok(Array.isArray(survivorsAtCap.data.ranking));
+
+    // 오늘의 도전 비대상(dailyCapable:false) - /daily는 NOT_DAILY로 거부.
+    const survivorsDaily = await requestJson(baseUrl, '/game/api/daily?gameId=survivors');
+    assert.strictEqual(survivorsDaily.status, 400);
+    assert.strictEqual(survivorsDaily.data.error, 'NOT_DAILY');
+
     // 7. 빈도 제한(분당 RATE_LIMIT_PER_MINUTE회) -> 429
     let rateLimited = false;
     for (let i = 0; i < RATE_LIMIT_PER_MINUTE + 2; i += 1) {

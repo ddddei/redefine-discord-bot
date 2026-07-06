@@ -55,6 +55,19 @@ const GAME_DEFINITIONS = {
     dailyCapable: true,
     maxScore: 6,
   },
+  survivors: {
+    id: 'survivors',
+    title: '검은 종 생존전',
+    rankable: true,
+    // 오늘의 도전 비대상(docs/survivors-improvement-plan.md 0·6절) - 실시간 입력
+    // 의존 장르라 "같은 판" 보장이 안 돼 daily 랭킹에는 편입하지 않는다.
+    dailyCapable: false,
+    // 점수 공식: 생존초 x 10 + 처치 x 2 + (보스 격파 ? 2000 : 0). 퀵 런(10분=600초)만
+    // 제출 대상(클라 가드, long/데모는 제출 안 함). 예산 기반 처치 상한(성능 예산 1절 -
+    // 동시 적 120)을 고려해도 10분 동안 실제 누적 처치는 이론상 훨씬 낮지만, 넉넉한
+    // 여유로 처치 상한을 1,600으로 가정한다: 600*10 + 1600*2 + 2000 = 11,200 → 12,000.
+    maxScore: 12000,
+  },
 };
 
 // 오늘의 도전 요일 변형(docs/match3-improvement-plan.md 2절). 서버가 유일한
