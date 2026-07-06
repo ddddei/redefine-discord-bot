@@ -277,6 +277,10 @@ body::before {
   padding-bottom: 6px;
 }
 
+.result-stats div.hidden {
+  display: none;
+}
+
 .result-stats dt {
   color: var(--ink-soft);
   font-size: 13px;

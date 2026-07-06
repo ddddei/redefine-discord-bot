@@ -31,6 +31,7 @@
   var comboChipEl = document.getElementById('combo-chip');
   var statusMessageEl = document.getElementById('status-message');
   var challengeChipEl = document.getElementById('challenge-chip');
+  var variantChipEl = document.getElementById('variant-chip');
   var restartButton = document.getElementById('restart-button');
   var todayChallengeButton = document.getElementById('today-challenge-button');
   var helpButton = document.getElementById('help-button');
@@ -78,6 +79,10 @@
     var grid = initial.grid;
     var rng = initial.rng;
 
+    // 오늘의 도전 요일 변형(docs/match3-improvement-plan.md 2절). 서버가 유일
+    // 소스 - variant를 받지 못하면(구버전 서버·자유 플레이) standard로 폴백한다.
+    var variant = normalizeVariant(options.variant);
+
     return {
       grid: grid,
       rng: rng,
@@ -85,7 +90,7 @@
       // 만든 빈 specialGrid에서 시작해, 서버 검증기(webgameReplay.js)와 완전히
       // 같은 경로(scoring.js)로 갱신된다.
       specialGrid: initial.specialGrid,
-      movesLeft: Board.MAX_MOVES,
+      movesLeft: variant.movesLimit,
       score: 0,
       combo: 1,
       bestCombo: 1,
@@ -96,7 +101,7 @@
       seed: seed,
       mode: options.mode === 'daily' ? 'daily' : 'free',
       dayKey: options.dayKey || null,
-      variant: options.variant || null,
+      variant: variant,
       // 서버 리플레이 검증용 성공 스왑 기록. 되돌려진 무효 스왑은 RNG를 소비하지
       // 않으므로 포함하지 않는다(docs/replay-verification-plan.md 1절).
       replayActions: [],
@@ -224,6 +229,64 @@
       return;
     }
     challengeChipEl.classList.toggle('hidden', !state || state.mode !== 'daily');
+  }
+
+  // 서버 응답의 variant를 정규화한다. 구버전 서버(variant 없음)나 자유 플레이는
+  // standard로 폴백한다(계획서 2.3 - 클라이언트는 요일을 스스로 계산하지 않는다).
+  function normalizeVariant(rawVariant) {
+    if (!rawVariant || typeof rawVariant !== 'object' || typeof rawVariant.id !== 'string') {
+      return { id: 'standard', movesLimit: Board.MAX_MOVES, label: null };
+    }
+    return {
+      id: rawVariant.id,
+      movesLimit: Number.isInteger(rawVariant.movesLimit) ? rawVariant.movesLimit : Board.MAX_MOVES,
+      label: rawVariant.label || null,
+      targetTile: rawVariant.targetTile || null,
+      targetCount: rawVariant.targetCount || null,
+      bonusScore: rawVariant.bonusScore || null,
+      comboMultiplierBonus: rawVariant.comboMultiplierBonus || null,
+    };
+  }
+
+  function updateVariantChip() {
+    if (!variantChipEl) {
+      return;
+    }
+    var variant = state && state.mode === 'daily' ? state.variant : null;
+    if (!variant || variant.id === 'standard') {
+      variantChipEl.classList.add('hidden');
+      variantChipEl.textContent = '';
+      return;
+    }
+
+    var text = variant.label || '';
+    if (variant.id === 'collect' && variant.targetTile) {
+      var collected = state.clearedByType[variant.targetTile] || 0;
+      text = TILE_LABEL[variant.targetTile] + ' ' + collected + '/' + variant.targetCount;
+    }
+    variantChipEl.textContent = text;
+    variantChipEl.classList.remove('hidden');
+  }
+
+  // 변형 보너스 계산(계획서 2.1). collect는 목표 간식 수집량이 기준치 이상이면
+  // 고정 보너스, combo는 최고 콤보 x 배율이다. standard/sprint20은 보너스 없음.
+  function computeVariantBonus() {
+    var variant = state.variant;
+    if (!variant || state.mode !== 'daily') {
+      return { amount: 0, label: null };
+    }
+    if (variant.id === 'collect' && variant.targetTile) {
+      var collected = state.clearedByType[variant.targetTile] || 0;
+      if (collected >= variant.targetCount) {
+        return { amount: variant.bonusScore, label: TILE_LABEL[variant.targetTile] + ' ' + collected + '개 수집 보너스' };
+      }
+      return { amount: 0, label: TILE_LABEL[variant.targetTile] + ' ' + collected + '/' + variant.targetCount + ' (기준 미달)' };
+    }
+    if (variant.id === 'combo') {
+      var bonus = state.bestCombo * variant.comboMultiplierBonus;
+      return { amount: bonus, label: '최고 콤보 ×' + state.bestCombo + ' 보너스' };
+    }
+    return { amount: 0, label: null };
   }
 
   function getTileFromButton(button) {
@@ -436,6 +499,7 @@
 
     renderBoard();
     updateHud();
+    updateVariantChip();
 
     if (cascadeResult.cascadeCount > 1) {
       setStatusMessage(cascadeResult.cascadeCount + '연쇄가 이어졌어요! 배수 ×' + cascadeResult.maxMultiplier + '.');
@@ -548,11 +612,30 @@
 
   function endGame() {
     state.gameOver = true;
+
+    // 변형 보너스(계획서 2.1)는 게임 종료 시 1회만 점수에 합산해 제출한다.
+    var variantBonus = computeVariantBonus();
+    if (variantBonus.amount > 0) {
+      state.score += variantBonus.amount;
+    }
+
     resultTitleEl.textContent = '이동을 모두 사용했어요';
     resultCopyEl.textContent = getScoreVerdict(state.score);
     resultScoreEl.textContent = String(state.score);
     resultComboEl.textContent = '×' + state.bestCombo;
     resultTopTileEl.textContent = getTopClearedTileLabel();
+
+    var variantRowEl = document.getElementById('result-variant-row');
+    var variantLabelEl = document.getElementById('result-variant-label');
+    var variantValueEl = document.getElementById('result-variant-value');
+    if (variantRowEl && variantValueEl && variantBonus.label) {
+      variantLabelEl.textContent = '변형 보너스';
+      variantValueEl.textContent = variantBonus.amount > 0 ? ('+' + variantBonus.amount + '점 · ' + variantBonus.label) : variantBonus.label;
+      variantRowEl.classList.remove('hidden');
+    } else if (variantRowEl) {
+      variantRowEl.classList.add('hidden');
+    }
+
     openModal(resultModal);
 
     // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
@@ -575,9 +658,16 @@
     renderBoard();
     updateHud();
     updateChallengeChip();
-    setStatusMessage(state.mode === 'daily'
-      ? '오늘의 간식판이에요. 같은 판에서 편하게 다시 도전할 수 있어요.'
-      : '인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.');
+    updateVariantChip();
+    var introMessage;
+    if (state.mode === 'daily' && state.variant && state.variant.label) {
+      introMessage = state.variant.label;
+    } else if (state.mode === 'daily') {
+      introMessage = '오늘의 간식판이에요. 같은 판에서 편하게 다시 도전할 수 있어요.';
+    } else {
+      introMessage = '인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.';
+    }
+    setStatusMessage(introMessage);
   }
 
   function startDailyGameFromSeed(seed, daily) {
@@ -585,6 +675,7 @@
       seed: seed,
       mode: 'daily',
       dayKey: daily && daily.dayKey,
+      variant: daily && daily.variant,
     });
   }
 

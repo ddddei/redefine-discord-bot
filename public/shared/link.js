@@ -203,6 +203,9 @@
           ranking: result.data.ranking || [],
           myBest: result.data.myBest,
           myRank: result.data.myRank || null,
+          // 매치3 오늘의 도전 요일 변형(docs/match3-improvement-plan.md 2절).
+          // 구버전 서버 응답에는 없으므로 undefined일 수 있다 - 호출부가 폴백 처리.
+          variant: result.data.variant,
         };
       })
       .catch(function (error) {

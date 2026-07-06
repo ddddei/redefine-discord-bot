@@ -31,6 +31,7 @@
           인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.
         </p>
         <div id="challenge-chip" class="gk-challenge-chip hidden">오늘의 간식판</div>
+        <div id="variant-chip" class="gk-challenge-chip hidden"></div>
         <div id="board" class="board" role="grid" aria-label="간식 맞추기 보드"></div>
         <div class="header-actions">
           <button id="help-button" class="gk-button secondary" type="button">도움말</button>
@@ -69,6 +70,7 @@
           <div><dt>최종 점수</dt><dd id="result-score">0</dd></div>
           <div><dt>최고 콤보</dt><dd id="result-combo">×1</dd></div>
           <div><dt>가장 많이 지운 간식</dt><dd id="result-top-tile">-</dd></div>
+          <div id="result-variant-row" class="hidden"><dt id="result-variant-label">변형 보너스</dt><dd id="result-variant-value">-</dd></div>
         </dl>
         <div id="result-link-section"></div>
         <div id="result-daily-section"></div>

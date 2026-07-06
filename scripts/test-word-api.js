@@ -222,6 +222,9 @@ async function main() {
 
     const match3Daily = await requestJson(baseUrl, '/game/api/daily?gameId=match3');
     assert.strictEqual(match3Daily.status, 200);
+    // variant: 매치3 오늘의 도전 요일 변형(docs/match3-improvement-plan.md 2절) -
+    // 이 파일의 word/idle 관련 단정(위 dailyWord 키 목록, 아래 idleDaily 400)은
+    // 그대로 유지되고, match3 키 목록만 신규 필드를 반영해 갱신한다.
     assert.deepStrictEqual(Object.keys(match3Daily.data).sort(), [
       'dayKey',
       'gameId',
@@ -230,6 +233,7 @@ async function main() {
       'participants',
       'ranking',
       'seed',
+      'variant',
     ].sort());
     assert.strictEqual(match3Daily.data.seed, getDailySeed(dayKey));
     assert.strictEqual(match3Daily.data.distribution, undefined);
