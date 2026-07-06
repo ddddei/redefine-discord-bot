@@ -772,6 +772,25 @@ function testMobileHardeningAndSilence() {
   });
 }
 
+function testBossEncounterPresentation() {
+  const systemsSource = readGameFile('systems.js');
+  assert.ok(systemsSource.includes('검은 종 파수꾼이 문을 등지고 섰다'), '보스 등장 경고 배너 문구가 계획서 그대로여야 합니다');
+  const renderer = readGameFile('renderer.js');
+  assert.ok(renderer.includes('function drawBossStatusHud'), '보스 전용 체력바 렌더 함수가 있어야 합니다');
+  assert.ok(renderer.includes("boss ? '검은 종 파수꾼'"), '보스 전용 체력바에 보스명이 표시되어야 합니다');
+  assert.ok(renderer.includes('phaseLabel'), '보스 체력바에 패턴/페이즈명 캡션이 있어야 합니다');
+
+  const { content, systems } = loadGameRuntime();
+  const state = systems.createState(content, 'fighter', { mode: 'demo' });
+  state.spawnTimer = 99;
+  state.elapsed = 204.99;
+  state.enemies = [];
+  systems.tick(state, { up: false, down: false, left: false, right: false }, 0.02);
+  assert.ok(state.floaters.some((floater) => floater.text === '검은 종 파수꾼이 문을 등지고 섰다'));
+  const banner = state.floaters.find((floater) => floater.text === '검은 종 파수꾼이 문을 등지고 섰다');
+  assert.strictEqual(banner.maxLife, 2, '보스 경고 배너는 2초 노출이어야 합니다');
+}
+
 function testCombatFeedbackHitVignetteAndDamageNumbers() {
   const { content, systems } = loadGameRuntime();
   const renderer = readGameFile('renderer.js');
@@ -1171,6 +1190,7 @@ function main() {
   testMobileHardeningAndSilence();
   testVirtualStickDrivesSharedMovementPath();
   testCombatFeedbackHitVignetteAndDamageNumbers();
+  testBossEncounterPresentation();
 
   console.log('dungeonworld survivors static test passed');
 }

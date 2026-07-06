@@ -369,7 +369,8 @@
       state.effects.flash = 0.45;
       state.effects.shake = 0.7;
       state.effects.bossPulse = 1;
-      addFloater(state, '검은 종 파수꾼이 문을 밀고 나옵니다', state.player.x, state.player.y - 110, '--accent-bell', 2.1, true);
+      // 보스 등장 경고 배너(계획서 3절 문구 그대로) - 2초 노출, 화면 고정(screenSpace).
+      addFloater(state, '검은 종 파수꾼이 문을 등지고 섰다', state.player.x, state.player.y - 110, '--accent-bell', 2, true);
     }
 
     updateWaveHazards(state, wave, dt);
