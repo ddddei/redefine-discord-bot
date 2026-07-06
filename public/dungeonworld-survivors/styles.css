@@ -198,6 +198,57 @@ h2 {
   min-height: 44px;
 }
 
+/* Discord 연동·랭킹(계획서 6절) - 공용 gk 컴포넌트(game-ui.css)를 다크 톤 위에서
+   대비만 재정의한다(구조/로직은 공용 컴포넌트 그대로 재사용). */
+.survivors-gk-section {
+  margin-top: var(--space-4);
+}
+
+.survivors-gk-section .gk-panel {
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--surface-elevated) 70%, transparent);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.survivors-gk-section .gk-panel::before {
+  content: none;
+}
+
+.survivors-gk-section .gk-link-status,
+.survivors-gk-section .gk-ranking-title,
+.survivors-gk-section .gk-daily-participants {
+  color: var(--text-secondary);
+}
+
+.survivors-gk-section .gk-link-input {
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
+.survivors-gk-section .gk-button {
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+}
+
+.survivors-gk-section .gk-button.primary {
+  border-color: var(--accent-brass);
+  color: var(--accent-brass);
+}
+
+.survivors-gk-section .gk-ranking-list {
+  color: var(--text-primary);
+}
+
+.survivors-gk-section .gk-ranking-item {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 .button {
   min-height: 44px;
   border: 1px solid var(--border-default);

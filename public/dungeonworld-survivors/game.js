@@ -328,6 +328,21 @@
     canvas.focus();
   }
 
+  // Discord 연동·랭킹(계획서 6절): 점수 제출은 퀵 런만. long(standard)·데모는 클라
+  // 가드로 제출하지 않는다 - 예산이 퀵 런 처치 상한 기준으로만 산정되어 있어(webgameApi
+  // GAME_DEFINITIONS.survivors.maxScore) long 런은 상한을 초과할 수 있기 때문이다.
+  function isScoreSubmittableMode() {
+    return state.mode.id === 'quick';
+  }
+
+  // 점수 공식(계획서 6절): 생존초 x 10 + 처치 x 2 + (보스 격파 ? 2000 : 0).
+  function calculateSurvivorsScore(runSummary) {
+    const survivalSeconds = Math.floor(runSummary.survivalTime || 0);
+    const killScore = (runSummary.kills || 0) * 2;
+    const bossScore = runSummary.won ? 2000 : 0;
+    return survivalSeconds * 10 + killScore + bossScore;
+  }
+
   function finishGame(won) {
     state.status = won ? 'won' : 'lost';
     state.runSummary = systems.getRunSummary(state);
@@ -341,8 +356,8 @@
     elements.modalKicker.textContent = won ? '생존 성공' : '다시 정비';
     elements.modalTitle.textContent = won ? '마지막 문이 열렸습니다' : '검은 종소리에 밀렸습니다';
     elements.modalCopy.textContent = won
-      ? '검은 종 파수꾼을 쓰러뜨렸습니다. 이번 런 기록은 브라우저 안에서만 끝나며 포인트나 Discord 기록은 남지 않습니다.'
-      : '여관으로 물러나 숨을 고릅니다. 다시 시작해도 포인트나 Discord 기록은 남지 않습니다.';
+      ? '검은 종 파수꾼을 쓰러뜨렸습니다. 이번 런 기록은 브라우저 안에서만 끝나며 포인트는 지급되지 않습니다.'
+      : '여관으로 물러나 숨을 고릅니다. 다시 시작해도 포인트는 지급되지 않습니다.';
     elements.modalPrimary.classList.remove('hidden');
     elements.modalSecondary.classList.remove('hidden');
     elements.modalPrimary.textContent = '다시 시작';
@@ -350,7 +365,29 @@
     elements.modalSecondary.textContent = '닫기';
     elements.modalSecondary.onclick = hideModalOnly;
     renderResultSummary(state.runSummary);
+    renderSurvivorsLinkAndRanking();
     showModal('result');
+  }
+
+  // 결과 화면 연결·랭킹 섹션(계획서 6절) - 공용 gk 컴포넌트(GameLink) 재사용.
+  function renderSurvivorsLinkAndRanking() {
+    const linkSection = document.getElementById('survivors-link-section');
+    const rankingSection = document.getElementById('survivors-ranking-section');
+    if (!window.GameLink || !linkSection || !rankingSection) return;
+
+    window.GameLink.renderLinkSection(linkSection, {
+      onChange: () => submitSurvivorsScoreIfEligible(rankingSection),
+    });
+    window.GameLink.renderRankingSection(rankingSection, 'survivors');
+    submitSurvivorsScoreIfEligible(rankingSection);
+  }
+
+  function submitSurvivorsScoreIfEligible(rankingSection) {
+    if (!window.GameLink || !window.GameLink.isLinked() || !isScoreSubmittableMode()) return;
+    const score = calculateSurvivorsScore(state.runSummary);
+    window.GameLink.submitScore('survivors', score).then((result) => {
+      if (result.ok) window.GameLink.renderRankingSection(rankingSection, 'survivors');
+    });
   }
 
   function updateDom() {
@@ -413,7 +450,7 @@
       : state.mode.id === 'quick'
         ? '기본 모드인 10분 퀵 런에서는 엘리트와 마지막 문 흐름을 압축해 확인합니다. 30분 정식 런은 주소 끝에 ?mode=long을 붙이면 됩니다.'
         : '30분 정식 런(?mode=long)에서는 끝까지 버티면 마지막 문이 열립니다.';
-    elements.modalCopy.textContent = `보석을 먹으면 경험치가 오르고, 레벨업하면 무기나 패시브를 고릅니다. 같은 무기를 여러 번 고르면 강해지며, 무기 Lv.8과 특정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화할 수 있습니다. 엘리트를 잡으면 상자가 나오고, ${modeCopy} 포인트나 Discord 계정 연동은 없습니다.`;
+    elements.modalCopy.textContent = `보석을 먹으면 경험치가 오르고, 레벨업하면 무기나 패시브를 고릅니다. 같은 무기를 여러 번 고르면 강해지며, 무기 Lv.8과 특정 패시브를 맞춘 뒤 엘리트 상자를 먹으면 진화할 수 있습니다. 엘리트를 잡으면 상자가 나오고, ${modeCopy} 결과 화면에서 Discord 계정을 연결하면 퀵 런 점수가 주간 랭킹에 반영됩니다(포인트 지급은 없습니다).`;
     elements.modalPrimary.classList.add('hidden');
     elements.modalSecondary.classList.remove('hidden');
     elements.modalSecondary.textContent = '닫기';

@@ -774,6 +774,36 @@ function testMobileHardeningAndSilence() {
   });
 }
 
+function testDiscordRankingIntegration() {
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('../shared/link.js'), 'GameLink(shared/link.js)가 로드되어야 합니다');
+  assert.ok(html.includes('../shared/game-ui.css'), '공용 gk 컴포넌트 CSS가 로드되어야 합니다');
+  assert.ok(html.includes('survivors-link-section'));
+  assert.ok(html.includes('survivors-ranking-section'));
+
+  const game = readGameFile('game.js');
+  assert.ok(game.includes('function calculateSurvivorsScore'));
+  assert.ok(game.includes("survivalSeconds * 10"), '점수 공식이 생존초 x 10을 포함해야 합니다');
+  assert.ok(game.includes('* 2'), '점수 공식이 처치 x 2를 포함해야 합니다');
+  assert.ok(game.includes('2000'), '점수 공식이 보스 격파 2000점을 포함해야 합니다');
+  assert.ok(game.includes('function isScoreSubmittableMode'));
+  assert.ok(game.includes("state.mode.id === 'quick'"), '점수 제출은 퀵 런만 허용해야 합니다');
+  assert.ok(game.includes("window.GameLink.submitScore('survivors'"));
+  assert.ok(game.includes('renderSurvivorsLinkAndRanking'));
+
+  const webgameApiSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'webgameApi.js'), 'utf8');
+  assert.ok(webgameApiSource.includes("survivors:"), 'GAME_DEFINITIONS에 survivors가 있어야 합니다');
+  assert.ok(webgameApiSource.includes('maxScore: 12000'));
+  assert.ok(/survivors:\s*\{[^}]*dailyCapable:\s*false/s.test(webgameApiSource), 'survivors는 dailyCapable:false여야 합니다');
+  assert.ok(/survivors:\s*\{[^}]*rankable:\s*true/s.test(webgameApiSource), 'survivors는 rankable:true여야 합니다');
+
+  const deployCommandsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'deploy-commands.js'), 'utf8');
+  assert.ok(deployCommandsSource.includes("{ name: '검은 종 생존전', value: 'survivors' }"), '/게임랭킹 choices에 생존전이 추가되어야 합니다(배포 필요)');
+
+  const replaySource = fs.readFileSync(path.join(__dirname, '..', 'src', 'webgameReplay.js'), 'utf8');
+  assert.ok(!/REPLAYABLE_GAMES = new Set\(\[[^\]]*survivors/.test(replaySource), 'survivors는 리플레이 검증 대상에 포함되면 안 됩니다');
+}
+
 function testMetaProgressionIntegration() {
   const html = readGameFile('index.html');
   assert.ok(html.includes('./meta.js'), 'meta.js가 로드되어야 합니다');
@@ -1215,6 +1245,7 @@ function main() {
   testCombatFeedbackHitVignetteAndDamageNumbers();
   testBossEncounterPresentation();
   testMetaProgressionIntegration();
+  testDiscordRankingIntegration();
 
   console.log('dungeonworld survivors static test passed');
 }

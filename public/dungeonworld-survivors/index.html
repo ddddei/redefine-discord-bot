@@ -9,6 +9,7 @@
       content="프로젝트 리디파인 던전월드 세계관을 바탕으로 한 반복 플레이형 브라우저 로그라이크 생존전입니다."
     >
     <title>검은 종 생존전</title>
+    <link rel="stylesheet" href="../shared/game-ui.css">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body style="background-color: #090a09;">
@@ -113,9 +114,11 @@
         <p id="modal-kicker" class="kicker">준비</p>
         <h2 id="modal-title">검은 종이 울립니다</h2>
         <p id="modal-copy">
-          마지막 웨이브의 검은 종 파수꾼을 쓰러뜨리면 문이 열립니다. 포인트나 Discord 계정 연동은 없습니다.
+          마지막 웨이브의 검은 종 파수꾼을 쓰러뜨리면 문이 열립니다. 포인트는 지급되지 않습니다.
         </p>
         <div id="upgrade-options" class="upgrade-options"></div>
+        <div id="survivors-link-section" class="survivors-gk-section"></div>
+        <div id="survivors-ranking-section" class="survivors-gk-section"></div>
         <div class="modal-actions">
           <button id="modal-primary" class="button primary" type="button">시작</button>
           <button id="modal-secondary" class="button secondary" type="button">닫기</button>
@@ -123,6 +126,7 @@
       </div>
     </div>
 
+    <script src="../shared/link.js"></script>
     <script src="./content.js"></script>
     <script src="./meta.js"></script>
     <script src="./systems.js"></script>

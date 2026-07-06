@@ -1,12 +1,13 @@
 # 웹게임 랭킹·비동기 소셜 운영 절차
 
-`간식 맞추기`(match3), `간식 수호대`(deck), `간식 공방 키우기`(idle) 3종 웹게임에 Discord 계정 연결·서버 점수 기록·주간 랭킹·오늘의 도전·공동 목표·익명 응원 기능이 추가됐습니다([webgame-discord-link-plan.md](webgame-discord-link-plan.md), [webgame-async-social-plan.md](webgame-async-social-plan.md) 참고). 이 문서는 현재 운영 절차만 다룹니다.
+`간식 맞추기`(match3), `간식 수호대`(deck), `간식 공방 키우기`(idle), `검은 종 생존전`(survivors) 4종 웹게임에 Discord 계정 연결·서버 점수 기록·주간 랭킹·오늘의 도전·공동 목표·익명 응원 기능이 추가됐습니다([webgame-discord-link-plan.md](webgame-discord-link-plan.md), [webgame-async-social-plan.md](webgame-async-social-plan.md), [survivors-improvement-plan.md](survivors-improvement-plan.md) 6절 참고). 이 문서는 현재 운영 절차만 다룹니다.
 
 ## v1 범위와 원칙
 
 - v1에서는 **포인트 자동 지급을 하지 않습니다.** 부정 방지가 완전히 검증되기 전까지 자동 지급은 위험하다고 판단해, 운영자가 랭킹을 보고 기존 포인트 명령으로 수동 지급하는 절차를 공식 루프로 둡니다.
 - 실시간 멀티플레이는 범위 밖입니다. 랭킹은 "이번 주 최고 기록" 기준 비동기 경쟁이고, 오늘의 도전·공동 목표·응원은 부담 없는 비동기 참여 장치입니다.
 - `간식 공방 키우기`(idle)는 개인 랭킹 대상이 아닙니다. 주간 누적 생산량 차이만 공동 목표 총합과 참여 인원으로 표시합니다.
+- `검은 종 생존전`(survivors)은 랭킹 대상이지만 **오늘의 도전은 대상 외**입니다(실시간 입력 의존 장르라 "같은 판" 보장이 안 됨 - 재론 조건: 리플레이 검증 v2에서 실시간 게임 검증 방법이 생길 때). 점수 제출은 10분 퀵 런에서만 가능하고, 30분 정식 런·데모는 클라이언트가 제출하지 않습니다.
 - `dayKey`는 KST 날짜, `weekKey`는 기존 UTC ISO 주차입니다. 주간 경계는 월요일 09:00(KST)입니다.
 
 ## 참여자 사용 흐름
@@ -21,7 +22,7 @@
 
 ## 운영자 주간 점검 절차
 
-1. 매주 월요일(또는 정기 점검일), 운영자가 `/게임랭킹 게임:<match3|deck> 기간:이번 주`로 지난 주 상위자를 확인합니다. `idle`은 `/게임랭킹 게임:간식 공방 키우기`로 공동 목표 진행 상황과 참여 인원을 확인합니다.
+1. 매주 월요일(또는 정기 점검일), 운영자가 `/게임랭킹 게임:<match3|deck|검은 종 생존전> 기간:이번 주`로 지난 주 상위자를 확인합니다. `idle`은 `/게임랭킹 게임:간식 공방 키우기`로 공동 목표 진행 상황과 참여 인원을 확인합니다.
 2. 운영 정책에 따라 기존 `/포인트관리` 명령으로 수동 지급합니다.
    - 지급 기준 (2026-07-04 운영 결정, 중복 지급 없음):
      - 1위: `3,000P`
@@ -29,6 +30,7 @@
      - 3위: `1,000P`
      - 4위 이하 참여자(해당 주 제출 기록 1건 이상): `500P`
    - 순위 보상을 받은 참여자에게 참여 보상을 중복 지급하지 않습니다.
+   - **생존전(survivors) 지급 정책 동일 적용 여부 — 운영 결정 칸**: `[ ]` 기존 3종과 동일 지급 기준 적용 / `[ ]` 별도 기준 검토(4게임으로 랭킹 대상이 늘면서 주간 지급 총액이 커지는 점 고려) — 결정일: ______ / 결정 사유: ______
 3. 지급 사유에는 게임명과 주차(예: `2026-W27`)를 남겨 `/포인트로그`에서 추적할 수 있게 합니다. 예: "간식 맞추기 2026-W27 주간 랭킹 1위".
 4. `/admin`(활성화된 경우) `웹게임 운영 현황` 섹션의 `flagged 기록` 목록에서 이상치로 플래그된 기록(`flagged: true`)이 있는지 확인합니다. `weekKey`/`dayKey` 필터로 지급 대상 주차를 좁혀 볼 수 있습니다. 플래그된 기록은 랭킹·공동 목표 계산에서 자동 제외되지만, 필요하면 해당 참여자의 해당 주 지급을 보류하거나 직접 확인합니다. 자세한 화면 구성은 [operator-dashboard-guide.md](operator-dashboard-guide.md)의 "`/admin` 웹게임 운영 현황" 절을 참고합니다.
 5. 같은 섹션의 `리플레이 검증(v2) · 최근 불일치` 표에서 이번 주 mismatch 기록이 있는지 확인합니다(9절 참고). mismatch는 기본적으로 랭킹에서 제외되지 않으므로, 명백히 조작된 것으로 보이면 해당 지급을 보류하고 직접 확인합니다.
@@ -63,7 +65,7 @@
 
 | 항목 | 기준 |
 | --- | --- |
-| 게임별 점수 상한 | match3 90,000점(특수 타일 도입 후 재산정 - [match3-improvement-plan.md](match3-improvement-plan.md) 1.3), deck 13,072점(갈림길 맵 고도화로 13층 재산정 - [deck-improvement-plan.md](deck-improvement-plan.md) 3.1, 도달 층×1000+잔여 HP 이론상 최대·유물 '딸기 심장'의 최대 HP +12 포함), idle 상한 없음에 가까운 넉넉한 값 |
+| 게임별 점수 상한 | match3 90,000점(특수 타일 도입 후 재산정 - [match3-improvement-plan.md](match3-improvement-plan.md) 1.3), deck 13,072점(갈림길 맵 고도화로 13층 재산정 - [deck-improvement-plan.md](deck-improvement-plan.md) 3.1, 도달 층×1000+잔여 HP 이론상 최대·유물 '딸기 심장'의 최대 HP +12 포함), idle 상한 없음에 가까운 넉넉한 값, survivors 12,000점(퀵 런 기준 생존초×10+처치×2+보스 격파 2000, 예산 기반 처치 상한 가정 - [survivors-improvement-plan.md](survivors-improvement-plan.md) 6절) |
 | 빈도 제한 | 토큰당 분당 3회, 일 50회 초과 시 429 |
 | 이상치 플래그 | 직전 주 최고 기록의 3배를 초과하면 `flagged: true`로 기록만 하고 랭킹에서는 제외 |
 | 리플레이 검증 | match3·deck 대상. 시드+행동 로그로 서버가 점수를 재현해 `verified`/`mismatch`/`missing` 기록(9절), 로그 버전 v3(덱 갈림길 맵 도입) |
@@ -90,4 +92,4 @@
 
 - [webgame-discord-link-plan.md](webgame-discord-link-plan.md) — 전체 설계(아키텍처, 데이터 스키마, API 명세)
 - [operator-command-guide.md](operator-command-guide.md) — `/게임연결`, `/게임랭킹` 명령어 요약
-- [match3-web-game.md](match3-web-game.md), [deck-web-game.md](deck-web-game.md), [idle-web-game.md](idle-web-game.md) — 게임별 플레이/QA 가이드
+- [match3-web-game.md](match3-web-game.md), [deck-web-game.md](deck-web-game.md), [idle-web-game.md](idle-web-game.md), [dungeonworld-survivors-web-game.md](dungeonworld-survivors-web-game.md) — 게임별 플레이/QA 가이드

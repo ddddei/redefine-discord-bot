@@ -107,6 +107,44 @@ async function main() {
     assert.strictEqual(idleDaily.status, 400);
     assert.strictEqual(idleDaily.data.error, 'NOT_DAILY');
 
+    // 검은 종 생존전: rankable:true지만 dailyCapable:false(idle은 rankable:false라 다른
+    // 케이스) - 실시간 입력 의존 장르라 오늘의 도전 비대상(docs/survivors-improvement-plan.md
+    // 0·6절). /daily는 idle과 동일하게 NOT_DAILY, /score에 challenge:'daily'를 실어도
+    // 거부되어야 한다.
+    const survivorsDaily = await requestJson(baseUrl, '/game/api/daily?gameId=survivors');
+    assert.strictEqual(survivorsDaily.status, 400);
+    assert.strictEqual(survivorsDaily.data.error, 'NOT_DAILY');
+
+    // 이후 tokenA는 원래 테스트가 분당 제출 한도(RATE_LIMIT_PER_MINUTE)를 정확히 맞춰
+    // 쓰므로, survivors 전용 검증은 tokenC로 분리해 간섭하지 않는다.
+    const survivorsDailyScore = await requestJson(baseUrl, '/game/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: tokenC, gameId: 'survivors', score: 5000, challenge: 'daily' }),
+    });
+    assert.strictEqual(survivorsDailyScore.status, 400);
+    assert.strictEqual(survivorsDailyScore.data.error, 'NOT_DAILY');
+
+    // 랭킹 대상(rankable:true)이므로 일반(퀵 런) 제출은 정상 동작해야 한다.
+    const survivorsWeeklyScore = await requestJson(baseUrl, '/game/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: tokenC, gameId: 'survivors', score: 5000 }),
+    });
+    assert.strictEqual(survivorsWeeklyScore.status, 200);
+    assert.strictEqual(survivorsWeeklyScore.data.accepted, true);
+    // 리플레이 검증 대상 외 게임(idle/word/survivors) - replayLog 미첨부 제출은 서버가
+    // skipped로 기록해야 한다(missing이 아님 - docs/replay-verification-plan.md 0.1절).
+    assert.strictEqual(survivorsWeeklyScore.data.replay, 'skipped');
+
+    const survivorsScoreCap = await requestJson(baseUrl, '/game/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: tokenC, gameId: 'survivors', score: 999999 }),
+    });
+    assert.strictEqual(survivorsScoreCap.status, 400);
+    assert.strictEqual(survivorsScoreCap.data.error, 'SCORE_OUT_OF_RANGE');
+
     const dailyScoreA = await requestJson(baseUrl, '/game/api/score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
