@@ -4,7 +4,7 @@
   const renderer = window.DungeonworldSurvivorsRenderer;
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
-  const input = { up: false, down: false, left: false, right: false };
+  const input = { up: false, down: false, left: false, right: false, vx: null, vy: null };
   const elements = {
     start: document.getElementById('start-button'),
     pause: document.getElementById('pause-button'),
@@ -91,9 +91,18 @@
   let pendingChestReward = null;
   let previousFocus = null;
 
+  // 첫 화면 전송량 예산(계획서 2절, ≤ 500KB): 배경/적 원화 총량이 예산을 크게 초과해
+  // 즉시 선로드하지 않는다(스프라이트 지연 로드 - 계획서 초과 시 대응). 클래스 스프라이트
+  // (6장, 약 30KB)만 플레이북 선택 화면에 바로 보이므로 즉시 로드하고, 적·배경 원화는
+  // 실제 런 시작(startGame/resetGame) 시점에 로드해 게임플레이 전에는 받지 않는다.
   renderer.preloadClassSprites();
-  renderer.preloadEnemySprites();
-  renderer.preloadBackgroundSprites();
+  let deferredSpritesLoaded = false;
+  function loadDeferredSprites() {
+    if (deferredSpritesLoaded) return;
+    deferredSpritesLoaded = true;
+    renderer.preloadEnemySprites();
+    renderer.preloadBackgroundSprites();
+  }
 
   function getRequestedMode() {
     const params = new URLSearchParams(window.location.search);
@@ -104,6 +113,7 @@
   }
 
   function resetGame(playbookId) {
+    loadDeferredSprites();
     state = systems.createState(content, playbookId, { mode: getRequestedMode() });
     lastFrame = performance.now();
     elements.pause.disabled = false;
@@ -826,6 +836,89 @@
       return true;
     }
     return false;
+  }
+
+  // 가상 스틱(계획서 2절): 화면 왼쪽 60% 영역 플로팅형, 반경 56px·데드존 12%,
+  // Pointer Events(setPointerCapture). 산출한 벡터는 input.vx/vy에 담아
+  // updatePlayer(systems.js resolveMoveVector)가 기존 이동 로직 함수로 그대로 소비한다 -
+  // 키보드와 동일한 코드 경로, 이동 로직 분기 신설 없음.
+  const STICK_RADIUS = 56;
+  const STICK_DEAD_ZONE = 0.12;
+  const stickZone = document.getElementById('virtual-stick-zone');
+  const stickBase = document.getElementById('virtual-stick-base');
+  const stickKnob = document.getElementById('virtual-stick-knob');
+  let activeStickPointerId = null;
+  let stickOriginX = 0;
+  let stickOriginY = 0;
+
+  function setStickVector(vx, vy) {
+    input.vx = vx;
+    input.vy = vy;
+  }
+
+  function clearStickVector() {
+    input.vx = null;
+    input.vy = null;
+  }
+
+  function showStickAt(clientX, clientY) {
+    const rect = stickZone.getBoundingClientRect();
+    stickOriginX = clientX - rect.left;
+    stickOriginY = clientY - rect.top;
+    stickBase.style.left = `${stickOriginX}px`;
+    stickBase.style.top = `${stickOriginY}px`;
+    stickKnob.style.left = '50%';
+    stickKnob.style.top = '50%';
+    stickBase.classList.remove('hidden');
+  }
+
+  function updateStickKnob(dx, dy) {
+    const distance = Math.min(STICK_RADIUS, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const knobX = Math.cos(angle) * distance;
+    const knobY = Math.sin(angle) * distance;
+    stickKnob.style.left = `calc(50% + ${knobX}px)`;
+    stickKnob.style.top = `calc(50% + ${knobY}px)`;
+  }
+
+  function handleStickPointerDown(event) {
+    if (activeStickPointerId !== null) return;
+    activeStickPointerId = event.pointerId;
+    stickZone.setPointerCapture(event.pointerId);
+    showStickAt(event.clientX, event.clientY);
+    setStickVector(0, 0);
+    event.preventDefault();
+  }
+
+  function handleStickPointerMove(event) {
+    if (event.pointerId !== activeStickPointerId) return;
+    const rect = stickZone.getBoundingClientRect();
+    const dx = (event.clientX - rect.left) - stickOriginX;
+    const dy = (event.clientY - rect.top) - stickOriginY;
+    const distance = Math.hypot(dx, dy);
+    updateStickKnob(dx, dy);
+    if (distance < STICK_RADIUS * STICK_DEAD_ZONE) {
+      setStickVector(0, 0);
+      return;
+    }
+    const normalizedX = dx / (distance || 1);
+    const normalizedY = dy / (distance || 1);
+    setStickVector(normalizedX, normalizedY);
+    event.preventDefault();
+  }
+
+  function handleStickPointerUp(event) {
+    if (event.pointerId !== activeStickPointerId) return;
+    activeStickPointerId = null;
+    stickBase.classList.add('hidden');
+    clearStickVector();
+  }
+
+  if (stickZone && stickBase && stickKnob) {
+    stickZone.addEventListener('pointerdown', handleStickPointerDown);
+    stickZone.addEventListener('pointermove', handleStickPointerMove);
+    stickZone.addEventListener('pointerup', handleStickPointerUp);
+    stickZone.addEventListener('pointercancel', handleStickPointerUp);
   }
 
   window.addEventListener('keydown', (event) => {

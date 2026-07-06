@@ -555,10 +555,24 @@
     state.effects.shake = 0.45;
   }
 
+  // 가상 스틱(계획서 2절)이 analog vx/vy를 채우면 그 값을, 아니면 키보드 digital
+  // up/down/left/right를 사용한다. 이동 로직 자체는 분기 없이 동일한 (dx, dy) 벡터
+  // 소비 경로 하나만 탄다 - 입력 소스만 다를 뿐 updatePlayer 아래 로직은 공용.
+  function resolveMoveVector(input) {
+    if (input.vx !== null && input.vx !== undefined) {
+      return { dx: input.vx || 0, dy: input.vy || 0 };
+    }
+    return {
+      dx: (input.right ? 1 : 0) - (input.left ? 1 : 0),
+      dy: (input.down ? 1 : 0) - (input.up ? 1 : 0),
+    };
+  }
+
   function updatePlayer(state, input, dt) {
     const player = state.player;
-    const dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    const dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
+    const moveVector = resolveMoveVector(input);
+    const dx = moveVector.dx;
+    const dy = moveVector.dy;
     const direction = normalize(dx, dy);
     const moving = dx !== 0 || dy !== 0;
     const tensionScale = 1 + player.tension * player.tensionSpeed;

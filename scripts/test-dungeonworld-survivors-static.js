@@ -732,6 +732,64 @@ function testClassUltimatesAndBuildNames() {
   assert.match(thiefSummary.buildName, /그림자 칼비꾼|칼날 박자/);
 }
 
+function testMobileHardeningAndSilence() {
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('viewport-fit=cover'), 'viewport meta should include viewport-fit=cover');
+  assert.ok(html.includes('theme-color'), 'theme-color meta should exist');
+  assert.ok(html.includes('background-color: #090a09'), 'body should inline background color to avoid white flash');
+  assert.ok(html.includes('virtual-stick-zone'), 'virtual stick zone element should exist');
+  assert.ok(html.includes('virtual-stick-base'));
+  assert.ok(html.includes('virtual-stick-knob'));
+  assert.ok(html.includes('orientation-hint'), 'landscape recommendation copy should exist');
+
+  const styles = readGameFile('styles.css');
+  assert.ok(styles.includes('100dvh'), 'dvh unit should be used for viewport height');
+  assert.ok(!styles.includes('background-attachment: fixed'), 'iOS-problematic fixed background should not be used');
+  assert.ok(styles.includes('env(safe-area-inset-bottom'), 'safe-area padding should exist');
+  assert.ok(styles.includes('.virtual-stick-zone'));
+  assert.ok(styles.includes('.virtual-stick-base'));
+  assert.ok(styles.includes('.virtual-stick-knob'));
+
+  const game = readGameFile('game.js');
+  assert.ok(game.includes('setPointerCapture'), 'virtual stick should use Pointer Events with setPointerCapture');
+  assert.ok(game.includes('pointerdown'));
+  assert.ok(game.includes('pointermove'));
+  assert.ok(game.includes('pointerup'));
+  assert.ok(game.includes('STICK_DEAD_ZONE'));
+  assert.ok(game.includes('STICK_RADIUS'));
+  assert.ok(game.includes('loadDeferredSprites'), '첫 화면 전송량 예산 - 적/배경 원화는 런 시작 시점에 지연 로드해야 합니다');
+  assert.ok(game.includes('renderer.preloadEnemySprites();'));
+  assert.ok(game.includes('renderer.preloadBackgroundSprites();'));
+  // 부팅 시점 최상위 호출(2-space 들여쓰기, IIFE 바로 아래)만 클래스 스프라이트여야 하고
+  // 적/배경 스프라이트 호출은 loadDeferredSprites 함수 본문(4칸 이상 들여쓰기) 안에만 있어야 한다.
+  const topLevelPreloadCalls = game.match(/^  renderer\.preload\w+\(\);$/gm) || [];
+  assert.deepStrictEqual(topLevelPreloadCalls, ['  renderer.preloadClassSprites();'], '부팅 시 최상위 호출은 클래스 스프라이트 하나만이어야 합니다(첫 화면 전송량 예산)');
+
+  [readGameFile('game.js'), readGameFile('systems.js'), readGameFile('renderer.js'), html].forEach((source) => {
+    assert.ok(!source.includes('new Audio'), '무음 유지 - new Audio 사용 금지');
+    assert.ok(!source.includes('navigator.vibrate'), '무진동 유지 - navigator.vibrate 사용 금지');
+    assert.ok(!/Notification\(/.test(source), '네이티브 알림 사용 금지');
+  });
+}
+
+function testVirtualStickDrivesSharedMovementPath() {
+  const { content, systems } = loadGameRuntime();
+  const state = systems.createState(content, 'fighter', { mode: 'quick' });
+  const before = { x: state.player.x, y: state.player.y };
+  systems.tick(state, { up: false, down: false, left: false, right: false, vx: 1, vy: 0 }, 0.5);
+  assert.ok(state.player.x > before.x, '가상 스틱 analog vx가 기존 이동 로직을 통해 반영되어야 합니다');
+
+  const keyboardState = systems.createState(content, 'fighter', { mode: 'quick' });
+  const keyboardBefore = { x: keyboardState.player.x, y: keyboardState.player.y };
+  systems.tick(keyboardState, { up: false, down: false, left: false, right: true, vx: null, vy: null }, 0.5);
+  assert.ok(keyboardState.player.x > keyboardBefore.x, '키보드 digital 입력도 동일 경로로 계속 동작해야 합니다(회귀 없음)');
+  assert.strictEqual(
+    Math.round(state.player.x * 100),
+    Math.round(keyboardState.player.x * 100),
+    '가상 스틱과 키보드가 동일한 이동 로직 함수를 타야 합니다(분기 신설 금지)'
+  );
+}
+
 function main() {
   REQUIRED_FILES.forEach((fileName) => {
     assert.ok(fs.existsSync(path.join(GAME_DIR, fileName)), `${fileName} should exist`);
@@ -1066,6 +1124,8 @@ function main() {
   testRunGoalsSmartRecommendationsAndBossTelemetry();
   testBossFlowCanSpawnAndResolveWin();
   testClassUltimatesAndBuildNames();
+  testMobileHardeningAndSilence();
+  testVirtualStickDrivesSharedMovementPath();
 
   console.log('dungeonworld survivors static test passed');
 }
