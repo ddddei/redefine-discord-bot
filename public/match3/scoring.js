@@ -17,8 +17,10 @@
   // 자동 셔플 여부 판단(hasAvailableMove/shuffleBoard)은 클라이언트 쪽 UI 연출
   // (checkForShuffleNeeded)이 캐스케이드 렌더링 이후 별도 시점에 수행하므로 여기 포함하지
   // 않는다 — 대신 replayMatch3가 game.js와 동일한 순서로 두 단계를 이어붙인다.
-  function resolveCascadeStep(grid, rng) {
-    return Board.resolveCascades(grid, rng);
+  // swapContext: { specialGrid, swapCells, triggeredSwapSpecials } (특수 타일 없는
+  // 호출은 생략 가능 - 기존 동작과 동일).
+  function resolveCascadeStep(grid, rng, swapContext) {
+    return Board.resolveCascades(grid, rng, swapContext);
   }
 
   // 스왑 1회를 적용한다. 무효 스왑은 grid를 바꾸지 않고 rng도 소비하지 않는다
@@ -26,12 +28,15 @@
   // 유효 스왑은 캐스케이드까지 모두 해소한 뒤, 필요하면 보드를 섞는다(자동 셔플도
   // rng를 소비하므로 재현에 포함해야 한다 — game.js의 attemptSwap → resolveBoard →
   // checkForShuffleNeeded 세 단계를 같은 순서로 이어붙인 것과 동등하다).
-  function applySwapMove(grid, first, second, rng) {
-    var swapResult = Board.tryApplySwap(grid, first, second);
+  // specialGrid를 넘기면 특수 타일 생성/발동까지 포함해 처리하고, 결과에 갱신된
+  // specialGrid를 함께 돌려준다. 생략하면 기존 동작(특수 타일 없음)과 동일하다.
+  function applySwapMove(grid, first, second, rng, specialGrid) {
+    var swapResult = Board.tryApplySwap(grid, first, second, specialGrid);
     if (!swapResult.valid) {
       return {
         valid: false,
         grid: grid,
+        specialGrid: specialGrid,
         score: 0,
         cascadeCount: 0,
         maxMultiplier: 1,
@@ -39,22 +44,37 @@
       };
     }
 
-    var cascadeResult = resolveCascadeStep(swapResult.grid, rng);
+    var swapContext = specialGrid ? {
+      specialGrid: swapResult.specialGrid,
+      swapCells: swapResult.swapCells,
+      triggeredSwapSpecials: swapResult.triggeredSwapSpecials,
+    } : undefined;
+
+    var cascadeResult = resolveCascadeStep(swapResult.grid, rng, swapContext);
     var nextGrid = cascadeResult.grid;
+    var nextSpecial = cascadeResult.specialGrid;
     var shuffled = false;
 
     if (!Board.hasAvailableMove(nextGrid)) {
       nextGrid = Board.shuffleBoard(nextGrid, rng);
+      if (nextSpecial) {
+        // 셔플은 특수 타일도 함께 섞이지 않도록(계획서 범위 밖) 셔플된 보드에서는
+        // 특수 상태를 비운다 - 셔플 자체가 극히 드문 안전장치 경로이므로 특수
+        // 타일이 사라져도 플레이에 미치는 영향이 미미하고, 무엇보다 결정적이다.
+        nextSpecial = Board.createEmptySpecialGrid();
+      }
       shuffled = true;
     }
 
     return {
       valid: true,
       grid: nextGrid,
+      specialGrid: nextSpecial,
       score: cascadeResult.score,
       cascadeCount: cascadeResult.cascadeCount,
       maxMultiplier: cascadeResult.maxMultiplier,
       steps: cascadeResult.steps,
+      activations: cascadeResult.activations,
       shuffled: shuffled,
     };
   }
@@ -62,10 +82,12 @@
   // 스왑 좌표 시퀀스를 처음부터 재생해 최종 점수를 계산한다. 서버 검증기가 사용한다.
   // actions: [[r1,c1,r2,c2], ...]. 무효 스왑을 만나면 즉시 중단하고 invalid를 표시한다
   // (계획서: 무효 액션 포함 로그는 mismatch 처리 대상).
-  function replayMatch3(seed, actions) {
+  // withSpecials: true면 특수 타일 생성/발동을 포함해 재현한다(서버 검증기가 사용).
+  function replayMatch3(seed, actions, withSpecials) {
     var initial = Board.generateBoard(seed);
     var grid = initial.grid;
     var rng = initial.rng;
+    var specialGrid = withSpecials ? initial.specialGrid : null;
     var totalScore = 0;
     var bestCombo = 1;
 
@@ -74,7 +96,7 @@
       var first = { row: action[0], col: action[1] };
       var second = { row: action[2], col: action[3] };
 
-      var moveResult = applySwapMove(grid, first, second, rng);
+      var moveResult = applySwapMove(grid, first, second, rng, specialGrid);
       if (!moveResult.valid) {
         return {
           ok: false,
@@ -86,6 +108,7 @@
       }
 
       grid = moveResult.grid;
+      specialGrid = moveResult.specialGrid;
       totalScore += moveResult.score;
       bestCombo = Math.max(bestCombo, moveResult.maxMultiplier);
     }

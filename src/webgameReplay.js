@@ -88,7 +88,10 @@ function replayMatch3(seed, actions) {
   }
 
   try {
-    const result = Scoring.replayMatch3(numericSeed, actions);
+    // withSpecials: true - 특수 타일 생성/발동까지 포함해 재현한다(클라이언트
+    // game.js가 항상 특수 타일 로직을 사용하므로, 검증기도 같은 경로를 써야
+    // 이중 구현 없이 점수가 일치한다. docs/match3-improvement-plan.md 1절).
+    const result = Scoring.replayMatch3(numericSeed, actions, true);
     if (!result.ok) {
       return { status: REPLAY_STATUS.MISMATCH, reason: result.reason, replayScore: result.score };
     }

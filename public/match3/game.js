@@ -81,39 +81,75 @@
     return {
       grid: grid,
       rng: rng,
+      // 특수 타일 상태(docs/match3-improvement-plan.md 1절). generateBoard가
+      // 만든 빈 specialGrid에서 시작해, 서버 검증기(webgameReplay.js)와 완전히
+      // 같은 경로(scoring.js)로 갱신된다.
+      specialGrid: initial.specialGrid,
       movesLeft: Board.MAX_MOVES,
       score: 0,
       combo: 1,
       bestCombo: 1,
       clearedByType: {},
+      specialActivationCount: 0,
       selected: null,
       gameOver: false,
       seed: seed,
       mode: options.mode === 'daily' ? 'daily' : 'free',
       dayKey: options.dayKey || null,
+      variant: options.variant || null,
       // 서버 리플레이 검증용 성공 스왑 기록. 되돌려진 무효 스왑은 RNG를 소비하지
       // 않으므로 포함하지 않는다(docs/replay-verification-plan.md 1절).
       replayActions: [],
     };
   }
 
+  // 특수 타일 종류별 잉크 마크 오버레이(SVG). webgame-design-guide.md의 잉크 톤
+  // (#4a3524, round join/cap)을 따른다. 원화 위에 얹는 장식이라 alt는 비운다
+  // (계획서 1.4 - 표시 전용, board.js 로직과 무관).
+  var SPECIAL_OVERLAY_SVG = {
+    'line-h': '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<path d="M12 32 L24 24 M12 32 L24 40 M52 32 L40 24 M52 32 L40 40" stroke="#4a3524" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+      + '</svg>',
+    'line-v': '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<path d="M32 12 L24 24 M32 12 L40 24 M32 52 L24 40 M32 52 L40 40" stroke="#4a3524" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+      + '</svg>',
+    wrap: '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<circle cx="32" cy="32" r="3" fill="#4a3524"/>'
+      + '<path d="M32 14 L32 20 M32 44 L32 50 M14 32 L20 32 M44 32 L50 32 M20 20 L24 24 M44 20 L40 24 M20 44 L24 40 M44 44 L40 40" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '</svg>',
+    color: '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<path d="M32 14 L36 27 L50 27 L38 35 L42 49 L32 40 L22 49 L26 35 L14 27 L28 27 Z" fill="none" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>'
+      + '</svg>',
+  };
+
   function renderBoard() {
     boardEl.innerHTML = '';
     for (var row = 0; row < Board.BOARD_SIZE; row += 1) {
       for (var col = 0; col < Board.BOARD_SIZE; col += 1) {
         var type = state.grid[row][col];
+        var special = state.specialGrid ? state.specialGrid[row][col] : null;
         var button = document.createElement('button');
         button.type = 'button';
-        button.className = 'tile tile-' + type;
+        button.className = 'tile tile-' + type + (special ? ' tile-special tile-special-' + special : '');
         button.dataset.row = String(row);
         button.dataset.col = String(col);
-        button.setAttribute('aria-label', TILE_LABEL[type] + ' 타일, ' + (row + 1) + '행 ' + (col + 1) + '열');
+        var label = TILE_LABEL[type] + ' 타일, ' + (row + 1) + '행 ' + (col + 1) + '열';
+        if (special) {
+          label += ', 특수 타일';
+        }
+        button.setAttribute('aria-label', label);
         var tileImg = document.createElement('img');
         tileImg.className = 'tile-asset';
         tileImg.src = TILE_ASSET[type];
         tileImg.alt = '';
         tileImg.decoding = 'async';
         button.appendChild(tileImg);
+        if (special && SPECIAL_OVERLAY_SVG[special]) {
+          var overlayWrapper = document.createElement('span');
+          overlayWrapper.className = 'tile-special-overlay';
+          overlayWrapper.innerHTML = SPECIAL_OVERLAY_SVG[special];
+          button.appendChild(overlayWrapper);
+        }
         button.addEventListener('click', onTileClick);
         button.addEventListener('pointerdown', onTilePointerDown);
         button.addEventListener('pointermove', onTilePointerMove);
@@ -329,7 +365,7 @@
       return;
     }
 
-    var swapResult = Board.tryApplySwap(state.grid, first, second);
+    var swapResult = Board.tryApplySwap(state.grid, first, second, state.specialGrid);
 
     if (!swapResult.valid) {
       flashInvalidSwap(first, second);
@@ -338,6 +374,11 @@
 
     busy = true;
     state.grid = swapResult.grid;
+    state.pendingSwapContext = {
+      specialGrid: swapResult.specialGrid,
+      swapCells: swapResult.swapCells,
+      triggeredSwapSpecials: swapResult.triggeredSwapSpecials,
+    };
     state.movesLeft -= 1;
     // 되돌려진 무효 스왑은 RNG를 소비하지 않으므로 로그에 넣지 않는다. 여기 도달했다는
     // 것은 스왑이 유효하다는 뜻이므로 바로 기록한다(서버 리플레이 검증용, 계획서 1절).
@@ -369,9 +410,14 @@
   function resolveBoard() {
     // 캐스케이드 점수 계산·최대 배수 판정은 Scoring.resolveCascadeStep으로 추출해
     // 서버 검증기(src/webgameReplay.js)와 공용으로 쓴다(콤보 점수 계산 이중 구현 제거).
-    var cascadeResult = Scoring.resolveCascadeStep(state.grid, state.rng);
+    // pendingSwapContext: 이번 스왑이 특수 타일을 만들거나 발동시켰는지(attemptSwap이
+    // 세팅) - 서버 검증기가 재생하는 순서와 정확히 같은 컨텍스트를 넘겨야 한다.
+    var swapContext = state.pendingSwapContext;
+    state.pendingSwapContext = null;
+    var cascadeResult = Scoring.resolveCascadeStep(state.grid, state.rng, swapContext);
 
     state.grid = cascadeResult.grid;
+    state.specialGrid = cascadeResult.specialGrid;
     state.score += cascadeResult.score;
     state.combo = cascadeResult.maxMultiplier;
     state.bestCombo = Math.max(state.bestCombo, cascadeResult.maxMultiplier);
@@ -382,6 +428,10 @@
           state.clearedByType[group.type] = (state.clearedByType[group.type] || 0) + group.cells.length;
         });
       });
+    }
+
+    if (cascadeResult.activations && cascadeResult.activations.length > 0) {
+      state.specialActivationCount += cascadeResult.activations.length;
     }
 
     renderBoard();
@@ -418,6 +468,11 @@
   function checkForShuffleNeeded() {
     if (!Board.hasAvailableMove(state.grid)) {
       state.grid = Board.shuffleBoard(state.grid, state.rng);
+      // 셔플은 특수 타일 배치도 함께 무효화한다 - Scoring.applySwapMove(서버 검증기가
+      // 쓰는 것과 같은 경로)가 셔플 시 specialGrid를 비우는 것과 동일하게 맞춘다.
+      if (state.specialGrid) {
+        state.specialGrid = Board.createEmptySpecialGrid();
+      }
       renderBoard();
       setStatusMessage('간식을 새로 섞었어요. 이동 횟수는 차감되지 않았어요.');
       boardEl.classList.remove('shuffling');

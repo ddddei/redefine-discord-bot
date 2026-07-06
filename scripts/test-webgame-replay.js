@@ -124,6 +124,20 @@ function testDeckMissingWhenSeedIsNull() {
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
 
+// 특수 타일 포함 재현 (docs/match3-improvement-plan.md 1절 도입 후 신규 케이스).
+// 서버 검증기는 항상 withSpecials=true로 재현하므로(webgameReplay.js), 4매치로
+// 특수 타일이 생겨나는 스왑도 재현 점수가 제출 점수와 일치해야 verified가 나온다.
+function testMatch3VerifiedWithSpecialTileActivation() {
+  const seed = 2;
+  const action = [0, 4, 1, 4]; // 가로 4매치 -> 세로줄 제거 타일 생성(발동은 다음 매치에서).
+  const replay = Scoring.replayMatch3(seed, [action], true);
+  assert.strictEqual(replay.ok, true);
+
+  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 1, actions: [action] } });
+  assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
+  assert.strictEqual(result.replayScore, replay.score);
+}
+
 function testUnsupportedGameIsSkipped() {
   const result = verifyReplay({ gameId: 'idle', score: 100, seed: null, replayLog: null });
   assert.strictEqual(result.status, REPLAY_STATUS.SKIPPED);
@@ -380,6 +394,7 @@ function main() {
   testMatch3MissingOnActionOverflow();
   testMatch3MissingWhenSeedIsNull();
   testDeckMissingWhenSeedIsNull();
+  testMatch3VerifiedWithSpecialTileActivation();
   testUnsupportedGameIsSkipped();
 
   testDeckVerifiedForFullRun();
