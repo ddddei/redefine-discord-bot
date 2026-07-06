@@ -4,12 +4,24 @@ const path = require('path');
 const vm = require('vm');
 
 const BOARD_FILE = path.join(__dirname, '..', 'public', 'match3', 'board.js');
+const SCORING_FILE = path.join(__dirname, '..', 'public', 'match3', 'scoring.js');
 
 function loadBoard() {
   const context = { window: {}, module: undefined };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(BOARD_FILE, 'utf8'), context, { filename: 'board.js' });
   return context.window.Match3Board;
+}
+
+// scoring.js는 브라우저(window.Match3Board)와 Node(require('./board')) 양쪽에서
+// board.js를 읽을 수 있는 UMD 패턴이라, 같은 vm 컨텍스트 안에 board.js를 먼저 실행해
+// window.Match3Board를 채운 뒤 scoring.js를 이어서 실행하면 된다.
+function loadScoring() {
+  const context = { window: {}, module: undefined };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(BOARD_FILE, 'utf8'), context, { filename: 'board.js' });
+  vm.runInContext(fs.readFileSync(SCORING_FILE, 'utf8'), context, { filename: 'scoring.js' });
+  return { Board: context.window.Match3Board, Scoring: context.window.Match3Scoring };
 }
 
 function buildGrid(rows) {
@@ -230,6 +242,78 @@ function testScoreRulesForMatchSizes() {
   assert.strictEqual(Board.scoreForGroup({ cells: [1, 2, 3, 4, 5, 6] }), 120);
 }
 
+// scoring.js 추출 후 점수 동일성 검증(신규 확장 — 기존 케이스는 무수정).
+// 시드 고정 스왑 시퀀스를 1) board.js 프리미티브를 직접 조합해 계산한 점수와
+// 2) scoring.js의 replayMatch3(서버 검증기가 그대로 사용)로 계산한 점수가 같아야
+// 클라이언트 게임 로직(game.js)과 서버 재현이 이중 구현 없이 같은 값을 낸다고 증명된다.
+function testScoringExtractionMatchesManualCascadeCalculation() {
+  const { Board, Scoring } = loadScoring();
+  const seed = 2026;
+
+  // 1) 수동 계산: game.js의 attemptSwap → resolveBoard → checkForShuffleNeeded와
+  // 동일한 순서로 board.js 프리미티브를 직접 호출한다.
+  const manualInitial = Board.generateBoard(seed);
+  let manualGrid = manualInitial.grid;
+  const manualRng = manualInitial.rng;
+  let manualScore = 0;
+
+  const actions = findFirstValidSwaps(Board, seed, 3);
+  assert.ok(actions.length >= 1, 'fixture seed should contain at least one valid swap');
+
+  actions.forEach((action) => {
+    const first = { row: action[0], col: action[1] };
+    const second = { row: action[2], col: action[3] };
+    const swapResult = Board.tryApplySwap(manualGrid, first, second);
+    assert.strictEqual(swapResult.valid, true);
+    manualGrid = swapResult.grid;
+    const cascadeResult = Board.resolveCascades(manualGrid, manualRng);
+    manualGrid = cascadeResult.grid;
+    manualScore += cascadeResult.score;
+    if (!Board.hasAvailableMove(manualGrid)) {
+      manualGrid = Board.shuffleBoard(manualGrid, manualRng);
+    }
+  });
+
+  // 2) scoring.js 추출 함수로 같은 시퀀스를 재생.
+  const replayResult = Scoring.replayMatch3(seed, actions);
+  assert.strictEqual(replayResult.ok, true);
+  assert.strictEqual(replayResult.score, manualScore, 'extracted scoring.js should reproduce the same score as manual board.js composition');
+}
+
+// 시드 고정 보드에서 앞쪽부터 스캔해 유효한 스왑을 count개 찾는다(테스트 픽스처 헬퍼).
+function findFirstValidSwaps(Board, seed, count) {
+  const { grid } = Board.generateBoard(seed);
+  const found = [];
+  for (let row = 0; row < Board.BOARD_SIZE && found.length < count; row += 1) {
+    for (let col = 0; col < Board.BOARD_SIZE && found.length < count; col += 1) {
+      if (col + 1 < Board.BOARD_SIZE) {
+        const right = Board.tryApplySwap(grid, { row, col }, { row, col: col + 1 });
+        if (right.valid) {
+          found.push([row, col, row, col + 1]);
+          continue;
+        }
+      }
+      if (row + 1 < Board.BOARD_SIZE) {
+        const down = Board.tryApplySwap(grid, { row, col }, { row: row + 1, col });
+        if (down.valid) {
+          found.push([row, col, row + 1, col]);
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function testScoringDetectsInvalidSwapInLog() {
+  const { Board, Scoring } = loadScoring();
+  const seed = 2026;
+  // (0,0)-(0,1)이 유효한 스왑이 아니라고 보장할 수 없으므로, 존재하지 않는 조합 대신
+  // 명백히 무효한 스왑(같은 칸)을 사용해 replayMatch3가 즉시 중단하는지 확인한다.
+  const result = Scoring.replayMatch3(seed, [[0, 0, 0, 0]]);
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'INVALID_SWAP');
+}
+
 function main() {
   testInitialBoardsHaveNoMatches();
   testSameSeedIsDeterministic();
@@ -242,6 +326,8 @@ function main() {
   testCascadeMultiplierAccumulates();
   testNoAvailableMoveDetectionAndShuffle();
   testScoreRulesForMatchSizes();
+  testScoringExtractionMatchesManualCascadeCalculation();
+  testScoringDetectsInvalidSwapInLog();
 
   console.log('match3 logic test passed');
 }

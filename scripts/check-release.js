@@ -199,6 +199,11 @@ const checks = [
     args: ['--check', 'public/match3/board.js'],
   },
   {
+    label: 'public/match3/scoring.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/match3/scoring.js'],
+  },
+  {
     label: 'public/match3/game.js 문법 검사',
     command: 'node',
     args: ['--check', 'public/match3/game.js'],

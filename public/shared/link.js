@@ -8,6 +8,10 @@
 
   var STORAGE_KEY = 'redefine-game-link-v1';
   var API_BASE = '/game/api';
+  // score 엔드포인트 본문 상한(서버 32KB, docs/replay-verification-plan.md 1절)과 동일한 값.
+  // 로그를 포함한 본문이 이 값을 넘으면 클라이언트가 미리 로그를 떼고 제출한다(항상 제출은 성공해야 한다).
+  var SCORE_BODY_MAX_BYTES = 32 * 1024;
+  var REPLAY_LOG_VERSION = 1;
 
   function readStoredLink() {
     try {
@@ -97,6 +101,17 @@
     if (options && options.challenge) {
       payload.challenge = options.challenge;
     }
+    if (options && options.replayActions && options.replayActions.length > 0) {
+      var replayLog = { v: REPLAY_LOG_VERSION, actions: options.replayActions };
+      var payloadWithLog = Object.assign({}, payload, { replayLog: replayLog });
+      var bodyWithLog = JSON.stringify(payloadWithLog);
+      // 본문 상한(32KB) 초과 시 로그만 떼고 제출한다 — 제출 자체는 항상 성공해야 한다.
+      if (bodyWithLog.length <= SCORE_BODY_MAX_BYTES) {
+        payload = payloadWithLog;
+      } else {
+        console.warn('[GameLink] 리플레이 로그가 커서 로그 없이 제출해요.');
+      }
+    }
 
     return fetch(API_BASE + '/score', {
       method: 'POST',
@@ -114,6 +129,11 @@
           return { ok: false, error: result.data && result.data.error };
         }
 
+        if (result.data.replay === 'mismatch') {
+          // 참여자 화면에는 노출하지 않는다(배려 원칙) — 콘솔 진단 전용.
+          console.warn('[GameLink] 서버 리플레이 검증 결과가 제출 점수와 달라요(mismatch). 운영자가 확인할 수 있어요.');
+        }
+
         return {
           ok: true,
           flagged: result.data.flagged,
@@ -121,6 +141,7 @@
           mode: result.data.mode,
           dayKey: result.data.dayKey,
           dayBest: result.data.dayBest,
+          replay: result.data.replay,
         };
       })
       .catch(function (error) {
