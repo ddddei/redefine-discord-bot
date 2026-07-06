@@ -40,7 +40,7 @@ function testMatch3VerifiedForHonestPlay() {
   const replay = Scoring.replayMatch3(seed, [action]);
   assert.strictEqual(replay.ok, true);
 
-  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 2, actions: [action] } });
+  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 3, actions: [action] } });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, replay.score);
 }
@@ -54,7 +54,7 @@ function testMatch3MismatchOnForgedScore() {
     gameId: 'match3',
     score: replay.score + 12345,
     seed,
-    replayLog: { v: 2, actions: [action] },
+    replayLog: { v: 3, actions: [action] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
   assert.strictEqual(result.reason, 'SCORE_MISMATCH');
@@ -68,7 +68,7 @@ function testMatch3MismatchOnInvalidSwapInLog() {
     gameId: 'match3',
     score: 999,
     seed,
-    replayLog: { v: 2, actions: [[0, 0, 0, 0]] },
+    replayLog: { v: 3, actions: [[0, 0, 0, 0]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
 }
@@ -88,8 +88,11 @@ function testMatch3MissingOnVersionMismatch() {
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
-  // 과도기 회귀: 특수 타일 도입 이전 클라이언트(v1 로그)는 검증하지 않고 missing.
-  // (v1 시절 점수는 특수 없는 재현 기준이라 withSpecials 재현과 어긋날 수 있다.)
+
+// 과도기 회귀: 매치3 특수 타일 도입(v1→v2) 이전 클라이언트(v1 로그)는 검증하지 않고
+// missing 처리한다(v1 시절 점수는 특수 없는 재현 기준이라 withSpecials 재현과 어긋날 수 있다).
+// 이번 v3 상향(덱 갈림길 맵 도입) 이후에도 v1 로그는 여전히 버전 불일치이므로 missing이어야 한다.
+function testMatch3MissingOnLegacyV1Log() {
   const legacyV1 = verifyReplay({
     gameId: 'match3',
     score: 100,
@@ -97,7 +100,7 @@ function testMatch3MissingOnVersionMismatch() {
     replayLog: { v: 1, actions: [[0, 0, 0, 1]] },
   });
   assert.strictEqual(legacyV1.status, 'missing', 'v1 로그는 missing으로 무해 처리되어야 합니다.');
-
+}
 
 function testMatch3MissingOnActionOverflow() {
   const oversized = new Array(31).fill([0, 1, 0, 2]);
@@ -105,7 +108,7 @@ function testMatch3MissingOnActionOverflow() {
     gameId: 'match3',
     score: 500,
     seed: 2026,
-    replayLog: { v: 2, actions: oversized },
+    replayLog: { v: 3, actions: oversized },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
@@ -119,7 +122,7 @@ function testMatch3MissingWhenSeedIsNull() {
     gameId: 'match3',
     score: 500,
     seed: null,
-    replayLog: { v: 2, actions: [[0, 1, 0, 2]] },
+    replayLog: { v: 3, actions: [[0, 1, 0, 2]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
@@ -129,7 +132,7 @@ function testDeckMissingWhenSeedIsNull() {
     gameId: 'deck',
     score: 500,
     seed: null,
-    replayLog: { v: 2, actions: [['n']] },
+    replayLog: { v: 3, actions: [['m', 0]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
@@ -143,7 +146,7 @@ function testMatch3VerifiedWithSpecialTileActivation() {
   const replay = Scoring.replayMatch3(seed, [action], true);
   assert.strictEqual(replay.ok, true);
 
-  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 2, actions: [action] } });
+  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 3, actions: [action] } });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, replay.score);
 }
@@ -158,7 +161,8 @@ function testUnsupportedGameIsSkipped() {
 
 // ---- deck 픽스처 헬퍼 ----
 // 시드를 스캔해 승패와 무관하게 "끝까지 도달한(state.finished)" 짧은 런을 하나 찾는다.
-// 매 스텝에서 사용 가능한 카드를 최대한 사용하고, 아니면 턴을 종료하는 단순 정책이다.
+// 매 스텝에서 지도는 항상 첫 번째 선택지를 고르고, 전투 중에는 사용 가능한 카드를
+// 최대한 사용하고 아니면 턴을 종료하는 단순 정책이다. 이벤트 칸은 첫 선택지로 응답한다.
 function playDeterministicRun(seed, guardLimit) {
   const state = Engine.createNewRun(seed);
   let tracker = Engine.trackerFromState(state);
@@ -168,8 +172,21 @@ function playDeterministicRun(seed, guardLimit) {
   while (!state.finished && guard < guardLimit) {
     guard += 1;
     if (state.screen === 'run') {
-      Engine.enterCurrentNode(state, tracker);
-      actions.push(['n']);
+      const optionIndex = 0;
+      Engine.selectMapNode(state, optionIndex, tracker);
+      actions.push(['m', optionIndex]);
+    } else if (state.screen === 'event') {
+      const event = Engine.findEvent(state.pendingEvent.eventId);
+      const choice = event.choices[0];
+      const result = Engine.resolveEventChoice(state, choice.id, tracker);
+      actions.push(['ev', choice.id]);
+      if (result.outcome && result.outcome.requiresFollowUp === 'upgradeCard') {
+        Engine.applyEventUpgradeCard(state, 0);
+        actions.push(['evup', 0]);
+      } else if (result.outcome && result.outcome.requiresFollowUp) {
+        Engine.applyEventRemoveCard(state, 0);
+        actions.push(['evrm', 0]);
+      }
     } else if (state.screen === 'combat') {
       let played = false;
       const hand = state.player.hand.slice();
@@ -215,11 +232,74 @@ function findFinishedRunSeed(maxSeed, guardLimit) {
   throw new Error('fixture: no finished deck run found in seed range');
 }
 
+// 두 번째 선택지(존재하면)를 매 지도 화면에서 고르는 대체 정책 - 갈림길 경로 2가지
+// 재현 검증(QA 요구사항)에 쓰인다. 선택지가 1개뿐이면(1층 등) 0번을 그대로 쓴다.
+function playDeterministicRunAltPath(seed, guardLimit) {
+  const state = Engine.createNewRun(seed);
+  let tracker = Engine.trackerFromState(state);
+  const actions = [];
+  let guard = 0;
+
+  while (!state.finished && guard < guardLimit) {
+    guard += 1;
+    if (state.screen === 'run') {
+      const options = Engine.getAvailableNextNodes(state.map, state.currentNodeId);
+      const optionIndex = options.length > 1 ? 1 : 0;
+      Engine.selectMapNode(state, optionIndex, tracker);
+      actions.push(['m', optionIndex]);
+    } else if (state.screen === 'event') {
+      const event = Engine.findEvent(state.pendingEvent.eventId);
+      const choice = event.choices[event.choices.length - 1];
+      const result = Engine.resolveEventChoice(state, choice.id, tracker);
+      actions.push(['ev', choice.id]);
+      if (result.outcome && result.outcome.requiresFollowUp === 'upgradeCard') {
+        Engine.applyEventUpgradeCard(state, 0);
+        actions.push(['evup', 0]);
+      } else if (result.outcome && result.outcome.requiresFollowUp) {
+        Engine.applyEventRemoveCard(state, 0);
+        actions.push(['evrm', 0]);
+      }
+    } else if (state.screen === 'combat') {
+      let played = false;
+      const hand = state.player.hand.slice();
+      for (let i = 0; i < hand.length; i += 1) {
+        const cardId = hand[i];
+        if (Engine.canPlayCard(state, cardId)) {
+          const index = state.player.hand.indexOf(cardId);
+          const result = Engine.playCard(state, cardId, index, tracker);
+          if (result.success) {
+            actions.push(['p', cardId, index]);
+            played = true;
+            break;
+          }
+        }
+      }
+      if (!played) {
+        Engine.endTurn(state, tracker);
+        actions.push(['e']);
+      }
+    } else if (state.screen === 'reward') {
+      Engine.chooseReward(state, null);
+      actions.push(['r0']);
+    } else if (state.screen === 'rest') {
+      Engine.applyRestHeal(state);
+      actions.push(['h']);
+    } else {
+      break;
+    }
+    Engine.commitTracker(state, tracker);
+    tracker = Engine.trackerFromState(state);
+  }
+
+  return { state, actions };
+}
+
 function scoreForDeckState(state) {
-  const totalNodes = Content.RUN_LAYOUT.length;
-  const reachedStage = Math.min(state.runIndex + 1, totalNodes);
+  const totalFloors = Content.MAP_FLOOR_COUNT;
+  const reachedFloor = Engine.getReachedFloor(state);
+  const reachedStage = Math.min(reachedFloor, totalFloors);
   const remainingHp = Math.max(0, state.player.hp);
-  return reachedStage * 1000 + remainingHp;
+  return reachedStage * Content.SCORE_PER_FLOOR + remainingHp;
 }
 
 function testDeckVerifiedForFullRun() {
@@ -230,10 +310,35 @@ function testDeckVerifiedForFullRun() {
     gameId: 'deck',
     score,
     seed: fixture.seed,
-    replayLog: { v: 2, actions: fixture.actions },
+    replayLog: { v: 3, actions: fixture.actions },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, score);
+}
+
+// 시드 고정 풀런을 서로 다른 갈림길 경로(첫 선택지 vs 두 번째 선택지)로 완주해도
+// 각각 정직하게 재현(verified)돼야 한다(QA 요구사항 - 갈림길 경로 2가지 재현 검증).
+function testDeckVerifiedForTwoDifferentMapPaths() {
+  const fixtureA = findFinishedRunSeed(300, 4000);
+  const scoreA = scoreForDeckState(fixtureA.state);
+  const resultA = verifyReplay({
+    gameId: 'deck',
+    score: scoreA,
+    seed: fixtureA.seed,
+    replayLog: { v: 3, actions: fixtureA.actions },
+  });
+  assert.strictEqual(resultA.status, REPLAY_STATUS.VERIFIED, '경로 1(첫 선택지)은 verified여야 함');
+
+  const fixtureB = playDeterministicRunAltPath(fixtureA.seed, 4000);
+  assert.strictEqual(fixtureB.state.finished, true, '대체 경로도 런이 끝나야 함(가드 한도 안에서)');
+  const scoreB = scoreForDeckState(fixtureB.state);
+  const resultB = verifyReplay({
+    gameId: 'deck',
+    score: scoreB,
+    seed: fixtureA.seed,
+    replayLog: { v: 3, actions: fixtureB.actions },
+  });
+  assert.strictEqual(resultB.status, REPLAY_STATUS.VERIFIED, '경로 2(다른 선택지)도 verified여야 함');
 }
 
 function testDeckVerifiedForResumedRun() {
@@ -249,20 +354,32 @@ function testDeckVerifiedForResumedRun() {
     gameId: 'deck',
     score,
     seed: fixture.seed,
-    replayLog: { v: 2, actions: resumedLog },
+    replayLog: { v: 3, actions: resumedLog },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, score);
 }
 
 function testDeckMismatchOnInvalidAction() {
-  // 전투 시작 전(첫 번째 [n] 없이) 카드를 내는 것은 무효 액션이다(에너지 부족과 동일하게
-  // canPlayCard가 false를 반환하는 경로).
+  // 전투 시작 전(첫 번째 ["m", 0] 없이) 카드를 내는 것은 무효 액션이다(에너지 부족과
+  // 동일하게 canPlayCard가 false를 반환하는 경로).
   const result = verifyReplay({
     gameId: 'deck',
     score: 100,
     seed: 12345,
-    replayLog: { v: 2, actions: [['p', 'giant-rolling-pin', 0]] },
+    replayLog: { v: 3, actions: [['p', 'giant-rolling-pin', 0]] },
+  });
+  assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
+  assert.strictEqual(result.reason, 'INVALID_DECK_ACTION');
+}
+
+// 무효 노드 선택(존재하지 않는 optionIndex)은 mismatch여야 한다.
+function testDeckMismatchOnInvalidMapNodeSelection() {
+  const result = verifyReplay({
+    gameId: 'deck',
+    score: 100,
+    seed: 12345,
+    replayLog: { v: 3, actions: [['m', 0], ['m', 99]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
   assert.strictEqual(result.reason, 'INVALID_DECK_ACTION');
@@ -273,7 +390,7 @@ function testDeckMismatchOnUnfinishedRun() {
     gameId: 'deck',
     score: 2000,
     seed: 12345,
-    replayLog: { v: 2, actions: [['n']] },
+    replayLog: { v: 3, actions: [['m', 0]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
   assert.strictEqual(result.reason, 'RUN_NOT_FINISHED');
@@ -285,9 +402,22 @@ function testDeckMissingOnActionOverflow() {
     gameId: 'deck',
     score: 100,
     seed: 12345,
-    replayLog: { v: 2, actions: oversized },
+    replayLog: { v: 3, actions: oversized },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
+}
+
+// 과도기 회귀: 덱 갈림길 맵 도입(v2→v3) 이전 클라이언트(v2 로그, ["n"]/["a"] 액션 사용)는
+// 검증하지 않고 missing 처리한다 - v2 로그의 ["n"]은 v3 핸들러 집합에 없으므로 애초에
+// isValidDeckAction 통과 자체가 안 되지만, 그 이전 단계(로그 버전 검사)에서 이미 걸러진다.
+function testDeckMissingOnLegacyV2Log() {
+  const legacyV2 = verifyReplay({
+    gameId: 'deck',
+    score: 1000,
+    seed: 12345,
+    replayLog: { v: 2, actions: [['n'], ['e']] },
+  });
+  assert.strictEqual(legacyV2.status, REPLAY_STATUS.MISSING, 'v2 로그는 missing으로 무해 처리되어야 합니다.');
 }
 
 // ---- repository 통합: replay 필드 저장·관용 로드·strict 반영·mismatch 순환 ----
@@ -401,6 +531,7 @@ function main() {
   testMatch3MismatchOnInvalidSwapInLog();
   testMatch3MissingOnEmptyLog();
   testMatch3MissingOnVersionMismatch();
+  testMatch3MissingOnLegacyV1Log();
   testMatch3MissingOnActionOverflow();
   testMatch3MissingWhenSeedIsNull();
   testDeckMissingWhenSeedIsNull();
@@ -408,10 +539,13 @@ function main() {
   testUnsupportedGameIsSkipped();
 
   testDeckVerifiedForFullRun();
+  testDeckVerifiedForTwoDifferentMapPaths();
   testDeckVerifiedForResumedRun();
   testDeckMismatchOnInvalidAction();
+  testDeckMismatchOnInvalidMapNodeSelection();
   testDeckMismatchOnUnfinishedRun();
   testDeckMissingOnActionOverflow();
+  testDeckMissingOnLegacyV2Log();
 
   testRepositoryStoresReplayStatus();
   testRepositoryTreatsMissingReplayFieldAsMissing();

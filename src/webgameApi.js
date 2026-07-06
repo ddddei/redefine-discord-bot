@@ -34,8 +34,10 @@ const GAME_DEFINITIONS = {
     title: '간식 수호대',
     rankable: true,
     dailyCapable: true,
-    // 점수화 공식: 도달 스테이지 * 1000 + 잔여 HP. 스테이지 11개, 최대 HP 60.
-    maxScore: 11 * 1000 + 60,
+    // 점수화 공식: 도달 층 * 1000 + 잔여 HP. 갈림길 맵 고도화(13층 - docs/deck-improvement-plan.md
+    // 3.1)로 층 수 11 → 13 재산정. 유물 '딸기 심장'(+12 최대 HP)으로 기본 60에서 72까지
+    // 오를 수 있어 이론상 최대 점수는 13 * 1000 + 72 = 13,072 → maxScore = 13,072.
+    maxScore: 13 * 1000 + 72,
   },
   idle: {
     id: 'idle',
@@ -97,6 +99,26 @@ function getMatch3VariantForDayKey(dayKey) {
   }
 
   return variant;
+}
+
+// 덱 오늘의 도전 요일 프리셋(docs/deck-improvement-plan.md 5절 - 매치3 2.2절과 같은
+// variant 필드 재사용 패턴). 요일 매핑: 월목=balanced, 화금=aggro, 수토=guard,
+// 일=자유 선택('free' - 클라가 시작 덱 선택 UI를 보여준다).
+const DECK_PRESET_BY_WEEKDAY = {
+  0: 'free', // 일
+  1: 'balanced', // 월
+  2: 'aggro', // 화
+  3: 'guard', // 수
+  4: 'balanced', // 목
+  5: 'aggro', // 금
+  6: 'guard', // 토
+};
+
+function getDeckVariantForDayKey(dayKey) {
+  const parts = String(dayKey).split('-').map(Number);
+  const weekday = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay();
+  const deckPreset = DECK_PRESET_BY_WEEKDAY[weekday] || 'free';
+  return { deckPreset };
 }
 
 const RATE_LIMIT_PER_MINUTE = 3;
@@ -688,10 +710,13 @@ function createWebgameApi(options = {}) {
       myRank,
     };
 
-    // 요일 변형(계획서 2절)은 match3만 대상 - 서버가 유일 소스, 클라 요일 계산 금지.
-    // 구버전 클라이언트는 variant 필드를 모르므로 무해하게 무시한다(추가 필드).
+    // 요일 변형은 서버가 유일 소스, 클라 요일 계산 금지. 구버전 클라이언트는 variant
+    // 필드를 모르므로 무해하게 무시한다(추가 필드).
     if (gameId === 'match3') {
       payload.variant = getMatch3VariantForDayKey(dayKey);
+    } else if (gameId === 'deck') {
+      // 덱 오늘의 도전 요일 프리셋(docs/deck-improvement-plan.md 5절).
+      payload.variant = getDeckVariantForDayKey(dayKey);
     }
 
     sendJson(res, 200, payload);
@@ -887,4 +912,5 @@ module.exports = {
   DEFAULT_COMMUNAL_GOAL,
   getCommunalGoal,
   getMatch3VariantForDayKey,
+  getDeckVariantForDayKey,
 };
