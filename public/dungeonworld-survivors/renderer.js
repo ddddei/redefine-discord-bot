@@ -1793,6 +1793,36 @@
       ctx.fillStyle = withAlpha(palette.accentBell, state.effects.flash * 0.14);
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    drawHitVignette(ctx, state, palette, canvas);
+  }
+
+  // 피격(플레이어) 피드백: 화면 가장자리 붉은 비네트 200ms(계획서 3절) - 중앙은 비워
+  // 풀스크린 플래시를 만들지 않는다(광과민 배려).
+  function drawHitVignette(ctx, state, palette, canvas) {
+    if (state.effects.hitVignette <= 0) return;
+    const strength = state.effects.hitVignette;
+    const gradient = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, canvas.width * 0.32,
+      canvas.width / 2, canvas.height / 2, canvas.width * 0.62
+    );
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    gradient.addColorStop(1, withAlpha(palette.statusError, strength * 0.5));
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function drawDamageNumbers(ctx, damageNumbers, palette, camera) {
+    if (!damageNumbers || damageNumbers.length === 0) return;
+    ctx.textAlign = 'center';
+    ctx.font = '700 13px "SFMono-Regular", Consolas, monospace';
+    damageNumbers.forEach((entry) => {
+      const alpha = Math.max(0, Math.min(1, entry.life / entry.maxLife));
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = withAlpha(palette.statusError, 1);
+      ctx.fillText(`-${entry.amount}`, entry.x, entry.y);
+    });
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
   }
 
   function formatTime(seconds) {
@@ -1840,6 +1870,7 @@
     state.enemies.forEach((enemy) => drawEnemy(ctx, enemy, palette));
     drawLevelShockwave(ctx, state, palette);
     drawPlayer(ctx, state.player, palette);
+    drawDamageNumbers(ctx, state.damageNumbers, palette, camera);
     drawFloaters(ctx, state.floaters, palette, camera);
     ctx.restore();
     drawScreenOverlays(ctx, state, palette, canvas);

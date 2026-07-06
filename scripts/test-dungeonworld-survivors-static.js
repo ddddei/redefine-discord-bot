@@ -772,6 +772,50 @@ function testMobileHardeningAndSilence() {
   });
 }
 
+function testCombatFeedbackHitVignetteAndDamageNumbers() {
+  const { content, systems } = loadGameRuntime();
+  const renderer = readGameFile('renderer.js');
+  assert.ok(renderer.includes('function drawHitVignette'), '피격 비네트 렌더 함수가 있어야 합니다');
+  assert.ok(renderer.includes('function drawDamageNumbers'), '데미지 숫자 렌더 함수가 있어야 합니다');
+  assert.ok(renderer.includes('drawHitVignette(ctx, state, palette, canvas);'), 'drawScreenOverlays가 비네트를 그려야 합니다');
+  assert.ok(renderer.includes("gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');") && renderer.includes('createRadialGradient'), '비네트는 중앙이 비고 가장자리만 강조되는 방사형이어야 합니다(풀스크린 플래시 금지)');
+
+  const state = systems.createState(content, 'fighter', { mode: 'quick' });
+  state.spawnTimer = 99;
+  state.player.attackTimer = 99;
+  state.enemies = [createRuntimeEnemy(state, 'goblin', 46)];
+  // windup(0.38초)이 아주 조금 남을 때까지 잘게 진행한 뒤, 마지막 한 프레임만 작은 dt로
+  // 넘겨 명중을 발동시킨다 - hitVignette(0.2초 감쇠)가 같은 프레임 감쇠로 곧장 지워지지
+  // 않게 dt를 작게 유지한다(실제 게임 프레임(약 16ms)과 유사한 크기).
+  const startHealth = state.player.health;
+  let hit = false;
+  for (let step = 0; step < 200 && !hit; step += 1) {
+    systems.tick(state, { up: false, down: false, left: false, right: false }, 0.016);
+    if (state.player.health < startHealth) hit = true;
+  }
+  assert.ok(hit, '공격이 명중해 체력이 줄어야 합니다');
+  assert.ok(state.effects.hitVignette > 0, '피격 시 hitVignette가 트리거되어야 합니다(피격 직후 프레임)');
+
+  const dmgState = systems.createState(content, 'fighter', { mode: 'quick' });
+  dmgState.spawnTimer = 99;
+  dmgState.player.attackTimer = 0;
+  dmgState.enemies = [createRuntimeEnemy(dmgState, 'goblin', 40)];
+  systems.tick(dmgState, { up: false, down: false, left: false, right: false }, 0.016);
+  assert.ok(Array.isArray(dmgState.damageNumbers));
+  assert.ok(dmgState.damageNumbers.length > 0, '전사 베기 명중 시 데미지 숫자가 생성되어야 합니다');
+
+  const toggledOff = systems.createState(content, 'fighter', { mode: 'quick' });
+  toggledOff.damageNumbersEnabled = false;
+  toggledOff.spawnTimer = 99;
+  toggledOff.player.attackTimer = 0;
+  toggledOff.enemies = [createRuntimeEnemy(toggledOff, 'goblin', 40)];
+  systems.tick(toggledOff, { up: false, down: false, left: false, right: false }, 0.016);
+  assert.strictEqual(toggledOff.damageNumbers.length, 0, '토글을 끄면 데미지 숫자가 생성되지 않아야 합니다');
+
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('damage-numbers-toggle'), '데미지 숫자 토글 UI가 있어야 합니다');
+}
+
 function testVirtualStickDrivesSharedMovementPath() {
   const { content, systems } = loadGameRuntime();
   const state = systems.createState(content, 'fighter', { mode: 'quick' });
@@ -1126,6 +1170,7 @@ function main() {
   testClassUltimatesAndBuildNames();
   testMobileHardeningAndSilence();
   testVirtualStickDrivesSharedMovementPath();
+  testCombatFeedbackHitVignetteAndDamageNumbers();
 
   console.log('dungeonworld survivors static test passed');
 }

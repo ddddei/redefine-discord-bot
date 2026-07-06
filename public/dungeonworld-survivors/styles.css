@@ -138,6 +138,16 @@ h2 {
   flex-wrap: wrap;
 }
 
+.damage-number-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
 .button {
   min-height: 44px;
   border: 1px solid var(--border-default);

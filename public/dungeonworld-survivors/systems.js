@@ -210,8 +210,10 @@
       hazards: [],
       enemyWarnings: [],
       bossWarnings: [],
-      effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0, levelShockwave: 0 },
+      effects: { flash: 0, shake: 0, pulse: 0, bossPulse: 0, levelShockwave: 0, hitVignette: 0 },
       upgradeLevels: {},
+      damageNumbersEnabled: true,
+      damageNumbers: [],
       inventory: createInventory(content, playbook),
       learnedUpgrades: [playbook.learned, playbook.loadout],
       selectedUpgrades: [],
@@ -731,6 +733,7 @@
         if (enemy.behavior === 'boss' && bossBonus > 0) recordBossBonusDamage(state, baseDamage * bossBonus);
         enemy.hitFlash = 0.16;
         enemy.slowTimer = Math.max(enemy.slowTimer, player.cleaveSlow);
+        spawnDamageNumber(state, finalDamage, enemy.x, enemy.y - enemy.radius - 6, enemy);
         hits += 1;
       }
     });
@@ -977,7 +980,9 @@
     player.invulnerableTimer = invulnerableTime || 0.7;
     state.effects.flash = Math.max(state.effects.flash, 0.12);
     state.effects.shake = Math.max(state.effects.shake, 0.18);
+    triggerHitVignette(state);
     addFloater(state, label || '위험', player.x, player.y - 22, colorToken || '--status-error');
+    spawnDamageNumber(state, damageTaken, player.x, player.y - 30);
     return true;
   }
 
@@ -1051,9 +1056,11 @@
       state.enemies.forEach((enemy) => {
         if (projectile.life <= 0 || distance(projectile, enemy) > projectile.radius + enemy.radius) return;
         const bossBonus = enemy.behavior === 'boss' ? getBossDamageBonus(state, enemy) : 0;
-        enemy.hp -= projectile.damage * (1 + bossBonus);
+        const projectileDamage = projectile.damage * (1 + bossBonus);
+        enemy.hp -= projectileDamage;
         if (enemy.behavior === 'boss' && bossBonus > 0) recordBossBonusDamage(state, projectile.damage * bossBonus);
         enemy.hitFlash = 0.13;
+        spawnDamageNumber(state, projectileDamage, enemy.x, enemy.y - enemy.radius - 6, enemy);
         spawnImpactSparks(state, enemy, projectile.impactKind || projectile.kind, 4);
         state.attackMarks.push({
           x: enemy.x,
@@ -1202,12 +1209,53 @@
     state.floaters = state.floaters.filter((floater) => floater.life > 0);
   }
 
+  // 피격(플레이어) 피드백은 화면 가장자리 비네트 200ms(계획서 3절) - 풀스크린 플래시
+  // 금지(광과민 배려). hitVignette는 0.2초 동안 선형 감쇠하는 독립 이펙트 값이다.
+  const HIT_VIGNETTE_DURATION = 0.2;
+
   function updateEffects(state, dt) {
     state.effects.flash = Math.max(0, state.effects.flash - dt);
     state.effects.shake = Math.max(0, state.effects.shake - dt);
     state.effects.pulse = Math.max(0, state.effects.pulse - dt);
     state.effects.bossPulse = Math.max(0, state.effects.bossPulse - dt * 0.5);
     state.effects.levelShockwave = Math.max(0, state.effects.levelShockwave - dt * 1.3);
+    state.effects.hitVignette = Math.max(0, state.effects.hitVignette - dt / HIT_VIGNETTE_DURATION);
+  }
+
+  function triggerHitVignette(state) {
+    state.effects.hitVignette = 1;
+  }
+
+  // 데미지 숫자(계획서 3절): 설정 토글 기본 켬, 개체당 최대 1개 표시·풀링(성능 예산 내).
+  // entityKey가 있으면 같은 개체의 기존 숫자를 교체(누적)해 개체당 1개만 유지한다.
+  function spawnDamageNumber(state, amount, x, y, entityKey) {
+    if (!state.damageNumbersEnabled || amount <= 0) return;
+    const rounded = Math.round(amount);
+    if (entityKey) {
+      const existing = state.damageNumbers.find((entry) => entry.entityKey === entityKey);
+      if (existing) {
+        existing.amount += rounded;
+        existing.x = x;
+        existing.y = y;
+        existing.life = Math.max(existing.life, 0.6);
+        existing.maxLife = 0.6;
+        return;
+      }
+    }
+    state.damageNumbers.push({ entityKey: entityKey || null, amount: rounded, x, y, life: 0.6, maxLife: 0.6 });
+    const budget = state.content.performanceBudget;
+    const cap = budget ? budget.maxConcurrentParticles : 60;
+    if (state.damageNumbers.length > cap) {
+      state.damageNumbers.splice(0, state.damageNumbers.length - cap);
+    }
+  }
+
+  function updateDamageNumbers(state, dt) {
+    state.damageNumbers.forEach((entry) => {
+      entry.y -= 26 * dt;
+      entry.life -= dt;
+    });
+    state.damageNumbers = state.damageNumbers.filter((entry) => entry.life > 0);
   }
 
   function updateParticles(state, dt) {
@@ -1315,7 +1363,9 @@
     state.hazardDamageTaken += hazard.damage;
     player.invulnerableTimer = 0.42;
     state.effects.flash = Math.max(state.effects.flash, 0.1);
+    triggerHitVignette(state);
     addFloater(state, hazard.label || '위험 구역', player.x, player.y - 26, hazard.colorToken || '--status-error', 0.8);
+    spawnDamageNumber(state, hazard.damage, player.x, player.y - 30);
   }
 
   function updateTension(state) {
@@ -1895,6 +1945,7 @@
     updateProjectiles(state, dt);
     updateAttackMarks(state, dt);
     updateParticles(state, dt);
+    updateDamageNumbers(state, dt);
     updateOrbitingSpears(state, dt);
     updateEnemies(state, dt);
     resolveHits(state);

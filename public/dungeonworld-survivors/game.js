@@ -32,6 +32,7 @@
     modalSecondary: document.getElementById('modal-secondary'),
     upgradeOptions: document.getElementById('upgrade-options'),
     qaPanel: document.getElementById('qa-panel'),
+    damageNumbersToggle: document.getElementById('damage-numbers-toggle'),
   };
   const CARD_IMAGE_BASE_PATH = './assets/cards/';
   const CARD_IMAGE_BY_UPGRADE_ID = {
@@ -115,6 +116,7 @@
   function resetGame(playbookId) {
     loadDeferredSprites();
     state = systems.createState(content, playbookId, { mode: getRequestedMode() });
+    if (elements.damageNumbersToggle) state.damageNumbersEnabled = elements.damageNumbersToggle.checked;
     lastFrame = performance.now();
     elements.pause.disabled = false;
     elements.pause.textContent = '일시정지';
@@ -934,6 +936,11 @@
     }
     if (state.status === 'ready' || state.status === 'won' || state.status === 'lost') hideModalOnly();
   });
+  if (elements.damageNumbersToggle) {
+    elements.damageNumbersToggle.addEventListener('change', () => {
+      state.damageNumbersEnabled = elements.damageNumbersToggle.checked;
+    });
+  }
   elements.start.addEventListener('click', showIntro);
   elements.pause.addEventListener('click', togglePause);
   elements.modalPrimary.onclick = startGame;
