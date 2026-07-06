@@ -4,7 +4,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const { createWebgameRepository, getDailySeed, getDayKey, getIsoWeekKey } = require('../src/webgameRepository');
-const { createWebgameApi } = require('../src/webgameApi');
+const { createWebgameApi, getMatch3VariantForDayKey } = require('../src/webgameApi');
 const { createAdminRequestHandler } = require('../src/adminServer');
 const { createPointsRepository } = require('../src/pointsRepository');
 
@@ -170,6 +170,18 @@ async function main() {
     assert.strictEqual(daily.data.ranking[1].isMe, true);
     assert.strictEqual(daily.data.myBest, 1500);
     assert.strictEqual(daily.data.myRank.rank, 2);
+    // 요일 변형(docs/match3-improvement-plan.md 2절): match3 /daily 응답에는
+    // variant가 실려야 하고, 서버 결정 로직(getMatch3VariantForDayKey)과 일치해야 한다.
+    assert.deepStrictEqual(daily.data.variant, getMatch3VariantForDayKey(dayKey));
+    assert.strictEqual(typeof daily.data.variant.id, 'string');
+    assert.strictEqual(typeof daily.data.variant.movesLimit, 'number');
+
+    // idle은 match3가 아니므로 variant 필드가 없어야 한다(변형은 match3 전용).
+    const idleDailyForVariantCheck = await requestJson(baseUrl, '/game/api/daily?gameId=deck', {
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert.strictEqual(idleDailyForVariantCheck.status, 200);
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(idleDailyForVariantCheck.data, 'variant'), false);
 
     const targetB = daily.data.ranking[0].targetId;
     const selfTargetA = daily.data.ranking[1].targetId;
