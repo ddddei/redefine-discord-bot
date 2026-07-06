@@ -195,7 +195,8 @@ function testRunModesAndStandardTimeline() {
   const quick = systems.createState(content, 'fighter', { mode: 'quick' });
   const standard = systems.createState(content, 'fighter', { mode: 'standard' });
 
-  assert.strictEqual(defaultRun.mode.id, 'standard');
+  // 세션 구조 고도화(계획서 4절): 기본 URL/모드가 10분 퀵 런으로 바뀌었다(구 기본값 standard).
+  assert.strictEqual(defaultRun.mode.id, 'quick');
   assert.strictEqual(demo.mode.id, 'demo');
   assert.strictEqual(demo.mode.label, '4분 데모');
   assert.strictEqual(demo.duration, 240);
@@ -931,7 +932,7 @@ function main() {
 
   const systems = readGameFile('systems.js');
   assert.ok(systems.includes('RUN_MODES'));
-  assert.ok(systems.includes("DEFAULT_RUN_MODE = 'standard'"));
+  assert.ok(systems.includes("DEFAULT_RUN_MODE = 'quick'"));
   assert.ok(systems.includes('eliteSchedule: [300, 600, 900, 1200, 1500]'));
   assert.ok(systems.includes('width: 2400'));
   assert.ok(systems.includes('height: 1600'));
@@ -993,7 +994,8 @@ function main() {
   assert.ok(game.includes('function formatRarity'));
   assert.ok(game.includes('dataset.mode'));
   assert.ok(game.includes("params.get('qa') === '1'"));
-  assert.ok(game.includes('quick 모드에서는 10분 빠른 런'));
+  assert.ok(game.includes('기본 모드인 10분 퀵 런'));
+  assert.ok(game.includes('?mode=long'), '30분 정식 런 URL 안내가 있어야 합니다');
   assert.ok(game.includes('MODE ${state.mode.id.toUpperCase()}'));
   assert.ok(game.includes('evolution-ready-chip'));
   assert.ok(game.includes('진화 가능: 다음 엘리트 상자를 노리세요'));
@@ -1168,6 +1170,8 @@ function main() {
   assert.ok(webGameDoc.includes('v3 전투 가독성'));
   assert.ok(webGameDoc.includes('엘리트 패턴'));
   assert.ok(webGameDoc.includes('직업별 궁극기'));
+  assert.ok(webGameDoc.includes('기본 URL은 10분 퀵 런으로 시작'), '운영 문서가 새 기본 모드(퀵 런)를 반영해야 합니다');
+  assert.ok(webGameDoc.includes('?mode=long'), '운영 문서가 30분 런 URL 파라미터를 안내해야 합니다');
 
   testDesignReferenceBoards();
   testEnemySpriteRendererSharpness();

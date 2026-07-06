@@ -644,7 +644,11 @@
       type: 'wave_kills',
       title: '숲의 추격 돌파',
       copy: '숲의 추격 웨이브에서 적 18체를 처치하세요.',
-      waveId: 'forest',
+      // 세션 구조 고도화(계획서 4절 - 런 목표 퀵 런 기준 재조정): 퀵/정식 런은 모두
+      // standardWavePatterns를 쓰므로 웨이브 id가 'standard-9-12'다('forest'는 demo
+      // 전용 wavePatterns의 id라 퀵/정식 런에서는 절대 채워지지 않던 목표였다 - 수치는
+      // 동일 웨이브라 그대로 유지).
+      waveId: 'standard-9-12',
       target: 18,
       near: 14,
     },

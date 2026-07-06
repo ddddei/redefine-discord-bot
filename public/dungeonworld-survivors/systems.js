@@ -37,7 +37,9 @@
       eliteSchedule: [300, 600, 900, 1200, 1500],
     },
   };
-  const DEFAULT_RUN_MODE = 'standard';
+  // 세션 구조(계획서 4절): 기본 URL은 10분 퀵 런. 30분은 ?mode=long(standard 내부
+  // 식별자 유지, URL 파라미터만 long으로 매핑 - game.js getRequestedMode).
+  const DEFAULT_RUN_MODE = 'quick';
   const UPGRADE_ITEM_LINKS = {
     shieldBash: { type: 'weapon', id: 'cleave' },
     ironVow: { type: 'passive', id: 'shieldLine' },
