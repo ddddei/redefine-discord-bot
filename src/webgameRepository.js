@@ -9,7 +9,13 @@ const DEFAULT_PATHS = {
   links: process.env.WEBGAME_LINKS_DATA_PATH || path.join(DATA_DIR, 'webgame-links.local.json'),
   scores: process.env.WEBGAME_SCORES_DATA_PATH || path.join(DATA_DIR, 'webgame-scores.local.json'),
   social: process.env.WEBGAME_SOCIAL_DATA_PATH || path.join(DATA_DIR, 'webgame-social.local.json'),
+  replayMismatch: process.env.WEBGAME_REPLAY_MISMATCH_DATA_PATH
+    || path.join(DATA_DIR, 'webgame-replay-mismatch.local.json'),
 };
+
+// mismatch 진단 파일은 최근 이 개수만큼만 순환 보관한다(계획서 3절 - 오탐 분석·
+// strict 전환 판단 근거 용도이며 무기한 누적하지 않는다).
+const REPLAY_MISMATCH_MAX_RECORDS = 50;
 
 const LINK_CODE_TTL_MS = 10 * 60 * 1000;
 
@@ -43,6 +49,17 @@ function createInitialSocialData() {
     description: 'Local webgame anonymous cheer data for redefine discord bot MVP. JSON storage is for MVP operation only.',
     cheerSalt: crypto.randomBytes(16).toString('hex'),
     cheers: [],
+  };
+}
+
+// 개인 행동 데이터(로그 원문 포함)이므로 백업 대상에 넣지 않고 커밋 금지(local) -
+// docs/replay-verification-plan.md 3절.
+function createInitialReplayMismatchData() {
+  return {
+    version: 1,
+    isExample: false,
+    description: 'Local webgame replay verification mismatch diagnostics for redefine discord bot MVP. Rotates to the most recent 50 records. Not for backup, not for commit.',
+    records: [],
   };
 }
 
@@ -107,12 +124,21 @@ function normalizeMode(mode) {
   return mode === 'daily' ? 'daily' : 'free';
 }
 
+const VALID_REPLAY_STATUSES = new Set(['verified', 'mismatch', 'missing', 'skipped']);
+
+// 기존 레코드(replay 필드 없음)는 'missing'으로 관용 해석한다 - 비동기 소셜 때의
+// mode/dayKey 확장과 동일한 하위 호환 패턴(docs/replay-verification-plan.md 3절).
+function normalizeReplayStatus(replay) {
+  return VALID_REPLAY_STATUSES.has(replay) ? replay : 'missing';
+}
+
 function normalizeScoreRecord(score) {
   const mode = normalizeMode(score.mode);
   return {
     ...score,
     mode,
     dayKey: mode === 'daily' && typeof score.dayKey === 'string' ? score.dayKey : null,
+    replay: normalizeReplayStatus(score.replay),
   };
 }
 
@@ -127,6 +153,9 @@ function createWebgameRepository(paths = {}) {
   };
   if (!paths.social && paths.scores) {
     resolvedPaths.social = path.join(path.dirname(paths.scores), 'webgame-social.local.json');
+  }
+  if (!paths.replayMismatch && paths.scores) {
+    resolvedPaths.replayMismatch = path.join(path.dirname(paths.scores), 'webgame-replay-mismatch.local.json');
   }
 
   function getLinksData() {
@@ -189,6 +218,47 @@ function createWebgameRepository(paths = {}) {
       cheerSalt: socialData.cheerSalt,
       cheers: Array.isArray(socialData.cheers) ? socialData.cheers : [],
     });
+  }
+
+  function getReplayMismatchData() {
+    const data = loadOrCreate(resolvedPaths.replayMismatch, createInitialReplayMismatchData);
+    return {
+      ...createInitialReplayMismatchData(),
+      ...data,
+      isExample: data.isExample === true,
+      records: Array.isArray(data.records) ? data.records : [],
+    };
+  }
+
+  function saveReplayMismatchData(replayMismatchData) {
+    saveJsonFile(resolvedPaths.replayMismatch, {
+      version: 1,
+      isExample: false,
+      description: replayMismatchData.description || createInitialReplayMismatchData().description,
+      records: Array.isArray(replayMismatchData.records) ? replayMismatchData.records : [],
+    });
+  }
+
+  // mismatch 진단 기록 추가. 최근 REPLAY_MISMATCH_MAX_RECORDS건만 순환 보관한다.
+  function appendReplayMismatch(input, now = new Date()) {
+    const replayMismatchData = cloneJson(getReplayMismatchData());
+    const record = {
+      discordId: typeof input.discordId === 'string' ? input.discordId : null,
+      gameId: typeof input.gameId === 'string' ? input.gameId : null,
+      seed: input.seed !== undefined && input.seed !== null ? String(input.seed) : null,
+      score: Number.isFinite(input.score) ? input.score : null,
+      replayScore: Number.isFinite(input.replayScore) ? input.replayScore : null,
+      reason: typeof input.reason === 'string' ? input.reason : null,
+      log: input.log !== undefined ? input.log : null,
+      at: createTimestamp(now),
+    };
+
+    replayMismatchData.records.push(record);
+    if (replayMismatchData.records.length > REPLAY_MISMATCH_MAX_RECORDS) {
+      replayMismatchData.records = replayMismatchData.records.slice(-REPLAY_MISMATCH_MAX_RECORDS);
+    }
+    saveReplayMismatchData(replayMismatchData);
+    return record;
   }
 
   function findLinkByDiscordId(linksData, discordId) {
@@ -321,6 +391,7 @@ function createWebgameRepository(paths = {}) {
       flagged: Boolean(input.flagged),
       mode,
       dayKey: mode === 'daily' ? requireTrimmedString(input.dayKey, 'dayKey') : null,
+      replay: normalizeReplayStatus(input.replay),
     };
 
     scoresData.scores.push(record);
@@ -689,6 +760,39 @@ function createWebgameRepository(paths = {}) {
     return createTargetId(socialData.cheerSalt, discordId);
   }
 
+  // 이번 주(weekKey) replay 상태별 건수 - admin 대시보드 카드용(계획서 5절).
+  function countReplayStatusesForWeek(weekKey) {
+    const scoresData = getScoresData();
+    const counts = { verified: 0, mismatch: 0, missing: 0 };
+    scoresData.scores.map(normalizeScoreRecord).forEach((score) => {
+      if (score.weekKey !== weekKey || score.replay === 'skipped') {
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(counts, score.replay)) {
+        counts[score.replay] += 1;
+      }
+    });
+    return counts;
+  }
+
+  // admin 표시용 mismatch 메타 목록(로그 원문은 노출하지 않는다 - 계획서 5절).
+  function listRecentMismatches(limit = 10) {
+    const replayMismatchData = getReplayMismatchData();
+    const safeLimit = Number.isInteger(limit) && limit > 0 ? limit : 10;
+    return replayMismatchData.records
+      .slice()
+      .reverse()
+      .slice(0, safeLimit)
+      .map((record) => ({
+        discordId: record.discordId,
+        gameId: record.gameId,
+        score: record.score,
+        replayScore: record.replayScore,
+        reason: record.reason,
+        at: record.at,
+      }));
+  }
+
   return {
     issueLinkCode,
     redeemLinkCode,
@@ -712,9 +816,13 @@ function createWebgameRepository(paths = {}) {
     countCheersSentToday,
     resolveTargetId,
     getTargetId,
+    appendReplayMismatch,
+    countReplayStatusesForWeek,
+    listRecentMismatches,
     getLinksData,
     getScoresData,
     getSocialData,
+    getReplayMismatchData,
   };
 }
 
@@ -724,4 +832,5 @@ module.exports = {
   getDayKey,
   getDailySeed,
   LINK_CODE_TTL_MS,
+  REPLAY_MISMATCH_MAX_RECORDS,
 };

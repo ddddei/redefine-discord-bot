@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "isExample": true,
+  "description": "문서용 더미 데이터입니다. 실제 참여자 정보나 실제 Discord 사용자 ID를 포함하지 않습니다.",
+  "records": [
+    {
+      "discordId": "user_example_001",
+      "gameId": "match3",
+      "seed": "example-seed",
+      "score": 12000,
+      "replayScore": 9000,
+      "reason": "SCORE_MISMATCH",
+      "log": { "v": 1, "actions": [[0, 0, 0, 1]] },
+      "at": "2030-01-10T09:31:00+09:00"
+    }
+  ]
+}

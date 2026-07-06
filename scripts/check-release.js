@@ -164,6 +164,11 @@ const checks = [
     args: ['--check', 'src/webgameApi.js'],
   },
   {
+    label: 'src/webgameReplay.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameReplay.js'],
+  },
+  {
     label: 'src/webgameLink.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/webgameLink.js'],
