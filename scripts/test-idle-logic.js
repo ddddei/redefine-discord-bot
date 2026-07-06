@@ -447,6 +447,38 @@ function testSaveRoundTrip() {
   assert.strictEqual(Engine.deserializeState(JSON.stringify(noVersion)), null);
 }
 
+// 구버전 세이브(이번 고도화의 신규 필드가 전혀 없는 상태)를 로드해도 크래시 없이
+// 관용 초기화되어야 한다(계획서 0절 "완성 정의" 5번, deserializeState의 기존 패턴).
+function testLegacySaveForwardCompat() {
+  const { Engine, Content } = loadEngine();
+  const state = Engine.createNewState();
+  state.snacks = 500;
+  state.buildings.strawberry.owned = 4;
+
+  const legacy = JSON.parse(Engine.serializeState(state));
+  delete legacy.deliveryVisitCounts;
+  delete legacy.collectedStories;
+  delete legacy.weeklySnapshots;
+  delete legacy.lastSnapshotWeekKey;
+  delete legacy.snapshotBaselineProduced;
+  delete legacy.prestigeHistory;
+
+  const restored = Engine.deserializeState(JSON.stringify(legacy));
+  assert.ok(restored, '신규 필드가 없는 구버전 세이브도 로드에 성공해야 함');
+  assert.strictEqual(JSON.stringify(restored.deliveryVisitCounts), '{}');
+  assert.strictEqual(JSON.stringify(restored.collectedStories), '{}');
+  assert.strictEqual(JSON.stringify(restored.weeklySnapshots), '[]');
+  assert.strictEqual(restored.lastSnapshotWeekKey, null);
+  assert.strictEqual(restored.snapshotBaselineProduced, 0);
+  assert.strictEqual(JSON.stringify(restored.prestigeHistory), '[]');
+
+  // 관용 초기화 후에도 정상적으로 게임 로직이 동작해야 한다(크래시 없음).
+  assert.strictEqual(Engine.getProductionPerSecond(restored), Content.BUILDINGS[0].ratePerUnit * 4);
+  const snapshotResult = Engine.recordWeeklySnapshotIfNeeded(restored, '2026-W28');
+  assert.strictEqual(snapshotResult, false); // 최초 호출은 기준점만 세움
+  assert.strictEqual(restored.lastSnapshotWeekKey, '2026-W28');
+}
+
 function testFormatNumber() {
   const { Engine } = loadEngine();
   assert.strictEqual(Engine.formatNumber(9999), '9,999');
@@ -481,6 +513,63 @@ function testBalanceSafetyNet() {
   });
 }
 
+// 절대 규칙 3: lifetimeProduced 단조 증가 불변 — 파견/이벤트 배수/환생을 조합해도
+// 이 값이 절대 줄어들지 않아야 한다(공동 목표 집계 전제).
+function testLifetimeProducedMonotonicity() {
+  const { Engine, context } = loadEngine();
+  const state = Engine.createNewState();
+  state.buildings.strawberry.owned = 20; // 초당 10 생산
+  let previous = state.lifetimeProduced;
+
+  function assertNonDecreasing(label) {
+    assert.ok(state.lifetimeProduced >= previous, `${label} 이후 lifetimeProduced가 감소함`);
+    previous = state.lifetimeProduced;
+  }
+
+  // 1) 클릭
+  Engine.applyClick(state, 2); // 이벤트 배수 2배 적용
+  assertNonDecreasing('클릭');
+
+  // 2) 생산 틱(이벤트 배수 포함)
+  Engine.applyProductionTick(state, 60 * 1000, 2);
+  assertNonDecreasing('생산 틱');
+
+  // 3) 파견 시작 → 완료(이벤트 배수 포함, 강가 찻집 황금 보너스 당첨 경로 포함)
+  state.stageId = 3;
+  Engine.startDelivery(state, 'riverside-teahouse', 0);
+  stubContextRandom(context, 0.01); // 황금 보너스 당첨
+  const deliveryResult = Engine.collectDelivery(state, Engine.findDelivery('riverside-teahouse').durationMs, 2);
+  assert.strictEqual(deliveryResult.success, true);
+  assertNonDecreasing('파견 완료(이벤트 배수 + 황금 보너스)');
+
+  // 4) 오프라인 수익(이벤트 배수 포함)
+  Engine.applyOfflineEarnings(state, 0, 3 * 60 * 60 * 1000, 2);
+  assertNonDecreasing('오프라인 수익');
+
+  // 5) 환생(초기화가 일어나도 lifetimeProduced 자체는 유지되어야 한다)
+  state.stageId = 6;
+  state.lifetimeProduced = 5000000000;
+  previous = state.lifetimeProduced;
+  const prestigeResult = Engine.prestige(state, 1000);
+  assert.strictEqual(prestigeResult.success, true);
+  assertNonDecreasing('환생');
+
+  // 6) 환생 이후에도 계속 생산 가능(단조성 유지) + 이벤트 배수 3배 조합
+  Engine.applyProductionTick(state, 10 * 1000, 3);
+  assertNonDecreasing('환생 이후 생산(이벤트 3배)');
+
+  // 이벤트 배수를 적용하지 않은 경우보다 적용했을 때 생산량이 더 크거나 같아야 한다
+  // (배수가 실제로 곱연산으로 작동하는지 방향성 확인).
+  const noEventState = Engine.createNewState();
+  noEventState.buildings.strawberry.owned = 20;
+  const eventState = Engine.createNewState();
+  eventState.buildings.strawberry.owned = 20;
+  Engine.applyProductionTick(noEventState, 60 * 1000);
+  Engine.applyProductionTick(eventState, 60 * 1000, 2);
+  assert.ok(eventState.lifetimeProduced > noEventState.lifetimeProduced);
+  assert.strictEqual(eventState.lifetimeProduced, noEventState.lifetimeProduced * 2);
+}
+
 function main() {
   testCostCurve();
   testProductionSum();
@@ -494,8 +583,10 @@ function main() {
   testPrestige();
   testOfflineEarnings();
   testSaveRoundTrip();
+  testLegacySaveForwardCompat();
   testFormatNumber();
   testBalanceSafetyNet();
+  testLifetimeProducedMonotonicity();
 
   console.log('idle logic test passed');
 }
