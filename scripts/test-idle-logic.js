@@ -221,6 +221,45 @@ function testDeliveryDestinationsExpansion() {
   assert.strictEqual(stationState.prestigePoints, 2);
 }
 
+function testDeliveryStories() {
+  const { Engine, Content } = loadEngine();
+
+  // 목적지 6종 × 4종 = 24개(계획서 2.2절).
+  assert.strictEqual(Object.keys(Content.DELIVERY_STORIES).length, 6);
+  Content.DELIVERIES.forEach((delivery) => {
+    const stories = Content.DELIVERY_STORIES[delivery.key];
+    assert.ok(Array.isArray(stories) && stories.length === 4, `${delivery.key} should have 4 stories`);
+    stories.forEach((story) => {
+      assert.strictEqual(typeof story.id, 'string');
+      assert.strictEqual(typeof story.title, 'string');
+      assert.strictEqual(typeof story.body, 'string');
+      assert.ok(story.body.length > 0);
+    });
+  });
+
+  // 방문 횟수 기반 결정적 순환(RNG 아님) — visitCount 1~8을 넣으면 0~3 인덱스가 반복된다.
+  const stories = Content.DELIVERY_STORIES['alley-errand'];
+  for (let visitCount = 1; visitCount <= 8; visitCount += 1) {
+    const expected = stories[(visitCount - 1) % 4];
+    assert.strictEqual(Engine.getDeliveryStory('alley-errand', visitCount).id, expected.id);
+  }
+
+  // collectDelivery가 실제로 방문 횟수를 누적하고 결정적으로 카드를 골라 도감에 기록한다.
+  const state = Engine.createNewState();
+  state.buildings.strawberry.owned = 10;
+  const alley = Engine.findDelivery('alley-errand');
+
+  for (let visit = 1; visit <= 5; visit += 1) {
+    Engine.startDelivery(state, 'alley-errand', 0);
+    const result = Engine.collectDelivery(state, alley.durationMs);
+    const expected = stories[(visit - 1) % 4];
+    assert.strictEqual(result.story.id, expected.id, `visit ${visit} should surface ${expected.id}`);
+    assert.strictEqual(state.collectedStories[expected.id], true);
+  }
+  // 5번째 방문에서 1번째 카드가 다시 나왔어도 이미 수집된 카드 4종만 기록돼 있어야 한다.
+  assert.strictEqual(Object.keys(state.collectedStories).length, 4);
+}
+
 function testQuests() {
   const { Engine } = loadEngine();
   const state = Engine.createNewState();
@@ -449,6 +488,7 @@ function main() {
   testBuyBuildingAndUpgradeStage();
   testDelivery();
   testDeliveryDestinationsExpansion();
+  testDeliveryStories();
   testQuests();
   testAchievements();
   testPrestige();

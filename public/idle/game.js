@@ -46,10 +46,13 @@
     goalFetchCount += 1;
     return window.GameLink.fetchGoal().then(function (result) {
       if (result && result.ok) {
-        var previousWeekKey = goalCache ? goalCache.weekKey : null;
         goalCache = result;
-        if (previousWeekKey && previousWeekKey !== result.weekKey) {
-          // 주가 바뀌면 현수막/깃발을 자동으로 제거한다(계획서 1.1절).
+        // 주간 생산 추이 스냅샷은 서버가 계산한 weekKey를 그대로 재사용한다(계획서 3절 —
+        // 클라이언트가 별도의 주차 계산 로직을 갖지 않는다). 미연결/오프라인이면
+        // goalCache가 없어 스냅샷 기록도 자연히 미뤄진다(조용한 생략).
+        if (Engine.recordWeeklySnapshotIfNeeded(state, result.weekKey)) {
+          saveState();
+          renderWeeklyChart();
         }
       }
       renderGoalBanner();
@@ -117,6 +120,9 @@
   var prestigeSummaryEl = document.getElementById('prestige-summary');
   var prestigeButton = document.getElementById('prestige-button');
   var achievementListEl = document.getElementById('achievement-list');
+  var storyCodexListEl = document.getElementById('story-codex-list');
+  var weeklyChartEl = document.getElementById('weekly-chart');
+  var prestigeHistoryListEl = document.getElementById('prestige-history-list');
   var resetButton = document.getElementById('reset-button');
 
   var questDescriptionEl = document.getElementById('quest-description');
@@ -505,6 +511,119 @@
     });
   }
 
+  // 이야기 도감: 목적지 6종 × 4종 이야기 카드의 수집 여부(계획서 2.2절, 기존 업적
+  // 도감과 같은 잠금/해제 패턴).
+  function renderStoryCodex() {
+    if (!storyCodexListEl) {
+      return;
+    }
+    storyCodexListEl.innerHTML = '';
+    var collected = state.collectedStories || {};
+    Content.DELIVERIES.forEach(function (delivery) {
+      var stories = Content.DELIVERY_STORIES[delivery.key] || [];
+      stories.forEach(function (story) {
+        var unlocked = !!collected[story.id];
+        var li = document.createElement('li');
+        li.className = 'story-codex-row ' + (unlocked ? 'unlocked' : 'locked');
+
+        var info = document.createElement('div');
+        info.className = 'row-info';
+        var title = document.createElement('p');
+        title.className = 'row-title';
+        title.textContent = unlocked ? (delivery.name + ' — ' + story.title) : '???';
+        info.appendChild(title);
+        if (unlocked) {
+          var body = document.createElement('p');
+          body.className = 'row-subtitle';
+          body.textContent = story.body;
+          info.appendChild(body);
+        }
+
+        li.appendChild(info);
+        storyCodexListEl.appendChild(li);
+      });
+    });
+  }
+
+  // 주간 생산 추이: CSS 막대 그래프(라이브러리 금지, 계획서 3절). 최근 8주.
+  function renderWeeklyChart() {
+    if (!weeklyChartEl) {
+      return;
+    }
+    weeklyChartEl.innerHTML = '';
+    var snapshots = state.weeklySnapshots || [];
+    if (snapshots.length === 0) {
+      var empty = document.createElement('p');
+      empty.className = 'gk-link-status';
+      empty.textContent = '아직 지난 주 기록이 없어요. 한 주가 지나면 여기에 쌓여요.';
+      weeklyChartEl.appendChild(empty);
+      return;
+    }
+
+    var maxProduced = snapshots.reduce(function (max, snapshot) {
+      return Math.max(max, snapshot.produced);
+    }, 0);
+
+    var bars = document.createElement('div');
+    bars.className = 'weekly-chart-bars';
+    snapshots.forEach(function (snapshot) {
+      var column = document.createElement('div');
+      column.className = 'weekly-chart-column';
+
+      var bar = document.createElement('div');
+      bar.className = 'weekly-chart-bar';
+      var heightPercent = maxProduced > 0 ? Math.max(4, Math.round((snapshot.produced / maxProduced) * 100)) : 4;
+      bar.style.height = heightPercent + '%';
+      bar.title = Engine.formatNumber(snapshot.produced);
+      column.appendChild(bar);
+
+      var label = document.createElement('span');
+      label.className = 'weekly-chart-label';
+      label.textContent = snapshot.weekKey.replace(/^\d{4}-W/, 'W');
+      column.appendChild(label);
+
+      bars.appendChild(column);
+    });
+    weeklyChartEl.appendChild(bars);
+  }
+
+  // 환생 히스토리: 최근 10개(계획서 3절).
+  function renderPrestigeHistory() {
+    if (!prestigeHistoryListEl) {
+      return;
+    }
+    prestigeHistoryListEl.innerHTML = '';
+    var history = state.prestigeHistory || [];
+    if (history.length === 0) {
+      var empty = document.createElement('li');
+      empty.className = 'gk-link-status';
+      empty.textContent = '아직 환생 기록이 없어요.';
+      prestigeHistoryListEl.appendChild(empty);
+      return;
+    }
+
+    // 최신 순으로 보여준다.
+    history.slice().reverse().forEach(function (entry) {
+      var li = document.createElement('li');
+      li.className = 'prestige-history-row';
+
+      var info = document.createElement('div');
+      info.className = 'row-info';
+      var title = document.createElement('p');
+      title.className = 'row-title';
+      var dateText = typeof entry.at === 'number' ? new Date(entry.at).toLocaleDateString('ko-KR') : '기록 없음';
+      title.textContent = dateText + ' · 레시피 ' + entry.prestigePoints + '개';
+      var subtitle = document.createElement('p');
+      subtitle.className = 'row-subtitle';
+      subtitle.textContent = '누적 생산량 ' + Engine.formatNumber(entry.lifetimeProduced);
+      info.appendChild(title);
+      info.appendChild(subtitle);
+
+      li.appendChild(info);
+      prestigeHistoryListEl.appendChild(li);
+    });
+  }
+
   function renderQuestBar() {
     var quest = Engine.getCurrentQuest(state);
     if (!quest) {
@@ -535,6 +654,9 @@
     renderStats();
     renderPrestige();
     renderAchievements();
+    renderStoryCodex();
+    renderWeeklyChart();
+    renderPrestigeHistory();
     renderQuestBar();
   }
 
