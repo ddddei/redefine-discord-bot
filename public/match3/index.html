@@ -31,11 +31,15 @@
           인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.
         </p>
         <div id="challenge-chip" class="gk-challenge-chip hidden">오늘의 간식판</div>
+        <div id="variant-chip" class="gk-challenge-chip hidden"></div>
         <div id="board" class="board" role="grid" aria-label="간식 맞추기 보드"></div>
         <div class="header-actions">
           <button id="help-button" class="gk-button secondary" type="button">도움말</button>
           <button id="today-challenge-button" class="gk-button secondary" type="button">오늘의 도전</button>
           <button id="restart-button" class="gk-button primary" type="button">다시 하기</button>
+        </div>
+        <div class="header-actions">
+          <button id="goals-button" class="gk-button secondary" type="button">목표 판</button>
         </div>
       </main>
     </div>
@@ -51,9 +55,36 @@
           <li>가능한 이동이 없으면 이동 횟수 소모 없이 보드를 다시 섞습니다.</li>
           <li>3개 매치 30점, 4개 매치 60점, 5개 이상 매치 120점입니다.</li>
           <li>연쇄가 이어질 때마다 배수가 ×1, ×2, ×3…으로 올라갑니다.</li>
+          <li>4개를 일렬로 맞추면 줄 제거 타일이, 5개 이상을 일렬로 맞추면 같은 간식을 모두 지우는 타일이, T자·L자로 맞추면 주변을 터뜨리는 타일이 생겨요.</li>
+          <li>특수 타일은 스와이프하거나 다른 매치에 휘말리면 바로 발동해요. 발동 보너스는 줄 100점, 폭발 150점, 동종 제거 300점입니다.</li>
         </ul>
         <div class="modal-actions">
           <button id="help-modal-close" class="gk-button primary" type="button">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="goals-modal" class="gk-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="goals-modal-title">
+      <div class="gk-modal">
+        <p class="kicker">목표 판</p>
+        <h2 id="goals-modal-title">목표 판 12종</h2>
+        <p class="result-copy">랭킹과 무관하게, 각 판의 목표만 완료하면 되는 부담 없는 도전이에요. 실패해도 몇 번이든 같은 판으로 다시 도전할 수 있고, 실패 기록은 남지 않아요.</p>
+        <ul id="goals-list" class="goals-list"></ul>
+        <div class="modal-actions">
+          <button id="goals-modal-close" class="gk-button primary" type="button">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="goal-result-modal" class="gk-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="goal-result-title">
+      <div class="gk-modal">
+        <p class="kicker">목표 판 결과</p>
+        <h2 id="goal-result-title">결과</h2>
+        <p id="goal-result-copy" class="result-copy"></p>
+        <div class="modal-actions">
+          <button id="goal-result-retry-button" class="gk-button secondary" type="button">같은 판 다시 하기</button>
+          <button id="goal-result-next-button" class="gk-button primary" type="button">다음 판</button>
+          <button id="goal-result-list-button" class="gk-button secondary" type="button">목록으로</button>
         </div>
       </div>
     </div>
@@ -67,6 +98,7 @@
           <div><dt>최종 점수</dt><dd id="result-score">0</dd></div>
           <div><dt>최고 콤보</dt><dd id="result-combo">×1</dd></div>
           <div><dt>가장 많이 지운 간식</dt><dd id="result-top-tile">-</dd></div>
+          <div id="result-variant-row" class="hidden"><dt id="result-variant-label">변형 보너스</dt><dd id="result-variant-value">-</dd></div>
         </dl>
         <div id="result-link-section"></div>
         <div id="result-daily-section"></div>
@@ -80,6 +112,7 @@
     <script src="../shared/link.js"></script>
     <script src="./board.js"></script>
     <script src="./scoring.js"></script>
+    <script src="./goals.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>

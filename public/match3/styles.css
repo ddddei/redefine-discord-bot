@@ -111,6 +111,7 @@ body::before {
 }
 
 .tile {
+  position: relative;
   border: 1px solid var(--ink);
   border-radius: var(--radius-sm);
   display: flex;
@@ -129,6 +130,28 @@ body::before {
   object-fit: cover;
   border-radius: calc(var(--radius-sm) - 2px);
   pointer-events: none;
+}
+
+/* 특수 타일 잉크 마크 오버레이(계획서 1.4). 원화 위에 얹히는 표시 전용 레이어라
+   로직(board.js)과는 무관하다. 저사양 예산을 지키기 위해 신규 애니메이션은 두지
+   않고 기존 clearing 연출(tile-pop)만 재사용한다. */
+.tile-special-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.tile-special-mark {
+  width: 60%;
+  height: 60%;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.55));
+}
+
+.tile.tile-special {
+  box-shadow: inset 0 -3px 0 rgba(58, 42, 28, 0.08), 0 0 0 2px rgba(74, 53, 36, 0.35) inset;
 }
 
 .tile:focus-visible {
@@ -151,6 +174,20 @@ body::before {
 
 .tile.invalid-swap {
   animation: tile-shake 0.28s ease;
+}
+
+/* 드래그 중 타일 따라오기(계획서 4절). transform은 JS가 pointermove 동안 직접
+   설정하고(따라오기 자체는 무보간 - 손가락과 어긋나지 않아야 하므로), pointerup 시
+   클래스가 빠지면서 기존 transition(0.12s)으로 원위치 스냅된다. */
+.tile.tile-dragging {
+  z-index: 2;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.tile-dragging {
+    transform: none !important;
+  }
 }
 
 @keyframes tile-pop {
@@ -254,6 +291,14 @@ body::before {
   padding-bottom: 6px;
 }
 
+.result-stats div.hidden {
+  display: none;
+}
+
+#goal-result-next-button.hidden {
+  display: none;
+}
+
 .result-stats dt {
   color: var(--ink-soft);
   font-size: 13px;
@@ -269,6 +314,54 @@ body::before {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* 목표 판 목록(계획서 3절). 스크롤 가능한 리스트 - 375px 뷰포트에서도 모달 밖으로
+   넘치지 않도록 최대 높이를 두고 세로 스크롤한다. */
+.goals-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.goals-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border-soft, var(--ink));
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface-card, #fff);
+}
+
+.goals-list-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.goals-list-item-title {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.goals-list-item-desc {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.goals-list-item-check {
+  font-size: 20px;
+  line-height: 1;
+  min-width: 24px;
+  text-align: center;
 }
 
 @media (min-width: 640px) {

@@ -31,6 +31,7 @@
   var comboChipEl = document.getElementById('combo-chip');
   var statusMessageEl = document.getElementById('status-message');
   var challengeChipEl = document.getElementById('challenge-chip');
+  var variantChipEl = document.getElementById('variant-chip');
   var restartButton = document.getElementById('restart-button');
   var todayChallengeButton = document.getElementById('today-challenge-button');
   var helpButton = document.getElementById('help-button');
@@ -43,6 +44,19 @@
   var resultComboEl = document.getElementById('result-combo');
   var resultTopTileEl = document.getElementById('result-top-tile');
   var resultRetryButton = document.getElementById('result-retry-button');
+  var goalsButton = document.getElementById('goals-button');
+  var goalsModal = document.getElementById('goals-modal');
+  var goalsModalCloseButton = document.getElementById('goals-modal-close');
+  var goalsListEl = document.getElementById('goals-list');
+  var goalResultModal = document.getElementById('goal-result-modal');
+  var goalResultTitleEl = document.getElementById('goal-result-title');
+  var goalResultCopyEl = document.getElementById('goal-result-copy');
+  var goalResultRetryButton = document.getElementById('goal-result-retry-button');
+  var goalResultNextButton = document.getElementById('goal-result-next-button');
+  var goalResultListButton = document.getElementById('goal-result-list-button');
+
+  // 목표 판 완료 기록(계획서 3절) - 랭킹과 무관한 로컬 저장. 실패 기록은 남기지 않는다.
+  var GOALS_STORAGE_KEY = 'redefine-match3-goals-v1';
 
   var state = null;
   var busy = false;
@@ -78,42 +92,89 @@
     var grid = initial.grid;
     var rng = initial.rng;
 
+    // 오늘의 도전 요일 변형(docs/match3-improvement-plan.md 2절). 서버가 유일
+    // 소스 - variant를 받지 못하면(구버전 서버·자유 플레이) standard로 폴백한다.
+    var variant = normalizeVariant(options.variant);
+
+    // 목표 판 모드(계획서 3절): 서버 제출 없는 랭킹 무관 완료형. options.goal이
+    // 있으면 그 판의 수 제한을 쓰고, variant/오늘의 도전 개념은 적용하지 않는다.
+    var goal = options.goal || null;
+    var movesLeft = goal ? goal.moves : variant.movesLimit;
+    var mode = goal ? 'goal' : (options.mode === 'daily' ? 'daily' : 'free');
+
     return {
       grid: grid,
       rng: rng,
-      movesLeft: Board.MAX_MOVES,
+      // 특수 타일 상태(docs/match3-improvement-plan.md 1절). generateBoard가
+      // 만든 빈 specialGrid에서 시작해, 서버 검증기(webgameReplay.js)와 완전히
+      // 같은 경로(scoring.js)로 갱신된다.
+      specialGrid: initial.specialGrid,
+      movesLeft: movesLeft,
       score: 0,
       combo: 1,
       bestCombo: 1,
       clearedByType: {},
+      specialActivationCount: 0,
       selected: null,
       gameOver: false,
       seed: seed,
-      mode: options.mode === 'daily' ? 'daily' : 'free',
+      mode: mode,
       dayKey: options.dayKey || null,
+      variant: variant,
+      goal: goal,
       // 서버 리플레이 검증용 성공 스왑 기록. 되돌려진 무효 스왑은 RNG를 소비하지
       // 않으므로 포함하지 않는다(docs/replay-verification-plan.md 1절).
       replayActions: [],
     };
   }
 
+  // 특수 타일 종류별 잉크 마크 오버레이(SVG). webgame-design-guide.md의 잉크 톤
+  // (#4a3524, round join/cap)을 따른다. 원화 위에 얹는 장식이라 alt는 비운다
+  // (계획서 1.4 - 표시 전용, board.js 로직과 무관).
+  var SPECIAL_OVERLAY_SVG = {
+    'line-h': '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<path d="M12 32 L24 24 M12 32 L24 40 M52 32 L40 24 M52 32 L40 40" stroke="#4a3524" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+      + '</svg>',
+    'line-v': '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<path d="M32 12 L24 24 M32 12 L40 24 M32 52 L24 40 M32 52 L40 40" stroke="#4a3524" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+      + '</svg>',
+    wrap: '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<circle cx="32" cy="32" r="3" fill="#4a3524"/>'
+      + '<path d="M32 14 L32 20 M32 44 L32 50 M14 32 L20 32 M44 32 L50 32 M20 20 L24 24 M44 20 L40 24 M20 44 L24 40 M44 44 L40 40" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '</svg>',
+    color: '<svg class="tile-special-mark" viewBox="0 0 64 64" aria-hidden="true">'
+      + '<path d="M32 14 L36 27 L50 27 L38 35 L42 49 L32 40 L22 49 L26 35 L14 27 L28 27 Z" fill="none" stroke="#4a3524" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>'
+      + '</svg>',
+  };
+
   function renderBoard() {
     boardEl.innerHTML = '';
     for (var row = 0; row < Board.BOARD_SIZE; row += 1) {
       for (var col = 0; col < Board.BOARD_SIZE; col += 1) {
         var type = state.grid[row][col];
+        var special = state.specialGrid ? state.specialGrid[row][col] : null;
         var button = document.createElement('button');
         button.type = 'button';
-        button.className = 'tile tile-' + type;
+        button.className = 'tile tile-' + type + (special ? ' tile-special tile-special-' + special : '');
         button.dataset.row = String(row);
         button.dataset.col = String(col);
-        button.setAttribute('aria-label', TILE_LABEL[type] + ' 타일, ' + (row + 1) + '행 ' + (col + 1) + '열');
+        var label = TILE_LABEL[type] + ' 타일, ' + (row + 1) + '행 ' + (col + 1) + '열';
+        if (special) {
+          label += ', 특수 타일';
+        }
+        button.setAttribute('aria-label', label);
         var tileImg = document.createElement('img');
         tileImg.className = 'tile-asset';
         tileImg.src = TILE_ASSET[type];
         tileImg.alt = '';
         tileImg.decoding = 'async';
         button.appendChild(tileImg);
+        if (special && SPECIAL_OVERLAY_SVG[special]) {
+          var overlayWrapper = document.createElement('span');
+          overlayWrapper.className = 'tile-special-overlay';
+          overlayWrapper.innerHTML = SPECIAL_OVERLAY_SVG[special];
+          button.appendChild(overlayWrapper);
+        }
         button.addEventListener('click', onTileClick);
         button.addEventListener('pointerdown', onTilePointerDown);
         button.addEventListener('pointermove', onTilePointerMove);
@@ -190,6 +251,64 @@
     challengeChipEl.classList.toggle('hidden', !state || state.mode !== 'daily');
   }
 
+  // 서버 응답의 variant를 정규화한다. 구버전 서버(variant 없음)나 자유 플레이는
+  // standard로 폴백한다(계획서 2.3 - 클라이언트는 요일을 스스로 계산하지 않는다).
+  function normalizeVariant(rawVariant) {
+    if (!rawVariant || typeof rawVariant !== 'object' || typeof rawVariant.id !== 'string') {
+      return { id: 'standard', movesLimit: Board.MAX_MOVES, label: null };
+    }
+    return {
+      id: rawVariant.id,
+      movesLimit: Number.isInteger(rawVariant.movesLimit) ? rawVariant.movesLimit : Board.MAX_MOVES,
+      label: rawVariant.label || null,
+      targetTile: rawVariant.targetTile || null,
+      targetCount: rawVariant.targetCount || null,
+      bonusScore: rawVariant.bonusScore || null,
+      comboMultiplierBonus: rawVariant.comboMultiplierBonus || null,
+    };
+  }
+
+  function updateVariantChip() {
+    if (!variantChipEl) {
+      return;
+    }
+    var variant = state && state.mode === 'daily' ? state.variant : null;
+    if (!variant || variant.id === 'standard') {
+      variantChipEl.classList.add('hidden');
+      variantChipEl.textContent = '';
+      return;
+    }
+
+    var text = variant.label || '';
+    if (variant.id === 'collect' && variant.targetTile) {
+      var collected = state.clearedByType[variant.targetTile] || 0;
+      text = TILE_LABEL[variant.targetTile] + ' ' + collected + '/' + variant.targetCount;
+    }
+    variantChipEl.textContent = text;
+    variantChipEl.classList.remove('hidden');
+  }
+
+  // 변형 보너스 계산(계획서 2.1). collect는 목표 간식 수집량이 기준치 이상이면
+  // 고정 보너스, combo는 최고 콤보 x 배율이다. standard/sprint20은 보너스 없음.
+  function computeVariantBonus() {
+    var variant = state.variant;
+    if (!variant || state.mode !== 'daily') {
+      return { amount: 0, label: null };
+    }
+    if (variant.id === 'collect' && variant.targetTile) {
+      var collected = state.clearedByType[variant.targetTile] || 0;
+      if (collected >= variant.targetCount) {
+        return { amount: variant.bonusScore, label: TILE_LABEL[variant.targetTile] + ' ' + collected + '개 수집 보너스' };
+      }
+      return { amount: 0, label: TILE_LABEL[variant.targetTile] + ' ' + collected + '/' + variant.targetCount + ' (기준 미달)' };
+    }
+    if (variant.id === 'combo') {
+      var bonus = state.bestCombo * variant.comboMultiplierBonus;
+      return { amount: bonus, label: '최고 콤보 ×' + state.bestCombo + ' 보너스' };
+    }
+    return { amount: 0, label: null };
+  }
+
   function getTileFromButton(button) {
     return {
       row: Number(button.dataset.row),
@@ -261,6 +380,46 @@
     return target;
   }
 
+  // 드래그 중 타일 따라오기(계획서 4절): 판정 로직(24px 임계값·busy 가드)은 전혀
+  // 건드리지 않는 표시 전용 계층이다. prefers-reduced-motion이면 비활성화한다.
+  var prefersReducedMotionQuery = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
+  function prefersReducedMotion() {
+    return Boolean(prefersReducedMotionQuery && prefersReducedMotionQuery.matches);
+  }
+
+  // 주축 방향만 따라오게 하고, 최대 이동량은 타일 1칸의 60%로 제한한다.
+  function applyDragFollowTransform(el, deltaX, deltaY) {
+    if (!el || prefersReducedMotion()) {
+      return;
+    }
+    var cellSize = boardEl.clientWidth / Board.BOARD_SIZE;
+    var maxOffset = cellSize * 0.6;
+    var absX = Math.abs(deltaX);
+    var absY = Math.abs(deltaY);
+    var offsetX = 0;
+    var offsetY = 0;
+    if (Math.max(absX, absY) > 0) {
+      if (absX >= absY) {
+        offsetX = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
+      } else {
+        offsetY = Math.max(-maxOffset, Math.min(maxOffset, deltaY));
+      }
+    }
+    el.style.transform = 'translate(' + offsetX + 'px, ' + offsetY + 'px)';
+    el.classList.add('tile-dragging');
+  }
+
+  function clearDragFollowTransform(el) {
+    if (!el) {
+      return;
+    }
+    el.style.transform = '';
+    el.classList.remove('tile-dragging');
+  }
+
   function onTilePointerDown(event) {
     if (busy || state.gameOver || (event.button !== undefined && event.button !== 0)) {
       return;
@@ -272,6 +431,7 @@
       y: event.clientY,
       tile: getTileFromButton(event.currentTarget),
       direction: null,
+      dragEl: event.currentTarget,
     };
 
     if (event.currentTarget.setPointerCapture) {
@@ -283,13 +443,18 @@
     if (!swipeStart || swipeStart.pointerId !== event.pointerId) {
       return;
     }
-    swipeStart.direction = getSwipeDirection(event.clientX - swipeStart.x, event.clientY - swipeStart.y);
+    var deltaX = event.clientX - swipeStart.x;
+    var deltaY = event.clientY - swipeStart.y;
+    swipeStart.direction = getSwipeDirection(deltaX, deltaY);
+    applyDragFollowTransform(swipeStart.dragEl, deltaX, deltaY);
   }
 
   function onTilePointerUp(event) {
     if (!swipeStart || swipeStart.pointerId !== event.pointerId) {
       return;
     }
+
+    clearDragFollowTransform(swipeStart.dragEl);
 
     // 클릭 경로와 동일한 가드: 연쇄 처리 중(busy)이거나 종료 후에는 스와이프도 무시한다
     // (멀티터치로 pointerdown 이후 busy가 된 경우 대비).
@@ -318,6 +483,7 @@
 
   function onTilePointerCancel(event) {
     if (swipeStart && swipeStart.pointerId === event.pointerId) {
+      clearDragFollowTransform(swipeStart.dragEl);
       swipeStart = null;
     }
   }
@@ -329,7 +495,7 @@
       return;
     }
 
-    var swapResult = Board.tryApplySwap(state.grid, first, second);
+    var swapResult = Board.tryApplySwap(state.grid, first, second, state.specialGrid);
 
     if (!swapResult.valid) {
       flashInvalidSwap(first, second);
@@ -338,6 +504,11 @@
 
     busy = true;
     state.grid = swapResult.grid;
+    state.pendingSwapContext = {
+      specialGrid: swapResult.specialGrid,
+      swapCells: swapResult.swapCells,
+      triggeredSwapSpecials: swapResult.triggeredSwapSpecials,
+    };
     state.movesLeft -= 1;
     // 되돌려진 무효 스왑은 RNG를 소비하지 않으므로 로그에 넣지 않는다. 여기 도달했다는
     // 것은 스왑이 유효하다는 뜻이므로 바로 기록한다(서버 리플레이 검증용, 계획서 1절).
@@ -369,9 +540,14 @@
   function resolveBoard() {
     // 캐스케이드 점수 계산·최대 배수 판정은 Scoring.resolveCascadeStep으로 추출해
     // 서버 검증기(src/webgameReplay.js)와 공용으로 쓴다(콤보 점수 계산 이중 구현 제거).
-    var cascadeResult = Scoring.resolveCascadeStep(state.grid, state.rng);
+    // pendingSwapContext: 이번 스왑이 특수 타일을 만들거나 발동시켰는지(attemptSwap이
+    // 세팅) - 서버 검증기가 재생하는 순서와 정확히 같은 컨텍스트를 넘겨야 한다.
+    var swapContext = state.pendingSwapContext;
+    state.pendingSwapContext = null;
+    var cascadeResult = Scoring.resolveCascadeStep(state.grid, state.rng, swapContext);
 
     state.grid = cascadeResult.grid;
+    state.specialGrid = cascadeResult.specialGrid;
     state.score += cascadeResult.score;
     state.combo = cascadeResult.maxMultiplier;
     state.bestCombo = Math.max(state.bestCombo, cascadeResult.maxMultiplier);
@@ -384,8 +560,13 @@
       });
     }
 
+    if (cascadeResult.activations && cascadeResult.activations.length > 0) {
+      state.specialActivationCount += cascadeResult.activations.length;
+    }
+
     renderBoard();
     updateHud();
+    updateVariantChip();
 
     if (cascadeResult.cascadeCount > 1) {
       setStatusMessage(cascadeResult.cascadeCount + '연쇄가 이어졌어요! 배수 ×' + cascadeResult.maxMultiplier + '.');
@@ -397,6 +578,16 @@
 
     if (cascadeResult.maxMultiplier >= 2) {
       pulseComboChip();
+    }
+
+    busy = false;
+
+    // 목표 판(계획서 3절)은 수를 다 쓰기 전에도 목표를 달성하면 즉시 성공 처리한다
+    // (일반 판/오늘의 도전의 셔플·수 소진 처리보다 먼저 검사).
+    if (state.mode === 'goal' && !state.gameOver && window.Match3Goals
+      && window.Match3Goals.isGoalAchieved(state.goal, state)) {
+      endGoal(true);
+      return;
     }
 
     checkForShuffleNeeded();
@@ -418,6 +609,11 @@
   function checkForShuffleNeeded() {
     if (!Board.hasAvailableMove(state.grid)) {
       state.grid = Board.shuffleBoard(state.grid, state.rng);
+      // 셔플은 특수 타일 배치도 함께 무효화한다 - Scoring.applySwapMove(서버 검증기가
+      // 쓰는 것과 같은 경로)가 셔플 시 specialGrid를 비우는 것과 동일하게 맞춘다.
+      if (state.specialGrid) {
+        state.specialGrid = Board.createEmptySpecialGrid();
+      }
       renderBoard();
       setStatusMessage('간식을 새로 섞었어요. 이동 횟수는 차감되지 않았어요.');
       boardEl.classList.remove('shuffling');
@@ -428,7 +624,11 @@
     busy = false;
 
     if (state.movesLeft <= 0) {
-      endGame();
+      if (state.mode === 'goal') {
+        endGoal(false);
+      } else {
+        endGame();
+      }
     }
   }
 
@@ -493,11 +693,30 @@
 
   function endGame() {
     state.gameOver = true;
+
+    // 변형 보너스(계획서 2.1)는 게임 종료 시 1회만 점수에 합산해 제출한다.
+    var variantBonus = computeVariantBonus();
+    if (variantBonus.amount > 0) {
+      state.score += variantBonus.amount;
+    }
+
     resultTitleEl.textContent = '이동을 모두 사용했어요';
     resultCopyEl.textContent = getScoreVerdict(state.score);
     resultScoreEl.textContent = String(state.score);
     resultComboEl.textContent = '×' + state.bestCombo;
     resultTopTileEl.textContent = getTopClearedTileLabel();
+
+    var variantRowEl = document.getElementById('result-variant-row');
+    var variantLabelEl = document.getElementById('result-variant-label');
+    var variantValueEl = document.getElementById('result-variant-value');
+    if (variantRowEl && variantValueEl && variantBonus.label) {
+      variantLabelEl.textContent = '변형 보너스';
+      variantValueEl.textContent = variantBonus.amount > 0 ? ('+' + variantBonus.amount + '점 · ' + variantBonus.label) : variantBonus.label;
+      variantRowEl.classList.remove('hidden');
+    } else if (variantRowEl) {
+      variantRowEl.classList.add('hidden');
+    }
+
     openModal(resultModal);
 
     // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
@@ -513,6 +732,115 @@
     renderLinkAndRanking();
   }
 
+  // ---- 목표 판 모드(docs/match3-improvement-plan.md 3절) ----
+  // 랭킹 무관 완료형 - 서버 제출이 전혀 없고, 완료 여부만 로컬(localStorage)에 남는다.
+
+  function readCompletedGoalIds() {
+    try {
+      var raw = window.localStorage.getItem(GOALS_STORAGE_KEY);
+      if (!raw) {
+        return [];
+      }
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('[Match3Goals] 완료 기록을 읽지 못했어요.', error);
+      return [];
+    }
+  }
+
+  function markGoalCompleted(goalId) {
+    try {
+      var completed = readCompletedGoalIds();
+      if (completed.indexOf(goalId) === -1) {
+        completed.push(goalId);
+        window.localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(completed));
+      }
+    } catch (error) {
+      console.warn('[Match3Goals] 완료 기록을 저장하지 못했어요.', error);
+    }
+  }
+
+  function isGoalCompleted(goalId) {
+    return readCompletedGoalIds().indexOf(goalId) !== -1;
+  }
+
+  function renderGoalsList() {
+    if (!goalsListEl || !window.Match3Goals) {
+      return;
+    }
+    goalsListEl.innerHTML = '';
+    var completed = readCompletedGoalIds();
+
+    window.Match3Goals.getGoalBoards().forEach(function (goal) {
+      var item = document.createElement('li');
+      item.className = 'goals-list-item';
+
+      var info = document.createElement('div');
+      info.className = 'goals-list-item-info';
+      var title = document.createElement('span');
+      title.className = 'goals-list-item-title';
+      title.textContent = goal.id + '. ' + goal.title;
+      var desc = document.createElement('span');
+      desc.className = 'goals-list-item-desc';
+      desc.textContent = goal.description;
+      info.appendChild(title);
+      info.appendChild(desc);
+
+      var actionArea = document.createElement('div');
+      actionArea.className = 'goals-list-item-check';
+
+      var isDone = completed.indexOf(goal.id) !== -1;
+      if (isDone) {
+        actionArea.textContent = '✅';
+      } else {
+        var startButton = document.createElement('button');
+        startButton.type = 'button';
+        startButton.className = 'gk-button secondary';
+        startButton.textContent = '도전';
+        startButton.addEventListener('click', function () {
+          closeModal(goalsModal);
+          startGoal(goal.id);
+        });
+        actionArea.appendChild(startButton);
+      }
+
+      item.appendChild(info);
+      item.appendChild(actionArea);
+      goalsListEl.appendChild(item);
+    });
+  }
+
+  function startGoal(goalId) {
+    if (!window.Match3Goals) {
+      return;
+    }
+    var goal = window.Match3Goals.getGoalBoardById(goalId);
+    if (!goal) {
+      return;
+    }
+    startNewGame({ seed: goal.seed, goal: goal });
+  }
+
+  function endGoal(achieved) {
+    state.gameOver = true;
+    closeModal(resultModal);
+
+    if (achieved) {
+      markGoalCompleted(state.goal.id);
+      goalResultTitleEl.textContent = '해냈어요!';
+      goalResultCopyEl.textContent = state.goal.title + ' 목표를 달성했어요.';
+      goalResultNextButton.classList.remove('hidden');
+    } else {
+      // 배려 원칙(계획서 3절): 실패 횟수·비난 없이 차분하게 안내하고, 재도전은 무제한이다.
+      goalResultTitleEl.textContent = '이번엔 여기까지예요';
+      goalResultCopyEl.textContent = '이번엔 여기까지예요. 같은 판으로 다시 할 수 있어요.';
+      goalResultNextButton.classList.add('hidden');
+    }
+
+    openModal(goalResultModal);
+  }
+
   function startNewGame(options) {
     closeModal(resultModal);
     busy = false;
@@ -520,9 +848,16 @@
     renderBoard();
     updateHud();
     updateChallengeChip();
-    setStatusMessage(state.mode === 'daily'
-      ? '오늘의 간식판이에요. 같은 판에서 편하게 다시 도전할 수 있어요.'
-      : '인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.');
+    updateVariantChip();
+    var introMessage;
+    if (state.mode === 'daily' && state.variant && state.variant.label) {
+      introMessage = state.variant.label;
+    } else if (state.mode === 'daily') {
+      introMessage = '오늘의 간식판이에요. 같은 판에서 편하게 다시 도전할 수 있어요.';
+    } else {
+      introMessage = '인접한 두 간식을 순서대로 클릭해 자리를 바꿔 보세요.';
+    }
+    setStatusMessage(introMessage);
   }
 
   function startDailyGameFromSeed(seed, daily) {
@@ -530,6 +865,7 @@
       seed: seed,
       mode: 'daily',
       dayKey: daily && daily.dayKey,
+      variant: daily && daily.variant,
     });
   }
 
@@ -574,6 +910,48 @@
   helpModalCloseButton.addEventListener('click', function () {
     closeModal(helpModal);
   });
+
+  if (goalsButton) {
+    goalsButton.addEventListener('click', function () {
+      renderGoalsList();
+      openModal(goalsModal);
+    });
+  }
+
+  if (goalsModalCloseButton) {
+    goalsModalCloseButton.addEventListener('click', function () {
+      closeModal(goalsModal);
+    });
+  }
+
+  if (goalResultRetryButton) {
+    goalResultRetryButton.addEventListener('click', function () {
+      closeModal(goalResultModal);
+      startGoal(state.goal.id);
+    });
+  }
+
+  if (goalResultNextButton) {
+    goalResultNextButton.addEventListener('click', function () {
+      closeModal(goalResultModal);
+      var nextId = state.goal.id + 1;
+      var nextGoal = window.Match3Goals && window.Match3Goals.getGoalBoardById(nextId);
+      if (nextGoal) {
+        startGoal(nextId);
+      } else {
+        renderGoalsList();
+        openModal(goalsModal);
+      }
+    });
+  }
+
+  if (goalResultListButton) {
+    goalResultListButton.addEventListener('click', function () {
+      closeModal(goalResultModal);
+      renderGoalsList();
+      openModal(goalsModal);
+    });
+  }
 
   startNewGame();
 

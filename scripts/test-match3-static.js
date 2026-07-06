@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const GAME_DIR = path.join(__dirname, '..', 'public', 'match3');
-const REQUIRED_FILES = ['index.html', 'styles.css', 'board.js', 'game.js'];
+const REQUIRED_FILES = ['index.html', 'styles.css', 'board.js', 'game.js', 'goals.js'];
 
 function readGameFile(fileName) {
   return fs.readFileSync(path.join(GAME_DIR, fileName), 'utf8');
@@ -67,6 +67,34 @@ function main() {
   const webGameDoc = readProjectFile('docs/match3-web-game.md');
   assert.ok(webGameDoc.includes('포인트 지급 없음'));
   assert.ok(webGameDoc.includes('/game/match3'));
+
+  // 목표 판 모드(docs/match3-improvement-plan.md 3절) - goals.js 존재·목표 12종 스키마.
+  const Goals = require(path.join(GAME_DIR, 'goals.js'));
+  const boards = Goals.getGoalBoards();
+  assert.strictEqual(boards.length, 12, '목표 판은 12종이어야 한다');
+
+  const seenIds = new Set();
+  const validTypes = new Set(['collect', 'combo', 'special']);
+  boards.forEach((goal) => {
+    assert.strictEqual(typeof goal.id, 'number');
+    assert.ok(!seenIds.has(goal.id), `goal id ${goal.id} should be unique`);
+    seenIds.add(goal.id);
+    assert.strictEqual(typeof goal.seed, 'number');
+    assert.ok(Number.isInteger(goal.moves) && goal.moves > 0, 'moves should be a positive integer');
+    assert.ok(validTypes.has(goal.type), `goal type ${goal.type} should be one of collect/combo/special`);
+    assert.strictEqual(typeof goal.title, 'string');
+    assert.strictEqual(typeof goal.description, 'string');
+    assert.ok(Number.isInteger(goal.target) && goal.target > 0, 'target should be a positive integer');
+    if (goal.type === 'collect') {
+      assert.strictEqual(typeof goal.tile, 'string');
+    }
+  });
+
+  const goalsScript = readGameFile('goals.js');
+  assert.ok(goalsScript.includes('module.exports'));
+  assert.ok(html.includes('./goals.js'), 'index.html should load goals.js');
+  assert.ok(html.includes('id="goals-list"'), 'index.html should have a goals list container');
+  assert.ok(game.includes('Match3Goals'), 'game.js should reference Match3Goals');
 
   console.log('match3 static test passed');
 }

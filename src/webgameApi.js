@@ -23,8 +23,11 @@ const GAME_DEFINITIONS = {
     title: '간식 맞추기',
     rankable: true,
     dailyCapable: true,
-    // 30수 * 컷당 이론상 최대(5매치 다중 캐스케이드)를 넉넉히 넘는 상한.
-    maxScore: 50000,
+    // 특수 타일 도입(docs/match3-improvement-plan.md 1.3) 후 재산정.
+    // 실측(500개 시드 x 전체 인접 스왑 전수 스캔)한 단일 스왑 최고 점수는 2,790점
+    // (컬러 타일 발동 포함 캐스케이드 7단). 여유 계수를 적용해 수 하나당 가정
+    // 최댓값을 3,000점으로 반올림하고 30수를 곱해 상한을 90,000으로 상향한다.
+    maxScore: 90000,
   },
   deck: {
     id: 'deck',
@@ -51,6 +54,50 @@ const GAME_DEFINITIONS = {
     maxScore: 6,
   },
 };
+
+// 오늘의 도전 요일 변형(docs/match3-improvement-plan.md 2절). 서버가 유일한
+// 결정 소스다 - 클라이언트는 요일을 계산하지 않고 이 응답을 그대로 따른다.
+// 요일 인덱스: dayKey(KST YYYY-MM-DD)를 Date.UTC로 파싱해 getUTCDay()를 쓴다
+// (dayKey 문자열 자체가 이미 KST 기준으로 계산된 값이므로, 그 문자열이 나타내는
+// 달력 날짜의 요일을 구하는 데는 UTC 파싱이 시간대 이중 보정 없이 정확하다).
+const MATCH3_VARIANT_BY_WEEKDAY = {
+  0: { id: 'standard', label: '오늘의 간식판이에요.' }, // 일
+  1: { id: 'standard', label: '오늘의 간식판이에요.' }, // 월
+  2: { id: 'sprint20', label: '오늘은 20수 스프린트예요. 짧고 굵게!', movesLimit: 20 }, // 화
+  3: { id: 'standard', label: '오늘의 간식판이에요.' }, // 수
+  4: { id: 'collect', label: '오늘의 목표 간식을 많이 모아 보세요.', targetCount: 40, bonusScore: 3000 }, // 목
+  5: { id: 'standard', label: '오늘의 간식판이에요.' }, // 금
+  6: { id: 'combo', label: '오늘은 콤보가 돈이 돼요.', comboMultiplierBonus: 500 }, // 토
+};
+
+function getMatch3VariantForDayKey(dayKey) {
+  const parts = String(dayKey).split('-').map(Number);
+  const weekday = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay();
+  const config = MATCH3_VARIANT_BY_WEEKDAY[weekday] || MATCH3_VARIANT_BY_WEEKDAY[0];
+
+  const variant = {
+    id: config.id,
+    movesLimit: config.movesLimit || 30,
+    label: config.label,
+  };
+
+  if (config.id === 'collect') {
+    // targetTile: 시드로 결정적 선택(계획서 2.1) - dayKey의 일일 시드를 salt로 써서
+    // 매치3 간식 종류 중 하나를 고른다.
+    const seed = getDailySeed(dayKey);
+    const tileTypes = ['strawberry', 'orange', 'candy', 'cookie', 'cupcake', 'jelly'];
+    const index = seed % tileTypes.length;
+    variant.targetTile = tileTypes[index];
+    variant.targetCount = config.targetCount;
+    variant.bonusScore = config.bonusScore;
+  }
+
+  if (config.id === 'combo') {
+    variant.comboMultiplierBonus = config.comboMultiplierBonus;
+  }
+
+  return variant;
+}
 
 const RATE_LIMIT_PER_MINUTE = 3;
 const RATE_LIMIT_PER_DAY = 50;
@@ -616,7 +663,7 @@ function createWebgameApi(options = {}) {
       myDiscordId
     );
 
-    sendJson(res, 200, {
+    const payload = {
       gameId,
       dayKey,
       seed: getDailySeed(dayKey),
@@ -624,7 +671,15 @@ function createWebgameApi(options = {}) {
       ranking,
       myBest: myBest ? myBest.score : null,
       myRank,
-    });
+    };
+
+    // 요일 변형(계획서 2절)은 match3만 대상 - 서버가 유일 소스, 클라 요일 계산 금지.
+    // 구버전 클라이언트는 variant 필드를 모르므로 무해하게 무시한다(추가 필드).
+    if (gameId === 'match3') {
+      payload.variant = getMatch3VariantForDayKey(dayKey);
+    }
+
+    sendJson(res, 200, payload);
   }
 
   async function handleGoal(req, res, sendJson) {
@@ -815,4 +870,5 @@ module.exports = {
   OUTLIER_MULTIPLIER,
   DEFAULT_COMMUNAL_GOAL,
   getCommunalGoal,
+  getMatch3VariantForDayKey,
 };

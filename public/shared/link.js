@@ -11,7 +11,7 @@
   // score 엔드포인트 본문 상한(서버 32KB, docs/replay-verification-plan.md 1절)과 동일한 값.
   // 로그를 포함한 본문이 이 값을 넘으면 클라이언트가 미리 로그를 떼고 제출한다(항상 제출은 성공해야 한다).
   var SCORE_BODY_MAX_BYTES = 32 * 1024;
-  var REPLAY_LOG_VERSION = 1;
+  var REPLAY_LOG_VERSION = 2; // 매치3 특수 타일 도입(재현 의미 변경)으로 v2 — 서버 상수와 일치해야 한다.
 
   function readStoredLink() {
     try {
@@ -203,6 +203,9 @@
           ranking: result.data.ranking || [],
           myBest: result.data.myBest,
           myRank: result.data.myRank || null,
+          // 매치3 오늘의 도전 요일 변형(docs/match3-improvement-plan.md 2절).
+          // 구버전 서버 응답에는 없으므로 undefined일 수 있다 - 호출부가 폴백 처리.
+          variant: result.data.variant,
         };
       })
       .catch(function (error) {

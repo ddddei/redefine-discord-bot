@@ -10,7 +10,10 @@
 
 const path = require('path');
 
-const REPLAY_LOG_VERSION = 1;
+// v2: 매치3 특수 타일 도입으로 재현 의미가 바뀜(withSpecials) — 구버전 클라이언트
+// (브라우저 캐시 등)의 v1 로그를 특수 포함으로 재현하면 정직한 제출이 mismatch가
+// 되므로, 버전을 올려 v1 로그는 검증 없이 missing으로 무해하게 처리한다.
+const REPLAY_LOG_VERSION = 2;
 const MATCH3_MAX_ACTIONS = 30;
 const DECK_MAX_ACTIONS = 2000;
 
@@ -88,7 +91,10 @@ function replayMatch3(seed, actions) {
   }
 
   try {
-    const result = Scoring.replayMatch3(numericSeed, actions);
+    // withSpecials: true - 특수 타일 생성/발동까지 포함해 재현한다(클라이언트
+    // game.js가 항상 특수 타일 로직을 사용하므로, 검증기도 같은 경로를 써야
+    // 이중 구현 없이 점수가 일치한다. docs/match3-improvement-plan.md 1절).
+    const result = Scoring.replayMatch3(numericSeed, actions, true);
     if (!result.ok) {
       return { status: REPLAY_STATUS.MISMATCH, reason: result.reason, replayScore: result.score };
     }

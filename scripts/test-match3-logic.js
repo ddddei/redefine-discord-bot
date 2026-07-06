@@ -314,6 +314,209 @@ function testScoringDetectsInvalidSwapInLog() {
   assert.strictEqual(result.reason, 'INVALID_SWAP');
 }
 
+// ---- 특수 타일 (docs/match3-improvement-plan.md 1절) — 신규 확장 ----
+// 기존 케이스는 위에서 전부 유지된다. 아래는 생성 위치 결정성·발동 제거 집합·
+// 체인 순서·컬러 타일 대상 선택·재현 결정성을 검증하는 신규 케이스다.
+
+function buildFilledGrid(rows) {
+  return rows.map((row) => row.slice());
+}
+
+// 4개 가로 매치 -> 스왑된 셀에 세로줄 제거 타일이 생겨야 한다(계획서 1.1 표: 매치
+// 방향과 생성 타일의 제거 방향은 반대).
+function testFourMatchSpawnsLineSpecialAtSwapCell() {
+  const Board = loadBoard();
+  const seed = 2;
+  const initial = Board.generateBoard(seed);
+  const first = { row: 0, col: 4 };
+  const second = { row: 1, col: 4 };
+  const swapResult = Board.tryApplySwap(initial.grid, first, second, initial.specialGrid);
+  assert.strictEqual(swapResult.valid, true);
+
+  const cascade = Board.resolveCascades(swapResult.grid, initial.rng, {
+    specialGrid: swapResult.specialGrid,
+    swapCells: swapResult.swapCells,
+    triggeredSwapSpecials: swapResult.triggeredSwapSpecials,
+  });
+
+  assert.strictEqual(cascade.steps[0].groups.length, 1);
+  assert.strictEqual(cascade.steps[0].groups[0].cells.length, 4);
+  assert.strictEqual(cascade.specialGrid[1][4], 'line-v', '가로 4매치는 스왑 셀에 세로줄 제거 타일을 만들어야 한다');
+}
+
+// 5개 일렬 매치 -> 스왑된 셀에 컬러(동종 제거) 타일이 생겨야 한다.
+function testFivePlusMatchSpawnsColorSpecialAtSwapCell() {
+  const Board = loadBoard();
+  const seed = 29;
+  const initial = Board.generateBoard(seed);
+  const first = { row: 3, col: 3 };
+  const second = { row: 4, col: 3 };
+  const swapResult = Board.tryApplySwap(initial.grid, first, second, initial.specialGrid);
+  assert.strictEqual(swapResult.valid, true);
+
+  const cascade = Board.resolveCascades(swapResult.grid, initial.rng, {
+    specialGrid: swapResult.specialGrid,
+    swapCells: swapResult.swapCells,
+    triggeredSwapSpecials: swapResult.triggeredSwapSpecials,
+  });
+
+  assert.strictEqual(cascade.specialGrid[3][3], 'color', '5매치는 스왑 셀에 컬러 타일을 만들어야 한다');
+}
+
+// T/L자 매치 -> 교차점 셀에 폭발(3x3) 타일 생성 계획이 세워져야 한다(계획서 1.1).
+// planSpecialForGroup은 생성 규칙 자체(중력 적용 전)를 결정하는 순수 함수이므로
+// 여기서 직접 검증한다 - 중력 이후에는 다른 일반 타일처럼 아래로 떨어질 수 있어
+// (계획서에 명시된 대로 특수 타일도 일반 타일처럼 취급되므로) 최종 낙하 위치가
+// 아니라 "생성 시점의 계획"이 교차점인지를 확인하는 것이 맞는 단정이다.
+function testCrossMatchSpawnsWrapSpecialAtIntersection() {
+  const Board = loadBoard();
+  const seed = 3;
+  const initial = Board.generateBoard(seed);
+  const first = { row: 2, col: 0 };
+  const second = { row: 2, col: 1 };
+  const swapResult = Board.tryApplySwap(initial.grid, first, second, initial.specialGrid);
+  assert.strictEqual(swapResult.valid, true);
+
+  const matchResult = Board.findMatches(swapResult.grid);
+  const crossGroup = matchResult.groups.find((g) => g.cells.length === 5);
+  assert.ok(crossGroup, 'fixture should contain the cross-shaped 5-cell group');
+
+  const plan = Board.planSpecialForGroup(crossGroup, swapResult.swapCells);
+  assert.strictEqual(plan.kind, 'wrap');
+  const intersection = Board.findIntersectionCell(crossGroup);
+  assert.strictEqual(JSON.stringify(plan.cell), JSON.stringify(intersection), 'T/L자 매치는 교차점 셀에 폭발 타일을 만들어야 한다');
+
+  // 중력 적용 후에도 폭발 타일 자체는(위치가 옮겨지더라도) 보드 어딘가에 남아 있어야 한다.
+  const cascade = Board.resolveCascades(swapResult.grid, initial.rng, {
+    specialGrid: swapResult.specialGrid,
+    swapCells: swapResult.swapCells,
+    triggeredSwapSpecials: swapResult.triggeredSwapSpecials,
+  });
+  var wrapCount = 0;
+  cascade.specialGrid.forEach((row) => row.forEach((v) => { if (v === 'wrap') wrapCount += 1; }));
+  assert.strictEqual(wrapCount, 1, '생성된 폭발 타일은 중력 이후에도 보드에 남아 있어야 한다');
+}
+
+// 발동 제거 집합: 줄 제거 타일은 해당 행/열 8칸 전부를, 폭발은 3x3(최대 9칸)을 지운다.
+function testActivationClearedCellSets() {
+  const Board = loadBoard();
+  const lineHCells = Board.computeActivationCells('line-h', 3, 3);
+  assert.strictEqual(lineHCells.length, Board.BOARD_SIZE);
+  assert.ok(lineHCells.every((cell) => cell[0] === 3));
+
+  const lineVCells = Board.computeActivationCells('line-v', 3, 3);
+  assert.strictEqual(lineVCells.length, Board.BOARD_SIZE);
+  assert.ok(lineVCells.every((cell) => cell[1] === 3));
+
+  const wrapCenter = Board.computeActivationCells('wrap', 3, 3);
+  assert.strictEqual(wrapCenter.length, 9);
+
+  const wrapCorner = Board.computeActivationCells('wrap', 0, 0);
+  assert.strictEqual(wrapCorner.length, 4, '경계에서는 보드 밖 셀을 제외해야 한다');
+}
+
+// 체인 발동: 매치로 제거되는 셀 안에 이미 다른 특수 타일이 있으면 연쇄 발동해야
+// 하고, 처리 순서는 좌상단부터 행 우선이다(계획서 1.2).
+function testChainActivationOrderAndClearedSet() {
+  const Board = loadBoard();
+  const grid = buildFilledGrid([
+    ['cookie', 'cookie', 'cookie', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry'],
+    ['orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy'],
+    ['jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake'],
+    ['candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry'],
+    ['cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange'],
+    ['strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly'],
+    ['orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy'],
+    ['jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake'],
+  ]);
+  const specialGrid = Board.createEmptySpecialGrid();
+  // (0,1)은 (0,0)-(0,2) cookie 3매치 그룹 안에 있다 - 매치로 소모되며 발동해야 한다.
+  specialGrid[0][1] = 'line-h';
+
+  const rng = Board.createRng(999);
+  const result = Board.removeMatchesAndCollapse(grid, rng, { specialGrid: specialGrid });
+
+  assert.strictEqual(result.activations.length, 1);
+  assert.strictEqual(result.activations[0].kind, 'line-h');
+  assert.strictEqual(JSON.stringify(result.activations[0].cell), JSON.stringify([0, 1]));
+  // 3매치(30점) + line-h 발동 보너스(100점) = 130점. 행 전체(8칸)가 제거됨.
+  assert.strictEqual(result.score, 130);
+  assert.strictEqual(result.cleared, 8);
+}
+
+// 컬러 타일: 캐스케이드로 소모되면 보드에서 가장 많은 간식 종류를 제거한다.
+function testColorSpecialTargetsMostCommonTypeOnCascadeTrigger() {
+  const Board = loadBoard();
+  const grid = buildFilledGrid([
+    ['cookie', 'cookie', 'cookie', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry'],
+    ['orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy'],
+    ['jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake'],
+    ['candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry'],
+    ['cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange'],
+    ['strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly'],
+    ['orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy'],
+    ['jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake'],
+  ]);
+  const specialGrid = Board.createEmptySpecialGrid();
+  specialGrid[0][0] = 'color';
+
+  const mostCommon = Board.findMostCommonType(grid);
+  const rng = Board.createRng(1);
+  const result = Board.removeMatchesAndCollapse(grid, rng, { specialGrid: specialGrid });
+
+  assert.strictEqual(result.activations.length, 1);
+  assert.strictEqual(result.activations[0].kind, 'color');
+  assert.strictEqual(result.activations[0].targetType, mostCommon);
+}
+
+// 컬러 타일: 스왑으로 발동되면 스왑 상대의 종류를 제거한다.
+function testColorSpecialTargetsSwapPartnerTypeOnSwapTrigger() {
+  const Board = loadBoard();
+  const grid = buildFilledGrid([
+    ['cookie', 'cookie', 'cookie', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry'],
+    ['orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy'],
+    ['jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake'],
+    ['candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry'],
+    ['cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange'],
+    ['strawberry', 'orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly'],
+    ['orange', 'jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy'],
+    ['jelly', 'candy', 'cupcake', 'strawberry', 'orange', 'jelly', 'candy', 'cupcake'],
+  ]);
+  const specialGrid = Board.createEmptySpecialGrid();
+  specialGrid[7][7] = 'color'; // cupcake 칸에 컬러 타일
+
+  const rng = Board.createRng(1);
+  const swapResult = Board.tryApplySwap(grid, { row: 7, col: 7 }, { row: 7, col: 6 }, specialGrid);
+  assert.strictEqual(swapResult.valid, true, '특수 타일 스왑은 일반 매치가 없어도 유효해야 한다');
+
+  const cascade = Board.resolveCascades(swapResult.grid, rng, {
+    specialGrid: swapResult.specialGrid,
+    swapCells: swapResult.swapCells,
+    triggeredSwapSpecials: swapResult.triggeredSwapSpecials,
+  });
+
+  assert.strictEqual(cascade.activations.length, 1);
+  assert.strictEqual(cascade.activations[0].targetType, 'candy', '스왑 상대(candy)의 종류를 지워야 한다');
+}
+
+// 결정성: 같은 시드 + 같은 스왑 시퀀스를 특수 타일 포함 재현(replayMatch3 withSpecials)
+// 으로 2회 실행하면 완전히 같은 결과가 나와야 한다(계획서 절대 조건).
+function testSpecialTileDeterminismAcrossRuns() {
+  const { Scoring } = loadScoring();
+  const seed = 2;
+  // 두 스왑 모두 seed 2 보드에서 순서대로 유효하다(1번째: 가로 4매치 스왑,
+  // 2번째: 그 결과 보드에서 스캔한 다음 유효 스왑).
+  const actions = [[0, 4, 1, 4], [0, 0, 1, 0]];
+
+  const first = Scoring.replayMatch3(seed, actions, true);
+  const second = Scoring.replayMatch3(seed, actions, true);
+
+  assert.strictEqual(first.ok, true);
+  assert.strictEqual(second.ok, true);
+  assert.strictEqual(first.score, second.score);
+  assert.strictEqual(JSON.stringify(first.grid), JSON.stringify(second.grid));
+}
+
 function main() {
   testInitialBoardsHaveNoMatches();
   testSameSeedIsDeterministic();
@@ -328,6 +531,15 @@ function main() {
   testScoreRulesForMatchSizes();
   testScoringExtractionMatchesManualCascadeCalculation();
   testScoringDetectsInvalidSwapInLog();
+
+  testFourMatchSpawnsLineSpecialAtSwapCell();
+  testFivePlusMatchSpawnsColorSpecialAtSwapCell();
+  testCrossMatchSpawnsWrapSpecialAtIntersection();
+  testActivationClearedCellSets();
+  testChainActivationOrderAndClearedSet();
+  testColorSpecialTargetsMostCommonTypeOnCascadeTrigger();
+  testColorSpecialTargetsSwapPartnerTypeOnSwapTrigger();
+  testSpecialTileDeterminismAcrossRuns();
 
   console.log('match3 logic test passed');
 }
