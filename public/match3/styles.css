@@ -295,6 +295,10 @@ body::before {
   display: none;
 }
 
+#goal-result-next-button.hidden {
+  display: none;
+}
+
 .result-stats dt {
   color: var(--ink-soft);
   font-size: 13px;
