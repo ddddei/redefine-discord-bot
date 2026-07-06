@@ -4,11 +4,16 @@ const {
   getDayKey,
   getIsoWeekKey,
 } = require('./webgameRepository');
+const { verifyReplay, isStrictModeEnabled, REPLAY_STATUS } = require('./webgameReplay');
 const crypto = require('crypto');
 const WordLogic = require('../public/word/logic');
 const WORD_POOL = require('../data/word-pool.json');
 
 const MAX_BODY_BYTES = 4 * 1024;
+// score 엔드포인트만 replayLog를 담을 수 있어 32KB로 상향한다(다른 엔드포인트는 기존 4KB
+// 유지 - docs/replay-verification-plan.md 1절). 클라이언트는 로그 포함 본문이 이 값을
+// 넘으면 로그를 떼고 제출하므로, 서버 상한 초과는 여전히 예외적인 경우로 취급한다.
+const MAX_SCORE_BODY_BYTES = 32 * 1024;
 
 // 랭킹 화면 choices/표시용 게임 정의. 클라이언트 값은 신뢰하지 않으므로
 // 점수 상한 등 부정 방지 기준은 전부 여기(서버 쪽 상수)에 둔다.
@@ -80,7 +85,9 @@ function getCommunalGoal() {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_COMMUNAL_GOAL;
 }
 
-function readJsonBody(req) {
+// includeSize: true면 { body, bytes } 형태로 돌려준다(score 엔드포인트가 replayLog
+// 유무에 따라 4KB/32KB 상한을 나눠 적용하는 데 사용, 그 외 호출부는 기존처럼 body만 받는다).
+function readJsonBody(req, maxBytes = MAX_BODY_BYTES, includeSize = false) {
   return new Promise((resolve, reject) => {
     const contentType = String(req.headers['content-type'] || '');
     if (contentType && !contentType.includes('application/json')) {
@@ -98,7 +105,7 @@ function readJsonBody(req) {
       }
 
       totalBytes += chunk.length;
-      if (totalBytes > MAX_BODY_BYTES) {
+      if (totalBytes > maxBytes) {
         tooLarge = true;
         return;
       }
@@ -112,13 +119,14 @@ function readJsonBody(req) {
       }
 
       if (totalBytes === 0) {
-        resolve({});
+        resolve(includeSize ? { body: {}, bytes: 0 } : {});
         return;
       }
 
       try {
         const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-        resolve(parsed && typeof parsed === 'object' ? parsed : {});
+        const body = parsed && typeof parsed === 'object' ? parsed : {};
+        resolve(includeSize ? { body, bytes: totalBytes } : body);
       } catch (error) {
         reject(Object.assign(new Error('INVALID_JSON'), { code: 'INVALID_JSON' }));
       }
@@ -377,9 +385,21 @@ function createWebgameApi(options = {}) {
 
   async function handleScore(req, res, sendJson) {
     let body;
+    let bodyBytes;
     try {
-      body = await readJsonBody(req);
+      const parsed = await readJsonBody(req, MAX_SCORE_BODY_BYTES, true);
+      body = parsed.body;
+      bodyBytes = parsed.bytes;
     } catch (error) {
+      sendJson(res, 400, { error: 'INVALID_REQUEST', message: '요청 본문을 확인해 주세요.' });
+      return;
+    }
+
+    const replayLog = body.replayLog !== undefined ? body.replayLog : null;
+
+    // replayLog가 없는 제출은 기존 4KB 상한을 그대로 유지한다(하위 호환 - 계획서 1절).
+    // 로그가 실려 있을 때만 32KB까지 허용한다.
+    if (!replayLog && bodyBytes > MAX_BODY_BYTES) {
       sendJson(res, 400, { error: 'INVALID_REQUEST', message: '요청 본문을 확인해 주세요.' });
       return;
     }
@@ -448,14 +468,35 @@ function createWebgameApi(options = {}) {
       ? getDailyModeForSubmission(seed, nowDate)
       : { mode: 'free', dayKey: null };
 
+    // 서버 리플레이 검증(v2, docs/replay-verification-plan.md 2절). 검증 실패(예외 등)는
+    // 절대 제출을 막지 않는다 - missing 폴백 + 콘솔 경고. mismatch는 도입기에 자동으로
+    // flagged 전환하지 않으며, WEBGAME_REPLAY_STRICT=true일 때만 flagged를 같이 세운다.
+    const replayResult = verifyReplay({ gameId, score, seed, replayLog });
+    let flagged = isOutlier;
+    if (replayResult.status === REPLAY_STATUS.MISMATCH && isStrictModeEnabled()) {
+      flagged = true;
+    }
+    if (replayResult.status === REPLAY_STATUS.MISMATCH) {
+      repository.appendReplayMismatch({
+        discordId: link.discordId,
+        gameId,
+        seed,
+        score,
+        replayScore: replayResult.replayScore,
+        reason: replayResult.reason,
+        log: replayLog,
+      }, nowDate);
+    }
+
     const record = repository.recordScore({
       discordId: link.discordId,
       gameId,
       score,
       seed,
-      flagged: isOutlier,
+      flagged,
       mode: dailyMode.mode,
       dayKey: dailyMode.dayKey,
+      replay: replayResult.status,
     }, nowDate);
 
     const weekBest = repository.getWeekBest(link.discordId, gameId, weekKey);
@@ -463,6 +504,8 @@ function createWebgameApi(options = {}) {
       accepted: true,
       flagged: record.flagged,
       weekBest: weekBest ? weekBest.score : record.score,
+      // 참여자 UI 표시용이 아니라 콘솔 진단용이다(배려 원칙 - "검증 실패" 신호를 보여주지 않는다).
+      replay: record.replay,
     };
 
     if (challenge === 'daily') {

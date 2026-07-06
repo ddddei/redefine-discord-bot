@@ -111,6 +111,14 @@ WEBGAME_WORD_SALT=
 
 `WEBGAME_WORD_SALT`는 `오늘의 간식 단어`의 날짜별 정답 배정에 쓰는 비밀 salt입니다. 운영 환경에서는 임의의 긴 문자열을 Railway Variables에만 저장하는 것을 권장합니다. 비워두면 서버가 커밋되지 않는 `data/webgame-social.local.json`의 `cheerSalt`를 재사용하므로 기능은 동작하지만, 운영 환경별로 명시 값을 두면 백업/이전 시 정답 배정이 더 예측 가능하게 유지됩니다.
 
+서버 리플레이 검증(v2, [replay-verification-plan.md](replay-verification-plan.md))의 strict 전환 스위치입니다.
+
+```env
+WEBGAME_REPLAY_STRICT=
+```
+
+기본(비워두거나 `true`가 아닌 값)은 꺼져 있습니다. 매치3/덱 점수 제출이 재현 검증과 불일치(mismatch)해도 기록·대시보드 표시만 되고 랭킹에는 그대로 유지됩니다(클라이언트 버그로 인한 오탐이 참여자를 억울하게 차단하지 않도록 하는 배려 원칙). `true`로 설정하면 mismatch 기록이 즉시 `flagged: true`로 전환되어 랭킹에서 제외됩니다. 전환 기준은 [webgame-rankings-ops.md](webgame-rankings-ops.md)의 운영 결정 칸을 참고하세요.
+
 운영 환경 점검 기준:
 
 | 환경변수 | 기준 | 용도 |
