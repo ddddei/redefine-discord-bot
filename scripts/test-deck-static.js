@@ -42,8 +42,11 @@ function main() {
   assert.ok(content.includes('module.exports'));
   assert.ok(content.includes('CARDS'));
   assert.ok(content.includes('ENEMIES'));
-  assert.ok(content.includes('RUN_LAYOUT'));
+  assert.ok(content.includes('MAP_FLOOR_COUNT'));
+  assert.ok(content.includes('RELICS'));
+  assert.ok(content.includes('EVENTS'));
   assert.ok(content.includes('STARTER_DECK'));
+  assert.ok(content.includes('DECK_PRESET_BY_WEEKDAY'));
 
   const engine = readGameFile('engine.js');
   assert.ok(engine.includes('window.DeckEngine') || engine.includes('root.DeckEngine'));
@@ -65,6 +68,9 @@ function main() {
   assert.ok(engine.includes('createRngTracker'));
   assert.ok(engine.includes('serializeState'));
   assert.ok(engine.includes('deserializeState'));
+  assert.ok(engine.includes('buildMap'));
+  assert.ok(engine.includes('selectMapNode'));
+  assert.ok(engine.includes('isLegacyV1Save'));
 
   const game = readGameFile('game.js');
   assert.ok(game.includes('DeckEngine'));
@@ -73,7 +79,8 @@ function main() {
 
   const styles = readGameFile('styles.css');
   assert.ok(styles.includes('.hand-list'));
-  assert.ok(styles.includes('.run-track'));
+  assert.ok(styles.includes('.map-scroll'));
+  assert.ok(styles.includes('.map-node'));
   assert.ok(styles.includes('@media (max-width: 480px)') || styles.includes('@media (min-width: 640px)'));
 
   const adminServer = readProjectFile('src/adminServer.js');
