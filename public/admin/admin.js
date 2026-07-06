@@ -319,6 +319,16 @@
     ], '현재 flagged 기록이 없습니다.');
   }
 
+  function renderRecentMismatches(rows) {
+    renderTable('webgame-replay-mismatches', rows || [], [
+      { label: '시각', render: function (row) { return escapeHtml(formatDate(row.at)); } },
+      { label: '참여자', render: function (row) { return escapeHtml(row.displayName || shortId(row.discordId)); } },
+      { label: '게임', render: function (row) { return escapeHtml(webgameLabels[row.gameId] || row.gameId); } },
+      { label: '제출 점수', render: function (row) { return escapeHtml(row.score); } },
+      { label: '재현 점수', render: function (row) { return escapeHtml(row.replayScore); } },
+    ], '최근 리플레이 불일치 기록이 없습니다.');
+  }
+
   function renderCheerStats(rows) {
     renderTable('webgame-cheer-stats', rows || [], [
       { label: '게임', render: function (row) { return escapeHtml(row.label || webgameLabels[row.gameId] || row.gameId); } },
@@ -361,6 +371,9 @@
       { label: '오늘 참여 · 오늘의 단어', value: dailyParticipants.word },
       { label: '이번 주 응원', value: counts.cheersThisWeek },
       { label: '오늘 응원', value: counts.cheersToday },
+      { label: '리플레이 검증(이번 주)', value: (counts.replayStatus && counts.replayStatus.verified) || 0 },
+      { label: '리플레이 불일치(이번 주)', value: (counts.replayStatus && counts.replayStatus.mismatch) || 0 },
+      { label: '리플레이 로그 없음(이번 주)', value: (counts.replayStatus && counts.replayStatus.missing) || 0 },
     ];
     $('webgame-summary-cards').innerHTML = summaryCards.map(function (card) {
       return '<article class="summary-card"><span>' + escapeHtml(card.label) + '</span><strong>' + text(card.value, 0) + '</strong></article>';
@@ -384,6 +397,7 @@
     renderCommunalGoal(summary.communalGoal);
     renderFlaggedScores(summary.flaggedScores);
     renderCheerStats(summary.cheerStats);
+    renderRecentMismatches(summary.recentMismatches);
 
     const meta = summary.meta || {};
     const excluded = Number(meta.exampleRecordsExcluded || 0);
@@ -398,7 +412,7 @@
       renderWebgameOperations(await fetchJson(getWebgameEndpoint()));
     } catch (error) {
       $('webgame-status').textContent = '웹게임 운영 데이터를 불러오지 못했습니다.';
-      ['webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats'].forEach(function (id) {
+      ['webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats', 'webgame-replay-mismatches'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
       });
     }
@@ -597,7 +611,7 @@
       $('first-day-actions').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('onboarding-signals').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('webgame-status').textContent = '웹게임 운영 데이터를 불러오지 못했습니다.';
-      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals', 'dm-chat-logs', 'webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats'].forEach(function (id) {
+      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals', 'dm-chat-logs', 'webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats', 'webgame-replay-mismatches'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
       });
     }
