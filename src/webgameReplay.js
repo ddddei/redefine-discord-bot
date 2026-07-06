@@ -10,10 +10,13 @@
 
 const path = require('path');
 
-// v2: 매치3 특수 타일 도입으로 재현 의미가 바뀜(withSpecials) — 구버전 클라이언트
-// (브라우저 캐시 등)의 v1 로그를 특수 포함으로 재현하면 정직한 제출이 mismatch가
-// 되므로, 버전을 올려 v1 로그는 검증 없이 missing으로 무해하게 처리한다.
-const REPLAY_LOG_VERSION = 2;
+// v3: 덱 갈림길 맵 도입(docs/deck-improvement-plan.md 3절)으로 덱 재현 의미가 바뀜
+// (선형 11칸 진행 → 갈림길 13층 맵, 맵 노드 선택 액션 ["m", nodeIndex] 추가·기존
+// ["n"]/["a"] 액션 폐지). 구버전(v2) 클라이언트의 로그를 새 재현기로 재생하면 정직한
+// 제출도 mismatch가 되므로, 버전을 올려 v2 로그는 검증 없이 missing으로 무해하게
+// 처리한다(과도기 회귀 테스트로 v2 로그 missing 케이스를 보증한다). match3는 이번
+// 변경과 무관하지만 로그 포맷 버전은 두 게임이 공유하므로 함께 올라간다.
+const REPLAY_LOG_VERSION = 3;
 const MATCH3_MAX_ACTIONS = 30;
 const DECK_MAX_ACTIONS = 2000;
 
@@ -105,10 +108,19 @@ function replayMatch3(seed, actions) {
   }
 }
 
+// v3(docs/deck-improvement-plan.md 3절): 선형 11칸 → 갈림길 13층 맵으로 바뀌면서
+// ["n"]/["a"] 액션은 폐지되고 맵 노드 선택 액션 ["m", optionIndex]가 새로 생겼다.
+// optionIndex는 Engine.getAvailableNextNodes가 그 시점에 돌려주는 배열의 인덱스와
+// 1:1 대응한다(클라 UI가 보여주는 "다음 층 노드" 목록 순서와 동일). 이벤트 칸도
+// 새로 생겨 ["ev", choiceId]·후속 조치 ["evrm", deckIndex]·["evup", deckIndex]가 추가됐다.
 const DECK_ACTION_HANDLERS = {
-  // ["n"] 다음 칸 진입
-  n(state, tracker, Engine) {
-    const result = Engine.enterCurrentNode(state, tracker);
+  // ["m", optionIndex] 맵 노드 선택(다음 층 진입)
+  m(state, tracker, Engine, action) {
+    const optionIndex = action[1];
+    if (!Number.isInteger(optionIndex)) {
+      return false;
+    }
+    const result = Engine.selectMapNode(state, optionIndex, tracker);
     return result.success;
   },
   // ["p", cardId, handIndex] 카드 사용
@@ -160,10 +172,32 @@ const DECK_ACTION_HANDLERS = {
     const result = Engine.applyRestRemoveCard(state, deckIndex);
     return result.success;
   },
-  // ["a"] 다음 노드로
-  a(state, tracker, Engine) {
-    Engine.advanceToNextNode(state);
-    return true;
+  // ["ev", choiceId] 이벤트 선택지 해석
+  ev(state, tracker, Engine, action) {
+    const choiceId = action[1];
+    if (typeof choiceId !== 'string') {
+      return false;
+    }
+    const result = Engine.resolveEventChoice(state, choiceId, tracker);
+    return result.success;
+  },
+  // ["evrm", deckIndex] 이벤트 후속: 카드 제거/건네주기
+  evrm(state, tracker, Engine, action) {
+    const deckIndex = action[1];
+    if (!Number.isInteger(deckIndex)) {
+      return false;
+    }
+    const result = Engine.applyEventRemoveCard(state, deckIndex);
+    return result.success;
+  },
+  // ["evup", deckIndex] 이벤트 후속: 카드 강화
+  evup(state, tracker, Engine, action) {
+    const deckIndex = action[1];
+    if (!Number.isInteger(deckIndex)) {
+      return false;
+    }
+    const result = Engine.applyEventUpgradeCard(state, deckIndex);
+    return result.success;
   },
 };
 
@@ -177,7 +211,7 @@ function isValidDeckAction(action) {
 // 덱 재현: createNewRun(seed) + trackerFromState로 시작해 액션 타입별로 엔진 공개 함수를
 // 그대로 호출한다. 각 액션 전 유효성을 그 함수 자신이 확인하므로(canPlayCard 등),
 // 실패(success:false 또는 handler false)를 즉시 mismatch로 판정한다.
-// 점수 산식: 도달 칸 x 1000 + 잔여 HP (webgameApi.js GAME_DEFINITIONS.deck 상수와 일치).
+// 점수 산식: 도달 층 x 1000 + 잔여 HP (webgameApi.js GAME_DEFINITIONS.deck 상수와 일치).
 function replayDeck(seed, actions) {
   let Content;
   let Engine;
@@ -225,10 +259,11 @@ function replayDeck(seed, actions) {
       return { status: REPLAY_STATUS.MISMATCH, reason: 'RUN_NOT_FINISHED' };
     }
 
-    const totalNodes = Content.RUN_LAYOUT.length;
-    const reachedStage = Math.min(state.runIndex + 1, totalNodes);
+    const reachedFloor = Engine.getReachedFloor(state);
+    const totalFloors = Content.MAP_FLOOR_COUNT;
+    const reachedStage = Math.min(reachedFloor, totalFloors);
     const remainingHp = Math.max(0, state.player.hp);
-    const replayScore = reachedStage * 1000 + remainingHp;
+    const replayScore = reachedStage * Content.SCORE_PER_FLOOR + remainingHp;
 
     return { status: REPLAY_STATUS.VERIFIED, replayScore };
   } catch (error) {
