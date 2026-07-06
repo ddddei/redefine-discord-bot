@@ -176,6 +176,20 @@ body::before {
   animation: tile-shake 0.28s ease;
 }
 
+/* 드래그 중 타일 따라오기(계획서 4절). transform은 JS가 pointermove 동안 직접
+   설정하고(따라오기 자체는 무보간 - 손가락과 어긋나지 않아야 하므로), pointerup 시
+   클래스가 빠지면서 기존 transition(0.12s)으로 원위치 스냅된다. */
+.tile.tile-dragging {
+  z-index: 2;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.tile-dragging {
+    transform: none !important;
+  }
+}
+
 @keyframes tile-pop {
   0% {
     transform: scale(1);

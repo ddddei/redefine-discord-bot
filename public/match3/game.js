@@ -380,6 +380,46 @@
     return target;
   }
 
+  // 드래그 중 타일 따라오기(계획서 4절): 판정 로직(24px 임계값·busy 가드)은 전혀
+  // 건드리지 않는 표시 전용 계층이다. prefers-reduced-motion이면 비활성화한다.
+  var prefersReducedMotionQuery = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
+  function prefersReducedMotion() {
+    return Boolean(prefersReducedMotionQuery && prefersReducedMotionQuery.matches);
+  }
+
+  // 주축 방향만 따라오게 하고, 최대 이동량은 타일 1칸의 60%로 제한한다.
+  function applyDragFollowTransform(el, deltaX, deltaY) {
+    if (!el || prefersReducedMotion()) {
+      return;
+    }
+    var cellSize = boardEl.clientWidth / Board.BOARD_SIZE;
+    var maxOffset = cellSize * 0.6;
+    var absX = Math.abs(deltaX);
+    var absY = Math.abs(deltaY);
+    var offsetX = 0;
+    var offsetY = 0;
+    if (Math.max(absX, absY) > 0) {
+      if (absX >= absY) {
+        offsetX = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
+      } else {
+        offsetY = Math.max(-maxOffset, Math.min(maxOffset, deltaY));
+      }
+    }
+    el.style.transform = 'translate(' + offsetX + 'px, ' + offsetY + 'px)';
+    el.classList.add('tile-dragging');
+  }
+
+  function clearDragFollowTransform(el) {
+    if (!el) {
+      return;
+    }
+    el.style.transform = '';
+    el.classList.remove('tile-dragging');
+  }
+
   function onTilePointerDown(event) {
     if (busy || state.gameOver || (event.button !== undefined && event.button !== 0)) {
       return;
@@ -391,6 +431,7 @@
       y: event.clientY,
       tile: getTileFromButton(event.currentTarget),
       direction: null,
+      dragEl: event.currentTarget,
     };
 
     if (event.currentTarget.setPointerCapture) {
@@ -402,13 +443,18 @@
     if (!swipeStart || swipeStart.pointerId !== event.pointerId) {
       return;
     }
-    swipeStart.direction = getSwipeDirection(event.clientX - swipeStart.x, event.clientY - swipeStart.y);
+    var deltaX = event.clientX - swipeStart.x;
+    var deltaY = event.clientY - swipeStart.y;
+    swipeStart.direction = getSwipeDirection(deltaX, deltaY);
+    applyDragFollowTransform(swipeStart.dragEl, deltaX, deltaY);
   }
 
   function onTilePointerUp(event) {
     if (!swipeStart || swipeStart.pointerId !== event.pointerId) {
       return;
     }
+
+    clearDragFollowTransform(swipeStart.dragEl);
 
     // 클릭 경로와 동일한 가드: 연쇄 처리 중(busy)이거나 종료 후에는 스와이프도 무시한다
     // (멀티터치로 pointerdown 이후 busy가 된 경우 대비).
@@ -437,6 +483,7 @@
 
   function onTilePointerCancel(event) {
     if (swipeStart && swipeStart.pointerId === event.pointerId) {
+      clearDragFollowTransform(swipeStart.dragEl);
       swipeStart = null;
     }
   }
