@@ -19,6 +19,10 @@
     }
     if (state.actionLog.length < MAX_DECK_ACTIONS) {
       state.actionLog.push(action);
+    } else {
+      // 상한을 넘겨 잘린 로그를 제출하면 정직한 런도 mismatch로 판정된다 —
+      // 넘친 순간부터 로그를 무효화하고 제출 시 아예 첨부하지 않는다(missing).
+      state.actionLogOverflow = true;
     }
   }
 
@@ -647,7 +651,9 @@
       var submitOptions = {
         // 구세이브(로그 없는 채로 이어하기 시작한 런)는 actionLog가 없으므로
         // replayActions도 없다 - link.js는 이를 로그 미첨부(missing)로 처리한다.
-        replayActions: Array.isArray(state.actionLog) ? state.actionLog : undefined,
+        replayActions: (Array.isArray(state.actionLog) && !state.actionLogOverflow)
+          ? state.actionLog
+          : undefined,
       };
       if (state.challengeMode === 'daily') {
         submitOptions.challenge = 'daily';

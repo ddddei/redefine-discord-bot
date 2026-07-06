@@ -63,6 +63,12 @@
   function createGameState(options) {
     options = options || {};
     var seed = options.seed !== undefined ? Number(options.seed) : getSeedFromUrl();
+    // 자유 플레이도 명시적 숫자 시드를 만들어 제출한다 — 시드 없는 판은 서버가
+    // 재현할 수 없어 영원히 missing이 되고, 자동 지급의 verified 조건에서 매치3
+    // 자유 플레이 전체가 빠지는 사각지대가 된다 (덱의 generateRandomSeed와 동일 접근).
+    if (seed === undefined) {
+      seed = Math.floor(Math.random() * 1000000000);
+    }
     // generateBoard(seed)가 내부적으로 만든 rng를 그대로 이어써야 한다. 별도로
     // Board.createRng(seed)를 다시 만들면 보드 생성 중 소비된 난수만큼 어긋난
     // 스트림이 되어, generateBoard(seed).rng를 그대로 쓰는 서버 리플레이 검증기
