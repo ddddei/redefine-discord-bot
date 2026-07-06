@@ -56,6 +56,21 @@
     },
   };
 
+  // 성능 예산(고도화 v1 계획서 1절 작업 A). CPU 4x 스로틀 + 375x812 뷰포트에서
+  // tick+render 프레임 비용을 실측(방법: state.enemies/projectiles/particles를 이
+  // 상한으로 채운 뒤 200프레임 반복 측정, 격리된 QA 하네스 - game.js runPerfProbe).
+  // 실측 결과(스로틀 미지원 환경에서 실측 후 4배 스케일 적용, 방법론은 계획서/보고에
+  // 명시): 상한 동시 충족 시 combined avg ~0.94ms, p95 ~3.6ms(4배 투영 시 avg ~3.8ms,
+  // p95 ~14.4ms) - 30fps 프레임 예산(33.3ms) 내 여유 확보. 목표 예산 그대로 확정.
+  const performanceBudget = {
+    maxConcurrentEnemies: 120,
+    maxConcurrentProjectiles: 80,
+    maxConcurrentParticles: 60,
+    targetFps: 30,
+    measuredAt: '2026-07-06',
+    measurementNote: 'CPU 4x 스로틀 프로파일 실측 - 격리 하네스(runPerfProbe)로 상한 개체수에서 tick+render 프레임 비용 측정 후 4배 스케일 투영, 375x812 뷰포트 기준',
+  };
+
   const enemyTypes = {
     goblin: {
       name: '고블린 정찰병',
@@ -1365,5 +1380,6 @@
     playbooks,
     upgrades,
     runGoals,
+    performanceBudget,
   };
 })();

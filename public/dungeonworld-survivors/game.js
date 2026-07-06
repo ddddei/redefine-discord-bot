@@ -725,6 +725,56 @@
         updateDom();
         return buildQaSnapshot();
       },
+      // 성능 예산 실측 전용(계획서 1절 작업 A). 임의 개체 수를 채운 뒤 tick+render를
+      // 지정 프레임 수만큼 반복 실행해 프레임당 ms를 측정한다. CPU 스로틀은 DevTools
+      // Performance 패널/브라우저 CPU throttle 설정이 이 루프 실행 시간에 그대로 반영된다.
+      runPerfProbe(counts, frames) {
+        // 자연 스폰/전투 상호작용이 개체 수를 흔들지 않도록 격리한다 - 순수 프레임 비용만 잰다.
+        state.spawnTimer = Infinity;
+        state.player.attackTimer = Infinity;
+        state.enemies = [];
+        state.projectiles = [];
+        state.particles = [];
+        systems.fillStressEntities(state, counts || {});
+        const frameCount = frames || 120;
+        const tickSamples = [];
+        const renderSamples = [];
+        for (let index = 0; index < frameCount; index += 1) {
+          state.player.attackTimer = Infinity;
+          state.spawnTimer = Infinity;
+          const t0 = performance.now();
+          systems.tick(state, input, 1 / 60);
+          const t1 = performance.now();
+          renderer.render(ctx, state, systems.WORLD);
+          const t2 = performance.now();
+          tickSamples.push(t1 - t0);
+          renderSamples.push(t2 - t1);
+        }
+        const summarize = (samples) => {
+          const sorted = samples.slice().sort((a, b) => a - b);
+          const avg = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
+          const p95 = sorted[Math.floor(sorted.length * 0.95)];
+          return { avgMs: avg, p95Ms: p95, avgFps: 1000 / avg, p95Fps: 1000 / p95 };
+        };
+        const tickStats = summarize(tickSamples);
+        const renderStats = summarize(renderSamples);
+        const combinedSamples = tickSamples.map((value, index) => value + renderSamples[index]);
+        const combinedStats = summarize(combinedSamples);
+        return {
+          entityCounts: {
+            enemies: state.enemies.length,
+            projectiles: state.projectiles.length,
+            particles: state.particles.length,
+          },
+          tick: tickStats,
+          render: renderStats,
+          combined: combinedStats,
+          avgMs: combinedStats.avgMs,
+          p95Ms: combinedStats.p95Ms,
+          avgFps: combinedStats.avgFps,
+          p95Fps: combinedStats.p95Fps,
+        };
+      },
     };
   }
 

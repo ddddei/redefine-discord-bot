@@ -343,7 +343,13 @@
     const pressure = wave.pressure + state.elapsed / 230 + state.player.spawnPressure + state.player.tension * 0.022;
     state.spawnTimer -= dt * pressure;
     if (state.spawnTimer <= 0) {
-      wave.packs.forEach((pack) => spawnPack(state, pack));
+      // 성능 예산 안전망(계획서 1절 작업 A): 동시 적 상한 도달 시 이번 팩 스폰을 건너뛴다.
+      // 스폰 밀도(간격)는 유지하고 상한만 지켜, 다음 tick에 다시 시도해 압박감은 보존한다.
+      const budget = state.content.performanceBudget;
+      const enemyCap = budget ? budget.maxConcurrentEnemies : 120;
+      if (state.enemies.length < enemyCap) {
+        wave.packs.forEach((pack) => spawnPack(state, pack));
+      }
       state.spawnTimer = Math.max(0.28, wave.cadence * baseCadence - state.elapsed / 560);
     }
 
@@ -802,6 +808,13 @@
       && projectile.y > -120
       && projectile.y < WORLD.height + 120
     ));
+    // 성능 예산 안전망(계획서 1절): 투사체 상한 초과 시 가장 오래된 것부터 정리(오프스크린
+    // 컬링 강화 - 계획서 조정 순서 2단계).
+    const budget = state.content.performanceBudget;
+    const projectileCap = budget ? budget.maxConcurrentProjectiles : 80;
+    if (state.projectiles.length > projectileCap) {
+      state.projectiles.splice(0, state.projectiles.length - projectileCap);
+    }
   }
 
   function updateAttackMarks(state, dt) {
@@ -1192,6 +1205,12 @@
       particle.life -= dt;
     });
     state.particles = state.particles.filter((particle) => particle.life > 0);
+    // 성능 예산 안전망(계획서 1절): 파티클 상한 초과 시 가장 오래된 것부터 정리한다.
+    const budget = state.content.performanceBudget;
+    const particleCap = budget ? budget.maxConcurrentParticles : 60;
+    if (state.particles.length > particleCap) {
+      state.particles.splice(0, state.particles.length - particleCap);
+    }
   }
 
   function updateHazards(state, dt) {
@@ -1879,6 +1898,70 @@
     return 'running';
   }
 
+  // QA/성능 측정 전용 - 임의 개체 수로 state를 채워 스로틀 프로파일에서 프레임 비용을
+  // 실측한다(계획서 1절 작업 A 게이트). 실제 스폰 로직과 무관하게 개체 배열만 채운다.
+  function fillStressEntities(state, counts) {
+    const enemyCount = counts && counts.enemies || 0;
+    const projectileCount = counts && counts.projectiles || 0;
+    const particleCount = counts && counts.particles || 0;
+    for (let index = 0; index < enemyCount; index += 1) {
+      const typeId = ['goblin', 'slime', 'armor', 'wolf', 'mimic', 'cultist'][index % 6];
+      const type = state.content.enemyTypes[typeId];
+      const angle = (index / enemyCount) * Math.PI * 2;
+      state.enemies.push({
+        ...type,
+        x: state.player.x + Math.cos(angle) * (140 + (index % 5) * 30),
+        y: state.player.y + Math.sin(angle) * (140 + (index % 5) * 30),
+        hp: type.hp * 500,
+        maxHp: type.hp * 500,
+        slowTimer: 0,
+        behaviorTimer: Math.random() * 0.6,
+        hitFlash: 0,
+        attackCooldown: 5,
+        attackWindup: 0,
+        attackRecovery: 0,
+        attackTarget: null,
+        warning: null,
+        attackProfile: { ...type.attackProfile, range: type.attackProfile.range || 60 },
+      });
+    }
+    for (let index = 0; index < projectileCount; index += 1) {
+      const angle = (index / projectileCount) * Math.PI * 2;
+      state.projectiles.push({
+        x: state.player.x,
+        y: state.player.y,
+        originX: state.player.x,
+        originY: state.player.y,
+        vx: Math.cos(angle) * 300,
+        vy: Math.sin(angle) * 300,
+        radius: 5,
+        damage: 10,
+        pierce: 999,
+        life: 5,
+        maxLife: 5,
+        kind: 'missile',
+        source: 'wizard',
+        angle,
+        trail: 'rune',
+        impactKind: 'missile',
+      });
+    }
+    for (let index = 0; index < particleCount; index += 1) {
+      const angle = (index / particleCount) * Math.PI * 2;
+      state.particles.push({
+        kind: 'impactSpark',
+        x: state.player.x,
+        y: state.player.y,
+        vx: Math.cos(angle) * 80,
+        vy: Math.sin(angle) * 80,
+        radius: 3,
+        colorToken: '--accent-ember',
+        life: 5,
+        maxLife: 5,
+      });
+    }
+  }
+
   window.DungeonworldSurvivorsSystems = {
     WORLD,
     RUN_MODES,
@@ -1898,5 +1981,6 @@
     setInventoryItemLevel,
     tick,
     clamp,
+    fillStressEntities,
   };
 })();
