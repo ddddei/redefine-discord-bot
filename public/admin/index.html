@@ -154,6 +154,86 @@
         </article>
       </section>
 
+      <section id="webgame-operations" class="webgame-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">WEBGAME OPS</p>
+            <h2>웹게임 운영 현황</h2>
+          </div>
+          <p id="webgame-status">웹게임 운영 데이터를 불러오는 중입니다.</p>
+        </div>
+        <div class="filter-bar webgame-filter-bar" aria-label="웹게임 운영 필터">
+          <label>
+            주차(weekKey)
+            <input id="webgame-week-filter" type="text" autocomplete="off" placeholder="예: 2026-W27">
+          </label>
+          <label>
+            날짜(dayKey)
+            <input id="webgame-day-filter" type="text" autocomplete="off" placeholder="예: 2026-07-06">
+          </label>
+          <label>
+            개수
+            <select id="webgame-limit-filter">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+          <button id="webgame-filter-button" type="button">적용</button>
+        </div>
+        <div id="webgame-summary-cards" class="summary-grid"></div>
+
+        <div class="two-column webgame-grid">
+          <article class="panel">
+            <h3>이번 주 랭킹 · 간식 맞추기</h3>
+            <div id="webgame-weekly-match3" class="table-wrap"></div>
+          </article>
+          <article class="panel">
+            <h3>이번 주 랭킹 · 간식 수호대</h3>
+            <div id="webgame-weekly-deck" class="table-wrap"></div>
+          </article>
+        </div>
+
+        <div class="two-column webgame-grid">
+          <article class="panel">
+            <h3>오늘의 도전 · 간식 맞추기</h3>
+            <p id="webgame-daily-match3-status" class="guide"></p>
+            <div id="webgame-daily-match3" class="table-wrap"></div>
+          </article>
+          <article class="panel">
+            <h3>오늘의 도전 · 간식 수호대</h3>
+            <p id="webgame-daily-deck-status" class="guide"></p>
+            <div id="webgame-daily-deck" class="table-wrap"></div>
+          </article>
+        </div>
+
+        <div class="two-column webgame-grid">
+          <article class="panel">
+            <h3>오늘의 간식 단어 · 참여 분포</h3>
+            <p id="webgame-word-status" class="guide"></p>
+            <div id="webgame-word-distribution" class="table-wrap"></div>
+            <p class="guide">랭킹 없는 게임입니다. 참여 수와 성공 시도 분포만 표시하며 실패자 목록과 정답은 노출하지 않습니다.</p>
+          </article>
+          <article class="panel">
+            <h3>간식 공방 키우기 · 공동 목표</h3>
+            <div id="webgame-communal-goal" class="checklist"></div>
+          </article>
+        </div>
+
+        <article class="panel">
+          <h3>flagged 기록 (운영 확인용)</h3>
+          <div id="webgame-flagged-scores" class="table-wrap"></div>
+          <p class="guide">이상치로 플래그된 기록입니다. 랭킹/공동 목표 계산에서는 이미 제외됐습니다. 지급 보류 여부는 운영자가 판단해 주세요.</p>
+        </article>
+
+        <article class="panel">
+          <h3>응원 통계</h3>
+          <div id="webgame-cheer-stats" class="table-wrap"></div>
+        </article>
+
+        <p class="guide">지급/승인/수정 기능은 없습니다. 주간 지급은 기존 `/포인트관리` 명령으로 처리해 주세요.</p>
+      </section>
+
       <section class="two-column">
         <article class="panel">
           <h2>내보내기 안내</h2>

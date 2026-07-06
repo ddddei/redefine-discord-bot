@@ -183,8 +183,14 @@ button:focus {
   font-size: 28px;
 }
 
-.queue-section {
+.queue-section,
+.webgame-section {
   margin-bottom: 28px;
+}
+
+.webgame-section .panel + .panel,
+.webgame-section .webgame-grid {
+  margin-top: 16px;
 }
 
 .queue-grid {

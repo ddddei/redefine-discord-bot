@@ -14,6 +14,13 @@
     reactions: '/api/admin/reaction-approvals?limit=10',
   };
 
+  const webgameLabels = {
+    match3: '간식 맞추기',
+    deck: '간식 수호대',
+    idle: '간식 공방 키우기',
+    word: '오늘의 간식 단어',
+  };
+
   const queueLabels = {
     pendingRedemptions: '교환 대기',
     pendingSubmissions: '인증 대기',
@@ -117,6 +124,28 @@
     }
 
     return '/api/admin/dm-chat-logs?' + params.toString();
+  }
+
+  function getWebgameEndpoint() {
+    const params = new URLSearchParams();
+    const weekFilter = $('webgame-week-filter');
+    const dayFilter = $('webgame-day-filter');
+    const limitFilter = $('webgame-limit-filter');
+    const weekKey = weekFilter && weekFilter.value ? weekFilter.value.trim() : '';
+    const dayKey = dayFilter && dayFilter.value ? dayFilter.value.trim() : '';
+    const limit = limitFilter && limitFilter.value ? limitFilter.value : '10';
+
+    params.set('limit', limit);
+
+    if (weekKey) {
+      params.set('weekKey', weekKey);
+    }
+
+    if (dayKey) {
+      params.set('dayKey', dayKey);
+    }
+
+    return '/api/admin/webgames?' + params.toString();
   }
 
   function rowsFromResponse(response) {
@@ -258,6 +287,121 @@
       { label: '질문', render: function (row) { return escapeHtml(row.sampleQuestion || row.latestQuestion || '-'); } },
       { label: '마지막 확인', render: function (row) { return escapeHtml(formatDate(row.lastSeenAt)); } },
     ], '아직 FAQ 후보로 묶인 fallback 질문이 없습니다.');
+  }
+
+  function renderWebgameRankingTable(targetId, rows, emptyMessage) {
+    renderTable(targetId, rows || [], [
+      { label: '순위', render: function (row) { return escapeHtml(row.rank); } },
+      { label: '참여자', render: function (row) { return escapeHtml(row.displayName || shortId(row.discordId)); } },
+      { label: '점수', render: function (row) { return escapeHtml(row.score); } },
+      { label: '응원', render: function (row) { return escapeHtml(row.cheers || 0); } },
+    ], emptyMessage);
+  }
+
+  function renderWordDistribution(distribution) {
+    const rows = Object.keys(distribution || {}).sort().map(function (tries) {
+      return { tries: tries, count: distribution[tries] };
+    });
+    renderTable('webgame-word-distribution', rows, [
+      { label: '성공 시도 횟수', render: function (row) { return escapeHtml(row.tries) + '회'; } },
+      { label: '인원', render: function (row) { return escapeHtml(row.count || 0) + '명'; } },
+    ], '오늘 아직 성공한 참여자가 없습니다.');
+  }
+
+  function renderFlaggedScores(rows) {
+    renderTable('webgame-flagged-scores', rows || [], [
+      { label: '제출 시각', render: function (row) { return escapeHtml(formatDate(row.submittedAt)); } },
+      { label: '참여자', render: function (row) { return escapeHtml(row.displayName || shortId(row.discordId)); } },
+      { label: '게임', render: function (row) { return escapeHtml(webgameLabels[row.gameId] || row.gameId); } },
+      { label: '점수', render: function (row) { return escapeHtml(row.score); } },
+      { label: '모드', render: function (row) { return badge(row.mode); } },
+      { label: '주차/날짜', render: function (row) { return escapeHtml(row.weekKey || row.dayKey || '-'); } },
+    ], '현재 flagged 기록이 없습니다.');
+  }
+
+  function renderCheerStats(rows) {
+    renderTable('webgame-cheer-stats', rows || [], [
+      { label: '게임', render: function (row) { return escapeHtml(row.label || webgameLabels[row.gameId] || row.gameId); } },
+      { label: '이번 주 응원', render: function (row) { return escapeHtml(row.cheersThisWeek || 0) + '회'; } },
+      { label: '오늘 응원', render: function (row) { return escapeHtml(row.cheersToday || 0) + '회'; } },
+    ], '아직 응원 기록이 없습니다.');
+  }
+
+  function renderCommunalGoal(goal) {
+    if (!goal) {
+      $('webgame-communal-goal').innerHTML = '<li>공동 목표 데이터를 불러오지 못했습니다.</li>';
+      return;
+    }
+
+    const ratio = goal.goal > 0 ? Math.min(100, Math.round((goal.total / goal.goal) * 1000) / 10) : 0;
+    const lines = [
+      '주차: ' + text(goal.weekKey, '-'),
+      '누적: ' + text(goal.total, 0) + ' / 목표 ' + text(goal.goal, 0) + ' (' + ratio + '%)',
+      '참여자: ' + text(goal.participants, 0) + '명',
+      '달성 여부: ' + (goal.achieved ? '달성' : '진행 중'),
+    ];
+    $('webgame-communal-goal').innerHTML = lines.map(function (line) {
+      return '<li>' + escapeHtml(line) + '</li>';
+    }).join('');
+  }
+
+  function renderWebgameOperations(summary) {
+    const counts = summary.counts || {};
+    const weeklyParticipants = counts.weeklyParticipants || {};
+    const dailyParticipants = counts.dailyParticipants || {};
+    const summaryCards = [
+      { label: '연결된 사용자', value: counts.linkedUsers },
+      { label: 'flagged 기록', value: counts.flaggedScores },
+      { label: '이번 주 참여 · 간식 맞추기', value: weeklyParticipants.match3 },
+      { label: '이번 주 참여 · 간식 수호대', value: weeklyParticipants.deck },
+      { label: '이번 주 참여 · 간식 공방', value: weeklyParticipants.idle },
+      { label: '이번 주 참여 · 오늘의 단어', value: weeklyParticipants.word },
+      { label: '오늘 참여 · 간식 맞추기', value: dailyParticipants.match3 },
+      { label: '오늘 참여 · 간식 수호대', value: dailyParticipants.deck },
+      { label: '오늘 참여 · 오늘의 단어', value: dailyParticipants.word },
+      { label: '이번 주 응원', value: counts.cheersThisWeek },
+      { label: '오늘 응원', value: counts.cheersToday },
+    ];
+    $('webgame-summary-cards').innerHTML = summaryCards.map(function (card) {
+      return '<article class="summary-card"><span>' + escapeHtml(card.label) + '</span><strong>' + text(card.value, 0) + '</strong></article>';
+    }).join('');
+
+    const weeklyRankings = summary.weeklyRankings || {};
+    renderWebgameRankingTable('webgame-weekly-match3', weeklyRankings.match3, '이번 주 아직 기록이 없습니다.');
+    renderWebgameRankingTable('webgame-weekly-deck', weeklyRankings.deck, '이번 주 아직 기록이 없습니다.');
+
+    const dailyChallenges = summary.dailyChallenges || {};
+    const dailyMatch3 = dailyChallenges.match3 || {};
+    const dailyDeck = dailyChallenges.deck || {};
+    const dailyWord = dailyChallenges.word || {};
+    $('webgame-daily-match3-status').textContent = '오늘 참여 ' + text(dailyMatch3.participants, 0) + '명';
+    $('webgame-daily-deck-status').textContent = '오늘 참여 ' + text(dailyDeck.participants, 0) + '명';
+    $('webgame-word-status').textContent = '오늘 참여 ' + text(dailyWord.participants, 0) + '명';
+    renderWebgameRankingTable('webgame-daily-match3', dailyMatch3.ranking, '오늘 아직 기록이 없습니다.');
+    renderWebgameRankingTable('webgame-daily-deck', dailyDeck.ranking, '오늘 아직 기록이 없습니다.');
+    renderWordDistribution(dailyWord.distribution);
+
+    renderCommunalGoal(summary.communalGoal);
+    renderFlaggedScores(summary.flaggedScores);
+    renderCheerStats(summary.cheerStats);
+
+    const meta = summary.meta || {};
+    const excluded = Number(meta.exampleRecordsExcluded || 0);
+    $('webgame-status').textContent = '읽기 전용 · ' + text(meta.storageMode, 'local-json')
+      + ' · 주차 ' + text(summary.weekKey, '-') + ' · 날짜 ' + text(summary.dayKey, '-')
+      + ' · example 데이터 제외' + (excluded > 0 ? ' ' + excluded + '건' : '');
+  }
+
+  async function loadWebgameOperations() {
+    $('webgame-status').textContent = '웹게임 운영 데이터를 불러오는 중입니다.';
+    try {
+      renderWebgameOperations(await fetchJson(getWebgameEndpoint()));
+    } catch (error) {
+      $('webgame-status').textContent = '웹게임 운영 데이터를 불러오지 못했습니다.';
+      ['webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats'].forEach(function (id) {
+        $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
+      });
+    }
   }
 
   function renderSummary(summary) {
@@ -428,6 +572,7 @@
         fetchJson(endpoints.shopItems),
         fetchJson(endpoints.reactions),
         fetchJson(getDmChatLogsEndpoint()),
+        fetchJson(getWebgameEndpoint()),
       ]);
 
       renderSummary(results[0]);
@@ -443,6 +588,7 @@
       renderShopItems(rowsFromResponse(results[10]));
       renderReactions(rowsFromResponse(results[11]));
       renderDmChatLogs(results[12]);
+      renderWebgameOperations(results[13]);
 
       $('last-updated').textContent = '마지막 갱신: ' + formatDate(new Date().toISOString());
     } catch (error) {
@@ -450,7 +596,8 @@
       $('first-day-check').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('first-day-actions').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('onboarding-signals').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
-      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals', 'dm-chat-logs'].forEach(function (id) {
+      $('webgame-status').textContent = '웹게임 운영 데이터를 불러오지 못했습니다.';
+      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals', 'dm-chat-logs', 'webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
       });
     }
@@ -463,6 +610,18 @@
   $('dm-chat-user-filter').addEventListener('keydown', function (event) {
     if (event.key === 'Enter') {
       loadDmChatLogs();
+    }
+  });
+  $('webgame-filter-button').addEventListener('click', loadWebgameOperations);
+  $('webgame-limit-filter').addEventListener('change', loadWebgameOperations);
+  $('webgame-week-filter').addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      loadWebgameOperations();
+    }
+  });
+  $('webgame-day-filter').addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      loadWebgameOperations();
     }
   });
   loadDashboard();
