@@ -186,29 +186,60 @@
   var DEFAULT_OFFLINE_CAP_HOURS = 8;
   var EXTENDED_OFFLINE_CAP_HOURS = 24;
 
-  // 간식 배달 의뢰 정의. durationMs가 소요 시간, rewardSeconds가 "수령 시점 초당 생산량 ×
-  // rewardSeconds"로 보상을 계산하는 배수다.
+  // 간식 배달 의뢰 정의(계획서 2.1절 — 6종으로 확장). durationMs가 소요 시간,
+  // rewardSeconds가 "수령 시점 초당 생산량 × rewardSeconds"로 보상을 계산하는 배수다.
+  // 계획서 표의 "생산량 N분치"를 그대로 rewardSeconds(초 단위)로 옮겼다 — 원칙은
+  // "방치 대비 약간 이득 + 돌아오는 재미"이며, 파견 중에도 기본 생산은 계속되므로
+  // 구버전 3종(동네 배달 등, 소요 대비 보상 3~4배)보다는 낮은 배율(0.58~0.73배)로
+  // 실측 조정했다 — 자세한 근거는 최종 보고서 3번 항목 참고.
+  // goldenBonusChance: 강가 찻집 전용, 낮은 확률 황금 간식 보너스(Math.random 허용 —
+  // idle은 랭킹 미노출 장르라 시드 무관, 기존 황금 간식과 동일 원칙).
+  // prestigePointReward: 성문 앞 축제/달빛 기차역 전용, 레시피 조각(환생 포인트 직접 지급).
   var DELIVERIES = [
     {
-      key: 'neighborhood-delivery',
-      name: '동네 배달',
-      unlockStage: 2,
+      key: 'alley-errand',
+      name: '골목 어귀',
+      unlockStage: 1,
       durationMs: 5 * 60 * 1000,
-      rewardSeconds: 900,
+      rewardSeconds: 180, // 생산량 3분치
     },
     {
-      key: 'festival-supply',
-      name: '축제 납품',
+      key: 'village-market',
+      name: '마을 장터',
+      unlockStage: 2,
+      durationMs: 15 * 60 * 1000,
+      rewardSeconds: 600, // 생산량 10분치
+    },
+    {
+      key: 'riverside-teahouse',
+      name: '강가 찻집',
       unlockStage: 3,
-      durationMs: 60 * 60 * 1000,
-      rewardSeconds: 10800,
+      durationMs: 30 * 60 * 1000,
+      rewardSeconds: 1320, // 생산량 22분치
+      goldenBonusChance: 0.12,
     },
     {
-      key: 'royal-tribute',
-      name: '왕궁 진상',
+      key: 'forest-campsite',
+      name: '숲속 야영지',
+      unlockStage: 4,
+      durationMs: 2 * 60 * 60 * 1000,
+      rewardSeconds: 5400, // 생산량 90분치
+    },
+    {
+      key: 'gatefront-festival',
+      name: '성문 앞 축제',
       unlockStage: 5,
       durationMs: 8 * 60 * 60 * 1000,
-      rewardSeconds: 115200,
+      rewardSeconds: 18000, // 생산량 5시간치
+      prestigePointReward: 1,
+    },
+    {
+      key: 'moonlit-station',
+      name: '달빛 기차역',
+      unlockStage: 6,
+      durationMs: 24 * 60 * 60 * 1000,
+      rewardSeconds: 50400, // 생산량 14시간치
+      prestigePointReward: 2,
     },
   ];
 
@@ -253,14 +284,14 @@
     { id: 9, description: '동네 가게로 승급하기', condition: { type: 'stageReached', amount: 3 }, reward: 30000 },
     { id: 10, description: '사탕 기계 10대 모으기', condition: { type: 'buildingOwned', key: 'candy', amount: 10 }, reward: 80000 },
     { id: 11, description: '달콤한 레시피 배우기', condition: { type: 'upgradeOwned', key: 'sweet-recipe' }, reward: 120000 },
-    { id: 12, description: '축제 납품 배달 완료하기', condition: { type: 'deliveryCompletedCount', amount: 2 }, reward: 250000 },
+    { id: 12, description: '배달 2건 완료하기', condition: { type: 'deliveryCompletedCount', amount: 2 }, reward: 250000 },
     { id: 13, description: '간식 공방으로 승급하기', condition: { type: 'stageReached', amount: 4 }, reward: 900000 },
     { id: 14, description: '쿠키 오븐 10대 모으기', condition: { type: 'buildingOwned', key: 'cookie', amount: 10 }, reward: 2500000 },
     { id: 15, description: '컵케이크 스탠드 10대 모으기', condition: { type: 'buildingOwned', key: 'cupcake', amount: 10 }, reward: 6000000 },
     { id: 16, description: '공방 확장 배우기', condition: { type: 'upgradeOwned', key: 'workshop-expansion' }, reward: 15000000 },
     { id: 17, description: '간식 공장으로 승급하기', condition: { type: 'stageReached', amount: 5 }, reward: 50000000 },
     { id: 18, description: '젤리 공장 5대 모으기', condition: { type: 'buildingOwned', key: 'jelly', amount: 5 }, reward: 150000000 },
-    { id: 19, description: '왕궁 진상 배달 완료하기', condition: { type: 'deliveryCompletedCount', amount: 3 }, reward: 500000000 },
+    { id: 19, description: '배달 3건 완료하기', condition: { type: 'deliveryCompletedCount', amount: 3 }, reward: 500000000 },
     { id: 20, description: '간식 왕국으로 승급하기', condition: { type: 'stageReached', amount: 6 }, reward: 0, isPrestigeAnnounce: true },
   ];
 

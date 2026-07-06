@@ -11,7 +11,14 @@ function loadEngine() {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(CONTENT_FILE, 'utf8'), context, { filename: 'content.js' });
   vm.runInContext(fs.readFileSync(ENGINE_FILE, 'utf8'), context, { filename: 'engine.js' });
-  return { Content: context.window.IdleContent, Engine: context.window.IdleEngine };
+  return { Content: context.window.IdleContent, Engine: context.window.IdleEngine, context };
+}
+
+// vm 컨텍스트는 바깥 realm과 별개의 Math 객체를 갖는다(Math.random을 바깥에서
+// 스텁해도 vm 안 코드에는 영향이 없다) — 강가 찻집 황금 간식 보너스처럼 Math.random에
+// 의존하는 분기를 결정적으로 테스트하려면 컨텍스트 안에서 직접 교체해야 한다.
+function stubContextRandom(context, value) {
+  vm.runInContext(`Math.random = function () { return ${value}; }`, context);
 }
 
 function findBuilding(Content, key) {
@@ -111,7 +118,7 @@ function testDelivery() {
   state.buildings.strawberry.owned = 10; // 초당 5 생산
 
   const now = 1000000;
-  const started = Engine.startDelivery(state, 'neighborhood-delivery', now);
+  const started = Engine.startDelivery(state, 'village-market', now);
   assert.strictEqual(started.success, true);
 
   // 소요 시간 전에는 미완료
@@ -121,7 +128,7 @@ function testDelivery() {
   assert.strictEqual(tooEarly.reason, 'NOT_READY');
 
   // 동시 1건 제한
-  const secondStart = Engine.startDelivery(state, 'neighborhood-delivery', now + 1000);
+  const secondStart = Engine.startDelivery(state, 'village-market', now + 1000);
   assert.strictEqual(secondStart.success, false);
   assert.strictEqual(secondStart.reason, 'DELIVERY_IN_PROGRESS');
 
@@ -129,16 +136,89 @@ function testDelivery() {
   assert.strictEqual(Engine.isDeliveryComplete(state, now - 5000), false);
 
   // 경과 후 완료, 보상은 수령 시점 생산량 기준
-  const finishTime = now + 5 * 60 * 1000;
+  const finishTime = now + 15 * 60 * 1000;
   assert.strictEqual(Engine.isDeliveryComplete(state, finishTime), true);
   const beforeSnacks = state.snacks;
   const collected = Engine.collectDelivery(state, finishTime);
   assert.strictEqual(collected.success, true);
-  const expectedReward = 5 * 900; // 초당 생산량 5 × rewardSeconds 900
+  const expectedReward = 5 * 600; // 초당 생산량 5 × rewardSeconds 600(마을 장터)
   assert.strictEqual(collected.reward, expectedReward);
   assert.strictEqual(state.snacks, beforeSnacks + expectedReward);
   assert.strictEqual(state.delivery, null);
   assert.strictEqual(state.deliveryCompletedCount, 1);
+}
+
+function testDeliveryDestinationsExpansion() {
+  const { Engine, Content, context } = loadEngine();
+
+  // 계획서 2.1절: 6종, 무대 1~6 순서대로 해금.
+  const expectedKeys = [
+    'alley-errand',
+    'village-market',
+    'riverside-teahouse',
+    'forest-campsite',
+    'gatefront-festival',
+    'moonlit-station',
+  ];
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(Content.DELIVERIES.map((delivery) => delivery.key))),
+    expectedKeys,
+  );
+  Content.DELIVERIES.forEach((delivery, index) => {
+    assert.strictEqual(delivery.unlockStage, index + 1);
+  });
+
+  // 골목 어귀는 시작 무대(1)부터 바로 해금.
+  const state = Engine.createNewState();
+  assert.strictEqual(Engine.isDeliveryUnlocked(state, 'alley-errand'), true);
+  assert.strictEqual(Engine.isDeliveryUnlocked(state, 'village-market'), false);
+
+  // 강가 찻집 완료 시 낮은 확률로 황금 간식 보너스가 additive로 붙을 수 있다
+  // (Math.random을 1에 가깝게 스텁해 미당첨/당첨 양쪽 분기를 모두 검증).
+  const teaState = Engine.createNewState();
+  teaState.stageId = 3;
+  teaState.buildings.strawberry.owned = 10; // 초당 5 생산
+  Engine.startDelivery(teaState, 'riverside-teahouse', 0);
+  const teaFinish = Engine.findDelivery('riverside-teahouse').durationMs;
+
+  stubContextRandom(context, 0.99); // 확률(0.12) 밖 → 보너스 없음
+  const noBonus = Engine.collectDelivery(teaState, teaFinish);
+  assert.strictEqual(noBonus.success, true);
+  assert.strictEqual(noBonus.goldenBonus, undefined);
+
+  const teaState2 = Engine.createNewState();
+  teaState2.stageId = 3;
+  teaState2.buildings.strawberry.owned = 10;
+  Engine.startDelivery(teaState2, 'riverside-teahouse', 0);
+  stubContextRandom(context, 0.01); // 확률 안 → 보너스 지급
+  const withBonus = Engine.collectDelivery(teaState2, teaFinish);
+  assert.strictEqual(withBonus.success, true);
+  assert.ok(withBonus.goldenBonus > 0);
+  assert.strictEqual(
+    teaState2.lifetimeProduced,
+    withBonus.reward + withBonus.goldenBonus,
+  );
+
+  // 성문 앞 축제/달빛 기차역은 레시피 조각(환생 포인트)을 직접 지급한다.
+  const festivalState = Engine.createNewState();
+  festivalState.stageId = 5;
+  festivalState.buildings.strawberry.owned = 10;
+  Engine.startDelivery(festivalState, 'gatefront-festival', 0);
+  const festivalFinish = Engine.findDelivery('gatefront-festival').durationMs;
+  const festivalResult = Engine.collectDelivery(festivalState, festivalFinish);
+  assert.strictEqual(festivalResult.success, true);
+  assert.strictEqual(festivalResult.prestigePointReward, 1);
+  assert.strictEqual(festivalState.prestigePoints, 1);
+
+  const stationState = Engine.createNewState();
+  stationState.stageId = 6;
+  stationState.buildings.strawberry.owned = 10;
+  Engine.startDelivery(stationState, 'moonlit-station', 0);
+  const stationFinish = Engine.findDelivery('moonlit-station').durationMs;
+  const stationResult = Engine.collectDelivery(stationState, stationFinish);
+  assert.strictEqual(stationResult.success, true);
+  assert.strictEqual(stationResult.prestigePointReward, 2);
+  assert.strictEqual(stationState.prestigePoints, 2);
 }
 
 function testQuests() {
@@ -237,7 +317,7 @@ function testPrestige() {
   state.snacks = 12345;
   state.buildings.strawberry.owned = 10;
   state.upgrades['sturdy-fingers'] = true;
-  state.delivery = { key: 'neighborhood-delivery', startedAt: 0, finishesAt: 100 };
+  state.delivery = { key: 'village-market', startedAt: 0, finishesAt: 100 };
   state.clickCount = 42;
   state.deliveryCompletedCount = 3;
 
@@ -368,6 +448,7 @@ function main() {
   testClickAmount();
   testBuyBuildingAndUpgradeStage();
   testDelivery();
+  testDeliveryDestinationsExpansion();
   testQuests();
   testAchievements();
   testPrestige();
