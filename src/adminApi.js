@@ -865,8 +865,17 @@ function buildDisplayNameMap(links) {
   return new Map(links.map((link) => [link.discordId, link.displayName]));
 }
 
+// 랭킹 요약은 repository helper를 그대로 쓰므로, example 유사 레코드가 로컬 데이터에
+// 섞여 있어도 대시보드에 노출되지 않도록 항목 단위로 한 번 더 거른다 (금기 조항).
+function excludeExampleRankingEntries(entries) {
+  return entries.filter((entry) => !isExampleLikeRecord({
+    discordId: entry.discordId,
+    displayName: entry.displayName,
+  }));
+}
+
 function summarizeWeeklyRanking(webgameRepository, gameId, weekKey, limit) {
-  const ranking = webgameRepository.listWeeklyRanking(gameId, weekKey, { limit });
+  const ranking = excludeExampleRankingEntries(webgameRepository.listWeeklyRanking(gameId, weekKey, { limit }));
   const cheersByDiscordId = webgameRepository.countCheers(gameId, weekKey);
   return ranking.map((entry) => ({
     rank: entry.rank,
@@ -878,7 +887,7 @@ function summarizeWeeklyRanking(webgameRepository, gameId, weekKey, limit) {
 }
 
 function summarizeDailyRanking(webgameRepository, gameId, dayKey, limit) {
-  const ranking = webgameRepository.listDailyRanking(gameId, dayKey, { limit });
+  const ranking = excludeExampleRankingEntries(webgameRepository.listDailyRanking(gameId, dayKey, { limit }));
   const cheersByDiscordId = webgameRepository.countCheers(gameId, dayKey);
   return ranking.map((entry) => ({
     rank: entry.rank,

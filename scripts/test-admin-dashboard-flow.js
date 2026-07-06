@@ -852,6 +852,22 @@ async function main() {
     assert.strictEqual(exampleOnlyWebgameSummary.flaggedScores.length, 0);
     assert.ok(exampleOnlyWebgameSummary.meta.exampleRecordsExcluded > 0);
 
+    // 리뷰 보강: 실데이터와 같은 주차에 example 유사 레코드가 섞여 있어도 랭킹에 노출되지 않는다.
+    webgameFixture.repository.recordScore({
+      discordId: 'user_example_099',
+      gameId: 'match3',
+      score: 9000,
+      weekKey: webgameFixture.weekKey,
+    });
+    const mixedSummary = buildWebgameOperationsSummary(webgameFixture.repository, {
+      weekKey: webgameFixture.weekKey,
+      dayKey: webgameFixture.dayKey,
+    });
+    assert.ok(
+      mixedSummary.weeklyRankings.match3.every((entry) => entry.discordId !== 'user_example_099'),
+      'example 유사 레코드는 주간 랭킹 요약에서 제외되어야 합니다.'
+    );
+
     const handler = createAdminRequestHandler(repository, undefined, webgameFixture.repository);
     const webgameApiUnauthorized = await invokeHandler(handler, '/api/admin/webgames');
     assert.strictEqual(webgameApiUnauthorized.statusCode, 401);
