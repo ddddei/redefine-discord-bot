@@ -148,6 +148,56 @@ h2 {
   font-size: 13px;
 }
 
+/* 메타 진행 해금 상점(계획서 5절) - 시작 화면 탭. */
+.intro-tab-bar {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.intro-tab-button.active {
+  border-color: var(--accent-brass);
+  color: var(--accent-brass);
+}
+
+.unlock-shop-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.unlock-shop-item {
+  display: grid;
+  gap: var(--space-1);
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--surface-elevated) 70%, transparent);
+}
+
+.unlock-shop-item strong {
+  color: var(--text-primary);
+}
+
+.unlock-progress {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.unlock-price {
+  color: var(--accent-brass);
+  font-weight: 700;
+}
+
+.unlock-status.unlock-complete {
+  color: var(--status-success);
+  font-weight: 700;
+}
+
+.unlock-buy-button {
+  justify-self: start;
+  min-height: 44px;
+}
+
 .button {
   min-height: 44px;
   border: 1px solid var(--border-default);

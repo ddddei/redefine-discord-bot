@@ -9,6 +9,7 @@ const REQUIRED_FILES = [
   'index.html',
   'styles.css',
   'content.js',
+  'meta.js',
   'systems.js',
   'renderer.js',
   'game.js',
@@ -773,6 +774,24 @@ function testMobileHardeningAndSilence() {
   });
 }
 
+function testMetaProgressionIntegration() {
+  const html = readGameFile('index.html');
+  assert.ok(html.includes('./meta.js'), 'meta.js가 로드되어야 합니다');
+  const game = readGameFile('game.js');
+  assert.ok(game.includes('survivors-meta-v1') || game.includes('meta.STORAGE_KEY'), '메타 저장 키를 사용해야 합니다');
+  assert.ok(game.includes('function loadMetaState'));
+  assert.ok(game.includes('function saveMetaState'));
+  assert.ok(game.includes('function renderUnlockShop'));
+  assert.ok(game.includes('meta.applyRunResult'));
+  assert.ok(game.includes('meta.getUnlockedPlayerAdjustments'));
+  assert.ok(game.includes('renderMetaProgressSection'));
+  assert.ok(game.includes('종잔향과 다음 목표'));
+
+  const Meta = require(path.join(GAME_DIR, 'meta.js'));
+  assert.strictEqual(Meta.UNLOCKS.length, 12);
+  assert.strictEqual(Meta.ACHIEVEMENTS.length, 12);
+}
+
 function testBossEncounterPresentation() {
   const systemsSource = readGameFile('systems.js');
   assert.ok(systemsSource.includes('검은 종 파수꾼이 문을 등지고 섰다'), '보스 등장 경고 배너 문구가 계획서 그대로여야 합니다');
@@ -1195,6 +1214,7 @@ function main() {
   testVirtualStickDrivesSharedMovementPath();
   testCombatFeedbackHitVignetteAndDamageNumbers();
   testBossEncounterPresentation();
+  testMetaProgressionIntegration();
 
   console.log('dungeonworld survivors static test passed');
 }

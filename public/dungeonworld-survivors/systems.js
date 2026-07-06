@@ -76,7 +76,23 @@
     return { x: x / length, y: y / length };
   }
 
-  function createPlayer(playbook, balance) {
+  // 메타 진행 해금 보정(계획서 5절): systems.js는 localStorage를 모르므로, game.js가
+  // meta.js(getUnlockedPlayerAdjustments)로 계산한 순수 값만 옵션으로 받는다. 해금은
+  // 난이도 완화 방향만이라 공격력에는 손대지 않는다(대장간 신세=시작 무기 Lv.2 예외는
+  // inventory 생성 쪽에서 반영 - createInventory).
+  function applyUnlockAdjustments(player, unlockAdjustments) {
+    if (!unlockAdjustments) return;
+    if (unlockAdjustments.startHealthBonus) {
+      player.maxHealth += unlockAdjustments.startHealthBonus;
+      player.health = player.maxHealth;
+    }
+    if (unlockAdjustments.moveSpeedPercent) player.speed *= 1 + unlockAdjustments.moveSpeedPercent;
+    if (unlockAdjustments.invulnerabilityBonus) player.unlockInvulnerabilityBonus = unlockAdjustments.invulnerabilityBonus;
+    if (unlockAdjustments.magnetPercent) player.magnet *= 1 + unlockAdjustments.magnetPercent;
+    if (unlockAdjustments.levelUpRerolls) player.levelUpRerollsRemaining = unlockAdjustments.levelUpRerolls;
+  }
+
+  function createPlayer(playbook, balance, unlockAdjustments) {
     const player = {
       x: WORLD.startX, y: WORLD.startY,
       radius: 15, maxHealth: 100, health: 100, speed: 168,
@@ -136,6 +152,7 @@
       playbook.apply(player);
       applyBalanceAdjustments(player, playbook.id, balance);
     }
+    applyUnlockAdjustments(player, unlockAdjustments);
     return player;
   }
 
@@ -170,11 +187,14 @@
     return list && list.length > 0 ? list : content[fallbackKey];
   }
 
-  function createInventory(content, playbook) {
+  function createInventory(content, playbook, unlockAdjustments) {
     const catalog = content.itemCatalog || { weapons: [], passives: [], evolutions: [] };
     const weapon = catalog.weapons.find((item) => item.attack === playbook.attack) || catalog.weapons[0];
+    // 대장간 신세 예외(계획서 5절): 시작 무기 Lv.2. 다른 해금과 달리 난이도 완화가
+    // 아니라 시작 상태 강화이므로 명시적으로만 적용한다.
+    const startWeaponLevel = unlockAdjustments && unlockAdjustments.startWeaponLevel ? unlockAdjustments.startWeaponLevel : 1;
     return {
-      weapons: weapon ? [{ id: weapon.id, title: weapon.title, level: 1, maxLevel: weapon.maxLevel }] : [],
+      weapons: weapon ? [{ id: weapon.id, title: weapon.title, level: clamp(startWeaponLevel, 1, weapon.maxLevel), maxLevel: weapon.maxLevel }] : [],
       passives: [],
       evolvedWeapons: [],
     };
@@ -183,6 +203,7 @@
   function createState(content, playbookId = 'fighter', options = {}) {
     const playbook = findPlaybook(content, playbookId);
     const mode = resolveRunMode(options);
+    const unlockAdjustments = options.unlockAdjustments || null;
     const waves = selectModeList(content, mode, 'wavesKey', 'wavePatterns');
     const scenes = selectModeList(content, mode, 'scenesKey', 'scenes');
     return {
@@ -201,7 +222,7 @@
       lastMoveResult: '아직 판정 없음',
       kills: 0,
       attackMarks: [],
-      player: createPlayer(playbook, content.balance),
+      player: createPlayer(playbook, content.balance, unlockAdjustments),
       enemies: [],
       projectiles: [],
       particles: [],
@@ -216,7 +237,11 @@
       upgradeLevels: {},
       damageNumbersEnabled: true,
       damageNumbers: [],
-      inventory: createInventory(content, playbook),
+      inventory: createInventory(content, playbook, unlockAdjustments),
+      eliteKills: 0,
+      chestsOpened: 0,
+      longestNoHitStreak: 0,
+      currentNoHitStreak: 0,
       learnedUpgrades: [playbook.learned, playbook.loadout],
       selectedUpgrades: [],
       buildTags: {},
@@ -1092,6 +1117,7 @@
       state.gems.push({ x: enemy.x, y: enemy.y, value: enemy.xp, radius: 6, age: 0 });
       spawnDeathParticles(state, enemy);
       if (enemy.elite) {
+        state.eliteKills += 1;
         dropChest(state, enemy);
       }
       if (enemy.behavior === 'boss') {
@@ -1722,6 +1748,7 @@
   function claimChestReward(state) {
     const reward = state.pendingChestRewards.shift();
     if (!reward) return null;
+    state.chestsOpened += 1;
     if (reward.type === 'evolution') {
       const evolution = reward.evolution;
       state.inventory.evolvedWeapons.push({ id: evolution.id, title: evolution.title, level: 1, maxLevel: 1 });
@@ -1840,6 +1867,7 @@
     const classUltimate = evaluateClassUltimate(state);
     return {
       playbook: state.playbook.title,
+      playbookId: state.playbook.id,
       buildName: buildIdentity.name,
       buildVerdict: buildIdentity.verdict,
       buildSummary: buildIdentity.summary,
@@ -1848,6 +1876,13 @@
       kills: state.kills,
       level: state.player.level,
       won: state.bossDefeated,
+      // 메타 진행(계획서 5절) 종잔향·도전 과제 판정에 쓰이는 필드 - meta.js가 순수하게 소비.
+      levelAtBoss: state.levelAtBoss,
+      eliteKills: state.eliteKills,
+      chestsOpened: state.chestsOpened,
+      evolvedWeaponCount: state.inventory.evolvedWeapons.length,
+      longestNoHitStreak: Math.round(state.longestNoHitStreak * 10) / 10,
+      runMode: state.mode.id,
       selectedUpgrades: state.selectedUpgrades.slice(),
       buildTags: sortedTags,
       synergies: state.synergies.slice(),
@@ -1941,6 +1976,7 @@
 
   function tick(state, input, dt) {
     state.elapsed += dt;
+    const healthBeforeFrame = state.player.health;
     updateScene(state);
     updateWave(state, dt);
     updatePlayer(state, input, dt);
@@ -1960,6 +1996,13 @@
     updateWarnings(state, dt);
     updateEffects(state, dt);
     updateTension(state);
+    // 무피격 스트릭(도전 과제 5절 '무피격 3분') - 이번 프레임에 체력이 줄지 않았으면 누적.
+    if (state.player.health < healthBeforeFrame) {
+      state.currentNoHitStreak = 0;
+    } else {
+      state.currentNoHitStreak += dt;
+      state.longestNoHitStreak = Math.max(state.longestNoHitStreak, state.currentNoHitStreak);
+    }
     if (state.player.health <= 0) return 'lost';
     if (state.bossDefeated) return 'won';
     if (consumeLevelUps(state)) return 'level';

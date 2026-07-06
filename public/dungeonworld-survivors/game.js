@@ -86,7 +86,29 @@
     pierce: 'card-08.png',
     boss: 'card-15.png',
   };
-  let state = systems.createState(content, 'fighter', { mode: getRequestedMode() });
+  const meta = window.DungeonworldSurvivorsMeta;
+
+  // 메타 진행 저장(계획서 5절, localStorage survivors-meta-v1). 저장/로드 부수효과는
+  // game.js에만 두고 meta.js는 순수 함수로 유지한다(Node 테스트 가능성 - scripts/
+  // test-survivors-meta.js).
+  function loadMetaState() {
+    try {
+      return meta.parseMeta(window.localStorage.getItem(meta.STORAGE_KEY));
+    } catch (error) {
+      return meta.getDefaultMeta();
+    }
+  }
+
+  function saveMetaState(nextMeta) {
+    try {
+      window.localStorage.setItem(meta.STORAGE_KEY, meta.serializeMeta(nextMeta));
+    } catch (error) {
+      // 저장 실패(프라이빗 모드, 용량 초과 등)해도 게임 진행을 막지 않는다.
+    }
+  }
+
+  let metaState = loadMetaState();
+  let state = systems.createState(content, 'fighter', { mode: getRequestedMode(), unlockAdjustments: meta.getUnlockedPlayerAdjustments(metaState) });
   let lastFrame = 0;
   let pendingUpgrades = [];
   let pendingChestReward = null;
@@ -118,7 +140,10 @@
 
   function resetGame(playbookId) {
     loadDeferredSprites();
-    state = systems.createState(content, playbookId, { mode: getRequestedMode() });
+    state = systems.createState(content, playbookId, {
+      mode: getRequestedMode(),
+      unlockAdjustments: meta.getUnlockedPlayerAdjustments(metaState),
+    });
     if (elements.damageNumbersToggle) state.damageNumbersEnabled = elements.damageNumbersToggle.checked;
     lastFrame = performance.now();
     elements.pause.disabled = false;
@@ -220,8 +245,9 @@
     });
   }
 
-  function renderPlaybookOptions() {
-    elements.upgradeOptions.innerHTML = '';
+  function renderPlaybookOptions(container) {
+    const target = container || elements.upgradeOptions;
+    if (!container) target.innerHTML = '';
     content.playbooks.forEach((playbook) => {
       const button = document.createElement('button');
       button.className = `upgrade-option playbook-option ${playbook.id}`;
@@ -239,7 +265,7 @@
         `<span>${playbook.survival}</span>`,
       ].join('');
       button.addEventListener('click', () => startGame(playbook.id));
-      elements.upgradeOptions.appendChild(button);
+      target.appendChild(button);
     });
   }
 
@@ -305,11 +331,17 @@
   function finishGame(won) {
     state.status = won ? 'won' : 'lost';
     state.runSummary = systems.getRunSummary(state);
+    // 메타 진행(계획서 5절): 런 종료 시 종잔향 지급 + 도전 과제 판정. 점수 랭킹과
+    // 무관한 로컬 전용 진행이라 어떤 모드(퀵/정식/데모)든 동일하게 적용한다.
+    const metaResult = meta.applyRunResult(metaState, state.runSummary);
+    metaState = metaResult.meta;
+    saveMetaState(metaState);
+    state.runSummary.metaReward = metaResult;
     elements.pause.disabled = true;
     elements.modalKicker.textContent = won ? '생존 성공' : '다시 정비';
     elements.modalTitle.textContent = won ? '마지막 문이 열렸습니다' : '검은 종소리에 밀렸습니다';
     elements.modalCopy.textContent = won
-      ? '검은 종 파수꾼을 쓰러뜨렸습니다. 아래 기록은 브라우저 안에서만 끝나며 포인트 지급은 없습니다.'
+      ? '검은 종 파수꾼을 쓰러뜨렸습니다. 이번 런 기록은 브라우저 안에서만 끝나며 포인트나 Discord 기록은 남지 않습니다.'
       : '여관으로 물러나 숨을 고릅니다. 다시 시작해도 포인트나 Discord 기록은 남지 않습니다.';
     elements.modalPrimary.classList.remove('hidden');
     elements.modalSecondary.classList.remove('hidden');
@@ -386,8 +418,82 @@
     elements.modalSecondary.classList.remove('hidden');
     elements.modalSecondary.textContent = '닫기';
     elements.modalSecondary.onclick = hideModalOnly;
-    renderPlaybookOptions();
+    renderIntroTabs('playbooks');
     showModal('intro');
+  }
+
+  // 해금 상점(계획서 5절): 시작 화면(직업 선택 옆 탭)에서 종잔향으로 해금 12종을 구매한다.
+  function renderIntroTabs(activeTab) {
+    elements.upgradeOptions.innerHTML = '';
+    const tabBar = document.createElement('div');
+    tabBar.className = 'intro-tab-bar';
+    const playbookTabButton = document.createElement('button');
+    playbookTabButton.type = 'button';
+    playbookTabButton.className = `button secondary intro-tab-button${activeTab === 'playbooks' ? ' active' : ''}`;
+    playbookTabButton.textContent = '플레이북 선택';
+    playbookTabButton.addEventListener('click', () => renderIntroTabs('playbooks'));
+    const shopTabButton = document.createElement('button');
+    shopTabButton.type = 'button';
+    shopTabButton.className = `button secondary intro-tab-button${activeTab === 'shop' ? ' active' : ''}`;
+    shopTabButton.textContent = `해금 상점 (종잔향 ${metaState.bellEssence})`;
+    shopTabButton.addEventListener('click', () => renderIntroTabs('shop'));
+    tabBar.appendChild(playbookTabButton);
+    tabBar.appendChild(shopTabButton);
+    elements.upgradeOptions.appendChild(tabBar);
+
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'intro-tab-content';
+    elements.upgradeOptions.appendChild(contentContainer);
+
+    if (activeTab === 'shop') renderUnlockShop(contentContainer);
+    else renderPlaybookOptions(contentContainer);
+  }
+
+  function renderUnlockShop(container) {
+    const groups = [];
+    const seenGroups = new Set();
+    meta.UNLOCKS.forEach((unlock) => {
+      if (seenGroups.has(unlock.groupId)) return;
+      seenGroups.add(unlock.groupId);
+      groups.push(unlock.groupId);
+    });
+    const list = document.createElement('div');
+    list.className = 'unlock-shop-list';
+    groups.forEach((groupId) => {
+      const tiers = meta.UNLOCKS.filter((entry) => entry.groupId === groupId);
+      const currentLevel = meta.getUnlockGroupLevel(metaState, groupId);
+      const next = meta.getNextUnlockInGroup(metaState, groupId);
+      const item = document.createElement('div');
+      item.className = 'unlock-shop-item';
+      const status = !next
+        ? '<span class="unlock-status unlock-complete">모든 단계 해금 완료</span>'
+        : '';
+      const purchaseInfo = next ? meta.canPurchaseUnlock(metaState, next.id) : null;
+      item.innerHTML = [
+        `<strong>${tiers[0].title.replace(/ I{1,3}$/, '')}</strong>`,
+        `<span class="unlock-progress">${currentLevel} / ${tiers.length}단계</span>`,
+        next ? `<span>${next.copy}</span>` : '',
+        next ? `<span class="unlock-price">가격 ${next.price} 종잔향</span>` : '',
+        status,
+      ].join('');
+      if (next) {
+        const buyButton = document.createElement('button');
+        buyButton.type = 'button';
+        buyButton.className = 'button secondary unlock-buy-button';
+        buyButton.textContent = purchaseInfo && purchaseInfo.ok ? '해금하기' : '종잔향 부족';
+        buyButton.disabled = !(purchaseInfo && purchaseInfo.ok);
+        buyButton.addEventListener('click', () => {
+          const result = meta.purchaseUnlock(metaState, next.id);
+          if (!result.ok) return;
+          metaState = result.meta;
+          saveMetaState(metaState);
+          renderIntroTabs('shop');
+        });
+        item.appendChild(buyButton);
+      }
+      list.appendChild(item);
+    });
+    container.appendChild(list);
   }
 
   function formatLevel(level) {
@@ -572,6 +678,7 @@
     )).join('');
     const contribution = summary.bossContribution;
     const ultimate = summary.classUltimate || { title: '궁극기 없음', ready: false, progress: '조건 없음', copy: '' };
+    const metaSection = renderMetaProgressSection(summary.metaReward);
     elements.upgradeOptions.innerHTML = [
       '<section class="result-ledger-head">',
       `<span class="card-seal" aria-hidden="true"></span><div><p class="retry-copy">${summary.buildVerdict}</p>`,
@@ -585,11 +692,32 @@
       '</div>',
       `<div class="result-tags">${tags}</div>`,
       '<p class="retry-copy">다음 런에서는 같은 룬 배지를 두 장 이상 모아 시너지를 먼저 여는 쪽이 보스 도달이 안정적입니다.</p>',
+      metaSection,
       `<h3 class="result-heading">직업별 궁극기</h3><ul class="result-list"><li><strong>${ultimate.ready ? '궁극기 완성' : '궁극기 미완성'} · ${ultimate.title}</strong><span>${ultimate.progress}</span><span>${ultimate.copy}</span></li></ul>`,
       `<h3 class="result-heading">런 목표</h3><ul class="result-list goal-result-list">${goals}</ul>`,
       `<h3 class="result-heading">보스전 기여</h3><ul class="result-list"><li><strong>${contribution.label}</strong><span>${contribution.text}</span><span>발동 ${contribution.triggers}회 · 추가 피해 ${contribution.bonusDamage} · 완화 ${contribution.preventedDamage} · 회복 ${contribution.recoveredHealth} · 제어 ${contribution.controlTime}초</span></li></ul>`,
       `<h3 class="result-heading">선택한 업그레이드</h3><ul class="result-list">${upgrades}</ul>`,
       `<h3 class="result-heading">빌드 시너지</h3><ul class="result-list">${synergies}</ul>`,
+    ].join('');
+  }
+
+  // 메타 진행 결과 화면 섹션(계획서 4·5절): 이번 런 종잔향 획득·누적, 새 도전 과제,
+  // 다음 목표 1줄을 보여준다. localStorage 저장은 finishGame에서 이미 끝난 뒤 호출된다.
+  function renderMetaProgressSection(metaReward) {
+    if (!metaReward) return '';
+    const newAchievements = metaReward.newlyAchieved.length > 0
+      ? metaReward.newlyAchieved.map((entry) => `<li><strong>${entry.title}</strong><span>${entry.copy}</span><span>종잔향 +${entry.reward}</span></li>`).join('')
+      : '<li><strong>새 도전 과제 없음</strong><span>다음 런에서 다시 도전해 보세요.</span></li>';
+    const nextGoal = meta.getNextGoalPreview(metaReward.meta);
+    return [
+      '<h3 class="result-heading">종잔향과 다음 목표</h3>',
+      '<div class="result-grid">',
+      `<article><span>이번 런 종잔향</span><strong>+${metaReward.totalEarned}</strong></article>`,
+      `<article><span>누적 종잔향</span><strong>${metaReward.meta.bellEssence}</strong></article>`,
+      '</div>',
+      `<p class="retry-copy">${nextGoal}</p>`,
+      '<h3 class="result-heading">새로 달성한 도전 과제</h3>',
+      `<ul class="result-list">${newAchievements}</ul>`,
     ].join('');
   }
 
