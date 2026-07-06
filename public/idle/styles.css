@@ -77,6 +77,32 @@ body::before {
 
 /* 공방 탭 */
 
+.goal-banner {
+  background: #ecd9ad;
+  border: 1.6px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+}
+
+.goal-banner.hidden {
+  display: none;
+}
+
+.scene-flag {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 28px;
+}
+
+.scene-flag.hidden {
+  display: none;
+}
+
 .stage-scene {
   position: relative;
   border-radius: var(--radius-lg);

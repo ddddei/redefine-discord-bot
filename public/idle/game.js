@@ -24,8 +24,56 @@
     return clickBoostUntil > now;
   }
 
+  // ---- 공동 목표/이벤트 배수 캐시 ----
+  // GameLink.fetchGoal() 결과를 세션당 최대 2회만 호출해 캐시한다(계획서 1.1절 —
+  // 게임 로드 시 + 기록 탭 진입 시). engine은 fetch/env를 모르므로, 여기서 받은
+  // event.multiplier를 별도 모듈 전역으로 들고 있다가 engine 함수 호출 시 인자로
+  // 주입한다(now 인자 주입과 동일한 "값 주입 패턴").
+  var goalFetchCount = 0;
+  var goalCache = null; // { weekKey, goal, total, participants, achieved, myContribution, event } | null
+
+  function getEventMultiplier() {
+    if (goalCache && goalCache.event && typeof goalCache.event.multiplier === 'number') {
+      return goalCache.event.multiplier;
+    }
+    return 1;
+  }
+
+  function refreshGoalCache() {
+    if (!window.GameLink || !window.GameLink.fetchGoal || goalFetchCount >= 2) {
+      return Promise.resolve(goalCache);
+    }
+    goalFetchCount += 1;
+    return window.GameLink.fetchGoal().then(function (result) {
+      if (result && result.ok) {
+        var previousWeekKey = goalCache ? goalCache.weekKey : null;
+        goalCache = result;
+        if (previousWeekKey && previousWeekKey !== result.weekKey) {
+          // 주가 바뀌면 현수막/깃발을 자동으로 제거한다(계획서 1.1절).
+        }
+      }
+      renderGoalBanner();
+      return goalCache;
+    }).catch(function () {
+      // 미연결/오프라인이면 조용히 생략 — 게임 진행에는 영향이 없다.
+      return goalCache;
+    });
+  }
+
+  function renderGoalBanner() {
+    if (!goalBannerEl || !sceneFlagEl) {
+      return;
+    }
+    var achieved = !!(goalCache && goalCache.achieved);
+    goalBannerEl.classList.toggle('hidden', !achieved);
+    if (achieved) {
+      goalBannerEl.textContent = '이번 주 목표 달성! 다 같이 해냈어요 🎉';
+    }
+    sceneFlagEl.classList.toggle('hidden', !achieved);
+  }
+
   function getEffectiveClickAmount(now) {
-    var amount = Engine.getClickAmount(state);
+    var amount = Engine.getClickAmount(state, getEventMultiplier());
     if (isClickBoostActive(now)) {
       amount *= Content.GOLDEN_SNACK.clickBoostMultiplier;
     }
@@ -39,8 +87,10 @@
   var snacksValueEl = document.getElementById('snacks-value');
   var rateValueEl = document.getElementById('rate-value');
 
+  var goalBannerEl = document.getElementById('goal-banner');
   var stageSceneEl = document.getElementById('stage-scene');
   var sceneEmojiEl = document.getElementById('scene-emoji');
+  var sceneFlagEl = document.getElementById('scene-flag');
   var scenePropsEl = document.getElementById('scene-props');
 
   var makeSnackButton = document.getElementById('make-snack-button');
@@ -80,6 +130,11 @@
   var offlineModal = document.getElementById('offline-modal');
   var offlineModalCopyEl = document.getElementById('offline-modal-copy');
   var offlineModalCloseButton = document.getElementById('offline-modal-close');
+
+  var storyModal = document.getElementById('story-modal');
+  var storyModalTitleEl = document.getElementById('story-modal-title');
+  var storyModalCopyEl = document.getElementById('story-modal-copy');
+  var storyModalCloseButton = document.getElementById('story-modal-close');
 
   var stageModal = document.getElementById('stage-modal');
   var stageModalTitleEl = document.getElementById('stage-modal-title');
@@ -151,7 +206,7 @@
     var now = Date.now();
     var elapsed = now - lastTickAt;
     if (elapsed > 0) {
-      Engine.applyProductionTick(state, elapsed);
+      Engine.applyProductionTick(state, elapsed, getEventMultiplier());
       lastTickAt = now;
     }
     state.lastSeenAt = now;
@@ -169,7 +224,7 @@
     stageRoleEl.textContent = stage.role;
     stageTitleEl.textContent = stage.title;
     snacksValueEl.textContent = Engine.formatNumber(state.snacks);
-    rateValueEl.textContent = '+' + Engine.formatNumber(Engine.getProductionPerSecond(state)) + '/초';
+    rateValueEl.textContent = '+' + Engine.formatNumber(Engine.getProductionPerSecond(state, getEventMultiplier())) + '/초';
   }
 
   var lastRenderedPropCount = 0;
@@ -349,7 +404,7 @@
     deliveryActiveRemainingEl.textContent = ready
       ? '수령할 수 있어요.'
       : ('남은 시간 ' + formatDuration(state.delivery.finishesAt - now));
-    deliveryActiveRewardEl.textContent = '예상 보상 ' + Engine.formatNumber(Engine.getProductionPerSecond(state) * delivery.rewardSeconds);
+    deliveryActiveRewardEl.textContent = '예상 보상 ' + Engine.formatNumber(Engine.getProductionPerSecond(state, getEventMultiplier()) * delivery.rewardSeconds);
     deliveryCollectButton.disabled = !ready;
   }
 
@@ -471,6 +526,7 @@
   function renderAll() {
     renderHeader();
     renderScene();
+    renderGoalBanner();
     renderClickAmount();
     renderStageUpgrade();
     renderBuildings();
@@ -533,8 +589,10 @@
     }
 
     renderGoalSectionState('공동 목표를 불러오는 중이에요.');
-    window.GameLink.fetchGoal().then(function (result) {
-      if (!result.ok) {
+    // 세션당 최대 2회 호출 캐시(계획서 1.1절)를 공유한다 — 직접 fetchGoal을 호출하지
+    // 않고 refreshGoalCache를 거친다(게임 로드 시 이미 1회 소진했을 수 있다).
+    refreshGoalCache().then(function (result) {
+      if (!result || !result.ok) {
         renderGoalSectionState('공동 목표를 불러오지 못했어요. 게임 진행에는 영향이 없어요.');
         return;
       }
@@ -673,10 +731,23 @@
 
   // ---- 배달 ----
 
+  function showStoryModal(story) {
+    storyModalTitleEl.textContent = story.title;
+    storyModalCopyEl.textContent = story.body;
+    openModal(storyModal);
+  }
+
+  storyModalCloseButton.addEventListener('click', function () {
+    closeModal(storyModal);
+  });
+
   deliveryCollectButton.addEventListener('click', function () {
-    var result = Engine.collectDelivery(state, Date.now());
+    var result = Engine.collectDelivery(state, Date.now(), getEventMultiplier());
     if (result.success) {
       onStateChanged();
+      if (result.story) {
+        showStoryModal(result.story);
+      }
     }
   });
 
@@ -705,7 +776,7 @@
   });
 
   prestigeModalConfirmButton.addEventListener('click', function () {
-    var result = Engine.prestige(state);
+    var result = Engine.prestige(state, Date.now());
     closeModal(prestigeModal);
     if (result.success) {
       onStateChanged();
@@ -778,7 +849,7 @@
     window.clearTimeout(goldenSnackHideTimeoutId);
 
     var kind = Math.random() < 0.5 ? 'instant' : 'clickBoost';
-    var result = Engine.collectGoldenSnack(state, kind);
+    var result = Engine.collectGoldenSnack(state, kind, getEventMultiplier());
 
     if (kind === 'instant') {
       showClickPopup(result.reward);
@@ -796,7 +867,7 @@
     if (state.lastSeenAt === null || state.lastSeenAt === undefined) {
       return;
     }
-    var result = Engine.applyOfflineEarnings(state, state.lastSeenAt, now);
+    var result = Engine.applyOfflineEarnings(state, state.lastSeenAt, now, getEventMultiplier());
     if (result.clockRewind) {
       return;
     }
@@ -828,7 +899,7 @@
     lastTickAt = now;
 
     if (elapsed > 0) {
-      Engine.applyProductionTick(state, elapsed);
+      Engine.applyProductionTick(state, elapsed, getEventMultiplier());
     }
 
     renderHeader();
@@ -871,6 +942,9 @@
     renderAll();
     saveState();
     scheduleGoldenSnack();
+    // 게임 로드 시 공동 목표를 1회 조회한다(계획서 1.1절). 미연결/오프라인이면
+    // refreshGoalCache 내부에서 조용히 실패하고 배너는 숨김 상태로 유지된다.
+    refreshGoalCache();
     window.requestAnimationFrame(tick);
   }
 

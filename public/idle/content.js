@@ -212,6 +212,10 @@
     },
   ];
 
+  // 파견 완료 시 목적지별로 순환 표시되는 이야기 카드(계획서 2.2절). 방문 횟수
+  // 기반 결정적 인덱스로 고른다(engine.js getDeliveryStory). 목적지별 4종.
+  var DELIVERY_STORIES = {};
+
   // 황금 간식 등장 설정 (무대 3부터, 화면이 보이는 동안에만).
   var GOLDEN_SNACK = {
     unlockStage: 3,
@@ -306,6 +310,7 @@
     DEFAULT_OFFLINE_CAP_HOURS: DEFAULT_OFFLINE_CAP_HOURS,
     EXTENDED_OFFLINE_CAP_HOURS: EXTENDED_OFFLINE_CAP_HOURS,
     DELIVERIES: DELIVERIES,
+    DELIVERY_STORIES: DELIVERY_STORIES,
     GOLDEN_SNACK: GOLDEN_SNACK,
     PRESTIGE: PRESTIGE,
     QUESTS: QUESTS,
