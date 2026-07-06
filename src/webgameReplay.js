@@ -10,7 +10,10 @@
 
 const path = require('path');
 
-const REPLAY_LOG_VERSION = 1;
+// v2: 매치3 특수 타일 도입으로 재현 의미가 바뀜(withSpecials) — 구버전 클라이언트
+// (브라우저 캐시 등)의 v1 로그를 특수 포함으로 재현하면 정직한 제출이 mismatch가
+// 되므로, 버전을 올려 v1 로그는 검증 없이 missing으로 무해하게 처리한다.
+const REPLAY_LOG_VERSION = 2;
 const MATCH3_MAX_ACTIONS = 30;
 const DECK_MAX_ACTIONS = 2000;
 

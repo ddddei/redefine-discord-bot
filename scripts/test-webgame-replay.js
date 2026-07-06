@@ -40,7 +40,7 @@ function testMatch3VerifiedForHonestPlay() {
   const replay = Scoring.replayMatch3(seed, [action]);
   assert.strictEqual(replay.ok, true);
 
-  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 1, actions: [action] } });
+  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 2, actions: [action] } });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, replay.score);
 }
@@ -54,7 +54,7 @@ function testMatch3MismatchOnForgedScore() {
     gameId: 'match3',
     score: replay.score + 12345,
     seed,
-    replayLog: { v: 1, actions: [action] },
+    replayLog: { v: 2, actions: [action] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
   assert.strictEqual(result.reason, 'SCORE_MISMATCH');
@@ -68,7 +68,7 @@ function testMatch3MismatchOnInvalidSwapInLog() {
     gameId: 'match3',
     score: 999,
     seed,
-    replayLog: { v: 1, actions: [[0, 0, 0, 0]] },
+    replayLog: { v: 2, actions: [[0, 0, 0, 0]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
 }
@@ -88,6 +88,16 @@ function testMatch3MissingOnVersionMismatch() {
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
+  // 과도기 회귀: 특수 타일 도입 이전 클라이언트(v1 로그)는 검증하지 않고 missing.
+  // (v1 시절 점수는 특수 없는 재현 기준이라 withSpecials 재현과 어긋날 수 있다.)
+  const legacyV1 = verifyReplay({
+    gameId: 'match3',
+    score: 100,
+    seed: '7',
+    replayLog: { v: 1, actions: [[0, 0, 0, 1]] },
+  });
+  assert.strictEqual(legacyV1.status, 'missing', 'v1 로그는 missing으로 무해 처리되어야 합니다.');
+
 
 function testMatch3MissingOnActionOverflow() {
   const oversized = new Array(31).fill([0, 1, 0, 2]);
@@ -95,7 +105,7 @@ function testMatch3MissingOnActionOverflow() {
     gameId: 'match3',
     score: 500,
     seed: 2026,
-    replayLog: { v: 1, actions: oversized },
+    replayLog: { v: 2, actions: oversized },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
@@ -109,7 +119,7 @@ function testMatch3MissingWhenSeedIsNull() {
     gameId: 'match3',
     score: 500,
     seed: null,
-    replayLog: { v: 1, actions: [[0, 1, 0, 2]] },
+    replayLog: { v: 2, actions: [[0, 1, 0, 2]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
@@ -119,7 +129,7 @@ function testDeckMissingWhenSeedIsNull() {
     gameId: 'deck',
     score: 500,
     seed: null,
-    replayLog: { v: 1, actions: [['n']] },
+    replayLog: { v: 2, actions: [['n']] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
@@ -133,7 +143,7 @@ function testMatch3VerifiedWithSpecialTileActivation() {
   const replay = Scoring.replayMatch3(seed, [action], true);
   assert.strictEqual(replay.ok, true);
 
-  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 1, actions: [action] } });
+  const result = verifyReplay({ gameId: 'match3', score: replay.score, seed, replayLog: { v: 2, actions: [action] } });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, replay.score);
 }
@@ -220,7 +230,7 @@ function testDeckVerifiedForFullRun() {
     gameId: 'deck',
     score,
     seed: fixture.seed,
-    replayLog: { v: 1, actions: fixture.actions },
+    replayLog: { v: 2, actions: fixture.actions },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, score);
@@ -239,7 +249,7 @@ function testDeckVerifiedForResumedRun() {
     gameId: 'deck',
     score,
     seed: fixture.seed,
-    replayLog: { v: 1, actions: resumedLog },
+    replayLog: { v: 2, actions: resumedLog },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.VERIFIED);
   assert.strictEqual(result.replayScore, score);
@@ -252,7 +262,7 @@ function testDeckMismatchOnInvalidAction() {
     gameId: 'deck',
     score: 100,
     seed: 12345,
-    replayLog: { v: 1, actions: [['p', 'giant-rolling-pin', 0]] },
+    replayLog: { v: 2, actions: [['p', 'giant-rolling-pin', 0]] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
   assert.strictEqual(result.reason, 'INVALID_DECK_ACTION');
@@ -263,7 +273,7 @@ function testDeckMismatchOnUnfinishedRun() {
     gameId: 'deck',
     score: 2000,
     seed: 12345,
-    replayLog: { v: 1, actions: [['n']] },
+    replayLog: { v: 2, actions: [['n']] },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISMATCH);
   assert.strictEqual(result.reason, 'RUN_NOT_FINISHED');
@@ -275,7 +285,7 @@ function testDeckMissingOnActionOverflow() {
     gameId: 'deck',
     score: 100,
     seed: 12345,
-    replayLog: { v: 1, actions: oversized },
+    replayLog: { v: 2, actions: oversized },
   });
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
