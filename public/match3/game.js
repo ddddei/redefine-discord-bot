@@ -2,6 +2,8 @@
   'use strict';
 
   var Board = window.Match3Board;
+  var Scoring = window.Match3Scoring;
+  var MAX_REPLAY_ACTIONS = 30;
 
   // v3 원화(webp 정물화). 로직(board.js)과 무관한 표시 전용 매핑이다.
   var TILE_ASSET = {
@@ -61,8 +63,20 @@
   function createGameState(options) {
     options = options || {};
     var seed = options.seed !== undefined ? Number(options.seed) : getSeedFromUrl();
-    var rng = Board.createRng(seed);
-    var grid = Board.generateBoard(seed).grid;
+    // 자유 플레이도 명시적 숫자 시드를 만들어 제출한다 — 시드 없는 판은 서버가
+    // 재현할 수 없어 영원히 missing이 되고, 자동 지급의 verified 조건에서 매치3
+    // 자유 플레이 전체가 빠지는 사각지대가 된다 (덱의 generateRandomSeed와 동일 접근).
+    if (seed === undefined) {
+      seed = Math.floor(Math.random() * 1000000000);
+    }
+    // generateBoard(seed)가 내부적으로 만든 rng를 그대로 이어써야 한다. 별도로
+    // Board.createRng(seed)를 다시 만들면 보드 생성 중 소비된 난수만큼 어긋난
+    // 스트림이 되어, generateBoard(seed).rng를 그대로 쓰는 서버 리플레이 검증기
+    // (scoring.js replayMatch3)와 캐스케이드 결과가 달라진다 - 발견된 사전 버그를
+    // 리플레이 검증 도입 시점에 함께 고친다.
+    var initial = Board.generateBoard(seed);
+    var grid = initial.grid;
+    var rng = initial.rng;
 
     return {
       grid: grid,
@@ -77,6 +91,9 @@
       seed: seed,
       mode: options.mode === 'daily' ? 'daily' : 'free',
       dayKey: options.dayKey || null,
+      // 서버 리플레이 검증용 성공 스왑 기록. 되돌려진 무효 스왑은 RNG를 소비하지
+      // 않으므로 포함하지 않는다(docs/replay-verification-plan.md 1절).
+      replayActions: [],
     };
   }
 
@@ -322,6 +339,11 @@
     busy = true;
     state.grid = swapResult.grid;
     state.movesLeft -= 1;
+    // 되돌려진 무효 스왑은 RNG를 소비하지 않으므로 로그에 넣지 않는다. 여기 도달했다는
+    // 것은 스왑이 유효하다는 뜻이므로 바로 기록한다(서버 리플레이 검증용, 계획서 1절).
+    if (state.replayActions.length < MAX_REPLAY_ACTIONS) {
+      state.replayActions.push([first.row, first.col, second.row, second.col]);
+    }
     renderBoard();
     updateHud();
     setStatusMessage('매치를 확인하고 있어요…');
@@ -345,7 +367,9 @@
   }
 
   function resolveBoard() {
-    var cascadeResult = Board.resolveCascades(state.grid, state.rng);
+    // 캐스케이드 점수 계산·최대 배수 판정은 Scoring.resolveCascadeStep으로 추출해
+    // 서버 검증기(src/webgameReplay.js)와 공용으로 쓴다(콤보 점수 계산 이중 구현 제거).
+    var cascadeResult = Scoring.resolveCascadeStep(state.grid, state.rng);
 
     state.grid = cascadeResult.grid;
     state.score += cascadeResult.score;
@@ -478,7 +502,12 @@
 
     // 연동은 부가 기능: 미연결이거나 네트워크 오류여도 게임 진행에는 영향이 없다(fire-and-forget).
     if (window.GameLink) {
-      var submitOptions = state.mode === 'daily' ? { challenge: 'daily' } : undefined;
+      var submitOptions = {
+        replayActions: state.replayActions,
+      };
+      if (state.mode === 'daily') {
+        submitOptions.challenge = 'daily';
+      }
       window.GameLink.submitScore('match3', state.score, state.seed, submitOptions);
     }
     renderLinkAndRanking();

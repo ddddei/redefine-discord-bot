@@ -12,7 +12,8 @@
       "weekKey": "2030-W02",
       "flagged": false,
       "mode": "free",
-      "dayKey": null
+      "dayKey": null,
+      "replay": "verified"
     },
     {
       "discordId": "user_example_002",
@@ -23,7 +24,8 @@
       "weekKey": "2030-W02",
       "flagged": false,
       "mode": "daily",
-      "dayKey": "2030-01-10"
+      "dayKey": "2030-01-10",
+      "replay": "missing"
     }
   ]
 }

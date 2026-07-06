@@ -974,6 +974,15 @@ function buildWebgameOperationsSummary(webgameRepository = createDefaultWebgameR
 
   const flaggedScores = summarizeFlaggedScores(scoresResult.scores, displayNameByDiscordId, limit);
   const cheerStats = summarizeCheerStats(webgameRepository, weekKey, dayKey);
+  // 서버 리플레이 검증(v2) 이번 주 상태별 건수 + 최근 mismatch 목록(로그 원문은 노출하지
+  // 않는다 - docs/replay-verification-plan.md 5절).
+  const replayStatus = webgameRepository.countReplayStatusesForWeek(weekKey);
+  const recentMismatches = webgameRepository.listRecentMismatches(limit)
+    .filter((record) => !isExampleLikeRecord({ discordId: record.discordId }))
+    .map((record) => ({
+      ...record,
+      displayName: record.discordId ? (displayNameByDiscordId.get(record.discordId) || '알 수 없음') : '알 수 없음',
+    }));
 
   const weeklyParticipants = Object.keys(GAME_DEFINITIONS).reduce((map, gameId) => {
     const participants = new Set();
@@ -1012,12 +1021,14 @@ function buildWebgameOperationsSummary(webgameRepository = createDefaultWebgameR
       dailyParticipants,
       cheersThisWeek,
       cheersToday,
+      replayStatus,
     },
     weeklyRankings,
     dailyChallenges,
     communalGoal,
     flaggedScores,
     cheerStats,
+    recentMismatches,
     meta: buildAdminMeta(exampleRecordsExcluded),
   };
 }

@@ -72,6 +72,7 @@ DM 대화 연습 MVP를 켜면 `/admin`의 `최근 DM 대화 로그`에서 `DM_C
 - `간식 공방 키우기`(idle) 공동 목표 누적/목표/참여자 수/달성 여부
 - flagged 기록 목록(운영 확인용) — 이상치로 플래그된 기록은 랭킹·공동 목표 계산에서 이미 제외되어 있고, 이 목록은 지급 보류 여부를 운영자가 판단하기 위한 참고용입니다
 - 게임별 이번 주/오늘 응원 통계
+- 서버 리플레이 검증(v2) 이번 주 verified/mismatch/missing 건수 카드와 최근 mismatch 목록(참여자·게임·제출/재현 점수·시각) — 로그 원문은 노출하지 않으며 자세한 판정 기준은 [webgame-rankings-ops.md](webgame-rankings-ops.md)의 "리플레이 검증(v2)" 절 참고
 
 필터는 `weekKey`, `dayKey`, `개수(limit, 최대 100)`만 제공하며, 지급/승인/기록 수정/flag 해제 같은 쓰기 기능은 없습니다. 주간·공동 목표 지급은 계속 기존 `/포인트관리` 명령으로 수동 처리합니다(자세한 지급 기준과 절차는 [webgame-rankings-ops.md](webgame-rankings-ops.md) 참고). playerToken, 연결 코드, `cheerSalt`, 단어 정답 같은 민감값은 API 응답과 화면 어디에도 노출하지 않으며, example/demo/sample 데이터는 운영 현황에서 제외되고 제외 건수만 표시됩니다.
 

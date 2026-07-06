@@ -7,6 +7,24 @@
   var state = null;
   var tracker = null;
   var scoreSubmittedForRun = false;
+  // 서버 리플레이 검증용 액션 로그 상한(docs/replay-verification-plan.md 1절).
+  var MAX_DECK_ACTIONS = 2000;
+
+  // 액션 타입 접두 배열([type, ...args])을 state.actionLog에 기록한다. 엔진 호출과
+  // 같은 지점에서만 기록을 추가하며 호출 경로 자체는 바꾸지 않는다. 세이브에 자동
+  // 포함되므로(state가 곧 세이브 대상) 이어하기 재개 시에도 로그가 이어붙는다.
+  function pushAction(action) {
+    if (!state || !Array.isArray(state.actionLog)) {
+      return;
+    }
+    if (state.actionLog.length < MAX_DECK_ACTIONS) {
+      state.actionLog.push(action);
+    } else {
+      // 상한을 넘겨 잘린 로그를 제출하면 정직한 런도 mismatch로 판정된다 —
+      // 넘친 순간부터 로그를 무효화하고 제출 시 아예 첨부하지 않는다(missing).
+      state.actionLogOverflow = true;
+    }
+  }
 
   var NODE_TYPE_LABEL = {
     normal: '일반 전투',
@@ -197,6 +215,9 @@
     state = Engine.createNewRun(seed, previousStats);
     state.challengeMode = options.mode === 'daily' ? 'daily' : 'free';
     state.challengeDayKey = options.dayKey || null;
+    // 서버 리플레이 검증용 액션 로그. 엔진(engine.js)은 무수정이므로 isValidLoadedState가
+    // 화이트리스트가 아니라는 전제(알려진 필드만 검사) 위에 세이브에 얹는 추가 필드다.
+    state.actionLog = [];
     tracker = Engine.trackerFromState(state);
   }
 
@@ -495,6 +516,7 @@
     var cardEl = handListEl.children[index];
     var result = Engine.playCard(state, cardId, index, tracker);
     if (result.success) {
+      pushAction(['p', cardId, index]);
       animateCardPlay(cardEl);
       if (result.results && result.results.hits) {
         result.results.hits.forEach(function (hit) {
@@ -518,6 +540,7 @@
     refreshTracker();
     var hpBefore = state.player.hp;
     Engine.endTurn(state, tracker);
+    pushAction(['e']);
     if (state.player.hp < hpBefore) {
       showDamagePopup(hpChipEl, hpBefore - state.player.hp);
       flashPlayerHit();
@@ -540,6 +563,7 @@
       el.addEventListener('click', function () {
         var result = Engine.chooseReward(state, cardId);
         if (result.success) {
+          pushAction(['r', cardId]);
           commit();
           onScreenChanged();
         }
@@ -552,6 +576,7 @@
   skipRewardButton.addEventListener('click', function () {
     var result = Engine.chooseReward(state, null);
     if (result.success) {
+      pushAction(['r0']);
       commit();
       onScreenChanged();
     }
@@ -565,6 +590,7 @@
   restHealButton.addEventListener('click', function () {
     var result = Engine.applyRestHeal(state);
     if (result.success) {
+      pushAction(['h']);
       commit();
       onScreenChanged();
     }
@@ -587,6 +613,7 @@
       button.addEventListener('click', function () {
         var result = Engine.applyRestRemoveCard(state, index);
         if (result.success) {
+          pushAction(['x', index]);
           commit();
           onScreenChanged();
         }
@@ -621,7 +648,16 @@
       var reachedStage = Math.min(state.runIndex + 1, totalNodes);
       var remainingHp = Math.max(0, state.player.hp);
       var runScore = reachedStage * 1000 + remainingHp;
-      var submitOptions = state.challengeMode === 'daily' ? { challenge: 'daily' } : undefined;
+      var submitOptions = {
+        // 구세이브(로그 없는 채로 이어하기 시작한 런)는 actionLog가 없으므로
+        // replayActions도 없다 - link.js는 이를 로그 미첨부(missing)로 처리한다.
+        replayActions: (Array.isArray(state.actionLog) && !state.actionLogOverflow)
+          ? state.actionLog
+          : undefined,
+      };
+      if (state.challengeMode === 'daily') {
+        submitOptions.challenge = 'daily';
+      }
       window.GameLink.submitScore('deck', runScore, state.seed, submitOptions);
     }
 
@@ -679,6 +715,7 @@
     refreshTracker();
     var result = Engine.enterCurrentNode(state, tracker);
     if (result.success) {
+      pushAction(['n']);
       if (result.type === 'combat') {
         animateNextHandRender = true;
       }

@@ -13,6 +13,7 @@ const dataFiles = {
   webgameLinksExample: path.join(dataDir, 'webgame-links.example.json'),
   webgameScoresExample: path.join(dataDir, 'webgame-scores.example.json'),
   webgameSocialExample: path.join(dataDir, 'webgame-social.example.json'),
+  webgameReplayMismatchExample: path.join(dataDir, 'webgame-replay-mismatch.example.json'),
 };
 
 const blockedWordPoolTerms = new Set([
@@ -246,6 +247,30 @@ function validateWebgameScores(scoresData) {
     if (score.dayKey !== undefined && !isStringOrNull(score.dayKey)) {
       fail(`${label}의 dayKey는 문자열 또는 null이어야 합니다.`);
     }
+    if (score.replay !== undefined && !['verified', 'mismatch', 'missing', 'skipped'].includes(score.replay)) {
+      fail(`${label}의 replay는 verified/mismatch/missing/skipped 중 하나여야 합니다.`);
+    }
+  });
+}
+
+function validateWebgameReplayMismatch(replayMismatchData) {
+  if (!replayMismatchData || typeof replayMismatchData !== 'object') {
+    fail('data/webgame-replay-mismatch.example.json은 객체여야 합니다.');
+    return;
+  }
+
+  if (!Array.isArray(replayMismatchData.records)) {
+    fail('data/webgame-replay-mismatch.example.json의 records는 배열이어야 합니다.');
+    return;
+  }
+
+  replayMismatchData.records.forEach((record, index) => {
+    const label = `data/webgame-replay-mismatch.example.json records ${index + 1}번째 항목`;
+    if (!isNonEmptyString(record.discordId)) fail(`${label}의 discordId는 문자열이어야 합니다.`);
+    if (!isNonEmptyString(record.gameId)) fail(`${label}의 gameId는 문자열이어야 합니다.`);
+    if (typeof record.score !== 'number') fail(`${label}의 score는 숫자여야 합니다.`);
+    if (typeof record.replayScore !== 'number') fail(`${label}의 replayScore는 숫자여야 합니다.`);
+    if (!isNonEmptyString(record.at)) fail(`${label}의 at은 문자열이어야 합니다.`);
   });
 }
 
@@ -284,6 +309,7 @@ function main() {
   const webgameLinksExample = readJson('data/webgame-links.example.json', dataFiles.webgameLinksExample);
   const webgameScoresExample = readJson('data/webgame-scores.example.json', dataFiles.webgameScoresExample);
   const webgameSocialExample = readJson('data/webgame-social.example.json', dataFiles.webgameSocialExample);
+  const webgameReplayMismatchExample = readJson('data/webgame-replay-mismatch.example.json', dataFiles.webgameReplayMismatchExample);
 
   if (faq) validateFaq(faq);
   if (knowledge) validateKnowledge(knowledge);
@@ -294,6 +320,7 @@ function main() {
   if (webgameLinksExample) validateWebgameLinks(webgameLinksExample);
   if (webgameScoresExample) validateWebgameScores(webgameScoresExample);
   if (webgameSocialExample) validateWebgameSocial(webgameSocialExample);
+  if (webgameReplayMismatchExample) validateWebgameReplayMismatch(webgameReplayMismatchExample);
 
   if (process.exitCode) {
     process.exit(1);
@@ -308,6 +335,7 @@ function main() {
   console.log('data/webgame-links.example.json 정상');
   console.log('data/webgame-scores.example.json 정상');
   console.log('data/webgame-social.example.json 정상');
+  console.log('data/webgame-replay-mismatch.example.json 정상');
   console.log('데이터 검증이 완료되었습니다.');
 }
 

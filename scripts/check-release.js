@@ -164,6 +164,11 @@ const checks = [
     args: ['--check', 'src/webgameApi.js'],
   },
   {
+    label: 'src/webgameReplay.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameReplay.js'],
+  },
+  {
     label: 'src/webgameLink.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/webgameLink.js'],
@@ -197,6 +202,11 @@ const checks = [
     label: 'public/match3/board.js 문법 검사',
     command: 'node',
     args: ['--check', 'public/match3/board.js'],
+  },
+  {
+    label: 'public/match3/scoring.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'public/match3/scoring.js'],
   },
   {
     label: 'public/match3/game.js 문법 검사',
@@ -454,6 +464,11 @@ const checks = [
     args: ['--check', 'scripts/test-webgame-social-api.js'],
   },
   {
+    label: 'scripts/test-webgame-replay.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-webgame-replay.js'],
+  },
+  {
     label: 'scripts/test-word-logic.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-word-logic.js'],
@@ -682,6 +697,11 @@ const checks = [
     label: 'webgame async social api smoke test',
     command: 'node',
     args: ['scripts/test-webgame-social-api.js'],
+  },
+  {
+    label: 'webgame replay verification smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-replay.js'],
   },
   {
     label: 'dungeonworld session 02 content test',
