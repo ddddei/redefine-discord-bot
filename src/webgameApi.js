@@ -132,6 +132,21 @@ function getCommunalGoal() {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_COMMUNAL_GOAL;
 }
 
+// 운영 이벤트 주간 생산 배수(docs/idle-improvement-plan.md 1.2절). 허용값 1.5/2/3만
+// 인정하고, 그 외(미설정 포함)는 무효로 취급해 event: null을 응답한다 — 운영 실수로
+// 임의 배수가 들어가는 것을 막기 위한 화이트리스트다.
+const ALLOWED_IDLE_EVENT_MULTIPLIERS = [1.5, 2, 3];
+const DEFAULT_IDLE_EVENT_LABEL = '이벤트 주간';
+
+function getIdleEventConfig() {
+  const parsed = Number(process.env.WEBGAME_IDLE_EVENT_MULTIPLIER);
+  if (!ALLOWED_IDLE_EVENT_MULTIPLIERS.includes(parsed)) {
+    return null;
+  }
+  const label = process.env.WEBGAME_IDLE_EVENT_LABEL || DEFAULT_IDLE_EVENT_LABEL;
+  return { multiplier: parsed, label };
+}
+
 // includeSize: true면 { body, bytes } 형태로 돌려준다(score 엔드포인트가 replayLog
 // 유무에 따라 4KB/32KB 상한을 나눠 적용하는 데 사용, 그 외 호출부는 기존처럼 body만 받는다).
 function readJsonBody(req, maxBytes = MAX_BODY_BYTES, includeSize = false) {
@@ -704,6 +719,7 @@ function createWebgameApi(options = {}) {
       participants: progress.participants,
       achieved: progress.total >= goal,
       myContribution,
+      event: getIdleEventConfig(),
     });
   }
 

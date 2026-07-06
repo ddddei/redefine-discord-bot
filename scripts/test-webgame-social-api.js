@@ -269,6 +269,40 @@ async function main() {
     assert.strictEqual(goalAnonymous.status, 200);
     assert.strictEqual(goalAnonymous.data.myContribution, null);
 
+    // 이벤트 배수 미설정 시 event는 null이어야 한다.
+    assert.strictEqual(goal.data.event, null);
+    assert.strictEqual(goalAnonymous.data.event, null);
+
+    // 이벤트 배수 설정 시 event 필드가 응답에 실려야 한다(docs/idle-improvement-plan.md 1.2절).
+    const previousEventMultiplierEnv = process.env.WEBGAME_IDLE_EVENT_MULTIPLIER;
+    const previousEventLabelEnv = process.env.WEBGAME_IDLE_EVENT_LABEL;
+    try {
+      process.env.WEBGAME_IDLE_EVENT_MULTIPLIER = '2';
+      const goalWithEvent = await requestJson(baseUrl, '/game/api/goal');
+      assert.strictEqual(goalWithEvent.status, 200);
+      assert.deepStrictEqual(goalWithEvent.data.event, { multiplier: 2, label: '이벤트 주간' });
+
+      process.env.WEBGAME_IDLE_EVENT_LABEL = '여름 감사제';
+      const goalWithCustomLabel = await requestJson(baseUrl, '/game/api/goal');
+      assert.deepStrictEqual(goalWithCustomLabel.data.event, { multiplier: 2, label: '여름 감사제' });
+
+      // 허용되지 않은 배수는 무효로 취급해 event: null이어야 한다.
+      process.env.WEBGAME_IDLE_EVENT_MULTIPLIER = '5';
+      const goalWithInvalidMultiplier = await requestJson(baseUrl, '/game/api/goal');
+      assert.strictEqual(goalWithInvalidMultiplier.data.event, null);
+    } finally {
+      if (previousEventMultiplierEnv === undefined) {
+        delete process.env.WEBGAME_IDLE_EVENT_MULTIPLIER;
+      } else {
+        process.env.WEBGAME_IDLE_EVENT_MULTIPLIER = previousEventMultiplierEnv;
+      }
+      if (previousEventLabelEnv === undefined) {
+        delete process.env.WEBGAME_IDLE_EVENT_LABEL;
+      } else {
+        process.env.WEBGAME_IDLE_EVENT_LABEL = previousEventLabelEnv;
+      }
+    }
+
     const invalidJson = await requestRaw(baseUrl, '/game/api/cheer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
