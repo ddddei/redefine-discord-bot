@@ -38,6 +38,9 @@
           <button id="today-challenge-button" class="gk-button secondary" type="button">오늘의 도전</button>
           <button id="restart-button" class="gk-button primary" type="button">다시 하기</button>
         </div>
+        <div class="header-actions">
+          <button id="goals-button" class="gk-button secondary" type="button">목표 판</button>
+        </div>
       </main>
     </div>
 
@@ -57,6 +60,31 @@
         </ul>
         <div class="modal-actions">
           <button id="help-modal-close" class="gk-button primary" type="button">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="goals-modal" class="gk-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="goals-modal-title">
+      <div class="gk-modal">
+        <p class="kicker">목표 판</p>
+        <h2 id="goals-modal-title">목표 판 12종</h2>
+        <p class="result-copy">랭킹과 무관하게, 각 판의 목표만 완료하면 되는 부담 없는 도전이에요. 실패해도 몇 번이든 같은 판으로 다시 도전할 수 있고, 실패 기록은 남지 않아요.</p>
+        <ul id="goals-list" class="goals-list"></ul>
+        <div class="modal-actions">
+          <button id="goals-modal-close" class="gk-button primary" type="button">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="goal-result-modal" class="gk-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="goal-result-title">
+      <div class="gk-modal">
+        <p class="kicker">목표 판 결과</p>
+        <h2 id="goal-result-title">결과</h2>
+        <p id="goal-result-copy" class="result-copy"></p>
+        <div class="modal-actions">
+          <button id="goal-result-retry-button" class="gk-button secondary" type="button">같은 판 다시 하기</button>
+          <button id="goal-result-next-button" class="gk-button primary" type="button">다음 판</button>
+          <button id="goal-result-list-button" class="gk-button secondary" type="button">목록으로</button>
         </div>
       </div>
     </div>
@@ -84,6 +112,7 @@
     <script src="../shared/link.js"></script>
     <script src="./board.js"></script>
     <script src="./scoring.js"></script>
+    <script src="./goals.js"></script>
     <script src="./game.js"></script>
   </body>
 </html>

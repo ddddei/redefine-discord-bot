@@ -44,6 +44,19 @@
   var resultComboEl = document.getElementById('result-combo');
   var resultTopTileEl = document.getElementById('result-top-tile');
   var resultRetryButton = document.getElementById('result-retry-button');
+  var goalsButton = document.getElementById('goals-button');
+  var goalsModal = document.getElementById('goals-modal');
+  var goalsModalCloseButton = document.getElementById('goals-modal-close');
+  var goalsListEl = document.getElementById('goals-list');
+  var goalResultModal = document.getElementById('goal-result-modal');
+  var goalResultTitleEl = document.getElementById('goal-result-title');
+  var goalResultCopyEl = document.getElementById('goal-result-copy');
+  var goalResultRetryButton = document.getElementById('goal-result-retry-button');
+  var goalResultNextButton = document.getElementById('goal-result-next-button');
+  var goalResultListButton = document.getElementById('goal-result-list-button');
+
+  // 목표 판 완료 기록(계획서 3절) - 랭킹과 무관한 로컬 저장. 실패 기록은 남기지 않는다.
+  var GOALS_STORAGE_KEY = 'redefine-match3-goals-v1';
 
   var state = null;
   var busy = false;
@@ -83,6 +96,12 @@
     // 소스 - variant를 받지 못하면(구버전 서버·자유 플레이) standard로 폴백한다.
     var variant = normalizeVariant(options.variant);
 
+    // 목표 판 모드(계획서 3절): 서버 제출 없는 랭킹 무관 완료형. options.goal이
+    // 있으면 그 판의 수 제한을 쓰고, variant/오늘의 도전 개념은 적용하지 않는다.
+    var goal = options.goal || null;
+    var movesLeft = goal ? goal.moves : variant.movesLimit;
+    var mode = goal ? 'goal' : (options.mode === 'daily' ? 'daily' : 'free');
+
     return {
       grid: grid,
       rng: rng,
@@ -90,7 +109,7 @@
       // 만든 빈 specialGrid에서 시작해, 서버 검증기(webgameReplay.js)와 완전히
       // 같은 경로(scoring.js)로 갱신된다.
       specialGrid: initial.specialGrid,
-      movesLeft: variant.movesLimit,
+      movesLeft: movesLeft,
       score: 0,
       combo: 1,
       bestCombo: 1,
@@ -99,9 +118,10 @@
       selected: null,
       gameOver: false,
       seed: seed,
-      mode: options.mode === 'daily' ? 'daily' : 'free',
+      mode: mode,
       dayKey: options.dayKey || null,
       variant: variant,
+      goal: goal,
       // 서버 리플레이 검증용 성공 스왑 기록. 되돌려진 무효 스왑은 RNG를 소비하지
       // 않으므로 포함하지 않는다(docs/replay-verification-plan.md 1절).
       replayActions: [],
@@ -513,6 +533,16 @@
       pulseComboChip();
     }
 
+    busy = false;
+
+    // 목표 판(계획서 3절)은 수를 다 쓰기 전에도 목표를 달성하면 즉시 성공 처리한다
+    // (일반 판/오늘의 도전의 셔플·수 소진 처리보다 먼저 검사).
+    if (state.mode === 'goal' && !state.gameOver && window.Match3Goals
+      && window.Match3Goals.isGoalAchieved(state.goal, state)) {
+      endGoal(true);
+      return;
+    }
+
     checkForShuffleNeeded();
   }
 
@@ -547,7 +577,11 @@
     busy = false;
 
     if (state.movesLeft <= 0) {
-      endGame();
+      if (state.mode === 'goal') {
+        endGoal(false);
+      } else {
+        endGame();
+      }
     }
   }
 
@@ -651,6 +685,115 @@
     renderLinkAndRanking();
   }
 
+  // ---- 목표 판 모드(docs/match3-improvement-plan.md 3절) ----
+  // 랭킹 무관 완료형 - 서버 제출이 전혀 없고, 완료 여부만 로컬(localStorage)에 남는다.
+
+  function readCompletedGoalIds() {
+    try {
+      var raw = window.localStorage.getItem(GOALS_STORAGE_KEY);
+      if (!raw) {
+        return [];
+      }
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('[Match3Goals] 완료 기록을 읽지 못했어요.', error);
+      return [];
+    }
+  }
+
+  function markGoalCompleted(goalId) {
+    try {
+      var completed = readCompletedGoalIds();
+      if (completed.indexOf(goalId) === -1) {
+        completed.push(goalId);
+        window.localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(completed));
+      }
+    } catch (error) {
+      console.warn('[Match3Goals] 완료 기록을 저장하지 못했어요.', error);
+    }
+  }
+
+  function isGoalCompleted(goalId) {
+    return readCompletedGoalIds().indexOf(goalId) !== -1;
+  }
+
+  function renderGoalsList() {
+    if (!goalsListEl || !window.Match3Goals) {
+      return;
+    }
+    goalsListEl.innerHTML = '';
+    var completed = readCompletedGoalIds();
+
+    window.Match3Goals.getGoalBoards().forEach(function (goal) {
+      var item = document.createElement('li');
+      item.className = 'goals-list-item';
+
+      var info = document.createElement('div');
+      info.className = 'goals-list-item-info';
+      var title = document.createElement('span');
+      title.className = 'goals-list-item-title';
+      title.textContent = goal.id + '. ' + goal.title;
+      var desc = document.createElement('span');
+      desc.className = 'goals-list-item-desc';
+      desc.textContent = goal.description;
+      info.appendChild(title);
+      info.appendChild(desc);
+
+      var actionArea = document.createElement('div');
+      actionArea.className = 'goals-list-item-check';
+
+      var isDone = completed.indexOf(goal.id) !== -1;
+      if (isDone) {
+        actionArea.textContent = '✅';
+      } else {
+        var startButton = document.createElement('button');
+        startButton.type = 'button';
+        startButton.className = 'gk-button secondary';
+        startButton.textContent = '도전';
+        startButton.addEventListener('click', function () {
+          closeModal(goalsModal);
+          startGoal(goal.id);
+        });
+        actionArea.appendChild(startButton);
+      }
+
+      item.appendChild(info);
+      item.appendChild(actionArea);
+      goalsListEl.appendChild(item);
+    });
+  }
+
+  function startGoal(goalId) {
+    if (!window.Match3Goals) {
+      return;
+    }
+    var goal = window.Match3Goals.getGoalBoardById(goalId);
+    if (!goal) {
+      return;
+    }
+    startNewGame({ seed: goal.seed, goal: goal });
+  }
+
+  function endGoal(achieved) {
+    state.gameOver = true;
+    closeModal(resultModal);
+
+    if (achieved) {
+      markGoalCompleted(state.goal.id);
+      goalResultTitleEl.textContent = '해냈어요!';
+      goalResultCopyEl.textContent = state.goal.title + ' 목표를 달성했어요.';
+      goalResultNextButton.classList.remove('hidden');
+    } else {
+      // 배려 원칙(계획서 3절): 실패 횟수·비난 없이 차분하게 안내하고, 재도전은 무제한이다.
+      goalResultTitleEl.textContent = '이번엔 여기까지예요';
+      goalResultCopyEl.textContent = '이번엔 여기까지예요. 같은 판으로 다시 할 수 있어요.';
+      goalResultNextButton.classList.add('hidden');
+    }
+
+    openModal(goalResultModal);
+  }
+
   function startNewGame(options) {
     closeModal(resultModal);
     busy = false;
@@ -720,6 +863,48 @@
   helpModalCloseButton.addEventListener('click', function () {
     closeModal(helpModal);
   });
+
+  if (goalsButton) {
+    goalsButton.addEventListener('click', function () {
+      renderGoalsList();
+      openModal(goalsModal);
+    });
+  }
+
+  if (goalsModalCloseButton) {
+    goalsModalCloseButton.addEventListener('click', function () {
+      closeModal(goalsModal);
+    });
+  }
+
+  if (goalResultRetryButton) {
+    goalResultRetryButton.addEventListener('click', function () {
+      closeModal(goalResultModal);
+      startGoal(state.goal.id);
+    });
+  }
+
+  if (goalResultNextButton) {
+    goalResultNextButton.addEventListener('click', function () {
+      closeModal(goalResultModal);
+      var nextId = state.goal.id + 1;
+      var nextGoal = window.Match3Goals && window.Match3Goals.getGoalBoardById(nextId);
+      if (nextGoal) {
+        startGoal(nextId);
+      } else {
+        renderGoalsList();
+        openModal(goalsModal);
+      }
+    });
+  }
+
+  if (goalResultListButton) {
+    goalResultListButton.addEventListener('click', function () {
+      closeModal(goalResultModal);
+      renderGoalsList();
+      openModal(goalsModal);
+    });
+  }
 
   startNewGame();
 
