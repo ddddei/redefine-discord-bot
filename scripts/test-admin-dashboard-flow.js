@@ -10,6 +10,7 @@ const {
   buildOnboardingSignals,
   buildReactionFollowUpQueue,
   buildTodayOperationsQueue,
+  buildWebgameOperationsSummary,
   filterOperationalRecords,
   isExampleLikeRecord,
   listMissionStatus,
@@ -29,6 +30,7 @@ const {
   createAdminRequestHandler,
   isAdminDashboardEnabled,
 } = require('../src/adminServer');
+const { createWebgameRepository, getDailySeed, getIsoWeekKey: getIsoWeekKeyForFixture } = require('../src/webgameRepository');
 
 process.env.GOOGLE_SHEETS_LOGGING_ENABLED = 'false';
 
@@ -372,6 +374,130 @@ function createExampleOnlyRepository() {
   };
 }
 
+function createWebgameFixture() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-dashboard-webgame-'));
+  const paths = {
+    links: path.join(tempDir, 'webgame-links.local.json'),
+    scores: path.join(tempDir, 'webgame-scores.local.json'),
+    social: path.join(tempDir, 'webgame-social.local.json'),
+  };
+  const repository = createWebgameRepository(paths);
+  const now = new Date('2026-07-06T03:00:00Z'); // 월요일 KST 정오
+  const weekKey = getIsoWeekKeyForFixture(now);
+  const previousWeekKey = getIsoWeekKeyForFixture(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
+  const dayKey = '2026-07-06';
+
+  function link(discordId, displayName) {
+    const issued = repository.issueLinkCode({ discordId, displayName }, now);
+    const redeemed = repository.redeemLinkCode(issued.code, now);
+    assert.strictEqual(redeemed.ok, true, `링크 발급 실패: ${discordId}`);
+    return redeemed;
+  }
+
+  link('user_a', '참여자A');
+  link('user_b', '참여자B');
+  link('user_flag', '플래그참여자');
+
+  // match3: 참여자A 주간 최고 1800(오늘의 도전), 참여자B 900. 참여자A는 낮은 점수도 하나 더 제출해
+  // "최고 점수만 표시" 규칙을 검증한다.
+  repository.recordScore({ discordId: 'user_a', gameId: 'match3', score: 1200, mode: 'free' }, now);
+  repository.recordScore({
+    discordId: 'user_a',
+    gameId: 'match3',
+    score: 1800,
+    mode: 'daily',
+    dayKey,
+    seed: String(getDailySeed(dayKey)),
+  }, now);
+  repository.recordScore({ discordId: 'user_b', gameId: 'match3', score: 900, mode: 'free' }, now);
+  // flagged 기록: 랭킹/참여 수에서 제외돼야 한다.
+  repository.recordScore({
+    discordId: 'user_flag',
+    gameId: 'match3',
+    score: 49000,
+    mode: 'free',
+    flagged: true,
+  }, now);
+
+  // deck: 참여자B만 오늘의 도전 참여.
+  repository.recordScore({
+    discordId: 'user_b',
+    gameId: 'deck',
+    score: 5500,
+    mode: 'daily',
+    dayKey,
+    seed: String(getDailySeed(dayKey)),
+  }, now);
+
+  // idle: 공동 목표. 참여자A는 이전 주 baseline 500 -> 이번 주 800 (기여 300).
+  // 참여자B는 신규 참여자, 이번 주 200~500 (기여 300, 최소값 baseline).
+  repository.recordScore({ discordId: 'user_a', gameId: 'idle', score: 500, weekKey: previousWeekKey, mode: 'free' }, now);
+  repository.recordScore({ discordId: 'user_a', gameId: 'idle', score: 800, weekKey, mode: 'free' }, now);
+  repository.recordScore({ discordId: 'user_b', gameId: 'idle', score: 200, weekKey, mode: 'free' }, now);
+  repository.recordScore({ discordId: 'user_b', gameId: 'idle', score: 500, weekKey, mode: 'free' }, now);
+
+  // word: 참여자A 3회 시도 성공(score=4), 참여자B 실패(score=0, tries 없음 취급).
+  repository.recordScore({
+    discordId: 'user_a',
+    gameId: 'word',
+    score: 4,
+    mode: 'daily',
+    dayKey,
+  }, now);
+  repository.recordScore({
+    discordId: 'user_b',
+    gameId: 'word',
+    score: 0,
+    mode: 'daily',
+    dayKey,
+  }, now);
+
+  // 응원: match3 주간 랭킹의 user_a에게 1회, deck 오늘 랭킹의 user_b에게 2회.
+  repository.addCheer({ fromDiscordId: 'user_b', targetDiscordId: 'user_a', gameId: 'match3', periodKey: weekKey }, now);
+  repository.addCheer({ fromDiscordId: 'user_a', targetDiscordId: 'user_b', gameId: 'deck', periodKey: dayKey }, now);
+  repository.addCheer({ fromDiscordId: 'user_flag', targetDiscordId: 'user_b', gameId: 'deck', periodKey: dayKey }, now);
+
+  return { tempDir, repository, now, weekKey, dayKey };
+}
+
+function createExampleOnlyWebgameRepository() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-dashboard-webgame-example-'));
+  const linksPath = path.join(tempDir, 'webgame-links.local.json');
+  const scoresPath = path.join(tempDir, 'webgame-scores.local.json');
+  const socialPath = path.join(tempDir, 'webgame-social.local.json');
+
+  fs.writeFileSync(linksPath, JSON.stringify({
+    version: 1,
+    isExample: true,
+    links: [{ discordId: 'user_example_001', displayName: '참여자 예시', playerToken: 'example-token', linkedAt: '2030-01-01T00:00:00.000Z' }],
+    pendingCodes: [],
+  }));
+  fs.writeFileSync(scoresPath, JSON.stringify({
+    version: 1,
+    isExample: false,
+    scores: [{
+      discordId: 'user_example_001',
+      gameId: 'match3',
+      score: 3000,
+      mode: 'free',
+      weekKey: '2030-W01',
+      flagged: false,
+      submittedAt: '2030-01-01T00:00:00.000Z',
+    }],
+  }));
+  fs.writeFileSync(socialPath, JSON.stringify({
+    version: 1,
+    isExample: false,
+    cheerSalt: 'example-salt',
+    cheers: [],
+  }));
+
+  return {
+    tempDir,
+    repository: createWebgameRepository({ links: linksPath, scores: scoresPath, social: socialPath }),
+  };
+}
+
 function invokeHandler(handler, path, authorization) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -420,6 +546,7 @@ async function main() {
   const originalDmChatLogPath = process.env.DM_CHAT_LOG_PATH;
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-dashboard-dm-chat-'));
   const dmChatLogPath = path.join(tempDir, 'dm-chat-logs.json');
+  const webgameTempDirs = [];
 
   try {
     fs.writeFileSync(dmChatLogPath, `${JSON.stringify({
@@ -652,7 +779,98 @@ async function main() {
     assert.strictEqual(filteredDmChatMessages.meta.filters.limit, 100);
     assert.strictEqual(JSON.stringify(filteredDmChatMessages).includes('matchedKeyword'), false);
 
-    const handler = createAdminRequestHandler(repository);
+    const webgameFixture = createWebgameFixture();
+    webgameTempDirs.push(webgameFixture.tempDir);
+    const webgameSummary = buildWebgameOperationsSummary(webgameFixture.repository, {
+      weekKey: webgameFixture.weekKey,
+      dayKey: webgameFixture.dayKey,
+      now: webgameFixture.now,
+    });
+    assert.strictEqual(webgameSummary.readOnly, true);
+    assert.strictEqual(webgameSummary.storageMode, 'local-json');
+    assert.strictEqual(webgameSummary.weekKey, webgameFixture.weekKey);
+    assert.strictEqual(webgameSummary.dayKey, webgameFixture.dayKey);
+
+    // match3 주간 랭킹: user_a는 최고 점수(1800)만 표시되고 flagged user_flag는 제외된다.
+    assert.strictEqual(webgameSummary.weeklyRankings.match3.length, 2);
+    assert.strictEqual(webgameSummary.weeklyRankings.match3[0].discordId, 'user_a');
+    assert.strictEqual(webgameSummary.weeklyRankings.match3[0].score, 1800);
+    assert.strictEqual(webgameSummary.weeklyRankings.match3[0].cheers, 1);
+    assert.ok(!webgameSummary.weeklyRankings.match3.some((row) => row.discordId === 'user_flag'));
+    assert.strictEqual(webgameSummary.counts.flaggedScores, 1);
+
+    // flagged 목록: user_flag가 최신순으로 표시되고 민감값이 없다.
+    assert.strictEqual(webgameSummary.flaggedScores.length, 1);
+    assert.strictEqual(webgameSummary.flaggedScores[0].discordId, 'user_flag');
+    assert.strictEqual(webgameSummary.flaggedScores[0].gameId, 'match3');
+    assert.strictEqual(webgameSummary.flaggedScores[0].score, 49000);
+
+    // 오늘의 도전: match3은 user_a만(오늘 시드 제출), deck은 user_b만.
+    assert.strictEqual(webgameSummary.dailyChallenges.match3.participants, 1);
+    assert.strictEqual(webgameSummary.dailyChallenges.match3.ranking[0].discordId, 'user_a');
+    assert.strictEqual(webgameSummary.dailyChallenges.deck.participants, 1);
+    assert.strictEqual(webgameSummary.dailyChallenges.deck.ranking[0].discordId, 'user_b');
+    assert.strictEqual(webgameSummary.dailyChallenges.deck.ranking[0].cheers, 2);
+
+    // word: 참여 수와 분포만, 정답/salt/실패자 목록 없음.
+    assert.strictEqual(webgameSummary.dailyChallenges.word.participants, 2);
+    assert.strictEqual(webgameSummary.dailyChallenges.word.distribution['3'], 1);
+    assert.strictEqual(webgameSummary.dailyChallenges.word.ranking, undefined);
+    assert.strictEqual(JSON.stringify(webgameSummary).includes('answer'), false);
+
+    // 공동 목표: flagged 없음, 이전 주 baseline/신규 참여자 baseline 규칙.
+    assert.strictEqual(webgameSummary.communalGoal.weekKey, webgameFixture.weekKey);
+    assert.strictEqual(webgameSummary.communalGoal.total, 600);
+    assert.strictEqual(webgameSummary.communalGoal.participants, 2);
+    assert.strictEqual(webgameSummary.communalGoal.achieved, false);
+
+    // 응원 수: 주간/오늘 기간별 집계.
+    const match3CheerStat = webgameSummary.cheerStats.find((row) => row.gameId === 'match3');
+    const deckCheerStat = webgameSummary.cheerStats.find((row) => row.gameId === 'deck');
+    assert.strictEqual(match3CheerStat.cheersThisWeek, 1);
+    assert.strictEqual(deckCheerStat.cheersToday, 2);
+    assert.strictEqual(webgameSummary.counts.cheersThisWeek, 1);
+    assert.strictEqual(webgameSummary.counts.cheersToday, 2);
+
+    // 민감값 비노출 확인.
+    const webgameSummaryJson = JSON.stringify(webgameSummary);
+    ['playerToken', 'pendingCodes', 'cheerSalt', 'WEBGAME_WORD_SALT', 'matchedKeyword'].forEach((sensitiveKey) => {
+      assert.strictEqual(webgameSummaryJson.includes(sensitiveKey), false, `${sensitiveKey}가 응답에 노출되면 안 됩니다.`);
+    });
+
+    // limit clamp: 옵션으로 101을 넘겨도 100으로 제한된다 (parseLimit 재사용 확인은 API 라우트에서 별도 검증).
+
+    // example 전용 저장소는 운영 데이터로 표시하지 않고 제외 건수만 meta에 반영한다.
+    const exampleOnlyWebgameFixture = createExampleOnlyWebgameRepository();
+    webgameTempDirs.push(exampleOnlyWebgameFixture.tempDir);
+    const exampleOnlyWebgameSummary = buildWebgameOperationsSummary(exampleOnlyWebgameFixture.repository, {
+      weekKey: webgameFixture.weekKey,
+      dayKey: webgameFixture.dayKey,
+    });
+    assert.strictEqual(exampleOnlyWebgameSummary.counts.linkedUsers, 0);
+    assert.strictEqual(exampleOnlyWebgameSummary.weeklyRankings.match3.length, 0);
+    assert.strictEqual(exampleOnlyWebgameSummary.flaggedScores.length, 0);
+    assert.ok(exampleOnlyWebgameSummary.meta.exampleRecordsExcluded > 0);
+
+    const handler = createAdminRequestHandler(repository, undefined, webgameFixture.repository);
+    const webgameApiUnauthorized = await invokeHandler(handler, '/api/admin/webgames');
+    assert.strictEqual(webgameApiUnauthorized.statusCode, 401);
+
+    const webgameApiResponse = await invokeHandler(
+      handler,
+      `/api/admin/webgames?weekKey=${webgameFixture.weekKey}&dayKey=${webgameFixture.dayKey}&limit=101`,
+      basic('admin', 'secret')
+    );
+    assert.strictEqual(webgameApiResponse.statusCode, 200);
+    const webgameApiPayload = JSON.parse(webgameApiResponse.body);
+    assert.strictEqual(webgameApiPayload.readOnly, true);
+    assert.strictEqual(webgameApiPayload.weekKey, webgameFixture.weekKey);
+    assert.strictEqual(webgameApiPayload.dayKey, webgameFixture.dayKey);
+    assert.strictEqual(webgameApiPayload.weeklyRankings.match3[0].discordId, 'user_a');
+    // limit=101 요청도 parseLimit으로 100까지만 clamp된다 (응답 자체 목록 길이는 표본 수보다 작아 별도 카운트로 확인).
+    assert.ok(!webgameApiResponse.body.includes('playerToken'));
+    assert.ok(!webgameApiResponse.body.includes('cheerSalt'));
+
     const unauthorized = await invokeHandler(handler, '/api/admin/summary');
     assert.strictEqual(unauthorized.statusCode, 401);
     assert.ok(unauthorized.headers['www-authenticate']);
@@ -734,6 +952,10 @@ async function main() {
     assert.ok(page.body.includes('dm-chat-logs'));
     assert.ok(page.body.includes('dm-chat-user-filter'));
     assert.ok(page.body.includes('dm-chat-safety-filter'));
+    assert.ok(page.body.includes('webgame-operations'));
+    assert.ok(page.body.includes('webgame-flagged-scores'));
+    assert.ok(page.body.includes('webgame-word-distribution'));
+    assert.ok(page.body.includes('webgame-communal-goal'));
 
     const gamePage = await invokeHandler(handler, '/game/dungeonworld-survivors');
     assert.strictEqual(gamePage.statusCode, 200);
@@ -768,6 +990,10 @@ async function main() {
     } else {
       process.env.DM_CHAT_LOG_PATH = originalDmChatLogPath;
     }
+
+    webgameTempDirs.forEach((dir) => {
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
   }
 
   console.log('admin dashboard flow smoke test passed');
