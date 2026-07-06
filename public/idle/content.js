@@ -186,31 +186,200 @@
   var DEFAULT_OFFLINE_CAP_HOURS = 8;
   var EXTENDED_OFFLINE_CAP_HOURS = 24;
 
-  // 간식 배달 의뢰 정의. durationMs가 소요 시간, rewardSeconds가 "수령 시점 초당 생산량 ×
-  // rewardSeconds"로 보상을 계산하는 배수다.
+  // 간식 배달 의뢰 정의(계획서 2.1절 — 6종으로 확장). durationMs가 소요 시간,
+  // rewardSeconds가 "수령 시점 초당 생산량 × rewardSeconds"로 보상을 계산하는 배수다.
+  // 계획서 표의 "생산량 N분치"를 그대로 rewardSeconds(초 단위)로 옮겼다 — 원칙은
+  // "방치 대비 약간 이득 + 돌아오는 재미"이며, 파견 중에도 기본 생산은 계속되므로
+  // 구버전 3종(동네 배달 등, 소요 대비 보상 3~4배)보다는 낮은 배율(0.58~0.73배)로
+  // 실측 조정했다 — 자세한 근거는 최종 보고서 3번 항목 참고.
+  // goldenBonusChance: 강가 찻집 전용, 낮은 확률 황금 간식 보너스(Math.random 허용 —
+  // idle은 랭킹 미노출 장르라 시드 무관, 기존 황금 간식과 동일 원칙).
+  // prestigePointReward: 성문 앞 축제/달빛 기차역 전용, 레시피 조각(환생 포인트 직접 지급).
   var DELIVERIES = [
     {
-      key: 'neighborhood-delivery',
-      name: '동네 배달',
-      unlockStage: 2,
+      key: 'alley-errand',
+      name: '골목 어귀',
+      unlockStage: 1,
       durationMs: 5 * 60 * 1000,
-      rewardSeconds: 900,
+      rewardSeconds: 180, // 생산량 3분치
     },
     {
-      key: 'festival-supply',
-      name: '축제 납품',
+      key: 'village-market',
+      name: '마을 장터',
+      unlockStage: 2,
+      durationMs: 15 * 60 * 1000,
+      rewardSeconds: 600, // 생산량 10분치
+    },
+    {
+      key: 'riverside-teahouse',
+      name: '강가 찻집',
       unlockStage: 3,
-      durationMs: 60 * 60 * 1000,
-      rewardSeconds: 10800,
+      durationMs: 30 * 60 * 1000,
+      rewardSeconds: 1320, // 생산량 22분치
+      goldenBonusChance: 0.12,
     },
     {
-      key: 'royal-tribute',
-      name: '왕궁 진상',
+      key: 'forest-campsite',
+      name: '숲속 야영지',
+      unlockStage: 4,
+      durationMs: 2 * 60 * 60 * 1000,
+      rewardSeconds: 5400, // 생산량 90분치
+    },
+    {
+      key: 'gatefront-festival',
+      name: '성문 앞 축제',
       unlockStage: 5,
       durationMs: 8 * 60 * 60 * 1000,
-      rewardSeconds: 115200,
+      rewardSeconds: 18000, // 생산량 5시간치
+      prestigePointReward: 1,
+    },
+    {
+      key: 'moonlit-station',
+      name: '달빛 기차역',
+      unlockStage: 6,
+      durationMs: 24 * 60 * 60 * 1000,
+      rewardSeconds: 50400, // 생산량 14시간치
+      prestigePointReward: 2,
     },
   ];
+
+  // 파견 완료 시 목적지별로 순환 표시되는 이야기 카드(계획서 2.2절). 방문 횟수
+  // 기반 결정적 인덱스로 고른다(engine.js getDeliveryStory, RNG 아님). 목적지별 4종,
+  // id는 도감 수집 여부 저장 키(state.collectedStories)로 쓰인다.
+  var DELIVERY_STORIES = {
+    'alley-errand': [
+      {
+        id: 'alley-errand-1',
+        title: '골목 어귀',
+        body: '좁은 골목을 돌아 나가니 낯익은 담벼락이 보였어요. 바구니를 문 앞에 살며시 내려두고 돌아왔어요.',
+      },
+      {
+        id: 'alley-errand-2',
+        title: '골목 어귀',
+        body: '고양이 한 마리가 배달 바구니 냄새를 맡으며 따라왔어요. 나눠줄 순 없었지만, 잠시 함께 걸어 좋았어요.',
+      },
+      {
+        id: 'alley-errand-3',
+        title: '골목 어귀',
+        body: '비 온 다음 날이라 골목이 촉촉했어요. 물웅덩이를 피해 조심조심, 그래도 무사히 도착했어요.',
+      },
+      {
+        id: 'alley-errand-4',
+        title: '골목 어귀',
+        body: '문 앞에 작은 쪽지가 붙어 있었어요. "잘 먹었어요" 라고요. 짧은 한마디가 오늘 하루를 가볍게 해줬어요.',
+      },
+    ],
+    'village-market': [
+      {
+        id: 'village-market-1',
+        title: '마을 장터',
+        body: '장터에 들어서자마자 왁자지껄한 소리가 반겨줬어요. 상인들 사이를 누비며 배달함을 무사히 전했어요.',
+      },
+      {
+        id: 'village-market-2',
+        title: '마을 장터',
+        body: '단골 채소 가게 아주머니가 손을 흔들어 주셨어요. "오늘도 수고한다"는 말 한마디가 발걸음을 가볍게 했어요.',
+      },
+      {
+        id: 'village-market-3',
+        title: '마을 장터',
+        body: '장이 서는 날이라 사람이 많았어요. 조금 돌아가긴 했지만, 새로 생긴 노점을 구경할 수 있었어요.',
+      },
+      {
+        id: 'village-market-4',
+        title: '마을 장터',
+        body: '장터 한켠에서 아이들이 공깃돌 놀이를 하고 있었어요. 잠깐 구경하다 다시 길을 나섰어요.',
+      },
+    ],
+    'riverside-teahouse': [
+      {
+        id: 'riverside-teahouse-1',
+        title: '강가 찻집',
+        body: '강바람을 맞으며 걷다 보니 찻집의 풍경 소리가 들려왔어요. 따뜻한 차 향이 마중 나와 있었어요.',
+      },
+      {
+        id: 'riverside-teahouse-2',
+        title: '강가 찻집',
+        body: '주인장이 방금 우린 차 한 모금을 건넸어요. 사양하기 미안해 한 모금만 마시고 다시 길을 나섰어요.',
+      },
+      {
+        id: 'riverside-teahouse-3',
+        title: '강가 찻집',
+        body: '강물 위로 노을이 번지고 있었어요. 배달을 마치고 잠시 난간에 기대 그 풍경을 바라봤어요.',
+      },
+      {
+        id: 'riverside-teahouse-4',
+        title: '강가 찻집',
+        body: '찻집 창가에 손님들이 도란도란 이야기를 나누고 있었어요. 그 온기를 등지고 나오는 발걸음이 따뜻했어요.',
+      },
+    ],
+    'forest-campsite': [
+      {
+        id: 'forest-campsite-1',
+        title: '숲속 야영지',
+        body: '나무 그늘을 따라 한참을 걸었어요. 야영지에 도착하니 모닥불 냄새가 은은하게 퍼져 있었어요.',
+      },
+      {
+        id: 'forest-campsite-2',
+        title: '숲속 야영지',
+        body: '텐트 사이로 아이들이 뛰어다니고 있었어요. 배달함을 조심스레 내려두고, 방해되지 않게 조용히 물러났어요.',
+      },
+      {
+        id: 'forest-campsite-3',
+        title: '숲속 야영지',
+        body: '길을 걷다 다람쥐와 눈이 마주쳤어요. 서로 잠깐 멈춰 섰다가, 각자의 길을 갔어요.',
+      },
+      {
+        id: 'forest-campsite-4',
+        title: '숲속 야영지',
+        body: '야영객들이 둘러앉아 별을 보고 있었어요. 방해하고 싶지 않아 발소리를 낮추고 다녀왔어요.',
+      },
+    ],
+    'gatefront-festival': [
+      {
+        id: 'gatefront-festival-1',
+        title: '성문 앞 축제',
+        body: '성문 앞은 등불로 가득했어요. 사람들 사이를 지나 축제 준비 천막에 배달함을 무사히 전했어요.',
+      },
+      {
+        id: 'gatefront-festival-2',
+        title: '성문 앞 축제',
+        body: '악단의 연주가 울려 퍼지고 있었어요. 발걸음이 절로 가벼워져 콧노래를 흥얼거리며 돌아왔어요.',
+      },
+      {
+        id: 'gatefront-festival-3',
+        title: '성문 앞 축제',
+        body: '축제 준비로 다들 분주했지만, 잠시 짬을 내 오래된 레시피 조각 하나를 건네받았어요.',
+      },
+      {
+        id: 'gatefront-festival-4',
+        title: '성문 앞 축제',
+        body: '성벽 위에서 내려다본 축제 풍경이 반짝였어요. 그 장면을 눈에 담고 조용히 발길을 돌렸어요.',
+      },
+    ],
+    'moonlit-station': [
+      {
+        id: 'moonlit-station-1',
+        title: '달빛 기차역',
+        body: '달빛만 비추는 조용한 기차역에 도착했어요. 인적 드문 승강장에 배달함을 조심히 내려두었어요.',
+      },
+      {
+        id: 'moonlit-station-2',
+        title: '달빛 기차역',
+        body: '먼 길을 오가는 기차가 기적을 울리며 지나갔어요. 그 소리를 배웅 삼아 다시 발걸음을 옮겼어요.',
+      },
+      {
+        id: 'moonlit-station-3',
+        title: '달빛 기차역',
+        body: '역무원이 낡은 레시피 수첩 한 장을 건네주었어요. "오래 간직했던 거예요"라는 말과 함께요.',
+      },
+      {
+        id: 'moonlit-station-4',
+        title: '달빛 기차역',
+        body: '플랫폼 끝에서 별이 유난히 밝게 보였어요. 잠시 올려다보다, 다음 배달을 위해 돌아섰어요.',
+      },
+    ],
+  };
 
   // 황금 간식 등장 설정 (무대 3부터, 화면이 보이는 동안에만).
   var GOLDEN_SNACK = {
@@ -249,14 +418,14 @@
     { id: 9, description: '동네 가게로 승급하기', condition: { type: 'stageReached', amount: 3 }, reward: 30000 },
     { id: 10, description: '사탕 기계 10대 모으기', condition: { type: 'buildingOwned', key: 'candy', amount: 10 }, reward: 80000 },
     { id: 11, description: '달콤한 레시피 배우기', condition: { type: 'upgradeOwned', key: 'sweet-recipe' }, reward: 120000 },
-    { id: 12, description: '축제 납품 배달 완료하기', condition: { type: 'deliveryCompletedCount', amount: 2 }, reward: 250000 },
+    { id: 12, description: '배달 2건 완료하기', condition: { type: 'deliveryCompletedCount', amount: 2 }, reward: 250000 },
     { id: 13, description: '간식 공방으로 승급하기', condition: { type: 'stageReached', amount: 4 }, reward: 900000 },
     { id: 14, description: '쿠키 오븐 10대 모으기', condition: { type: 'buildingOwned', key: 'cookie', amount: 10 }, reward: 2500000 },
     { id: 15, description: '컵케이크 스탠드 10대 모으기', condition: { type: 'buildingOwned', key: 'cupcake', amount: 10 }, reward: 6000000 },
     { id: 16, description: '공방 확장 배우기', condition: { type: 'upgradeOwned', key: 'workshop-expansion' }, reward: 15000000 },
     { id: 17, description: '간식 공장으로 승급하기', condition: { type: 'stageReached', amount: 5 }, reward: 50000000 },
     { id: 18, description: '젤리 공장 5대 모으기', condition: { type: 'buildingOwned', key: 'jelly', amount: 5 }, reward: 150000000 },
-    { id: 19, description: '왕궁 진상 배달 완료하기', condition: { type: 'deliveryCompletedCount', amount: 3 }, reward: 500000000 },
+    { id: 19, description: '배달 3건 완료하기', condition: { type: 'deliveryCompletedCount', amount: 3 }, reward: 500000000 },
     { id: 20, description: '간식 왕국으로 승급하기', condition: { type: 'stageReached', amount: 6 }, reward: 0, isPrestigeAnnounce: true },
   ];
 
@@ -306,6 +475,7 @@
     DEFAULT_OFFLINE_CAP_HOURS: DEFAULT_OFFLINE_CAP_HOURS,
     EXTENDED_OFFLINE_CAP_HOURS: EXTENDED_OFFLINE_CAP_HOURS,
     DELIVERIES: DELIVERIES,
+    DELIVERY_STORIES: DELIVERY_STORIES,
     GOLDEN_SNACK: GOLDEN_SNACK,
     PRESTIGE: PRESTIGE,
     QUESTS: QUESTS,

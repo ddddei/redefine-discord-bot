@@ -77,6 +77,32 @@ body::before {
 
 /* 공방 탭 */
 
+.goal-banner {
+  background: #ecd9ad;
+  border: 1.6px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+}
+
+.goal-banner.hidden {
+  display: none;
+}
+
+.scene-flag {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 28px;
+}
+
+.scene-flag.hidden {
+  display: none;
+}
+
 .stage-scene {
   position: relative;
   border-radius: var(--radius-lg);
@@ -418,6 +444,101 @@ body::before {
   margin: 0;
   font-size: 13px;
   color: var(--ink-soft);
+}
+
+/* 이야기 도감 */
+
+.story-codex-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-codex-row {
+  background: var(--paper-raised);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.story-codex-row.locked {
+  opacity: 0.45;
+}
+
+.story-codex-row .row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.story-codex-row .row-subtitle {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* 주간 생산 추이 */
+
+.weekly-chart {
+  background: var(--paper-raised);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin: 0 0 16px;
+}
+
+.weekly-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+}
+
+.weekly-chart-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 4px;
+}
+
+.weekly-chart-bar {
+  width: 100%;
+  max-width: 24px;
+  background: var(--accent-rose);
+  border: 1px solid var(--ink);
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+}
+
+.weekly-chart-label {
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+/* 환생 히스토리 */
+
+.prestige-history-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prestige-history-row {
+  background: var(--paper-raised);
+  border: 1.3px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
 }
 
 /* 퀘스트 바 */

@@ -34,8 +34,10 @@
 
       <main class="app-main">
         <section id="tab-workshop" class="tab-panel" data-tab="workshop">
+          <div id="goal-banner" class="goal-banner hidden"></div>
           <div id="stage-scene" class="stage-scene">
             <div id="scene-emoji" class="scene-emoji">🧺🍓</div>
+            <div id="scene-flag" class="scene-flag hidden">🎉</div>
             <div id="scene-props" class="scene-props"></div>
           </div>
 
@@ -92,6 +94,15 @@
           <h2 class="panel-heading">업적 도감</h2>
           <ul id="achievement-list" class="achievement-list"></ul>
 
+          <h2 class="panel-heading">이야기 도감</h2>
+          <ul id="story-codex-list" class="story-codex-list"></ul>
+
+          <h2 class="panel-heading">주간 생산 추이</h2>
+          <div id="weekly-chart" class="weekly-chart"></div>
+
+          <h2 class="panel-heading">환생 히스토리</h2>
+          <ul id="prestige-history-list" class="prestige-history-list"></ul>
+
           <h2 class="panel-heading">계정 연결</h2>
           <p class="gk-link-status">간식 공방 키우기는 랭킹 대상이 아니에요. 연결하면 주간 누적 생산량이 참여 기록으로만 서버에 남아요.</p>
           <div id="link-section"></div>
@@ -125,6 +136,17 @@
         <p id="offline-modal-copy" class="modal-copy"></p>
         <div class="modal-actions">
           <button id="offline-modal-close" type="button" class="gk-button primary">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="story-modal" class="gk-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="story-modal-title">
+      <div class="gk-modal">
+        <p class="kicker">배달 이야기</p>
+        <h2 id="story-modal-title">골목 어귀</h2>
+        <p id="story-modal-copy" class="modal-copy"></p>
+        <div class="modal-actions">
+          <button id="story-modal-close" type="button" class="gk-button primary">계속하기</button>
         </div>
       </div>
     </div>

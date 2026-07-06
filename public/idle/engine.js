@@ -79,6 +79,12 @@
       deliveryCompletedCount: 0,
       goldenSnackClickedCount: 0,
       lastSeenAt: null,
+      deliveryVisitCounts: {},
+      collectedStories: {},
+      weeklySnapshots: [],
+      lastSnapshotWeekKey: null,
+      snapshotBaselineProduced: 0,
+      prestigeHistory: [],
     };
   }
 
@@ -99,7 +105,10 @@
 
   // ---- 생산량 계산 ----
 
-  function productionMultiplier(state) {
+  // eventMultiplier는 운영 이벤트 주간 생산 배수(선택 인자, 기본 1). engine은 env나
+  // fetch를 직접 알지 못한다 — game.js가 서버 응답(goal API의 event.multiplier)을
+  // 받아 이 인자로 주입하는, now 인자 주입과 같은 방식의 "값 주입 패턴"이다.
+  function productionMultiplier(state, eventMultiplier) {
     var multiplier = 1;
     Content.UPGRADES.forEach(function (upgrade) {
       if (state.upgrades[upgrade.key] && upgrade.effect.type === 'productionMultiplier') {
@@ -107,6 +116,9 @@
       }
     });
     multiplier *= 1 + (state.prestigePoints || 0) * Content.PRESTIGE.productionBonusPerPoint;
+    if (typeof eventMultiplier === 'number' && eventMultiplier > 0) {
+      multiplier *= eventMultiplier;
+    }
     return multiplier;
   }
 
@@ -119,11 +131,11 @@
     return total;
   }
 
-  function getProductionPerSecond(state) {
-    return baseProductionPerSecond(state) * productionMultiplier(state);
+  function getProductionPerSecond(state, eventMultiplier) {
+    return baseProductionPerSecond(state) * productionMultiplier(state, eventMultiplier);
   }
 
-  function getClickAmount(state) {
+  function getClickAmount(state, eventMultiplier) {
     var amount = Content.BASE_CLICK_AMOUNT;
     var percentOfRate = 0;
 
@@ -142,7 +154,7 @@
       amount += baseProductionPerSecond(state) * percentOfRate;
     }
 
-    return amount * productionMultiplier(state);
+    return amount * productionMultiplier(state, eventMultiplier);
   }
 
   function getOfflineCapHours(state) {
@@ -190,16 +202,16 @@
     state.lifetimeProduced += amount;
   }
 
-  function applyClick(state) {
-    addProduced(state, getClickAmount(state));
+  function applyClick(state, eventMultiplier) {
+    addProduced(state, getClickAmount(state, eventMultiplier));
     state.clickCount += 1;
   }
 
-  function applyProductionTick(state, elapsedMs) {
+  function applyProductionTick(state, elapsedMs, eventMultiplier) {
     if (!(elapsedMs > 0)) {
       return 0;
     }
-    var amount = getProductionPerSecond(state) * (elapsedMs / 1000);
+    var amount = getProductionPerSecond(state, eventMultiplier) * (elapsedMs / 1000);
     addProduced(state, amount);
     return amount;
   }
@@ -287,7 +299,7 @@
     return now >= state.delivery.finishesAt;
   }
 
-  function collectDelivery(state, now) {
+  function collectDelivery(state, now, eventMultiplier) {
     if (!state.delivery) {
       return { success: false, reason: 'NO_DELIVERY' };
     }
@@ -295,19 +307,62 @@
       return { success: false, reason: 'NOT_READY' };
     }
     var delivery = findDelivery(state.delivery.key);
-    var reward = getProductionPerSecond(state) * delivery.rewardSeconds;
+    var reward = getProductionPerSecond(state, eventMultiplier) * delivery.rewardSeconds;
     addProduced(state, reward);
     state.delivery = null;
     state.deliveryCompletedCount = (state.deliveryCompletedCount || 0) + 1;
-    return { success: true, reward: reward };
+
+    var result = { success: true, reward: reward };
+
+    // 강가 찻집: 낮은 확률 황금 간식 보너스(계획서 2.1절). Math.random 허용 —
+    // idle은 랭킹 미노출 장르라 시드 무관(기존 황금 간식과 동일 원칙).
+    if (delivery.goldenBonusChance && Math.random() < delivery.goldenBonusChance) {
+      var goldenBonus = getProductionPerSecond(state, eventMultiplier) * Content.GOLDEN_SNACK.instantRewardSeconds;
+      addProduced(state, goldenBonus);
+      result.goldenBonus = goldenBonus;
+    }
+
+    // 성문 앞 축제/달빛 기차역: 레시피 조각(환생 포인트 직접 +N, 계획서 2.1절).
+    if (delivery.prestigePointReward) {
+      state.prestigePoints = (state.prestigePoints || 0) + delivery.prestigePointReward;
+      result.prestigePointReward = delivery.prestigePointReward;
+    }
+
+    // 이야기 카드: 목적지별 방문 횟수 기반 결정적 순환(RNG 아님, 계획서 2.2절).
+    if (!state.deliveryVisitCounts || typeof state.deliveryVisitCounts !== 'object') {
+      state.deliveryVisitCounts = {};
+    }
+    var visitCount = (state.deliveryVisitCounts[delivery.key] || 0) + 1;
+    state.deliveryVisitCounts[delivery.key] = visitCount;
+    var story = getDeliveryStory(delivery.key, visitCount);
+    if (story) {
+      if (!state.collectedStories || typeof state.collectedStories !== 'object') {
+        state.collectedStories = {};
+      }
+      state.collectedStories[story.id] = true;
+      result.story = story;
+    }
+
+    return result;
+  }
+
+  // 목적지별 이야기 카드 4종 중 하나를 방문 횟수로 결정적으로 고른다(RNG 아님).
+  // visitCount는 1부터 시작(이번 방문 포함).
+  function getDeliveryStory(deliveryKey, visitCount) {
+    var stories = Content.DELIVERY_STORIES[deliveryKey];
+    if (!stories || stories.length === 0) {
+      return null;
+    }
+    var index = (visitCount - 1) % stories.length;
+    return stories[index];
   }
 
   // ---- 황금 간식 ----
 
-  function collectGoldenSnack(state, kind) {
+  function collectGoldenSnack(state, kind, eventMultiplier) {
     var reward = 0;
     if (kind === 'instant') {
-      reward = getProductionPerSecond(state) * Content.GOLDEN_SNACK.instantRewardSeconds;
+      reward = getProductionPerSecond(state, eventMultiplier) * Content.GOLDEN_SNACK.instantRewardSeconds;
       addProduced(state, reward);
     }
     state.goldenSnackClickedCount = (state.goldenSnackClickedCount || 0) + 1;
@@ -436,7 +491,9 @@
     return state.stageId >= Content.PRESTIGE.requiredStageId;
   }
 
-  function prestige(state) {
+  // now는 환생 히스토리 기록용(선택 인자 — 기존 now 인자 주입 패턴과 동일). 생략하면
+  // 히스토리에 at: null로 기록된다(엔진은 Date.now()를 직접 참조하지 않는다).
+  function prestige(state, now) {
     if (!canPrestige(state)) {
       return { success: false, reason: 'STAGE_NOT_REACHED' };
     }
@@ -462,12 +519,25 @@
     state.lifetimeProducedBeforePrestige = state.lifetimeProduced;
     // 업적/통계/퀘스트 진행은 유지한다.
 
+    if (!Array.isArray(state.prestigeHistory)) {
+      state.prestigeHistory = [];
+    }
+    state.prestigeHistory.push({
+      at: typeof now === 'number' ? now : null,
+      prestigePoints: state.prestigePoints,
+      lifetimeProduced: state.lifetimeProduced,
+    });
+    // 최근 10개만 보관(계획서 3절).
+    if (state.prestigeHistory.length > 10) {
+      state.prestigeHistory = state.prestigeHistory.slice(state.prestigeHistory.length - 10);
+    }
+
     return { success: true, gained: gained };
   }
 
   // ---- 오프라인 수익 ----
 
-  function computeOfflineEarnings(state, lastSeenAt, now) {
+  function computeOfflineEarnings(state, lastSeenAt, now, eventMultiplier) {
     if (typeof lastSeenAt !== 'number' || !(lastSeenAt > 0)) {
       return { earned: 0, elapsedMs: 0, cappedMs: 0, clockRewind: false };
     }
@@ -478,17 +548,50 @@
     var elapsedMs = now - lastSeenAt;
     var capMs = getOfflineCapHours(state) * 60 * 60 * 1000;
     var cappedMs = Math.min(elapsedMs, capMs);
-    var earned = getProductionPerSecond(state) * (cappedMs / 1000);
+    var earned = getProductionPerSecond(state, eventMultiplier) * (cappedMs / 1000);
 
     return { earned: earned, elapsedMs: elapsedMs, cappedMs: cappedMs, clockRewind: false };
   }
 
-  function applyOfflineEarnings(state, lastSeenAt, now) {
-    var result = computeOfflineEarnings(state, lastSeenAt, now);
+  function applyOfflineEarnings(state, lastSeenAt, now, eventMultiplier) {
+    var result = computeOfflineEarnings(state, lastSeenAt, now, eventMultiplier);
     if (result.earned > 0) {
       addProduced(state, result.earned);
     }
     return result;
+  }
+
+  // ---- 통계: 주간 생산 추이 ----
+
+  // weekKey 변화를 감지해 지난 주 스냅샷을 기록한다(계획서 3절). weekKey는 game.js가
+  // 서버와 같은 ISO 주차 규칙으로 계산해 주입한다(engine은 Date를 직접 다루지 않는다).
+  // 최초 호출(lastSnapshotWeekKey가 없을 때)은 기준점만 세우고 스냅샷을 남기지 않는다
+  // (직전 주 생산량을 알 수 없기 때문).
+  function recordWeeklySnapshotIfNeeded(state, weekKey) {
+    if (!weekKey || typeof weekKey !== 'string') {
+      return false;
+    }
+    if (!Array.isArray(state.weeklySnapshots)) {
+      state.weeklySnapshots = [];
+    }
+    if (!state.lastSnapshotWeekKey) {
+      state.lastSnapshotWeekKey = weekKey;
+      state.snapshotBaselineProduced = state.lifetimeProduced;
+      return false;
+    }
+    if (state.lastSnapshotWeekKey === weekKey) {
+      return false;
+    }
+
+    var baseline = typeof state.snapshotBaselineProduced === 'number' ? state.snapshotBaselineProduced : 0;
+    var produced = Math.max(0, state.lifetimeProduced - baseline);
+    state.weeklySnapshots.push({ weekKey: state.lastSnapshotWeekKey, produced: produced });
+    if (state.weeklySnapshots.length > 8) {
+      state.weeklySnapshots = state.weeklySnapshots.slice(state.weeklySnapshots.length - 8);
+    }
+    state.lastSnapshotWeekKey = weekKey;
+    state.snapshotBaselineProduced = state.lifetimeProduced;
+    return true;
   }
 
   // ---- 큰 수 포맷 ----
@@ -693,6 +796,8 @@
     prestige: prestige,
     computeOfflineEarnings: computeOfflineEarnings,
     applyOfflineEarnings: applyOfflineEarnings,
+    getDeliveryStory: getDeliveryStory,
+    recordWeeklySnapshotIfNeeded: recordWeeklySnapshotIfNeeded,
     formatNumber: formatNumber,
     serializeState: serializeState,
     deserializeState: deserializeState,

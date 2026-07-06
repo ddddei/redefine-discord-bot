@@ -24,8 +24,59 @@
     return clickBoostUntil > now;
   }
 
+  // ---- 공동 목표/이벤트 배수 캐시 ----
+  // GameLink.fetchGoal() 결과를 세션당 최대 2회만 호출해 캐시한다(계획서 1.1절 —
+  // 게임 로드 시 + 기록 탭 진입 시). engine은 fetch/env를 모르므로, 여기서 받은
+  // event.multiplier를 별도 모듈 전역으로 들고 있다가 engine 함수 호출 시 인자로
+  // 주입한다(now 인자 주입과 동일한 "값 주입 패턴").
+  var goalFetchCount = 0;
+  var goalCache = null; // { weekKey, goal, total, participants, achieved, myContribution, event } | null
+
+  function getEventMultiplier() {
+    if (goalCache && goalCache.event && typeof goalCache.event.multiplier === 'number') {
+      return goalCache.event.multiplier;
+    }
+    return 1;
+  }
+
+  function refreshGoalCache() {
+    if (!window.GameLink || !window.GameLink.fetchGoal || goalFetchCount >= 2) {
+      return Promise.resolve(goalCache);
+    }
+    goalFetchCount += 1;
+    return window.GameLink.fetchGoal().then(function (result) {
+      if (result && result.ok) {
+        goalCache = result;
+        // 주간 생산 추이 스냅샷은 서버가 계산한 weekKey를 그대로 재사용한다(계획서 3절 —
+        // 클라이언트가 별도의 주차 계산 로직을 갖지 않는다). 미연결/오프라인이면
+        // goalCache가 없어 스냅샷 기록도 자연히 미뤄진다(조용한 생략).
+        if (Engine.recordWeeklySnapshotIfNeeded(state, result.weekKey)) {
+          saveState();
+          renderWeeklyChart();
+        }
+      }
+      renderGoalBanner();
+      return goalCache;
+    }).catch(function () {
+      // 미연결/오프라인이면 조용히 생략 — 게임 진행에는 영향이 없다.
+      return goalCache;
+    });
+  }
+
+  function renderGoalBanner() {
+    if (!goalBannerEl || !sceneFlagEl) {
+      return;
+    }
+    var achieved = !!(goalCache && goalCache.achieved);
+    goalBannerEl.classList.toggle('hidden', !achieved);
+    if (achieved) {
+      goalBannerEl.textContent = '이번 주 목표 달성! 다 같이 해냈어요 🎉';
+    }
+    sceneFlagEl.classList.toggle('hidden', !achieved);
+  }
+
   function getEffectiveClickAmount(now) {
-    var amount = Engine.getClickAmount(state);
+    var amount = Engine.getClickAmount(state, getEventMultiplier());
     if (isClickBoostActive(now)) {
       amount *= Content.GOLDEN_SNACK.clickBoostMultiplier;
     }
@@ -39,8 +90,10 @@
   var snacksValueEl = document.getElementById('snacks-value');
   var rateValueEl = document.getElementById('rate-value');
 
+  var goalBannerEl = document.getElementById('goal-banner');
   var stageSceneEl = document.getElementById('stage-scene');
   var sceneEmojiEl = document.getElementById('scene-emoji');
+  var sceneFlagEl = document.getElementById('scene-flag');
   var scenePropsEl = document.getElementById('scene-props');
 
   var makeSnackButton = document.getElementById('make-snack-button');
@@ -67,6 +120,9 @@
   var prestigeSummaryEl = document.getElementById('prestige-summary');
   var prestigeButton = document.getElementById('prestige-button');
   var achievementListEl = document.getElementById('achievement-list');
+  var storyCodexListEl = document.getElementById('story-codex-list');
+  var weeklyChartEl = document.getElementById('weekly-chart');
+  var prestigeHistoryListEl = document.getElementById('prestige-history-list');
   var resetButton = document.getElementById('reset-button');
 
   var questDescriptionEl = document.getElementById('quest-description');
@@ -80,6 +136,11 @@
   var offlineModal = document.getElementById('offline-modal');
   var offlineModalCopyEl = document.getElementById('offline-modal-copy');
   var offlineModalCloseButton = document.getElementById('offline-modal-close');
+
+  var storyModal = document.getElementById('story-modal');
+  var storyModalTitleEl = document.getElementById('story-modal-title');
+  var storyModalCopyEl = document.getElementById('story-modal-copy');
+  var storyModalCloseButton = document.getElementById('story-modal-close');
 
   var stageModal = document.getElementById('stage-modal');
   var stageModalTitleEl = document.getElementById('stage-modal-title');
@@ -151,7 +212,7 @@
     var now = Date.now();
     var elapsed = now - lastTickAt;
     if (elapsed > 0) {
-      Engine.applyProductionTick(state, elapsed);
+      Engine.applyProductionTick(state, elapsed, getEventMultiplier());
       lastTickAt = now;
     }
     state.lastSeenAt = now;
@@ -169,7 +230,7 @@
     stageRoleEl.textContent = stage.role;
     stageTitleEl.textContent = stage.title;
     snacksValueEl.textContent = Engine.formatNumber(state.snacks);
-    rateValueEl.textContent = '+' + Engine.formatNumber(Engine.getProductionPerSecond(state)) + '/초';
+    rateValueEl.textContent = '+' + Engine.formatNumber(Engine.getProductionPerSecond(state, getEventMultiplier())) + '/초';
   }
 
   var lastRenderedPropCount = 0;
@@ -349,7 +410,7 @@
     deliveryActiveRemainingEl.textContent = ready
       ? '수령할 수 있어요.'
       : ('남은 시간 ' + formatDuration(state.delivery.finishesAt - now));
-    deliveryActiveRewardEl.textContent = '예상 보상 ' + Engine.formatNumber(Engine.getProductionPerSecond(state) * delivery.rewardSeconds);
+    deliveryActiveRewardEl.textContent = '예상 보상 ' + Engine.formatNumber(Engine.getProductionPerSecond(state, getEventMultiplier()) * delivery.rewardSeconds);
     deliveryCollectButton.disabled = !ready;
   }
 
@@ -450,6 +511,119 @@
     });
   }
 
+  // 이야기 도감: 목적지 6종 × 4종 이야기 카드의 수집 여부(계획서 2.2절, 기존 업적
+  // 도감과 같은 잠금/해제 패턴).
+  function renderStoryCodex() {
+    if (!storyCodexListEl) {
+      return;
+    }
+    storyCodexListEl.innerHTML = '';
+    var collected = state.collectedStories || {};
+    Content.DELIVERIES.forEach(function (delivery) {
+      var stories = Content.DELIVERY_STORIES[delivery.key] || [];
+      stories.forEach(function (story) {
+        var unlocked = !!collected[story.id];
+        var li = document.createElement('li');
+        li.className = 'story-codex-row ' + (unlocked ? 'unlocked' : 'locked');
+
+        var info = document.createElement('div');
+        info.className = 'row-info';
+        var title = document.createElement('p');
+        title.className = 'row-title';
+        title.textContent = unlocked ? (delivery.name + ' — ' + story.title) : '???';
+        info.appendChild(title);
+        if (unlocked) {
+          var body = document.createElement('p');
+          body.className = 'row-subtitle';
+          body.textContent = story.body;
+          info.appendChild(body);
+        }
+
+        li.appendChild(info);
+        storyCodexListEl.appendChild(li);
+      });
+    });
+  }
+
+  // 주간 생산 추이: CSS 막대 그래프(라이브러리 금지, 계획서 3절). 최근 8주.
+  function renderWeeklyChart() {
+    if (!weeklyChartEl) {
+      return;
+    }
+    weeklyChartEl.innerHTML = '';
+    var snapshots = state.weeklySnapshots || [];
+    if (snapshots.length === 0) {
+      var empty = document.createElement('p');
+      empty.className = 'gk-link-status';
+      empty.textContent = '아직 지난 주 기록이 없어요. 한 주가 지나면 여기에 쌓여요.';
+      weeklyChartEl.appendChild(empty);
+      return;
+    }
+
+    var maxProduced = snapshots.reduce(function (max, snapshot) {
+      return Math.max(max, snapshot.produced);
+    }, 0);
+
+    var bars = document.createElement('div');
+    bars.className = 'weekly-chart-bars';
+    snapshots.forEach(function (snapshot) {
+      var column = document.createElement('div');
+      column.className = 'weekly-chart-column';
+
+      var bar = document.createElement('div');
+      bar.className = 'weekly-chart-bar';
+      var heightPercent = maxProduced > 0 ? Math.max(4, Math.round((snapshot.produced / maxProduced) * 100)) : 4;
+      bar.style.height = heightPercent + '%';
+      bar.title = Engine.formatNumber(snapshot.produced);
+      column.appendChild(bar);
+
+      var label = document.createElement('span');
+      label.className = 'weekly-chart-label';
+      label.textContent = snapshot.weekKey.replace(/^\d{4}-W/, 'W');
+      column.appendChild(label);
+
+      bars.appendChild(column);
+    });
+    weeklyChartEl.appendChild(bars);
+  }
+
+  // 환생 히스토리: 최근 10개(계획서 3절).
+  function renderPrestigeHistory() {
+    if (!prestigeHistoryListEl) {
+      return;
+    }
+    prestigeHistoryListEl.innerHTML = '';
+    var history = state.prestigeHistory || [];
+    if (history.length === 0) {
+      var empty = document.createElement('li');
+      empty.className = 'gk-link-status';
+      empty.textContent = '아직 환생 기록이 없어요.';
+      prestigeHistoryListEl.appendChild(empty);
+      return;
+    }
+
+    // 최신 순으로 보여준다.
+    history.slice().reverse().forEach(function (entry) {
+      var li = document.createElement('li');
+      li.className = 'prestige-history-row';
+
+      var info = document.createElement('div');
+      info.className = 'row-info';
+      var title = document.createElement('p');
+      title.className = 'row-title';
+      var dateText = typeof entry.at === 'number' ? new Date(entry.at).toLocaleDateString('ko-KR') : '기록 없음';
+      title.textContent = dateText + ' · 레시피 ' + entry.prestigePoints + '개';
+      var subtitle = document.createElement('p');
+      subtitle.className = 'row-subtitle';
+      subtitle.textContent = '누적 생산량 ' + Engine.formatNumber(entry.lifetimeProduced);
+      info.appendChild(title);
+      info.appendChild(subtitle);
+
+      li.appendChild(info);
+      prestigeHistoryListEl.appendChild(li);
+    });
+  }
+
   function renderQuestBar() {
     var quest = Engine.getCurrentQuest(state);
     if (!quest) {
@@ -471,6 +645,7 @@
   function renderAll() {
     renderHeader();
     renderScene();
+    renderGoalBanner();
     renderClickAmount();
     renderStageUpgrade();
     renderBuildings();
@@ -479,6 +654,9 @@
     renderStats();
     renderPrestige();
     renderAchievements();
+    renderStoryCodex();
+    renderWeeklyChart();
+    renderPrestigeHistory();
     renderQuestBar();
   }
 
@@ -533,8 +711,10 @@
     }
 
     renderGoalSectionState('공동 목표를 불러오는 중이에요.');
-    window.GameLink.fetchGoal().then(function (result) {
-      if (!result.ok) {
+    // 세션당 최대 2회 호출 캐시(계획서 1.1절)를 공유한다 — 직접 fetchGoal을 호출하지
+    // 않고 refreshGoalCache를 거친다(게임 로드 시 이미 1회 소진했을 수 있다).
+    refreshGoalCache().then(function (result) {
+      if (!result || !result.ok) {
         renderGoalSectionState('공동 목표를 불러오지 못했어요. 게임 진행에는 영향이 없어요.');
         return;
       }
@@ -673,10 +853,23 @@
 
   // ---- 배달 ----
 
+  function showStoryModal(story) {
+    storyModalTitleEl.textContent = story.title;
+    storyModalCopyEl.textContent = story.body;
+    openModal(storyModal);
+  }
+
+  storyModalCloseButton.addEventListener('click', function () {
+    closeModal(storyModal);
+  });
+
   deliveryCollectButton.addEventListener('click', function () {
-    var result = Engine.collectDelivery(state, Date.now());
+    var result = Engine.collectDelivery(state, Date.now(), getEventMultiplier());
     if (result.success) {
       onStateChanged();
+      if (result.story) {
+        showStoryModal(result.story);
+      }
     }
   });
 
@@ -705,7 +898,7 @@
   });
 
   prestigeModalConfirmButton.addEventListener('click', function () {
-    var result = Engine.prestige(state);
+    var result = Engine.prestige(state, Date.now());
     closeModal(prestigeModal);
     if (result.success) {
       onStateChanged();
@@ -778,7 +971,7 @@
     window.clearTimeout(goldenSnackHideTimeoutId);
 
     var kind = Math.random() < 0.5 ? 'instant' : 'clickBoost';
-    var result = Engine.collectGoldenSnack(state, kind);
+    var result = Engine.collectGoldenSnack(state, kind, getEventMultiplier());
 
     if (kind === 'instant') {
       showClickPopup(result.reward);
@@ -796,7 +989,7 @@
     if (state.lastSeenAt === null || state.lastSeenAt === undefined) {
       return;
     }
-    var result = Engine.applyOfflineEarnings(state, state.lastSeenAt, now);
+    var result = Engine.applyOfflineEarnings(state, state.lastSeenAt, now, getEventMultiplier());
     if (result.clockRewind) {
       return;
     }
@@ -828,7 +1021,7 @@
     lastTickAt = now;
 
     if (elapsed > 0) {
-      Engine.applyProductionTick(state, elapsed);
+      Engine.applyProductionTick(state, elapsed, getEventMultiplier());
     }
 
     renderHeader();
@@ -871,6 +1064,9 @@
     renderAll();
     saveState();
     scheduleGoldenSnack();
+    // 게임 로드 시 공동 목표를 1회 조회한다(계획서 1.1절). 미연결/오프라인이면
+    // refreshGoalCache 내부에서 조용히 실패하고 배너는 숨김 상태로 유지된다.
+    refreshGoalCache();
     window.requestAnimationFrame(tick);
   }
 

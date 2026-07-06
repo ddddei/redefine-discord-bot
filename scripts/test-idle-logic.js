@@ -11,7 +11,14 @@ function loadEngine() {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(CONTENT_FILE, 'utf8'), context, { filename: 'content.js' });
   vm.runInContext(fs.readFileSync(ENGINE_FILE, 'utf8'), context, { filename: 'engine.js' });
-  return { Content: context.window.IdleContent, Engine: context.window.IdleEngine };
+  return { Content: context.window.IdleContent, Engine: context.window.IdleEngine, context };
+}
+
+// vm 컨텍스트는 바깥 realm과 별개의 Math 객체를 갖는다(Math.random을 바깥에서
+// 스텁해도 vm 안 코드에는 영향이 없다) — 강가 찻집 황금 간식 보너스처럼 Math.random에
+// 의존하는 분기를 결정적으로 테스트하려면 컨텍스트 안에서 직접 교체해야 한다.
+function stubContextRandom(context, value) {
+  vm.runInContext(`Math.random = function () { return ${value}; }`, context);
 }
 
 function findBuilding(Content, key) {
@@ -111,7 +118,7 @@ function testDelivery() {
   state.buildings.strawberry.owned = 10; // 초당 5 생산
 
   const now = 1000000;
-  const started = Engine.startDelivery(state, 'neighborhood-delivery', now);
+  const started = Engine.startDelivery(state, 'village-market', now);
   assert.strictEqual(started.success, true);
 
   // 소요 시간 전에는 미완료
@@ -121,7 +128,7 @@ function testDelivery() {
   assert.strictEqual(tooEarly.reason, 'NOT_READY');
 
   // 동시 1건 제한
-  const secondStart = Engine.startDelivery(state, 'neighborhood-delivery', now + 1000);
+  const secondStart = Engine.startDelivery(state, 'village-market', now + 1000);
   assert.strictEqual(secondStart.success, false);
   assert.strictEqual(secondStart.reason, 'DELIVERY_IN_PROGRESS');
 
@@ -129,16 +136,128 @@ function testDelivery() {
   assert.strictEqual(Engine.isDeliveryComplete(state, now - 5000), false);
 
   // 경과 후 완료, 보상은 수령 시점 생산량 기준
-  const finishTime = now + 5 * 60 * 1000;
+  const finishTime = now + 15 * 60 * 1000;
   assert.strictEqual(Engine.isDeliveryComplete(state, finishTime), true);
   const beforeSnacks = state.snacks;
   const collected = Engine.collectDelivery(state, finishTime);
   assert.strictEqual(collected.success, true);
-  const expectedReward = 5 * 900; // 초당 생산량 5 × rewardSeconds 900
+  const expectedReward = 5 * 600; // 초당 생산량 5 × rewardSeconds 600(마을 장터)
   assert.strictEqual(collected.reward, expectedReward);
   assert.strictEqual(state.snacks, beforeSnacks + expectedReward);
   assert.strictEqual(state.delivery, null);
   assert.strictEqual(state.deliveryCompletedCount, 1);
+}
+
+function testDeliveryDestinationsExpansion() {
+  const { Engine, Content, context } = loadEngine();
+
+  // 계획서 2.1절: 6종, 무대 1~6 순서대로 해금.
+  const expectedKeys = [
+    'alley-errand',
+    'village-market',
+    'riverside-teahouse',
+    'forest-campsite',
+    'gatefront-festival',
+    'moonlit-station',
+  ];
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(Content.DELIVERIES.map((delivery) => delivery.key))),
+    expectedKeys,
+  );
+  Content.DELIVERIES.forEach((delivery, index) => {
+    assert.strictEqual(delivery.unlockStage, index + 1);
+  });
+
+  // 골목 어귀는 시작 무대(1)부터 바로 해금.
+  const state = Engine.createNewState();
+  assert.strictEqual(Engine.isDeliveryUnlocked(state, 'alley-errand'), true);
+  assert.strictEqual(Engine.isDeliveryUnlocked(state, 'village-market'), false);
+
+  // 강가 찻집 완료 시 낮은 확률로 황금 간식 보너스가 additive로 붙을 수 있다
+  // (Math.random을 1에 가깝게 스텁해 미당첨/당첨 양쪽 분기를 모두 검증).
+  const teaState = Engine.createNewState();
+  teaState.stageId = 3;
+  teaState.buildings.strawberry.owned = 10; // 초당 5 생산
+  Engine.startDelivery(teaState, 'riverside-teahouse', 0);
+  const teaFinish = Engine.findDelivery('riverside-teahouse').durationMs;
+
+  stubContextRandom(context, 0.99); // 확률(0.12) 밖 → 보너스 없음
+  const noBonus = Engine.collectDelivery(teaState, teaFinish);
+  assert.strictEqual(noBonus.success, true);
+  assert.strictEqual(noBonus.goldenBonus, undefined);
+
+  const teaState2 = Engine.createNewState();
+  teaState2.stageId = 3;
+  teaState2.buildings.strawberry.owned = 10;
+  Engine.startDelivery(teaState2, 'riverside-teahouse', 0);
+  stubContextRandom(context, 0.01); // 확률 안 → 보너스 지급
+  const withBonus = Engine.collectDelivery(teaState2, teaFinish);
+  assert.strictEqual(withBonus.success, true);
+  assert.ok(withBonus.goldenBonus > 0);
+  assert.strictEqual(
+    teaState2.lifetimeProduced,
+    withBonus.reward + withBonus.goldenBonus,
+  );
+
+  // 성문 앞 축제/달빛 기차역은 레시피 조각(환생 포인트)을 직접 지급한다.
+  const festivalState = Engine.createNewState();
+  festivalState.stageId = 5;
+  festivalState.buildings.strawberry.owned = 10;
+  Engine.startDelivery(festivalState, 'gatefront-festival', 0);
+  const festivalFinish = Engine.findDelivery('gatefront-festival').durationMs;
+  const festivalResult = Engine.collectDelivery(festivalState, festivalFinish);
+  assert.strictEqual(festivalResult.success, true);
+  assert.strictEqual(festivalResult.prestigePointReward, 1);
+  assert.strictEqual(festivalState.prestigePoints, 1);
+
+  const stationState = Engine.createNewState();
+  stationState.stageId = 6;
+  stationState.buildings.strawberry.owned = 10;
+  Engine.startDelivery(stationState, 'moonlit-station', 0);
+  const stationFinish = Engine.findDelivery('moonlit-station').durationMs;
+  const stationResult = Engine.collectDelivery(stationState, stationFinish);
+  assert.strictEqual(stationResult.success, true);
+  assert.strictEqual(stationResult.prestigePointReward, 2);
+  assert.strictEqual(stationState.prestigePoints, 2);
+}
+
+function testDeliveryStories() {
+  const { Engine, Content } = loadEngine();
+
+  // 목적지 6종 × 4종 = 24개(계획서 2.2절).
+  assert.strictEqual(Object.keys(Content.DELIVERY_STORIES).length, 6);
+  Content.DELIVERIES.forEach((delivery) => {
+    const stories = Content.DELIVERY_STORIES[delivery.key];
+    assert.ok(Array.isArray(stories) && stories.length === 4, `${delivery.key} should have 4 stories`);
+    stories.forEach((story) => {
+      assert.strictEqual(typeof story.id, 'string');
+      assert.strictEqual(typeof story.title, 'string');
+      assert.strictEqual(typeof story.body, 'string');
+      assert.ok(story.body.length > 0);
+    });
+  });
+
+  // 방문 횟수 기반 결정적 순환(RNG 아님) — visitCount 1~8을 넣으면 0~3 인덱스가 반복된다.
+  const stories = Content.DELIVERY_STORIES['alley-errand'];
+  for (let visitCount = 1; visitCount <= 8; visitCount += 1) {
+    const expected = stories[(visitCount - 1) % 4];
+    assert.strictEqual(Engine.getDeliveryStory('alley-errand', visitCount).id, expected.id);
+  }
+
+  // collectDelivery가 실제로 방문 횟수를 누적하고 결정적으로 카드를 골라 도감에 기록한다.
+  const state = Engine.createNewState();
+  state.buildings.strawberry.owned = 10;
+  const alley = Engine.findDelivery('alley-errand');
+
+  for (let visit = 1; visit <= 5; visit += 1) {
+    Engine.startDelivery(state, 'alley-errand', 0);
+    const result = Engine.collectDelivery(state, alley.durationMs);
+    const expected = stories[(visit - 1) % 4];
+    assert.strictEqual(result.story.id, expected.id, `visit ${visit} should surface ${expected.id}`);
+    assert.strictEqual(state.collectedStories[expected.id], true);
+  }
+  // 5번째 방문에서 1번째 카드가 다시 나왔어도 이미 수집된 카드 4종만 기록돼 있어야 한다.
+  assert.strictEqual(Object.keys(state.collectedStories).length, 4);
 }
 
 function testQuests() {
@@ -237,7 +356,7 @@ function testPrestige() {
   state.snacks = 12345;
   state.buildings.strawberry.owned = 10;
   state.upgrades['sturdy-fingers'] = true;
-  state.delivery = { key: 'neighborhood-delivery', startedAt: 0, finishesAt: 100 };
+  state.delivery = { key: 'village-market', startedAt: 0, finishesAt: 100 };
   state.clickCount = 42;
   state.deliveryCompletedCount = 3;
 
@@ -328,6 +447,38 @@ function testSaveRoundTrip() {
   assert.strictEqual(Engine.deserializeState(JSON.stringify(noVersion)), null);
 }
 
+// 구버전 세이브(이번 고도화의 신규 필드가 전혀 없는 상태)를 로드해도 크래시 없이
+// 관용 초기화되어야 한다(계획서 0절 "완성 정의" 5번, deserializeState의 기존 패턴).
+function testLegacySaveForwardCompat() {
+  const { Engine, Content } = loadEngine();
+  const state = Engine.createNewState();
+  state.snacks = 500;
+  state.buildings.strawberry.owned = 4;
+
+  const legacy = JSON.parse(Engine.serializeState(state));
+  delete legacy.deliveryVisitCounts;
+  delete legacy.collectedStories;
+  delete legacy.weeklySnapshots;
+  delete legacy.lastSnapshotWeekKey;
+  delete legacy.snapshotBaselineProduced;
+  delete legacy.prestigeHistory;
+
+  const restored = Engine.deserializeState(JSON.stringify(legacy));
+  assert.ok(restored, '신규 필드가 없는 구버전 세이브도 로드에 성공해야 함');
+  assert.strictEqual(JSON.stringify(restored.deliveryVisitCounts), '{}');
+  assert.strictEqual(JSON.stringify(restored.collectedStories), '{}');
+  assert.strictEqual(JSON.stringify(restored.weeklySnapshots), '[]');
+  assert.strictEqual(restored.lastSnapshotWeekKey, null);
+  assert.strictEqual(restored.snapshotBaselineProduced, 0);
+  assert.strictEqual(JSON.stringify(restored.prestigeHistory), '[]');
+
+  // 관용 초기화 후에도 정상적으로 게임 로직이 동작해야 한다(크래시 없음).
+  assert.strictEqual(Engine.getProductionPerSecond(restored), Content.BUILDINGS[0].ratePerUnit * 4);
+  const snapshotResult = Engine.recordWeeklySnapshotIfNeeded(restored, '2026-W28');
+  assert.strictEqual(snapshotResult, false); // 최초 호출은 기준점만 세움
+  assert.strictEqual(restored.lastSnapshotWeekKey, '2026-W28');
+}
+
 function testFormatNumber() {
   const { Engine } = loadEngine();
   assert.strictEqual(Engine.formatNumber(9999), '9,999');
@@ -362,19 +513,80 @@ function testBalanceSafetyNet() {
   });
 }
 
+// 절대 규칙 3: lifetimeProduced 단조 증가 불변 — 파견/이벤트 배수/환생을 조합해도
+// 이 값이 절대 줄어들지 않아야 한다(공동 목표 집계 전제).
+function testLifetimeProducedMonotonicity() {
+  const { Engine, context } = loadEngine();
+  const state = Engine.createNewState();
+  state.buildings.strawberry.owned = 20; // 초당 10 생산
+  let previous = state.lifetimeProduced;
+
+  function assertNonDecreasing(label) {
+    assert.ok(state.lifetimeProduced >= previous, `${label} 이후 lifetimeProduced가 감소함`);
+    previous = state.lifetimeProduced;
+  }
+
+  // 1) 클릭
+  Engine.applyClick(state, 2); // 이벤트 배수 2배 적용
+  assertNonDecreasing('클릭');
+
+  // 2) 생산 틱(이벤트 배수 포함)
+  Engine.applyProductionTick(state, 60 * 1000, 2);
+  assertNonDecreasing('생산 틱');
+
+  // 3) 파견 시작 → 완료(이벤트 배수 포함, 강가 찻집 황금 보너스 당첨 경로 포함)
+  state.stageId = 3;
+  Engine.startDelivery(state, 'riverside-teahouse', 0);
+  stubContextRandom(context, 0.01); // 황금 보너스 당첨
+  const deliveryResult = Engine.collectDelivery(state, Engine.findDelivery('riverside-teahouse').durationMs, 2);
+  assert.strictEqual(deliveryResult.success, true);
+  assertNonDecreasing('파견 완료(이벤트 배수 + 황금 보너스)');
+
+  // 4) 오프라인 수익(이벤트 배수 포함)
+  Engine.applyOfflineEarnings(state, 0, 3 * 60 * 60 * 1000, 2);
+  assertNonDecreasing('오프라인 수익');
+
+  // 5) 환생(초기화가 일어나도 lifetimeProduced 자체는 유지되어야 한다)
+  state.stageId = 6;
+  state.lifetimeProduced = 5000000000;
+  previous = state.lifetimeProduced;
+  const prestigeResult = Engine.prestige(state, 1000);
+  assert.strictEqual(prestigeResult.success, true);
+  assertNonDecreasing('환생');
+
+  // 6) 환생 이후에도 계속 생산 가능(단조성 유지) + 이벤트 배수 3배 조합
+  Engine.applyProductionTick(state, 10 * 1000, 3);
+  assertNonDecreasing('환생 이후 생산(이벤트 3배)');
+
+  // 이벤트 배수를 적용하지 않은 경우보다 적용했을 때 생산량이 더 크거나 같아야 한다
+  // (배수가 실제로 곱연산으로 작동하는지 방향성 확인).
+  const noEventState = Engine.createNewState();
+  noEventState.buildings.strawberry.owned = 20;
+  const eventState = Engine.createNewState();
+  eventState.buildings.strawberry.owned = 20;
+  Engine.applyProductionTick(noEventState, 60 * 1000);
+  Engine.applyProductionTick(eventState, 60 * 1000, 2);
+  assert.ok(eventState.lifetimeProduced > noEventState.lifetimeProduced);
+  assert.strictEqual(eventState.lifetimeProduced, noEventState.lifetimeProduced * 2);
+}
+
 function main() {
   testCostCurve();
   testProductionSum();
   testClickAmount();
   testBuyBuildingAndUpgradeStage();
   testDelivery();
+  testDeliveryDestinationsExpansion();
+  testDeliveryStories();
   testQuests();
   testAchievements();
   testPrestige();
   testOfflineEarnings();
   testSaveRoundTrip();
+  testLegacySaveForwardCompat();
   testFormatNumber();
   testBalanceSafetyNet();
+  testLifetimeProducedMonotonicity();
 
   console.log('idle logic test passed');
 }

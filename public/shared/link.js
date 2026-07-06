@@ -240,6 +240,10 @@
           participants: result.data.participants,
           achieved: result.data.achieved,
           myContribution: result.data.myContribution,
+          // 운영 이벤트 주간 생산 배수(docs/idle-improvement-plan.md 1.2절).
+          // { multiplier, label } | null. 구버전 서버 응답에는 없으므로 undefined일 수
+          // 있다 - 호출부가 null과 동일하게 취급해 폴백 처리한다.
+          event: result.data.event || null,
         };
       })
       .catch(function (error) {

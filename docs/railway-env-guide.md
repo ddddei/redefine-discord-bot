@@ -111,6 +111,17 @@ WEBGAME_WORD_SALT=
 
 `WEBGAME_WORD_SALT`는 `오늘의 간식 단어`의 날짜별 정답 배정에 쓰는 비밀 salt입니다. 운영 환경에서는 임의의 긴 문자열을 Railway Variables에만 저장하는 것을 권장합니다. 비워두면 서버가 커밋되지 않는 `data/webgame-social.local.json`의 `cheerSalt`를 재사용하므로 기능은 동작하지만, 운영 환경별로 명시 값을 두면 백업/이전 시 정답 배정이 더 예측 가능하게 유지됩니다.
 
+간식 공방 키우기 운영 이벤트 주간(생산 배수)은 아래 변수로 켭니다(docs/idle-improvement-plan.md 1.2절).
+
+```env
+WEBGAME_IDLE_EVENT_MULTIPLIER=2
+WEBGAME_IDLE_EVENT_LABEL=이벤트 주간
+```
+
+`WEBGAME_IDLE_EVENT_MULTIPLIER`는 `1.5` / `2` / `3`만 유효한 값으로 인정합니다. 그 외 값(빈 값 포함)은 무효로 취급되어 `/game/api/goal` 응답의 `event` 필드가 `null`이 되고 게임은 평소처럼 1배로 동작합니다. `WEBGAME_IDLE_EVENT_LABEL`은 게임 화면에 노출할 안내 문구이며 비워두면 "이벤트 주간"을 사용합니다.
+
+운영 권장 빈도는 월 1회 이하입니다. 공동 목표가 예상보다 빨리 채워지는 것은 배수를 켰을 때의 의도된 결과이며(달성률 조절 수단), 목표량(`WEBGAME_COMMUNAL_GOAL`)과 함께 조율해서 사용하세요. 방치형(idle)은 랭킹이 없는 장르라 배수로 인한 제출값 상승 자체는 무해하지만, 이상치 플래그(3배 휴리스틱)와 겹칠 수 있으므로 이벤트 주간에는 idle 참여 기록의 flagged 여부를 공동 목표 집계에서 그대로 신뢰하기보다 배수 주간임을 감안해 판단하는 것을 권장합니다(코드 변경 없는 운영 판단 영역).
+
 서버 리플레이 검증(v2, [replay-verification-plan.md](replay-verification-plan.md))의 strict 전환 스위치입니다.
 
 ```env
