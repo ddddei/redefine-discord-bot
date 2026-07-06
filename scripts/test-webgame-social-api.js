@@ -4,7 +4,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const { createWebgameRepository, getDailySeed, getDayKey, getIsoWeekKey } = require('../src/webgameRepository');
-const { createWebgameApi, getMatch3VariantForDayKey } = require('../src/webgameApi');
+const { createWebgameApi, getMatch3VariantForDayKey, getDeckVariantForDayKey } = require('../src/webgameApi');
 const { createAdminRequestHandler } = require('../src/adminServer');
 const { createPointsRepository } = require('../src/pointsRepository');
 
@@ -176,12 +176,26 @@ async function main() {
     assert.strictEqual(typeof daily.data.variant.id, 'string');
     assert.strictEqual(typeof daily.data.variant.movesLimit, 'number');
 
-    // idle은 match3가 아니므로 variant 필드가 없어야 한다(변형은 match3 전용).
-    const idleDailyForVariantCheck = await requestJson(baseUrl, '/game/api/daily?gameId=deck', {
+    // idle은 오늘의 도전 자체가 없는 게임이라 /daily가 애초에 NOT_DAILY로 거부된다
+    // (variant는 match3·deck처럼 dailyCapable한 게임에만 해당하는 필드).
+    const idleDailyForVariantCheck = await requestJson(baseUrl, '/game/api/daily?gameId=idle', {
       headers: { Authorization: `Bearer ${tokenA}` },
     });
-    assert.strictEqual(idleDailyForVariantCheck.status, 200);
+    assert.strictEqual(idleDailyForVariantCheck.status, 400);
     assert.strictEqual(Object.prototype.hasOwnProperty.call(idleDailyForVariantCheck.data, 'variant'), false);
+
+    // 덱 오늘의 도전 요일 프리셋(docs/deck-improvement-plan.md 5절): /daily?gameId=deck
+    // 응답에는 variant.deckPreset이 실려야 하고, 서버 결정 로직과 일치해야 한다.
+    const deckDaily = await requestJson(baseUrl, '/game/api/daily?gameId=deck', {
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert.strictEqual(deckDaily.status, 200);
+    assert.deepStrictEqual(deckDaily.data.variant, getDeckVariantForDayKey(dayKey));
+    assert.strictEqual(typeof deckDaily.data.variant.deckPreset, 'string');
+    assert.ok(
+      ['balanced', 'aggro', 'guard', 'free'].includes(deckDaily.data.variant.deckPreset),
+      'deckPreset은 알려진 프리셋 중 하나여야 함'
+    );
 
     const targetB = daily.data.ranking[0].targetId;
     const selfTargetA = daily.data.ranking[1].targetId;

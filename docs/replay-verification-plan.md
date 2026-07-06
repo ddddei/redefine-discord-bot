@@ -1,6 +1,8 @@
 # 서버 리플레이 검증 v2 계획서 — 시드+행동 로그 재현 검증 (완성 배포판)
 
 > 구현 상태(2026-07-06): 로컬 구현 완료. `feat/webgame-replay-v2` 브랜치에서 scoring.js 추출/검증기/저장·API/클라이언트/admin/테스트·문서가 반영됐습니다. git push, PR 생성, `npm run deploy`는 수행하지 않았습니다.
+>
+> 추가 상태(2026-07-07): 덱 갈림길 맵 고도화([deck-improvement-plan.md](deck-improvement-plan.md))로 덱 재현 의미가 바뀌어 `REPLAY_LOG_VERSION`을 2 → 3으로 상향했습니다(`src/webgameReplay.js`·`public/shared/link.js`). 덱 액션 포맷에 맵 노드 선택 `["m", optionIndex]`이 추가되고 구 액션 `["n"]`/`["a"]`는 폐지됐습니다. v2 이하 로그는 검증 없이 `missing`으로 처리됩니다.
 
 클라이언트가 신고한 점수를 서버가 **같은 로직으로 재현해 검증**하는 단계입니다. 연동 v1의 부정 방지(상한·빈도·이상치 휴리스틱)를 "정직 억지력"에서 "재현 증명"으로 끌어올리며, **포인트 자동 지급(로드맵 A-2)의 신뢰 게이트**입니다. `board.js`·`engine.js`가 Node에서 로드 가능한 순수 로직으로 이미 설계돼 있어(로직 테스트가 그 증거) 구조 준비는 끝나 있습니다.
 

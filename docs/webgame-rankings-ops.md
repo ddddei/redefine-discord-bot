@@ -63,15 +63,15 @@
 
 | 항목 | 기준 |
 | --- | --- |
-| 게임별 점수 상한 | match3 90,000점(특수 타일 도입 후 재산정 - [match3-improvement-plan.md](match3-improvement-plan.md) 1.3), deck 11,060점(도달 스테이지×1000+잔여 HP 이론상 최대), idle 상한 없음에 가까운 넉넉한 값 |
+| 게임별 점수 상한 | match3 90,000점(특수 타일 도입 후 재산정 - [match3-improvement-plan.md](match3-improvement-plan.md) 1.3), deck 13,072점(갈림길 맵 고도화로 13층 재산정 - [deck-improvement-plan.md](deck-improvement-plan.md) 3.1, 도달 층×1000+잔여 HP 이론상 최대·유물 '딸기 심장'의 최대 HP +12 포함), idle 상한 없음에 가까운 넉넉한 값 |
 | 빈도 제한 | 토큰당 분당 3회, 일 50회 초과 시 429 |
 | 이상치 플래그 | 직전 주 최고 기록의 3배를 초과하면 `flagged: true`로 기록만 하고 랭킹에서는 제외 |
-| 리플레이 검증 | match3·deck 대상. 시드+행동 로그로 서버가 점수를 재현해 `verified`/`mismatch`/`missing` 기록(9절) |
+| 리플레이 검증 | match3·deck 대상. 시드+행동 로그로 서버가 점수를 재현해 `verified`/`mismatch`/`missing` 기록(9절), 로그 버전 v3(덱 갈림길 맵 도입) |
 | 응원 제한 | 토큰당 분당 10회, KST 하루 30회 |
 
-## 리플레이 검증 (v2)
+## 리플레이 검증 (v3)
 
-`src/webgameReplay.js`가 match3(`public/match3/board.js`+`scoring.js`)·deck(`public/deck/engine.js`)를 그대로 사용해 클라이언트가 신고한 점수를 서버에서 재현합니다. 자세한 설계는 [replay-verification-plan.md](replay-verification-plan.md)를 참고하세요.
+`src/webgameReplay.js`가 match3(`public/match3/board.js`+`scoring.js`)·deck(`public/deck/engine.js`)를 그대로 사용해 클라이언트가 신고한 점수를 서버에서 재현합니다. 자세한 설계는 [replay-verification-plan.md](replay-verification-plan.md)를 참고하세요. 로그 버전은 v3(덱 갈림길 맵 도입 - [deck-improvement-plan.md](deck-improvement-plan.md) 3절)이며, v2 이하 로그는 검증 없이 `missing`으로 무해하게 처리됩니다.
 
 - 대상: match3·deck만. idle·word·survivors는 대상 외이며 기록에 `replay` 필드가 없거나 `skipped`로 남습니다.
 - 판정 3가지: `verified`(재현 점수 일치), `mismatch`(불일치·무효 액션·로그 없이 재현 실패), `missing`(로그 없음·버전 불일치·액션 초과·재현기 예외 - 전부 무해 폴백).
