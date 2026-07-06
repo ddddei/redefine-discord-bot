@@ -63,8 +63,14 @@
   function createGameState(options) {
     options = options || {};
     var seed = options.seed !== undefined ? Number(options.seed) : getSeedFromUrl();
-    var rng = Board.createRng(seed);
-    var grid = Board.generateBoard(seed).grid;
+    // generateBoard(seed)가 내부적으로 만든 rng를 그대로 이어써야 한다. 별도로
+    // Board.createRng(seed)를 다시 만들면 보드 생성 중 소비된 난수만큼 어긋난
+    // 스트림이 되어, generateBoard(seed).rng를 그대로 쓰는 서버 리플레이 검증기
+    // (scoring.js replayMatch3)와 캐스케이드 결과가 달라진다 - 발견된 사전 버그를
+    // 리플레이 검증 도입 시점에 함께 고친다.
+    var initial = Board.generateBoard(seed);
+    var grid = initial.grid;
+    var rng = initial.rng;
 
     return {
       grid: grid,

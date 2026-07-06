@@ -100,6 +100,30 @@ function testMatch3MissingOnActionOverflow() {
   assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
 }
 
+// 회귀 테스트: 시드 없는 자유 플레이(URL 시드도 오늘의 도전도 아닌 일반 판)는
+// 클라이언트가 Math.random() 기반 진짜 무작위 시드를 쓰고 서버에 seed 값 자체를
+// 보내지 않는다(undefined -> JSON에서 null). Number(null) === 0이라 우연히
+// "유효한" 숫자로 보이는 함정이 있었다 - 이 경우 mismatch가 아니라 missing이어야 한다.
+function testMatch3MissingWhenSeedIsNull() {
+  const result = verifyReplay({
+    gameId: 'match3',
+    score: 500,
+    seed: null,
+    replayLog: { v: 1, actions: [[0, 1, 0, 2]] },
+  });
+  assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
+}
+
+function testDeckMissingWhenSeedIsNull() {
+  const result = verifyReplay({
+    gameId: 'deck',
+    score: 500,
+    seed: null,
+    replayLog: { v: 1, actions: [['n']] },
+  });
+  assert.strictEqual(result.status, REPLAY_STATUS.MISSING);
+}
+
 function testUnsupportedGameIsSkipped() {
   const result = verifyReplay({ gameId: 'idle', score: 100, seed: null, replayLog: null });
   assert.strictEqual(result.status, REPLAY_STATUS.SKIPPED);
@@ -354,6 +378,8 @@ function main() {
   testMatch3MissingOnEmptyLog();
   testMatch3MissingOnVersionMismatch();
   testMatch3MissingOnActionOverflow();
+  testMatch3MissingWhenSeedIsNull();
+  testDeckMissingWhenSeedIsNull();
   testUnsupportedGameIsSkipped();
 
   testDeckVerifiedForFullRun();

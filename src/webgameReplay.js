@@ -45,6 +45,17 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+// seed가 없는 제출(자유 플레이가 URL 시드/오늘의 도전 없이 시작된 경우, 클라이언트가
+// Math.random() 기반의 진짜 무작위 시드를 쓰고 서버에 값 자체를 보내지 않는 경우)은
+// Number(null) === 0처럼 우연히 유효한 숫자로 보여서는 안 된다 - 재현 불가능한 게임을
+// mismatch로 오판하지 않도록 여기서 명시적으로 missing 처리한다.
+function hasUsableSeed(seed) {
+  if (seed === null || seed === undefined || seed === '') {
+    return false;
+  }
+  return Number.isFinite(Number(seed));
+}
+
 function isValidMatch3Action(action) {
   return Array.isArray(action)
     && action.length === 4
@@ -237,6 +248,10 @@ function verifyReplay({ gameId, score, seed, replayLog }) {
     }
 
     if (!Array.isArray(replayLog.actions)) {
+      return { status: REPLAY_STATUS.MISSING };
+    }
+
+    if (!hasUsableSeed(seed)) {
       return { status: REPLAY_STATUS.MISSING };
     }
 
