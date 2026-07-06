@@ -6,6 +6,12 @@ const {
   isExampleLikeRecord,
   isExampleLikeValue,
 } = require('./operationalRecords');
+const {
+  createWebgameRepository,
+  getIsoWeekKey,
+  getDayKey,
+} = require('./webgameRepository');
+const { GAME_DEFINITIONS, getCommunalGoal } = require('./webgameApi');
 
 function createDefaultRepository() {
   return createPointsRepository();
@@ -14,6 +20,10 @@ function createDefaultRepository() {
 function createDefaultDmChatRepository() {
   const logPath = process.env.DM_CHAT_LOG_PATH || path.join(__dirname, '..', 'data', 'dm-chat-logs.local.json');
   return createDmChatRepository(logPath);
+}
+
+function createDefaultWebgameRepository() {
+  return createWebgameRepository();
 }
 
 function toArray(value) {
@@ -806,6 +816,203 @@ function buildTodayOperationsQueue(repository = createDefaultRepository(), limit
   };
 }
 
+const WEBGAME_LABELS = Object.keys(GAME_DEFINITIONS).reduce((map, gameId) => {
+  map[gameId] = GAME_DEFINITIONS[gameId].title;
+  return map;
+}, {});
+
+// 예시 데이터 최상위 플래그(isExample)면 운영 데이터로 취급하지 않고 빈 결과 + 제외 건수만 반환한다.
+// 링크/스코어/소셜 저장소는 개별 레코드에도 filterOperationalRecords를 적용해 example 레코드를 걸러낸다.
+function readOperationalLinksData(webgameRepository) {
+  const linksData = webgameRepository.getLinksData();
+  if (linksData.isExample === true) {
+    return { links: [], excluded: toArray(linksData.links).length };
+  }
+
+  const linksResult = filterOperationalRecords(linksData.links);
+  return { links: linksResult.data, excluded: linksResult.excluded };
+}
+
+function readOperationalScoresData(webgameRepository) {
+  const scoresData = webgameRepository.getScoresData();
+  if (scoresData.isExample === true) {
+    return { scores: [], excluded: toArray(scoresData.scores).length };
+  }
+
+  const scoresResult = filterOperationalRecords(scoresData.scores);
+  return { scores: scoresResult.data, excluded: scoresResult.excluded };
+}
+
+function readOperationalSocialData(webgameRepository) {
+  const socialData = webgameRepository.getSocialData();
+  if (socialData.isExample === true) {
+    return { cheers: [], excluded: toArray(socialData.cheers).length };
+  }
+
+  const cheersResult = filterOperationalRecords(socialData.cheers);
+  return { cheers: cheersResult.data, excluded: cheersResult.excluded };
+}
+
+function resolveNow(now) {
+  if (typeof now === 'function') {
+    return now();
+  }
+
+  return now instanceof Date ? now : new Date();
+}
+
+function buildDisplayNameMap(links) {
+  return new Map(links.map((link) => [link.discordId, link.displayName]));
+}
+
+function summarizeWeeklyRanking(webgameRepository, gameId, weekKey, limit) {
+  const ranking = webgameRepository.listWeeklyRanking(gameId, weekKey, { limit });
+  const cheersByDiscordId = webgameRepository.countCheers(gameId, weekKey);
+  return ranking.map((entry) => ({
+    rank: entry.rank,
+    discordId: entry.discordId,
+    displayName: entry.displayName,
+    score: entry.score,
+    cheers: cheersByDiscordId.get(entry.discordId) || 0,
+  }));
+}
+
+function summarizeDailyRanking(webgameRepository, gameId, dayKey, limit) {
+  const ranking = webgameRepository.listDailyRanking(gameId, dayKey, { limit });
+  const cheersByDiscordId = webgameRepository.countCheers(gameId, dayKey);
+  return ranking.map((entry) => ({
+    rank: entry.rank,
+    discordId: entry.discordId,
+    displayName: entry.displayName,
+    score: entry.score,
+    cheers: cheersByDiscordId.get(entry.discordId) || 0,
+  }));
+}
+
+function summarizeFlaggedScores(scores, displayNameByDiscordId, limit) {
+  const flagged = scores.filter((score) => score.flagged === true);
+  const sorted = sortNewestFirst(flagged, ['submittedAt']).slice(0, limit);
+
+  return sorted.map((score) => ({
+    discordId: score.discordId,
+    displayName: displayNameByDiscordId.get(score.discordId) || '알 수 없음',
+    gameId: score.gameId,
+    score: score.score,
+    mode: score.mode || 'free',
+    weekKey: score.weekKey || null,
+    dayKey: score.dayKey || null,
+    submittedAt: score.submittedAt || null,
+  }));
+}
+
+function summarizeCheerStats(webgameRepository, weekKey, dayKey) {
+  const rankableGameIds = Object.keys(GAME_DEFINITIONS).filter((gameId) => GAME_DEFINITIONS[gameId].rankable);
+
+  return rankableGameIds.map((gameId) => {
+    const weeklyCheers = Array.from(webgameRepository.countCheers(gameId, weekKey).values())
+      .reduce((sum, count) => sum + count, 0);
+    const dailyCheers = Array.from(webgameRepository.countCheers(gameId, dayKey).values())
+      .reduce((sum, count) => sum + count, 0);
+
+    return {
+      gameId,
+      label: WEBGAME_LABELS[gameId] || gameId,
+      cheersThisWeek: weeklyCheers,
+      cheersToday: dailyCheers,
+    };
+  });
+}
+
+function buildWebgameOperationsSummary(webgameRepository = createDefaultWebgameRepository(), options = {}) {
+  const nowDate = resolveNow(options.now);
+  const weekKey = options.weekKey || getIsoWeekKey(nowDate);
+  const dayKey = options.dayKey || getDayKey(nowDate);
+  const limit = parseLimit(options.limit, 10);
+
+  const linksResult = readOperationalLinksData(webgameRepository);
+  const scoresResult = readOperationalScoresData(webgameRepository);
+  const socialResult = readOperationalSocialData(webgameRepository);
+  const displayNameByDiscordId = buildDisplayNameMap(linksResult.links);
+
+  const rankableGameIds = ['match3', 'deck'];
+  const weeklyRankings = rankableGameIds.reduce((map, gameId) => {
+    map[gameId] = summarizeWeeklyRanking(webgameRepository, gameId, weekKey, limit);
+    return map;
+  }, {});
+
+  const dailyChallenges = rankableGameIds.reduce((map, gameId) => {
+    map[gameId] = {
+      participants: webgameRepository.countDailyParticipants(gameId, dayKey),
+      ranking: summarizeDailyRanking(webgameRepository, gameId, dayKey, limit),
+    };
+    return map;
+  }, {});
+
+  const wordDistribution = webgameRepository.getDailyResultDistribution('word', dayKey);
+  dailyChallenges.word = {
+    participants: wordDistribution.participants,
+    distribution: wordDistribution.distribution,
+  };
+
+  const communalGoalProgress = webgameRepository.getCommunalGoalProgress(weekKey);
+  const communalGoal = {
+    weekKey,
+    goal: getCommunalGoal(),
+    total: communalGoalProgress.total,
+    participants: communalGoalProgress.participants,
+    achieved: communalGoalProgress.total >= getCommunalGoal(),
+  };
+
+  const flaggedScores = summarizeFlaggedScores(scoresResult.scores, displayNameByDiscordId, limit);
+  const cheerStats = summarizeCheerStats(webgameRepository, weekKey, dayKey);
+
+  const weeklyParticipants = Object.keys(GAME_DEFINITIONS).reduce((map, gameId) => {
+    const participants = new Set();
+    scoresResult.scores.forEach((score) => {
+      if (score.gameId === gameId && score.weekKey === weekKey && score.flagged !== true) {
+        participants.add(score.discordId);
+      }
+    });
+    map[gameId] = participants.size;
+    return map;
+  }, {});
+
+  const dailyParticipants = {
+    match3: dailyChallenges.match3.participants,
+    deck: dailyChallenges.deck.participants,
+    word: dailyChallenges.word.participants,
+  };
+
+  const cheersThisWeek = cheerStats.reduce((sum, entry) => sum + entry.cheersThisWeek, 0);
+  const cheersToday = cheerStats.reduce((sum, entry) => sum + entry.cheersToday, 0);
+
+  const exampleRecordsExcluded = linksResult.excluded + scoresResult.excluded + socialResult.excluded;
+
+  return {
+    title: '웹게임 운영 현황',
+    readOnly: true,
+    storageMode: 'local-json',
+    generatedAt: new Date().toISOString(),
+    weekKey,
+    dayKey,
+    labels: WEBGAME_LABELS,
+    counts: {
+      linkedUsers: linksResult.links.length,
+      flaggedScores: scoresResult.scores.filter((score) => score.flagged === true).length,
+      weeklyParticipants,
+      dailyParticipants,
+      cheersThisWeek,
+      cheersToday,
+    },
+    weeklyRankings,
+    dailyChallenges,
+    communalGoal,
+    flaggedScores,
+    cheerStats,
+    meta: buildAdminMeta(exampleRecordsExcluded),
+  };
+}
+
 module.exports = {
   buildAdminSummary,
   buildDmChatTodaySummary,
@@ -814,6 +1021,8 @@ module.exports = {
   buildOnboardingSignals,
   buildReactionFollowUpQueue,
   buildTodayOperationsQueue,
+  buildWebgameOperationsSummary,
+  createDefaultWebgameRepository,
   listMissionStatus,
   listPendingRedemptions,
   listPendingSubmissions,

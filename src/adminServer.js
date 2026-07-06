@@ -5,6 +5,7 @@ const { URL } = require('url');
 const { createPointsRepository } = require('./pointsRepository');
 const { requireAdminAuth, isAdminAuthConfigured } = require('./adminAuth');
 const { createWebgameApi } = require('./webgameApi');
+const { createWebgameRepository } = require('./webgameRepository');
 const {
   buildAdminSummary,
   buildFaqCandidateQueue,
@@ -12,6 +13,7 @@ const {
   buildOnboardingSignals,
   buildReactionFollowUpQueue,
   buildTodayOperationsQueue,
+  buildWebgameOperationsSummary,
   listMissionStatus,
   listPendingRedemptions,
   listPendingSubmissions,
@@ -198,13 +200,22 @@ function serveSharedAsset(res, pathname) {
   servePublicAsset(res, resolveSharedAsset(pathname));
 }
 
-function handleAdminApi(req, res, pathname, searchParams, repository) {
+function handleAdminApi(req, res, pathname, searchParams, repository, webgameRepository) {
   if (!requireAdminAuth(req, res)) {
     return;
   }
 
   try {
     const limit = parseLimit(searchParams.get('limit'), 10);
+
+    if (pathname === '/api/admin/webgames') {
+      sendJson(res, 200, buildWebgameOperationsSummary(webgameRepository, {
+        limit,
+        weekKey: searchParams.get('weekKey') || undefined,
+        dayKey: searchParams.get('dayKey') || undefined,
+      }));
+      return;
+    }
 
     if (pathname === '/api/admin/summary') {
       sendJson(res, 200, buildAdminSummary(repository));
@@ -339,7 +350,9 @@ async function handleWebgameApi(req, res, pathname, searchParams, webgameApi) {
   }
 }
 
-function createAdminRequestHandler(repository, webgameApi) {
+function createAdminRequestHandler(repository, webgameApi, webgameRepository) {
+  const resolvedWebgameRepository = webgameRepository || createWebgameRepository();
+
   return (req, res) => {
     const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
@@ -349,7 +362,7 @@ function createAdminRequestHandler(repository, webgameApi) {
     }
 
     if (requestUrl.pathname.startsWith('/api/admin/')) {
-      handleAdminApi(req, res, requestUrl.pathname, requestUrl.searchParams, repository);
+      handleAdminApi(req, res, requestUrl.pathname, requestUrl.searchParams, repository, resolvedWebgameRepository);
       return;
     }
 
@@ -418,12 +431,13 @@ function startAdminServer(options = {}) {
   }
 
   const repository = options.repository || createPointsRepository();
+  const webgameRepository = options.webgameRepository || createWebgameRepository();
   const webgameApi = options.webgameApi || createWebgameApi({
-    repository: options.webgameRepository,
+    repository: webgameRepository,
     now: options.now,
   });
   const port = options.port || getAdminDashboardPort();
-  const server = http.createServer(createAdminRequestHandler(repository, webgameApi));
+  const server = http.createServer(createAdminRequestHandler(repository, webgameApi, webgameRepository));
 
   server.on('error', (error) => {
     console.warn('관리자 대시보드 서버 시작 실패:', error.message);
