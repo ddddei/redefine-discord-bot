@@ -26,7 +26,7 @@
 이번 전수 점검에서 새로 확인된 것들 — 작은 것이지만 방치하면 운영 사고나 혼선이 됩니다:
 
 1. **admin 대시보드에 웹게임 섹션이 없다.** [webgame-rankings-ops.md](webgame-rankings-ops.md)와 연동 v1 계획서는 "대시보드에서 flagged 기록 확인"을 안내하지만, `src/adminApi.js`에 webgame 데이터가 전혀 없다. 현재 flagged 확인 수단은 서버의 `data/webgame-scores.local.json` 직접 열람뿐. → 4-E-1 항목으로 백로그 등재, 지시서 `prompts/codex/admin-dashboard-webgame-visibility-v1.md` 작성.
-2. **던전월드 에필로그 계획서가 docs/에 없다.** 진행 기록상 "계획서 작성됨"이었으나 실제로 커밋된 적이 없음(`docs/dungeonworld-epilogue-plan.md` 부재). 착수하려면 계획서부터 다시. → 4-B-1.
+2. ~~던전월드 에필로그 계획서가 docs/에 없다~~ **해소(2026-07-07)**: 방치된 `feat/minigame-report` 브랜치에서 미머지 상태로 발견해 회수함(`docs/dungeonworld-epilogue-plan.md`·`docs/minigame-rankings-plan.md`). 에필로그 착수 게이트(리포트에서 8~9회차 도달자 확인)는 유지 — 착수 전 계획서 내용 재검토 권장(2026-07-03 작성분).
 3. **이전 점검의 미푸시 로컬 커밋 항목은 해소됨.** 공동 목표 보상 정책 기입(f663031), DM 고도화 문서/지시서 묶음, `.claude/launch.json`, DM 운영 가시성 v1 구현은 이후 main에 반영됐다.
 4. **원격에 머지 완료된 `feat/*`·`fix/*` 브랜치 약 20개**가 남아 있음. 정리 대상. → 6절.
 5. 상점 항목 3종(프린트 카드·밀리의 서재·왓챠) 가격이 "추후 확정" 상태로 hidden — 운영 결정 대기 ([operation-default-items-plan.md](operation-default-items-plan.md)).
