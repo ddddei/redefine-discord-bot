@@ -17,6 +17,8 @@ const LOCAL_FILENAMES = {
   reactionApprovals: 'reaction-approvals.local.json',
   operatorSupport: 'operator-support.local.json',
   dmChatLogs: 'dm-chat-logs.local.json',
+  dmCleanupState: 'dm-chat-cleanup-state.local.json',
+  dmSafetyReviews: 'dm-safety-reviews.local.json',
   dungeonworldLogs: 'dungeonworld-logs.local.json',
   dungeonworldConfig: 'dungeonworld-config.local.json',
   dailyMissionAnnouncements: 'daily-mission-announcements.local.json',

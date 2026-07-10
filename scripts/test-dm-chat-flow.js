@@ -154,6 +154,7 @@ async function main() {
     DM_CHAT_MEMBER_ONLY: process.env.DM_CHAT_MEMBER_ONLY,
     DM_CHAT_BURST_LIMIT_PER_MINUTE: process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE,
     DM_CHAT_RETENTION_DAYS: process.env.DM_CHAT_RETENTION_DAYS,
+    DM_SAFETY_REVIEWS_PATH: process.env.DM_SAFETY_REVIEWS_PATH,
   };
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-chat-'));
   const logPath = path.join(tempDir, 'dm-chat-logs.json');
@@ -168,6 +169,7 @@ async function main() {
   process.env.SAFETY_ALERT_CHANNEL_ID = 'safety_alert_channel_test';
   process.env.SAFETY_ALERT_THROTTLE_MINUTES = '10';
   process.env.LOG_CHANNEL_ID = '';
+  process.env.DM_SAFETY_REVIEWS_PATH = path.join(tempDir, 'dm-safety-reviews.json');
 
   try {
     resetDmChatSafetyAlertThrottleForTest();
@@ -453,7 +455,7 @@ async function main() {
     assert.strictEqual(normalizedVersionTwoData.version, 4);
     assert.strictEqual(normalizedVersionTwoData.historyResets.length, 1);
 
-    // --- 작업 C: 스키마 v3 파일 관용 로드 + 기존 사용자 notice v2 재고지 1회 ---
+    // --- 작업 C: 스키마 v3 파일 관용 로드 + 기존 사용자 최신 안내 재고지 1회 ---
     const versionThreePath = path.join(tempDir, 'dm-chat-v3-logs.json');
     fs.writeFileSync(versionThreePath, `${JSON.stringify({
       version: 3,
@@ -478,7 +480,7 @@ async function main() {
       renoticeClient,
       { repository: versionThreeRepository }
     );
-    assert.strictEqual(renoticeMessages.length, 2, '기존 사용자도 notice v2 재고지를 1회 받아야 합니다.');
+    assert.strictEqual(renoticeMessages.length, 2, '기존 사용자도 최신 안내를 1회 다시 받아야 합니다.');
     assert.match(renoticeMessages[0], /자동 정리/);
     assert.match(renoticeMessages[0], /연습 메뉴/);
 
@@ -492,7 +494,7 @@ async function main() {
 
     const versionThreeData = readJson(versionThreePath);
     assert.strictEqual(versionThreeData.version, 4);
-    assert.strictEqual(versionThreeData.notices[0].noticeVersion, 2);
+    assert.strictEqual(versionThreeData.notices[0].noticeVersion, 3);
 
     // DM_CHAT_RETENTION_DAYS 값에 따라 안내 문구가 렌더링되는지 확인
     process.env.DM_CHAT_RETENTION_DAYS = '30';
@@ -775,8 +777,9 @@ async function main() {
     process.env.AI_MODEL = '';
     resetDmChatAccessControlStateForTest();
 
-    // --- 작업 E: 연습 시나리오 6종 + 연습 정리 ---
-    assert.strictEqual(SCENARIOS.length, 6);
+    // --- 작업 E: 기존 6종 + 리디파인 맞춤 6종 + 연습 정리 ---
+    assert.strictEqual(SCENARIOS.length, 12);
+    assert.strictEqual(SCENARIOS.filter((scenario) => scenario.pack === 'redefine').length, 6);
 
     process.env.DM_CHAT_BURST_LIMIT_PER_MINUTE = '0';
     const scenarioRepository = createDmChatRepository(path.join(tempDir, 'dm-chat-scenario-logs.json'));

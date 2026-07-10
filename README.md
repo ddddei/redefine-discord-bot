@@ -166,9 +166,12 @@ SAFETY_ALERT_THROTTLE_MINUTES=10
 DM_CHAT_MEMBER_ONLY=true
 DM_CHAT_BURST_LIMIT_PER_MINUTE=5
 DM_CHAT_RETENTION_DAYS=90
+DM_CHAT_CLEANUP_AUTO_ENABLED=false
+DM_CHAT_CLEANUP_WEEKDAY=sunday
+DM_CHAT_CLEANUP_TIME_KST=04:00
 ```
 
-첫 DM에는 대화가 기록되고 운영진이 확인할 수 있다는 안내가 자동 전송됩니다(보존 기간과 『연습 메뉴』/『새로 시작』 사용법도 함께 안내). 모든 DM 사용자 메시지와 봇 응답은 `DM_CHAT_LOG_PATH` 또는 기본 `data/dm-chat-logs.local.json`에 저장되며, `DM_CHAT_LOG_CHANNEL_ID`가 있으면 운영진 로그 채널에도 전송됩니다. `/admin`의 최근 DM 대화 로그 섹션에서도 사용자 ID, 안전 감지 여부, 개수 필터로 읽기 전용 확인을 할 수 있습니다. `/운영현황 종류:DM대화`는 KST 당일 DM 사용자 수, user 메시지 수, assistant 응답 수, 안전 감지, 오류 수, 오늘 토큰 사용량(입력/출력)을 로그에서 파생해 보여줍니다. 자해, 폭력, 괴롭힘, 개인정보 노출 등 안전 관련 표현은 기존 민감 질문 감지 규칙을 사용해 `SAFETY_ALERT_CHANNEL_ID` 또는 fallback 로그 채널로 알립니다. 같은 사용자 반복 안전 감지는 기본 10분 동안 안전 알림 채널 전송만 묶으며, 로그 저장과 DM 로그 채널 전송은 모두 유지합니다. 기존처럼 전량 알림을 받으려면 `SAFETY_ALERT_THROTTLE_MINUTES=0`으로 설정합니다. `DM_CHAT_DAILY_LIMIT`는 KST 당일 사용자별 user 메시지 수 기준이며 기본값은 30, `0`이면 제한을 끕니다. `DM_CHAT_MEMBER_ONLY`(기본 켬)는 `GUILD_ID` 서버 멤버만 DM 대화를 허용하고, 비멤버에게는 1회 안내 후 침묵합니다. `DM_CHAT_BURST_LIMIT_PER_MINUTE`(기본 5, `0`이면 해제)는 분당 user 메시지 상한이며 초과 시 AI를 호출하지 않고 안내를 1분에 1회만 보냅니다. 참여자가 DM에 정확히 `새로 시작`을 보내면 이전 로그는 보존하되 이후 AI history 기준점만 새로 잡습니다. AI 응답에 민감 표현이 감지되면 원문을 보내지 않고 "지금은 답변을 만들지 못했어요. 잠시 후 다시 말을 걸어 주세요."로 대체해 저장/전송합니다. 2,000자를 넘는 응답은 문장 경계로 최대 2조각까지 분할 전송됩니다. `DM_CHAT_RETENTION_DAYS`(기본 90일, `0`이면 무기한, 안전 감지 레코드는 180일 고정)가 지난 로그는 `scripts/cleanup-dm-chat-logs.js`(기본 dry-run, `--apply`로 적용, `--user <id>`로 참여자 요청 삭제)로 정리합니다. 『연습 메뉴』/『연습: 이름』/『연습 끝』으로 6종 대화 연습 시나리오를(첫인사·자기소개·부탁하기·거절하기·잡담·면접) 진행할 수 있고, 『오늘 연습 정리』로 오늘 대화를 짧게 돌아볼 수 있습니다. 운영 절차 전체는 `docs/dm-chat-operation-guide.md`를 참고합니다.
+첫 DM에는 AI 대화, 기록·운영진 열람, 보존·삭제, 역할 한계와 연습 명령을 안내합니다. 안전 감지는 원본 로그를 참조하는 별도 확인 큐에 pending 상태로 남고 `/운영현황 종류:DM대화`에서 운영자가 확인·후속 필요·종료 처리할 수 있습니다. `/admin`은 큐 집계와 최소 목록만 읽기 전용으로 제공합니다. 같은 화면에서 오늘/최근 7일 메시지·토큰·AI 성공·오류·타임아웃·제한 도달을 모델명과 함께 확인하며 금액은 환산하지 않습니다. 주간 자동 정리는 기본 비활성이고, 활성화 시 주간 중복·50% 초과 삭제·파싱·백업 실패 가드가 적용됩니다. 기존 수동 cleanup은 유지됩니다. 연습 메뉴는 기존 기본 6종과 리디파인 맞춤 6종을 구분해 제공합니다. 세부 안전·보존·리허설 절차는 `docs/dm-chat-operation-guide.md`와 `docs/dm-chat-live-rehearsal-guide.md`를 참고합니다.
 
 `/운영현황`의 `종류` 선택지에 `DM대화`가 추가됐으므로, 이 변경이 배포된 뒤 대상 Discord 환경에서 운영자가 `npm run deploy`를 실행해 slash command 스키마를 갱신해야 합니다.
 

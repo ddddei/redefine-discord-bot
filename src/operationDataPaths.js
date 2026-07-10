@@ -17,7 +17,7 @@ const DEFINITIONS = {
   dailyMissionAnnouncements: ['DAILY_MISSION_ANNOUNCEMENTS_DATA_PATH', 'daily-mission-announcements.local.json'],
   operationBackupState: ['OPERATION_BACKUP_STATE_PATH', 'operation-backups.local.json'],
   dmChatLogs: ['DM_CHAT_LOG_PATH', 'dm-chat-logs.local.json'],
-  dmCleanupState: ['DM_CLEANUP_STATE_PATH', 'dm-cleanup-state.local.json'],
+  dmCleanupState: ['DM_CHAT_CLEANUP_STATE_PATH', 'dm-chat-cleanup-state.local.json'],
   dmSafetyReviews: ['DM_SAFETY_REVIEWS_PATH', 'dm-safety-reviews.local.json'],
   dungeonworldLogs: ['DUNGEONWORLD_LOG_PATH', 'dungeonworld-logs.local.json'],
   dungeonworldConfig: ['DUNGEONWORLD_CONFIG_PATH', 'dungeonworld-config.local.json'],
@@ -38,7 +38,10 @@ function resolveOperationDataDir(env = process.env) {
 function getOperationDataPaths(env = process.env) {
   const dataDir = resolveOperationDataDir(env);
   return Object.fromEntries(Object.entries(DEFINITIONS).map(([key, [envName, filename]]) => {
-    return [key, configuredValue(env[envName]) || path.join(dataDir, filename)];
+    const configuredPath = key === 'dmCleanupState'
+      ? configuredValue(env.DM_CHAT_CLEANUP_STATE_PATH) || configuredValue(env.DM_CLEANUP_STATE_PATH)
+      : configuredValue(env[envName]);
+    return [key, configuredPath || path.join(dataDir, filename)];
   }));
 }
 

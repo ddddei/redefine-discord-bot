@@ -84,6 +84,8 @@ async function main() {
       reactionApprovals: path.join(dataDir, 'reaction-approvals.local.json'),
       operatorSupport: path.join(dataDir, 'operator-support.local.json'),
       dmChatLogs: path.join(dataDir, 'dm-chat-logs.local.json'),
+      dmCleanupState: path.join(dataDir, 'dm-chat-cleanup-state.local.json'),
+      dmSafetyReviews: path.join(dataDir, 'dm-safety-reviews.local.json'),
       dungeonworldLogs: path.join(dataDir, 'dungeonworld-logs.local.json'),
       dungeonworldConfig: path.join(dataDir, 'dungeonworld-config.local.json'),
       dailyMissionAnnouncements: path.join(dataDir, 'daily-mission-announcements.local.json'),
@@ -105,11 +107,13 @@ async function main() {
     assert.deepStrictEqual(snapshot.files.webgameSocial, webgameSocialData);
     assert.strictEqual(snapshot.files.shopItems, null);
     assert.strictEqual(snapshot.files.dungeonworldLogs, null);
-    assert.strictEqual(Object.keys(snapshot.files).length, 15);
+    assert.strictEqual(Object.keys(snapshot.files).length, 17);
     assert.strictEqual(snapshot.schemaVersion, 2);
     assert.strictEqual(snapshot.manifest.points.included, true);
     assert.strictEqual(snapshot.manifest.points.requiredForStrict, true);
     assert.strictEqual(snapshot.manifest.dmChatLogs.requiredForStrict, false);
+    assert.ok(snapshot.manifest.dmCleanupState);
+    assert.ok(snapshot.manifest.dmSafetyReviews);
     assert.strictEqual(snapshot.manifest.webgameLinks.included, true);
     assert.strictEqual(snapshot.manifest.webgameReplayMismatch.excludedByPolicy, true);
     assert.strictEqual(snapshot.manifest.operationBackupState.excludedByPolicy, true);
@@ -162,7 +166,7 @@ async function main() {
     assert.strictEqual(state.records[0].filename, sendResult.filename);
     assert.strictEqual(state.records[0].includedFileCount, 6);
     assert.strictEqual(state.records[0].excludedFileCount, 2);
-    assert.strictEqual(state.records[0].missingFileCount, 9);
+    assert.strictEqual(state.records[0].missingFileCount, 11);
 
     // strict에서는 핵심 5종만 필수이며 선택 기능 파일 누락은 백업을 막지 않습니다.
     saveJsonFileAtomic(snapshotPaths.shopItems, { isExample: false, shopItems: [] });

@@ -1,10 +1,12 @@
 const { ChannelType } = require('discord.js');
 const { getDmChatRecap, getDmChatReply } = require('./ai');
 const { createDmChatRepository } = require('./dmChatRepository');
+const { createDmSafetyReviewRepository } = require('./dmSafetyReview');
 const {
   sendDmChatGlobalErrorAlert,
   sendDmChatOperatorLog,
   sendDmChatSafetyAlert,
+  sendDmChatSafetyQueueError,
 } = require('./dmChatLogging');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
 const {
@@ -52,7 +54,8 @@ function buildFirstNotice() {
     '자해, 폭력, 괴롭힘, 긴급한 위험과 관련된 내용은 빠른 도움을 위해 운영진에게 전달될 수 있습니다.',
     getRetentionNoticeLine(),
     '',
-    '이 봇은 상담이나 진단을 하지 않고, 사람들과 대화하기 전 짧게 연습하는 용도로만 도와드려요.',
+    '여기서는 AI와 대화하며, 이 기능은 상담·진단·긴급 대응을 대신하지 않아요.',
+    '사람들과 대화하기 전 짧게 연습하는 용도로만 이용해 주세요.',
     '『연습 메뉴』라고 보내면 연습 주제를, 『새로 시작』이라고 보내면 대화를 새로 시작할 수 있어요.',
   ].join('\n');
 }
@@ -401,6 +404,25 @@ async function logAndNotify(client, repository, record) {
   return record;
 }
 
+async function createSafetyReviewSafely(client, safetyReviewRepository, record, direction) {
+  try {
+    return safetyReviewRepository.createForDetection({
+      sourceLogId: record.id,
+      userId: record.userId,
+      direction,
+      detectedAt: record.createdAt,
+    });
+  } catch (error) {
+    console.error(`[dm-safety-review] queue write failed direction=${direction}`);
+    try {
+      await sendDmChatSafetyQueueError(client, { direction });
+    } catch (alertError) {
+      console.warn('[dm-safety-review] high-priority alert failed');
+    }
+    return null;
+  }
+}
+
 async function handleSensitiveDmMessage(message, client, repository, userRecord, detection, userMessageRecord) {
   await sendDmChatSafetyAlert(client, userMessageRecord, detection);
 
@@ -498,7 +520,7 @@ async function handleScenarioEndMessage(message, client, repository, userRecord)
   await sendDirectMessage(message, SCENARIO_END_MESSAGE);
 }
 
-async function handleRecapMessage(message, client, repository, userRecord) {
+async function handleRecapMessage(message, client, repository, safetyReviewRepository, userRecord) {
   const historyLimit = Number.parseInt(process.env.DM_CHAT_HISTORY_LIMIT || '8', 10);
   const todayDateString = getRecordKoreanDateStringForRecap(new Date());
   const todayHistory = repository.listRecentMessages(userRecord.id, Math.max(historyLimit, 20))
@@ -537,8 +559,10 @@ async function handleRecapMessage(message, client, repository, userRecord) {
       safetyDetection: outputDetection,
       safetyDetectionSource: outputDetection ? 'output' : null,
       tokens: usage,
+      outcome: recapText ? 'aiSuccess' : null,
     });
 
+    if (outputDetection) await createSafetyReviewSafely(client, safetyReviewRepository, assistantRecord, 'output');
     await logAndNotify(client, repository, assistantRecord);
     await sendDirectMessage(message, safeRecap);
   } catch (error) {
@@ -550,6 +574,7 @@ async function handleRecapMessage(message, client, repository, userRecord) {
       role: 'assistant',
       content: fallback,
       error: error.message,
+      outcome: error && (error.name === 'AbortError' || error.code === 'ABORT_ERR') ? 'aiTimeout' : 'aiError',
     });
 
     await logAndNotify(client, repository, assistantRecord);
@@ -568,7 +593,7 @@ function getRecordKoreanDateStringForRecap(value) {
   return getKoreanDateString(date);
 }
 
-async function generateAndSendAiReply(message, client, repository, userRecord, userMessageRecord) {
+async function generateAndSendAiReply(message, client, repository, safetyReviewRepository, userRecord, userMessageRecord) {
   const historyLimit = Number.parseInt(process.env.DM_CHAT_HISTORY_LIMIT || '8', 10);
   const history = repository.listRecentMessages(userRecord.id, historyLimit)
     .filter((record) => record.id !== userMessageRecord.id);
@@ -596,8 +621,10 @@ async function generateAndSendAiReply(message, client, repository, userRecord, u
       safetyDetection: outputDetection,
       safetyDetectionSource: outputDetection ? 'output' : null,
       tokens: usage,
+      outcome: reply ? 'aiSuccess' : null,
     });
 
+    if (outputDetection) await createSafetyReviewSafely(client, safetyReviewRepository, assistantRecord, 'output');
     await logAndNotify(client, repository, assistantRecord);
     await sendDmChatReply(message, safeReply);
     console.info(`[dm-chat] replied to user=${userRecord.id}`);
@@ -611,6 +638,7 @@ async function generateAndSendAiReply(message, client, repository, userRecord, u
       role: 'assistant',
       content: fallback,
       error: error.message,
+      outcome: error && (error.name === 'AbortError' || error.code === 'ABORT_ERR') ? 'aiTimeout' : 'aiError',
     });
 
     await logAndNotify(client, repository, assistantRecord);
@@ -636,6 +664,7 @@ async function handleDmChatMessage(message, client, options = {}) {
   }
 
   const repository = options.repository || createDmChatRepository();
+  const safetyReviewRepository = options.safetyReviewRepository || createDmSafetyReviewRepository();
   const userRecord = createUserRecord(message);
 
   if (isMemberOnlyEnabled()) {
@@ -680,13 +709,16 @@ async function handleDmChatMessage(message, client, options = {}) {
     safetyDetection: detection,
     safetyDetectionSource: detection ? 'input' : null,
   });
-  await logAndNotify(client, repository, userMessageRecord);
 
   if (detection) {
     // 안전 흐름은 어떤 제한(분당/순차 처리 포함)보다 우선한다.
+    await createSafetyReviewSafely(client, safetyReviewRepository, userMessageRecord, 'input');
+    await logAndNotify(client, repository, userMessageRecord);
     await handleSensitiveDmMessage(message, client, repository, userRecord, detection, userMessageRecord);
     return true;
   }
+
+  await logAndNotify(client, repository, userMessageRecord);
 
   if (message.content.trim() === HISTORY_RESET_TRIGGER) {
     await handleHistoryResetMessage(message, client, repository, userRecord, userMessageRecord);
@@ -712,6 +744,7 @@ async function handleDmChatMessage(message, client, options = {}) {
   if (isRecapTrigger(message.content)) {
     if (isBurstLimitReached(repository, userRecord.id)) {
       console.info(`[dm-chat] burst limit reached for user=${userRecord.id}`);
+      repository.appendOperationalEvent({ userId: userRecord.id, outcome: 'burstLimit' });
       return true;
     }
 
@@ -722,6 +755,7 @@ async function handleDmChatMessage(message, client, options = {}) {
         displayName: userRecord.displayName,
         role: 'assistant',
         content: DAILY_LIMIT_FALLBACK,
+        outcome: 'dailyLimit',
       });
 
       await logAndNotify(client, repository, assistantRecord);
@@ -729,12 +763,13 @@ async function handleDmChatMessage(message, client, options = {}) {
       return true;
     }
 
-    await handleRecapMessage(message, client, repository, userRecord);
+    await handleRecapMessage(message, client, repository, safetyReviewRepository, userRecord);
     return true;
   }
 
   if (isBurstLimitReached(repository, userRecord.id)) {
     console.info(`[dm-chat] burst limit reached for user=${userRecord.id}`);
+    repository.appendOperationalEvent({ userId: userRecord.id, outcome: 'burstLimit' });
 
     if (shouldSendBurstNotice(userRecord.id)) {
       const assistantRecord = repository.appendMessage({
@@ -743,6 +778,7 @@ async function handleDmChatMessage(message, client, options = {}) {
         displayName: userRecord.displayName,
         role: 'assistant',
         content: BURST_LIMIT_FALLBACK,
+        outcome: null,
       });
 
       await logAndNotify(client, repository, assistantRecord);
@@ -759,6 +795,7 @@ async function handleDmChatMessage(message, client, options = {}) {
       displayName: userRecord.displayName,
       role: 'assistant',
       content: DAILY_LIMIT_FALLBACK,
+      outcome: 'dailyLimit',
     });
 
     await logAndNotify(client, repository, assistantRecord);
@@ -774,7 +811,7 @@ async function handleDmChatMessage(message, client, options = {}) {
   }
 
   await runSequential(userRecord.id, () => (
-    generateAndSendAiReply(message, client, repository, userRecord, userMessageRecord)
+    generateAndSendAiReply(message, client, repository, safetyReviewRepository, userRecord, userMessageRecord)
   ));
 
   return true;

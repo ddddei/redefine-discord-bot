@@ -6,7 +6,7 @@ const { getOperationDataPaths } = require('./operationDataPaths');
 
 const DEFAULT_DM_CHAT_LOG_PATH = getOperationDataPaths().dmChatLogs;
 const CURRENT_DM_CHAT_LOG_VERSION = 4;
-const CURRENT_NOTICE_VERSION = 2;
+const CURRENT_NOTICE_VERSION = 3;
 
 function createTimestamp() {
   return new Date().toISOString();
@@ -49,7 +49,7 @@ function loadData(logPath) {
 function normalizeNotice(notice) {
   return {
     ...notice,
-    // version 3 이하 파일(noticeVersion 없음)은 v1 고지만 받은 것으로 간주한다.
+    // noticeVersion 없음은 최초 고지만 받은 것으로 간주한다.
     noticeVersion: Number.isInteger(notice && notice.noticeVersion) ? notice.noticeVersion : 1,
   };
 }
@@ -146,12 +146,24 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
       safetyDetection: entry.safetyDetection || null,
       safetyDetectionSource: entry.safetyDetectionSource || null,
       error: entry.error || null,
+      outcome: entry.outcome || null,
       tokens: entry.role === 'assistant' && entry.tokens ? entry.tokens : null,
     };
 
     data.messages.push(record);
     save(data);
     return record;
+  }
+
+  function appendOperationalEvent(entry) {
+    return appendMessage({
+      userId: entry.userId,
+      username: null,
+      displayName: entry.userId,
+      role: 'event',
+      content: '',
+      outcome: entry.outcome,
+    });
   }
 
   function recordHistoryReset(user, resetAt = createTimestamp()) {
@@ -295,8 +307,11 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     const dateString = getRecordKoreanDateString(now);
     const data = load();
     const filtered = filterOperationalRecords(data.messages);
-    const todayMessages = filtered.data.filter((message) => {
-      return message && getRecordKoreanDateString(message.createdAt) === dateString;
+    const todayMessages = filtered.data.filter((message) => message && getRecordKoreanDateString(message.createdAt) === dateString);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const recentMessages = filtered.data.filter((message) => {
+      const time = new Date(message && message.createdAt).getTime();
+      return !Number.isNaN(time) && time >= sevenDaysAgo.getTime() && time <= now.getTime();
     });
     const userMessages = todayMessages.filter((message) => message.role === 'user');
     const assistantMessages = todayMessages.filter((message) => message.role === 'assistant');
@@ -305,6 +320,27 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
     const latestMessage = todayMessages.slice().sort((left, right) => {
       return new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime();
     })[0] || null;
+
+    function summarizeWindow(messages) {
+      const users = messages.filter((message) => message.role === 'user');
+      const assistants = messages.filter((message) => message.role === 'assistant');
+      return {
+        userMessages: users.length,
+        assistantMessages: assistants.length,
+        aiSuccesses: messages.filter((message) => message.outcome === 'aiSuccess').length,
+        aiErrors: messages.filter((message) => message.outcome === 'aiError').length,
+        aiTimeouts: messages.filter((message) => message.outcome === 'aiTimeout').length,
+        dailyLimitHits: messages.filter((message) => message.outcome === 'dailyLimit').length,
+        burstLimitHits: messages.filter((message) => message.outcome === 'burstLimit').length,
+        tokens: assistants.reduce((totals, message) => {
+          if (message.tokens && Number.isFinite(message.tokens.input)) { totals.input += message.tokens.input; totals.hasData = true; }
+          if (message.tokens && Number.isFinite(message.tokens.output)) { totals.output += message.tokens.output; totals.hasData = true; }
+          return totals;
+        }, { input: 0, output: 0, hasData: false }),
+      };
+    }
+    const todayWindow = summarizeWindow(todayMessages);
+    const sevenDayWindow = summarizeWindow(recentMessages);
 
     return {
       title: 'DM 대화 현황',
@@ -316,7 +352,7 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
         users: distinctUserIds.size,
         userMessages: userMessages.length,
         assistantMessages: assistantMessages.length,
-        aiResponses: assistantMessages.length,
+        aiResponses: todayWindow.aiSuccesses,
         safetyDetections: safetyMessages.length,
         inputSafetyDetections: safetyMessages.filter((message) => {
           return message.safetyDetectionSource === 'input'
@@ -327,19 +363,8 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
         }).length,
         errors: todayMessages.filter((message) => message.error).length,
       },
-      tokens: assistantMessages.reduce((totals, message) => {
-        if (message.tokens && typeof message.tokens === 'object') {
-          if (Number.isFinite(message.tokens.input)) {
-            totals.input += message.tokens.input;
-            totals.hasData = true;
-          }
-          if (Number.isFinite(message.tokens.output)) {
-            totals.output += message.tokens.output;
-            totals.hasData = true;
-          }
-        }
-        return totals;
-      }, { input: 0, output: 0, hasData: false }),
+      tokens: todayWindow.tokens,
+      periods: { today: todayWindow, sevenDays: sevenDayWindow },
       lastMessageAt: latestMessage ? latestMessage.createdAt : null,
       meta: {
         exampleRecordsExcluded: filtered.excluded,
@@ -352,6 +377,7 @@ function createDmChatRepository(logPath = DEFAULT_DM_CHAT_LOG_PATH) {
 
   return {
     appendMessage,
+    appendOperationalEvent,
     clearActiveScenario,
     countRecentUserMessages,
     countTodayUserMessages,

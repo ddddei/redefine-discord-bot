@@ -12,6 +12,7 @@
     missions: '/api/admin/missions?limit=10',
     shopItems: '/api/admin/shop-items?limit=10',
     reactions: '/api/admin/reaction-approvals?limit=10',
+    dmSafetyReviews: '/api/admin/dm-safety-reviews?limit=10',
   };
 
   const webgameLabels = {
@@ -559,6 +560,21 @@
     ], '아직 표시할 DM 대화 로그가 없습니다.\n참여자가 DM 대화 연습을 시작하면 이곳에 최근 메시지가 표시됩니다.');
   }
 
+  function renderDmSafetyReviews(response) {
+    const rows = rowsFromResponse(response);
+    const counts = response && response.counts ? response.counts : {};
+    $('dm-safety-review-status').textContent = '읽기 전용 · pending ' + text(counts.pending, 0)
+      + ' · reviewed ' + text(counts.reviewed, 0) + ' · followUp ' + text(counts.followUp, 0)
+      + ' · closed ' + text(counts.closed, 0);
+    renderTable('dm-safety-reviews', rows, [
+      { label: '감지 시각', render: function (row) { return escapeHtml(formatDate(row.detectedAt)); } },
+      { label: '사용자', render: function (row) { return escapeHtml(shortId(row.userId)); } },
+      { label: '방향', render: function (row) { return badge(row.direction); } },
+      { label: '상태', render: function (row) { return badge(row.status); } },
+      { label: '원본 로그 ID', render: function (row) { return '<span class="mono">' + escapeHtml(shortId(row.sourceLogId)) + '</span>'; } },
+    ], '안전 확인 큐 기록이 없습니다. 상태 변경은 Discord /운영현황에서만 진행합니다.');
+  }
+
   async function loadDmChatLogs() {
     $('dm-chat-status').textContent = '읽기 전용 로그를 불러오는 중입니다.';
     try {
@@ -586,6 +602,7 @@
         fetchJson(endpoints.shopItems),
         fetchJson(endpoints.reactions),
         fetchJson(getDmChatLogsEndpoint()),
+        fetchJson(endpoints.dmSafetyReviews),
         fetchJson(getWebgameEndpoint()),
       ]);
 
@@ -602,7 +619,8 @@
       renderShopItems(rowsFromResponse(results[10]));
       renderReactions(rowsFromResponse(results[11]));
       renderDmChatLogs(results[12]);
-      renderWebgameOperations(results[13]);
+      renderDmSafetyReviews(results[13]);
+      renderWebgameOperations(results[14]);
 
       $('last-updated').textContent = '마지막 갱신: ' + formatDate(new Date().toISOString());
     } catch (error) {
@@ -611,7 +629,7 @@
       $('first-day-actions').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('onboarding-signals').innerHTML = '<li>데이터를 불러오지 못했습니다.</li>';
       $('webgame-status').textContent = '웹게임 운영 데이터를 불러오지 못했습니다.';
-      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals', 'dm-chat-logs', 'webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats', 'webgame-replay-mismatches'].forEach(function (id) {
+      ['today-queue-work', 'today-queue-alerts', 'reaction-follow-ups', 'faq-candidates', 'redemptions', 'submissions', 'point-transactions', 'missions', 'shop-items', 'reaction-approvals', 'dm-chat-logs', 'dm-safety-reviews', 'webgame-weekly-match3', 'webgame-weekly-deck', 'webgame-daily-match3', 'webgame-daily-deck', 'webgame-word-distribution', 'webgame-flagged-scores', 'webgame-cheer-stats', 'webgame-replay-mismatches'].forEach(function (id) {
         $(id).innerHTML = '<p class="empty">데이터를 불러오지 못했습니다.</p>';
       });
     }

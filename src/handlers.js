@@ -107,6 +107,8 @@ const {
 const { buildOperationExportPayload, truncateForDiscord } = require('./exportUtils');
 const { findFaqAnswer, findKnowledgeAnswer } = require('./search');
 const { detectSensitiveQuestion, getSensitiveQuestionUserMessage } = require('./safety');
+const { createDmSafetyReviewRepository } = require('./dmSafetyReview');
+const { createDmSafetyReviewPayload, parseCustomId: parseDmSafetyReviewCustomId } = require('./dmSafetyReviewUi');
 const {
   buildDungeonworldExportPayload,
   createDungeonworldConfigRepository,
@@ -119,6 +121,7 @@ const { runLinkCommand, runRankingCommand } = require('./webgameLink');
 const pointsRepository = createPointsRepository();
 const dungeonworldRepository = createDungeonworldRepository();
 const dungeonworldConfigRepository = createDungeonworldConfigRepository();
+const dmSafetyReviewRepository = createDmSafetyReviewRepository();
 const {
   handleDungeonworldButton,
   handleDungeonworldCommand,
@@ -2746,6 +2749,16 @@ function getOperatorHubEmbed(value, limit = 10) {
   return buildOperatorHubEmbed(pointsRepository.getOperationSummary());
 }
 
+function createOperatorDmChatPayload() {
+  const summary = buildDmChatTodaySummary();
+  const reviews = dmSafetyReviewRepository.list({ statuses: ['pending', 'followUp'], limit: 2 });
+  const payload = createDmSafetyReviewPayload(summary, reviews);
+  return {
+    embeds: [buildOperatorDmChatSummaryEmbed(summary), ...payload.embeds],
+    components: [createOperatorHubSelectRow('dm_chat'), ...payload.components],
+  };
+}
+
 async function handleOperatorHubSelect(interaction) {
   if (!isOperator(interaction)) {
     await interaction.reply({
@@ -2772,6 +2785,8 @@ async function handleOperatorHubSelect(interaction) {
       };
     } else if (selectedValue === 'prelaunch_check') {
       payload = await createOperatorPrelaunchCheckPayload(interaction);
+    } else if (selectedValue === 'dm_chat') {
+      payload = createOperatorDmChatPayload();
     } else {
       payload = {
         embeds: [getOperatorHubEmbed(selectedValue, 10)],
@@ -3142,8 +3157,8 @@ async function handleOperationStatusCommand(interaction) {
       selectedValue = 'faq_candidates';
       embed = buildOperatorFaqCandidatesEmbed(buildFaqCandidateQueue(pointsRepository, limit));
     } else if (type === 'dmChat') {
-      selectedValue = 'dm_chat';
-      embed = buildOperatorDmChatSummaryEmbed(buildDmChatTodaySummary());
+      await interaction.reply({ ...createOperatorDmChatPayload(), ephemeral: true });
+      return;
     } else if (type === 'minigames') {
       embed = createMinigameReportEmbed(buildMinigameReport({
         pointsRepository,
@@ -3165,6 +3180,31 @@ async function handleOperationStatusCommand(interaction) {
       ephemeral: true,
     });
   }
+}
+
+async function handleDmSafetyReviewButton(interaction) {
+  if (!isOperator(interaction)) {
+    await interaction.reply({ content: '이 작업은 운영진 권한이 필요해요.', ephemeral: true });
+    return;
+  }
+  const parsed = parseDmSafetyReviewCustomId(interaction.customId);
+  if (!parsed || !['reviewed', 'followUp', 'closed'].includes(parsed.action)) {
+    await interaction.reply({ content: '안전 확인 작업 정보를 읽지 못했어요.', ephemeral: true });
+    return;
+  }
+  const result = dmSafetyReviewRepository.transition(parsed.id, {
+    status: parsed.action,
+    expectedUpdatedAt: parsed.updatedAt,
+    reviewedBy: interaction.user && interaction.user.id,
+  });
+  if (!result.ok) {
+    const message = result.reason === 'CONFLICT'
+      ? '다른 운영자가 먼저 처리했습니다. 최신 상태를 다시 확인해 주세요.'
+      : '안전 확인 기록을 찾지 못했습니다.';
+    await interaction.reply({ content: message, ephemeral: true });
+    return;
+  }
+  await interaction.update(createOperatorDmChatPayload());
 }
 
 function createOperationExportEmbed(payload) {
@@ -3583,6 +3623,10 @@ async function handleInteractionCreate(interaction) {
   }
 
   if (interaction.isButton && interaction.isButton()) {
+    if (parseDmSafetyReviewCustomId(interaction.customId)) {
+      await handleDmSafetyReviewButton(interaction);
+      return;
+    }
     if (interaction.customId === OPERATOR_HUB_BUTTON_IDS.invitationNotice) {
       await handleOperatorInvitationNoticeButton(interaction);
       return;
@@ -3805,6 +3849,7 @@ module.exports = {
   handleChannelGuideCommand,
   handleCheckinCommand,
   handleDungeonworldButton,
+  handleDmSafetyReviewButton,
   handleDungeonworldCommand,
   handleDungeonworldManageButton,
   handleDungeonworldManageCommand,

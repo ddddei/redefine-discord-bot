@@ -419,6 +419,10 @@ function buildOperatorDmChatSummaryEmbed(summary = {}) {
   const tokenLine = tokens.hasData
     ? `오늘 토큰: 입력 ${tokens.input || 0} · 출력 ${tokens.output || 0}`
     : '오늘 토큰: 집계된 사용량 없음(mock 응답 또는 데이터 없음)';
+  const today = summary.periods && summary.periods.today ? summary.periods.today : {};
+  const sevenDays = summary.periods && summary.periods.sevenDays ? summary.periods.sevenDays : {};
+  const reviewCounts = summary.reviewCounts || {};
+  const cleanup = summary.cleanup || null;
 
   return createGuideEmbed(
     'DM 대화 현황',
@@ -432,10 +436,22 @@ function buildOperatorDmChatSummaryEmbed(summary = {}) {
       `- assistant 응답: ${counts.assistantMessages || 0}건`,
       `- 오늘 AI 응답 수: ${counts.aiResponses || 0}건`,
       `- ${tokenLine}`,
+      `- AI 성공 ${today.aiSuccesses || 0} · 오류 ${today.aiErrors || 0} · 타임아웃 ${today.aiTimeouts || 0}`,
+      `- 제한 도달: 일일 ${today.dailyLimitHits || 0} · 분당 ${today.burstLimitHits || 0}`,
+      '',
+      '최근 7일',
+      `- user ${sevenDays.userMessages || 0} · assistant ${sevenDays.assistantMessages || 0}`,
+      `- 토큰: 입력 ${(sevenDays.tokens && sevenDays.tokens.input) || 0} · 출력 ${(sevenDays.tokens && sevenDays.tokens.output) || 0}`,
+      `- AI 성공 ${sevenDays.aiSuccesses || 0} · 오류 ${sevenDays.aiErrors || 0} · 타임아웃 ${sevenDays.aiTimeouts || 0}`,
+      `- 제한 도달: 일일 ${sevenDays.dailyLimitHits || 0} · 분당 ${sevenDays.burstLimitHits || 0}`,
+      `- 모델: ${summary.model || '미설정'}`,
       '',
       '안전/오류',
       `- 안전 감지: ${counts.safetyDetections || 0}건 (입력 ${counts.inputSafetyDetections || 0}건 / 출력 ${counts.outputSafetyDetections || 0}건)`,
       `- 오류 로그: ${counts.errors || 0}건`,
+      `- 안전 확인 큐: pending ${reviewCounts.pending || 0} · followUp ${reviewCounts.followUp || 0}`,
+      `- 마지막 자동 정리 성공: ${(cleanup && cleanup.lastSuccessAt) || '기록 없음'}`,
+      `- 마지막 자동 정리 실패: ${(cleanup && cleanup.lastFailureAt) || '기록 없음'}`,
       '',
       lastMessageLine,
       excluded,
