@@ -15,6 +15,7 @@ const {
   startOperationBackupReminder,
 } = require('./logging');
 const { startOperationBackupScheduler } = require('./operationBackup');
+const { startDmChatCleanupScheduler } = require('./dmChatCleanup');
 const { enforceOperationDataPreflight } = require('./operationDataPaths');
 const {
   findFaqAnswer,
@@ -48,6 +49,7 @@ client.once('clientReady', () => {
   startTodayMissionAutoPublishScheduler(client);
   startOperationBackupReminder(client);
   startOperationBackupScheduler(client);
+  startDmChatCleanupScheduler(client);
 });
 
 client.on('interactionCreate', handleInteractionCreate);

@@ -52,6 +52,8 @@ function getDefaultSnapshotPaths() {
     operatorSupport: paths.operatorSupport,
     dailyMissionAnnouncements: paths.dailyMissionAnnouncements,
     dmChatLogs: paths.dmChatLogs,
+    dmCleanupState: paths.dmCleanupState,
+    dmSafetyReviews: paths.dmSafetyReviews,
     dungeonworldLogs: paths.dungeonworldLogs,
     dungeonworldConfig: paths.dungeonworldConfig,
     webgameLinks: paths.webgameLinks,

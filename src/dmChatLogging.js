@@ -208,6 +208,19 @@ async function sendDmChatGlobalErrorAlert(client, details = {}) {
   return true;
 }
 
+async function sendDmChatSafetyQueueError(client, details = {}) {
+  const alertChannelId = process.env.SAFETY_ALERT_CHANNEL_ID || process.env.DM_CHAT_LOG_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+  const channel = await fetchLogChannel(client, alertChannelId, 'DM 안전 확인 큐 오류');
+  if (!channel) return false;
+  const direction = details.direction === 'output' ? '출력' : '입력';
+  const embed = new EmbedBuilder()
+    .setColor(0xcc3333)
+    .setTitle('DM 안전 확인 큐 저장 실패 · 우선 확인')
+    .setDescription(`${direction} 안전 기록의 확인 큐 저장에 실패했습니다. 참여자 안내와 원본 DM 로그는 유지됩니다. 운영 로그와 데이터 경로를 즉시 확인해 주세요.`);
+  await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
+  return true;
+}
+
 function resetDmChatSafetyAlertThrottleForTest() {
   safetyAlertThrottleState.clear();
 }
@@ -217,4 +230,5 @@ module.exports = {
   sendDmChatGlobalErrorAlert,
   sendDmChatOperatorLog,
   sendDmChatSafetyAlert,
+  sendDmChatSafetyQueueError,
 };

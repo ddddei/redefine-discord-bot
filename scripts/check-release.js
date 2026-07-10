@@ -39,6 +39,21 @@ const checks = [
     args: ['--check', 'src/dmChatScenarios.js'],
   },
   {
+    label: 'src/dmSafetyReview.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dmSafetyReview.js'],
+  },
+  {
+    label: 'src/dmChatCleanup.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dmChatCleanup.js'],
+  },
+  {
+    label: 'src/dmSafetyReviewUi.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/dmSafetyReviewUi.js'],
+  },
+  {
     label: 'scripts/cleanup-dm-chat-logs.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/cleanup-dm-chat-logs.js'],
@@ -617,6 +632,11 @@ const checks = [
     label: 'dm chat retention cleanup test',
     command: 'node',
     args: ['scripts/test-dm-chat-retention.js'],
+  },
+  {
+    label: 'dm live operation readiness test',
+    command: 'node',
+    args: ['scripts/test-dm-live-readiness.js'],
   },
   {
     label: 'admin dashboard flow smoke test',

@@ -62,6 +62,11 @@ SAFETY_ALERT_THROTTLE_MINUTES=10
 DM_CHAT_MEMBER_ONLY=true
 DM_CHAT_BURST_LIMIT_PER_MINUTE=5
 DM_CHAT_RETENTION_DAYS=90
+DM_CHAT_CLEANUP_AUTO_ENABLED=false
+DM_CHAT_CLEANUP_WEEKDAY=sunday
+DM_CHAT_CLEANUP_TIME_KST=04:00
+DM_SAFETY_REVIEWS_PATH=
+DM_CHAT_CLEANUP_STATE_PATH=
 ```
 
 `AI_MODEL`에는 운영자가 OpenAI Platform에서 사용할 모델명을 넣습니다. `OPENAI_API_KEY`와 실제 채널 ID는 Railway Variables 또는 로컬 `.env`에만 저장하고 문서, 코드, 캡처에 남기지 않습니다.
@@ -72,7 +77,9 @@ DM 대화는 첫 사용 시 기록/운영진 열람 안내를 자동 전송합�
 
 `DM_CHAT_BURST_LIMIT_PER_MINUTE`(기본 `5`)는 롤링 60초 동안 사용자별 `role=user` 메시지 수 상한입니다. 초과 시 메시지는 그대로 저장·로그 전송되지만 AI는 호출하지 않고 "조금 천천히 이야기해요. 잠시 후 다시 보내 주세요."를 1분에 1회만 보냅니다. 민감 감지는 이 제한과 무관하게 항상 수행됩니다. `0`으로 설정하면 해제됩니다.
 
-`DM_CHAT_RETENTION_DAYS`(기본 `90`, `0`이면 무기한)는 `scripts/cleanup-dm-chat-logs.js`가 사용하는 로그 보존 기간입니다. 안전 감지 레코드는 이 값과 무관하게 180일 상수를 적용합니다. 첫 안내문에는 이 값을 반영한 보존 기간 안내가 포함되며, 값이 바뀌면 아직 안내를 받지 않은 사용자에게는 새 값이, 이미 v1 고지를 받은 기존 사용자에게는 v2 고지가 1회 재발송됩니다. 정리 절차는 `docs/dm-chat-operation-guide.md`를 참고합니다.
+`DM_CHAT_RETENTION_DAYS`(기본 `90`, `0`이면 무기한)는 `scripts/cleanup-dm-chat-logs.js`가 사용하는 로그 보존 기간입니다. 안전 감지 레코드는 이 값과 무관하게 180일 상수를 적용합니다. 첫 안내문에는 이 값을 반영한 보존 기간과 AI 대화·역할 한계가 포함되며, 이전 안내만 받은 사용자는 최신 안내를 1회 다시 받습니다. 정리 절차는 `docs/dm-chat-operation-guide.md`를 참고합니다.
+
+`DM_CHAT_CLEANUP_AUTO_ENABLED=true`이면 봇 단일 인스턴스가 KST 기준 지정 요일·시각에 주간 정리를 시도합니다. 기본은 `false`입니다. 잘못된 요일·시각은 `sunday`, `04:00`으로 돌아가며 경고를 남깁니다. 50% 초과 삭제, JSON 파싱 실패, 백업 사본 생성 실패, 보존 0일이면 자동 적용하지 않습니다. 큐와 정리 상태 경로는 개별 변수가 있으면 `OPERATION_DATA_DIR`보다 우선하므로 Volume 내부인지 확인합니다.
 
 ## 5. 채널/로그 환경변수
 

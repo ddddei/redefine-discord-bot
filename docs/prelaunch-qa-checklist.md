@@ -175,6 +175,7 @@
 - [ ] `/운영내보내기 종류:요약 형식:요약`으로 전체 수량을 확인합니다.
 - [ ] `/운영내보내기 종류:전체 형식:JSON`으로 전체 백업을 받습니다.
 - [ ] 자동 운영 백업 스냅샷을 사용하는 경우 `files.dmChatLogs`에 DM 대화 로그가 포함되고, 예전 스냅샷처럼 `dmChatLogs` 키가 없는 파일도 복원 dry-run이 실패하지 않습니다.
+- [ ] 백업 manifest와 복원 dry-run에 `dmSafetyReviews`, `dmCleanupState`가 포함됩니다.
 - [ ] 백업 manifest에 웹게임 연결·점수·소셜이 포함되고 replay mismatch·백업 상태는 정책 제외로 표시됩니다.
 - [ ] 재배포 전후 points·redemptions·submissions·DM·웹게임 건수 또는 checksum이 유지됩니다.
 - [ ] 별도 임시 디렉터리에서 복원 dry-run과 `node scripts/check-local-operation-data.js`를 통과합니다.
@@ -204,6 +205,9 @@
 - [ ] `/admin` 첫 화면에 오늘의 운영 큐가 보이고 pending 교환, pending 인증, 오늘 반응 승인/반려, 오늘 포인트 거래, 후속 확인, QA 경고 수가 표시됩니다.
 - [ ] DM 대화 연습을 켠 경우 `/admin`의 최근 DM 대화 로그가 읽기 전용으로 표시되고 safetyDetection 메시지가 한눈에 구분됩니다.
 - [ ] `/admin`의 최근 DM 대화 로그에서 사용자 ID, 안전 감지만, 개수 필터가 동작하고 `matchedKeyword`는 API 응답에 노출되지 않습니다.
+- [ ] `/admin`의 DM 안전 확인 목록은 읽기 전용이며 원문·matchedKeyword·운영 메모를 노출하지 않습니다.
+- [ ] `/운영현황 종류:DM대화`에서 오늘/7일 메시지·토큰·오류·타임아웃·제한 및 pending/followUp 큐를 확인합니다.
+- [ ] [DM 실계정 리허설 가이드](dm-chat-live-rehearsal-guide.md)의 15개 항목을 실제 계정과 모바일에서 확인했습니다.
 - [ ] 관리자 대시보드에 `user_example`, `rd_example`, `submission_example`, `tx_example`, 2030년 샘플 날짜가 운영 데이터처럼 노출되지 않습니다.
 - [ ] `/api/admin/today-queue`에서 example 데이터가 제외된 운영 기준 큐가 반환됩니다.
 - [ ] `/api/admin/summary`에서 example 데이터가 제외된 운영 기준 숫자가 반환됩니다.

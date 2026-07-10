@@ -1,6 +1,7 @@
 const path = require('path');
 const { getOperationDataPaths } = require('./operationDataPaths');
 const { createDmChatRepository } = require('./dmChatRepository');
+const { createDmSafetyReviewRepository } = require('./dmSafetyReview');
 const { createPointsRepository, getKoreanDateString } = require('./pointsRepository');
 const {
   filterOperationalRecords,
@@ -523,7 +524,49 @@ function buildDmChatTodaySummary(repository = null, now = new Date()) {
     ? repository
     : createDefaultDmChatRepository();
 
-  return dmRepository.summarizeToday(now);
+  const summary = dmRepository.summarizeToday(now);
+  const paths = getOperationDataPaths();
+  let cleanupState = null;
+  try {
+    if (require('fs').existsSync(paths.dmCleanupState)) {
+      const data = JSON.parse(require('fs').readFileSync(paths.dmCleanupState, 'utf8'));
+      const records = Array.isArray(data.records) ? data.records : [];
+      cleanupState = {
+        last: records.slice(-1)[0] || null,
+        lastSuccessAt: records.slice().reverse().find((record) => record.ok === true)?.ranAt || null,
+        lastFailureAt: records.slice().reverse().find((record) => record.ok === false)?.ranAt || null,
+      };
+    }
+  } catch (error) {
+    cleanupState = { last: null, lastSuccessAt: null, lastFailureAt: null };
+  }
+  const safetyRepository = createDmSafetyReviewRepository(paths.dmSafetyReviews);
+  return {
+    ...summary,
+    model: String(process.env.AI_MODEL || '').trim() || '미설정',
+    reviewCounts: safetyRepository.countByStatus(),
+    cleanup: cleanupState,
+  };
+}
+
+function listDmSafetyReviews(repository = null, limit = 10) {
+  const reviewRepository = repository && typeof repository.list === 'function'
+    ? repository
+    : createDmSafetyReviewRepository();
+  return {
+    data: reviewRepository.list({ limit }).map((review) => ({
+      id: review.id,
+      sourceLogId: review.sourceLogId,
+      userId: review.userId,
+      direction: review.direction,
+      status: review.status,
+      detectedAt: review.detectedAt,
+      reviewedAt: review.reviewedAt,
+      updatedAt: review.updatedAt,
+    })),
+    counts: reviewRepository.countByStatus(),
+    meta: { readOnly: true, storageMode: 'local-json' },
+  };
 }
 
 function listPendingRedemptions(repository = createDefaultRepository(), limit = 10) {
@@ -694,7 +737,8 @@ function listRecentDmChatMessages(repository = null, options = 10) {
       username: message.username || null,
       displayName: message.displayName || message.username || message.userId || null,
       role: message.role || null,
-      content: message.content || '',
+      content: String(message.content || '').slice(0, 300),
+      contentTruncated: String(message.content || '').length > 300,
       hasSafetyDetection: Boolean(message.safetyDetection),
       safetyDetection: summarizeSafetyDetection(message.safetyDetection),
     }))),
@@ -1050,6 +1094,7 @@ module.exports = {
   listRecentPointTransactions,
   listRecentReactionApprovals,
   listRecentDmChatMessages,
+  listDmSafetyReviews,
   listShopItemStatus,
   filterOperationalRecords,
   isExampleLikeRecord,

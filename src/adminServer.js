@@ -15,6 +15,7 @@ const {
   buildTodayOperationsQueue,
   buildWebgameOperationsSummary,
   listMissionStatus,
+  listDmSafetyReviews,
   listPendingRedemptions,
   listPendingSubmissions,
   listRecentDmChatMessages,
@@ -283,6 +284,11 @@ function handleAdminApi(req, res, pathname, searchParams, repository, webgameRep
         userId: searchParams.get('userId'),
         safetyOnly: searchParams.get('safetyOnly'),
       }));
+      return;
+    }
+
+    if (pathname === '/api/admin/dm-safety-reviews') {
+      sendJson(res, 200, listDmSafetyReviews(null, limit));
       return;
     }
 
