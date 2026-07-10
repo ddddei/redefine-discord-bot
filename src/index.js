@@ -15,6 +15,7 @@ const {
   startOperationBackupReminder,
 } = require('./logging');
 const { startOperationBackupScheduler } = require('./operationBackup');
+const { enforceOperationDataPreflight } = require('./operationDataPaths');
 const {
   findFaqAnswer,
   findKnowledgeAnswer,
@@ -69,6 +70,13 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 if (require.main === module) {
+  try {
+    enforceOperationDataPreflight();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+    return;
+  }
   try {
     startAdminServer();
   } catch (error) {

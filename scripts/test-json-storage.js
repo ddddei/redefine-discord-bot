@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { saveJsonFileAtomic } = require('../src/jsonStorage');
+const { saveJsonFileAtomic, saveJsonFilesGroup } = require('../src/jsonStorage');
 
 const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'json-storage-test-'));
 
@@ -47,6 +47,35 @@ try {
   assert.strictEqual(fs.readFileSync(storePath, 'utf8'), `${JSON.stringify(sample, null, 2)}\n`);
   assert.deepStrictEqual(loadJsonFile(storePath), sample);
   assert.strictEqual(fs.existsSync(`${storePath}.tmp`), false);
+
+  // 7. 그룹 저장 중 두 번째 rename 실패 시 이미 교체된 파일도 이전 상태로 복원합니다.
+  const groupA = path.join(workDir, 'group-a.json');
+  const groupB = path.join(workDir, 'group-b.json');
+  saveJsonFileAtomic(groupA, { value: 'before-a' });
+  saveJsonFileAtomic(groupB, { value: 'before-b' });
+  let renameCount = 0;
+  const injectedFs = {
+    mkdirSync: fs.mkdirSync,
+    writeFileSync: fs.writeFileSync,
+    copyFileSync: fs.copyFileSync,
+    existsSync: fs.existsSync,
+    rmSync: fs.rmSync,
+    renameSync(source, target) {
+      renameCount += 1;
+      if (renameCount === 2) throw new Error('injected rename failure');
+      return fs.renameSync(source, target);
+    },
+  };
+  assert.throws(
+    () => saveJsonFilesGroup([
+      { filePath: groupA, data: { value: 'after-a' } },
+      { filePath: groupB, data: { value: 'after-b' } },
+    ], { fs: injectedFs }),
+    /rollback succeeded/
+  );
+  assert.deepStrictEqual(JSON.parse(fs.readFileSync(groupA, 'utf8')), { value: 'before-a' });
+  assert.deepStrictEqual(JSON.parse(fs.readFileSync(groupB, 'utf8')), { value: 'before-b' });
+  assert.deepStrictEqual(fs.readdirSync(workDir).filter((name) => /\.tmp-|\.rollback-/.test(name)), []);
 } finally {
   fs.rmSync(workDir, { recursive: true, force: true });
 }

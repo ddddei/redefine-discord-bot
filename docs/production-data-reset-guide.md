@@ -23,7 +23,9 @@
 - `data/submissions.local.json`
 - `data/reaction-approvals.local.json`
 
-파일이 없다면 저장소는 빈 운영 구조 또는 example fallback 구조를 기준으로 안전하게 시작합니다. 운영 대시보드에는 example 데이터가 실제 운영 데이터처럼 표시되지 않아야 합니다.
+파일이 없다면 저장소가 `isExample: false`인 빈 운영 구조를 즉시 생성합니다. example 파일은 실제 운영 상태 fallback으로 사용하지 않습니다. 일부 파일만 있어도 없는 파일만 빈 구조로 생성됩니다.
+
+Railway에서는 영속 Volume mount 경로를 `OPERATION_DATA_DIR`로 지정하고 `PRODUCTION_DATA_STRICT=true`를 권장합니다. 기존 파일별 `*_DATA_PATH`가 있으면 공통 경로보다 우선합니다.
 
 ## 4. local JSON 파일 주의사항
 
@@ -58,6 +60,7 @@
 6. 운영용 미션과 상점 항목을 등록합니다.
 7. `/운영현황`과 `/admin`을 함께 확인합니다.
 8. 운영 데이터 백업 방법을 확인합니다.
+9. `node scripts/check-local-operation-data.js`로 example 혼입과 파일 간 참조를 확인합니다.
 
 ## 8. 운영 시작 전 체크리스트
 

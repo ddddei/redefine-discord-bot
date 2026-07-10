@@ -72,8 +72,15 @@ function main() {
     paths.missions,
     paths.submissions,
   ]) {
-    assert.strictEqual(fs.existsSync(localPath), false);
+    assert.strictEqual(fs.existsSync(localPath), true);
+    assert.strictEqual(JSON.parse(fs.readFileSync(localPath, 'utf8')).isExample, false);
   }
+
+  // 아래 기존 export 필터 회귀 검증은 명시적으로 example fixture를 local 경로에 복사해 수행합니다.
+  for (const [primaryKey, fallbackKey] of [
+    ['points', 'pointsFallback'], ['shopItems', 'shopItemsFallback'], ['redemptions', 'redemptionsFallback'],
+    ['missions', 'missionsFallback'], ['submissions', 'submissionsFallback'],
+  ]) fs.copyFileSync(paths[fallbackKey], paths[primaryKey]);
 
   const redemptionForNote = repository.requestRedemption({
     user: {

@@ -2,15 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { loadJsonFile, saveJsonFile } = require('./pointsStore');
+const { getOperationDataPaths } = require('./operationDataPaths');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+const OPERATION_PATHS = getOperationDataPaths();
 
 const DEFAULT_PATHS = {
-  links: process.env.WEBGAME_LINKS_DATA_PATH || path.join(DATA_DIR, 'webgame-links.local.json'),
-  scores: process.env.WEBGAME_SCORES_DATA_PATH || path.join(DATA_DIR, 'webgame-scores.local.json'),
-  social: process.env.WEBGAME_SOCIAL_DATA_PATH || path.join(DATA_DIR, 'webgame-social.local.json'),
-  replayMismatch: process.env.WEBGAME_REPLAY_MISMATCH_DATA_PATH
-    || path.join(DATA_DIR, 'webgame-replay-mismatch.local.json'),
+  links: OPERATION_PATHS.webgameLinks,
+  scores: OPERATION_PATHS.webgameScores,
+  social: OPERATION_PATHS.webgameSocial,
+  replayMismatch: OPERATION_PATHS.webgameReplayMismatch,
 };
 
 // mismatch 진단 파일은 최근 이 개수만큼만 순환 보관한다(계획서 3절 - 오탐 분석·

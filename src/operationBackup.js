@@ -1,15 +1,22 @@
 const fs = require('fs');
-const path = require('path');
 const { AttachmentBuilder } = require('discord.js');
 const { getKoreanDateString } = require('./pointsRepository');
 const { formatTimestampForFilename } = require('./exportUtils');
 const { saveJsonFileAtomic } = require('./jsonStorage');
+const { getOperationDataPaths, isProductionDataStrict } = require('./operationDataPaths');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const DEFAULT_STATE_PATH = path.join(DATA_DIR, 'operation-backups.local.json');
+const DEFAULT_STATE_PATH = getOperationDataPaths().operationBackupState;
+const SNAPSHOT_SCHEMA_VERSION = 2;
 const DEFAULT_BACKUP_TIME_KST = '21:00';
 const MAX_BACKUP_BYTES = Math.floor(7.5 * 1024 * 1024);
 const MAX_STATE_RECORDS = 30;
+const STRICT_REQUIRED_KEYS = new Set([
+  'points',
+  'shopItems',
+  'redemptions',
+  'missions',
+  'submissions',
+]);
 
 let schedulerStarted = false;
 
@@ -33,19 +40,30 @@ function getOperationBackupTimeKst() {
 }
 
 function getDefaultSnapshotPaths() {
+  const paths = getOperationDataPaths();
   return {
-    points: process.env.POINTS_DATA_PATH || path.join(DATA_DIR, 'points.local.json'),
-    shopItems: process.env.SHOP_ITEMS_DATA_PATH || path.join(DATA_DIR, 'shop-items.local.json'),
-    redemptions: process.env.REDEMPTIONS_DATA_PATH || path.join(DATA_DIR, 'redemptions.local.json'),
-    missions: process.env.MISSIONS_DATA_PATH || path.join(DATA_DIR, 'missions.local.json'),
-    missionTemplates: process.env.MISSION_TEMPLATES_DATA_PATH || path.join(DATA_DIR, 'mission-templates.local.json'),
-    submissions: process.env.SUBMISSIONS_DATA_PATH || path.join(DATA_DIR, 'submissions.local.json'),
-    reactionApprovals: process.env.REACTION_APPROVALS_DATA_PATH || path.join(DATA_DIR, 'reaction-approvals.local.json'),
-    operatorSupport: process.env.OPERATOR_SUPPORT_DATA_PATH || path.join(DATA_DIR, 'operator-support.local.json'),
-    dmChatLogs: process.env.DM_CHAT_LOG_PATH || path.join(DATA_DIR, 'dm-chat-logs.local.json'),
-    dungeonworldLogs: process.env.DUNGEONWORLD_LOG_PATH || path.join(DATA_DIR, 'dungeonworld-logs.local.json'),
-    dungeonworldConfig: process.env.DUNGEONWORLD_CONFIG_PATH || path.join(DATA_DIR, 'dungeonworld-config.local.json'),
-    dailyMissionAnnouncements: path.join(DATA_DIR, 'daily-mission-announcements.local.json'),
+    points: paths.points,
+    shopItems: paths.shopItems,
+    redemptions: paths.redemptions,
+    missions: paths.missions,
+    missionTemplates: paths.missionTemplates,
+    submissions: paths.submissions,
+    reactionApprovals: paths.reactionApprovals,
+    operatorSupport: paths.operatorSupport,
+    dailyMissionAnnouncements: paths.dailyMissionAnnouncements,
+    dmChatLogs: paths.dmChatLogs,
+    dungeonworldLogs: paths.dungeonworldLogs,
+    dungeonworldConfig: paths.dungeonworldConfig,
+    webgameLinks: paths.webgameLinks,
+    webgameScores: paths.webgameScores,
+    webgameSocial: paths.webgameSocial,
+  };
+}
+
+function getBackupPolicies() {
+  return {
+    webgameReplayMismatch: { excludedByPolicy: true },
+    operationBackupState: { excludedByPolicy: true },
   };
 }
 
@@ -69,16 +87,37 @@ function collectBackupSnapshot(paths = {}, options = {}) {
   };
   const now = options.now || new Date();
   const files = {};
+  const manifest = {};
 
   for (const [key, filePath] of Object.entries(resolvedPaths)) {
     files[key] = readSnapshotFile(filePath);
+    const exists = Boolean(filePath && fs.existsSync(filePath));
+    manifest[key] = {
+      included: files[key] !== null,
+      missing: !exists || files[key] === null,
+      excludedByPolicy: false,
+      requiredForStrict: STRICT_REQUIRED_KEYS.has(key),
+      byteSize: exists ? fs.statSync(filePath).size : 0,
+    };
+  }
+
+  for (const [key] of Object.entries(getBackupPolicies())) {
+    manifest[key] = {
+      included: false,
+      missing: false,
+      excludedByPolicy: true,
+      requiredForStrict: false,
+      byteSize: 0,
+    };
   }
 
   return {
+    schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     generatedAt: now.toISOString(),
     generatedDateKst: getKoreanDateString(now),
     trigger: options.trigger || 'scheduled',
     files,
+    manifest,
   };
 }
 
@@ -161,6 +200,13 @@ async function sendOperationBackup(client, options = {}) {
   }
 
   const snapshot = collectBackupSnapshot(options.paths || {}, { now, trigger });
+  const missingRequired = Object.entries(snapshot.manifest)
+    .filter(([, entry]) => entry.missing && entry.requiredForStrict)
+    .map(([key]) => key);
+  if (isProductionDataStrict() && missingRequired.length > 0) {
+    console.warn(`운영 자동 백업 strict 점검 실패: 필수 파일 ${missingRequired.length}개 누락`);
+    return { ok: false, reason: 'MISSING_REQUIRED_FILES', missingCount: missingRequired.length };
+  }
   const serialized = `${JSON.stringify(snapshot, null, 2)}\n`;
   const byteSize = Buffer.byteLength(serialized, 'utf8');
 
@@ -195,6 +241,10 @@ async function sendOperationBackup(client, options = {}) {
   }
 
   const filename = buildBackupFilename(now);
+  const manifestEntries = Object.values(snapshot.manifest);
+  const includedFileCount = manifestEntries.filter((entry) => entry.included).length;
+  const excludedFileCount = manifestEntries.filter((entry) => entry.excludedByPolicy).length;
+  const missingFileCount = manifestEntries.filter((entry) => entry.missing).length;
 
   let message = null;
   try {
@@ -217,7 +267,11 @@ async function sendOperationBackup(client, options = {}) {
     sentAt: now.toISOString(),
     trigger,
     messageId: message && message.id ? message.id : null,
+    filename,
     byteSize,
+    includedFileCount,
+    excludedFileCount,
+    missingFileCount,
   };
 
   saveBackupState(statePath, {
@@ -318,9 +372,12 @@ function startOperationBackupScheduler(client, options = {}) {
 module.exports = {
   DEFAULT_STATE_PATH,
   MAX_BACKUP_BYTES,
+  SNAPSHOT_SCHEMA_VERSION,
+  STRICT_REQUIRED_KEYS,
   buildBackupFilename,
   collectBackupSnapshot,
   getDefaultSnapshotPaths,
+  getBackupPolicies,
   getNextBackupDelayMs,
   getOperationBackupChannelId,
   getOperationBackupTimeKst,

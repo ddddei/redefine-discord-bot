@@ -71,7 +71,7 @@ python3 -m http.server 4173 --directory public
 
 ## Railway 배포 전후 확인 루틴
 
-배포 전에는 `node --check src/index.js`, `node --check src/deploy-commands.js`, `npm run validate:data`, `npm run test:questions`를 실행합니다. 배포 후에는 Railway에서 봇 상태가 Online인지 확인하고, 디스코드에서 `/안내`, `/질문`, `/채널안내`, `/공지` 응답을 확인합니다.
+배포 전에는 `node --check src/index.js`, `node --check src/deploy-commands.js`, `npm run validate:data`, `npm run test:questions`, `npm run check:local-data`, `npm run check:release`를 실행합니다. 운영 데이터 안전화 회귀는 `node scripts/test-production-data-safety.js`로 빈 환경·부분 파일·경로 우선순위·strict 차단을 확인합니다. 배포 후에는 Railway에서 봇 상태가 Online인지 확인하고, 디스코드에서 `/안내`, `/질문`, `/채널안내`, `/공지` 응답을 확인합니다.
 
 ## Slash Command 등록
 

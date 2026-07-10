@@ -26,6 +26,13 @@ function main() {
     submissionsFallback: path.join(dataDir, 'submissions.example.json'),
     operatorSupport: path.join(tempDir, 'operator-support.json'),
   };
+  for (const [primaryKey, fallbackKey] of [
+    ['points', 'pointsFallback'],
+    ['shopItems', 'shopItemsFallback'],
+    ['redemptions', 'redemptionsFallback'],
+  ]) {
+    fs.copyFileSync(paths[fallbackKey], paths[primaryKey]);
+  }
   const sheetsEvents = [];
   const repository = createPointsRepository(paths, {
     googleSheetsLogger: {

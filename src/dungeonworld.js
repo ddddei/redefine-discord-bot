@@ -1,13 +1,15 @@
 const fs = require('fs');
 const path = require('path');
+const { getOperationDataPaths } = require('./operationDataPaths');
 const { normalizeExportFormat, toCsv, toSafeJson } = require('./exportUtils');
 const { saveJsonFileAtomic } = require('./jsonStorage');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
+const OPERATION_PATHS = getOperationDataPaths();
 const DEFAULT_PATHS = {
-  logs: process.env.DUNGEONWORLD_LOG_PATH || path.join(DATA_DIR, 'dungeonworld-logs.local.json'),
+  logs: OPERATION_PATHS.dungeonworldLogs,
   logsFallback: path.join(DATA_DIR, 'dungeonworld-logs.example.json'),
-  config: process.env.DUNGEONWORLD_CONFIG_PATH || path.join(DATA_DIR, 'dungeonworld-config.local.json'),
+  config: OPERATION_PATHS.dungeonworldConfig,
   configFallback: path.join(DATA_DIR, 'dungeonworld-config.example.json'),
 };
 

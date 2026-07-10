@@ -44,6 +44,11 @@ Railway Variables 또는 로컬 `.env`에 다음을 설정합니다.
 - 발송 실패(채널 없음, 권한 부족, 크기 초과)는 경고 로그만 남기고 다음 날 다시 시도합니다. 실패가 봇의 다른 동작을 막지 않습니다.
 - 스냅샷 크기가 약 7.5MB를 넘으면 업로드 대신 실패 알림 메시지를 보냅니다. 이 경우 `/운영내보내기`로 수동 백업을 진행합니다.
 - 백업 리마인더(`OPERATION_BACKUP_REMINDER_ENABLED`)와는 별개 기능입니다. 리마인더는 확인 메시지만 보내고, 자동 백업은 실제 파일을 생성해 업로드합니다. 둘을 함께 켜도 무방합니다.
+- 스냅샷 `schemaVersion: 2`의 `manifest`에는 파일별 포함·누락·정책 제외·strict 필수 여부·byte 크기가 기록됩니다. manifest가 없는 구버전은 경고 후 읽지만, 현재보다 새로운 미지원 schemaVersion은 쓰기 전에 중단합니다.
+- 포인트, 상점, 교환, 미션, 템플릿, 인증, 반응 승인, 운영 지원, 일일 안내, DM, 던전월드와 웹게임 연결·점수·소셜이 대상입니다.
+- `webgameReplayMismatch`와 백업 발송 상태 자체는 정책상 제외되며 manifest에 `excludedByPolicy`로 표시됩니다.
+- `PRODUCTION_DATA_STRICT=true`에서는 핵심 5종(points, shopItems, redemptions, missions, submissions)이 누락된 스냅샷을 성공으로 전송하지 않습니다. 선택 기능 파일은 누락 사실을 manifest에 남기되 백업 자체를 막지 않습니다.
+- 업로드 성공 상태에는 파일명, 전체 byte 크기, 포함·정책 제외·누락 파일 수가 함께 기록됩니다. 이 집계에는 사용자 ID나 데이터 원문이 포함되지 않습니다.
 
 ### 복원 절차
 
@@ -64,6 +69,7 @@ Railway Variables 또는 로컬 `.env`에 다음을 설정합니다.
    ```
 
 5. 봇을 다시 시작하고 `/운영현황`으로 데이터가 정상인지 확인합니다.
+6. `node scripts/check-local-operation-data.js`로 복원 후 무결성을 확인합니다. manifest가 없는 구버전 스냅샷은 경고 후 관용적으로 dry-run합니다.
 
 ## 개인정보 및 보관 주의사항
 
