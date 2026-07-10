@@ -48,6 +48,8 @@
 | [api-rag-plan.md](api-rag-plan.md) | 향후 API/RAG 연동 설계안 | OpenAI/Gemini API 또는 RAG 도입을 검토할 때 | 권장 답변 흐름, 개인정보 원칙, 프롬프트 방향, 단계별 도입 계획 |
 | [dm-chat-mvp-plan.md](dm-chat-mvp-plan.md) | DM 대화 연습 기능 개발 계획 문서 | DM 대화 연습의 구현 범위 확인, 단계별 개발과 Codex 작업 지시서 작성 시 기준으로 삼을 때 | 전체 구조, 접근 방식, 단계별 계획, 성공 기준, 제약 조건, 위험/롤백 |
 | [dm-chat-improvement-plan.md](dm-chat-improvement-plan.md) | DM 대화 고도화 v1 계획서 (완성 배포판) | DM 대화 2단계(운영 편의)와 대화 초기화·비용 가시성 구현에 착수하거나 Codex 지시서를 작성할 때 | 안전 알림 스로틀, /운영현황 DM 요약, /admin 필터, 대화 초기화, 테스트/QA/롤백 |
+| [production-data-safety-v1-plan.md](production-data-safety-v1-plan.md) | 운영 데이터 안전화 v1 계획서 | 참여자 DM 실운영 전 빈 환경 초기화·Railway 영속 경로·자동 백업 범위를 확정할 때 | example 분리, `OPERATION_DATA_DIR`, strict 시작 점검, 웹게임 포함 백업, 부분 저장 감지 |
+| [dm-live-operation-readiness-v1-plan.md](dm-live-operation-readiness-v1-plan.md) | 참여자 DM 실운영 준비 v1 계획서 | 완성된 DM 기능을 실제 참여자에게 단계적으로 열기 전 리허설·운영 대응·자동 보존 범위를 검토할 때 | 실계정 리허설, 첫 안내 이해도, 안전 알림 확인 큐, 자동 로그 정리, 비용·장애 기준, 맞춤 연습 팩 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
 | [faq-knowledge-refinement-plan.md](faq-knowledge-refinement-plan.md) | FAQ/Knowledge 응답 품질 점검 리포트 | 실제 데이터 수정 전 개선 후보와 검증 질문을 정리할 때 | 중복 주제, 넓은 keywords, fallback 후보, 온보딩/민감 질문 보강 후보 |
 | [test-questions-followup-report.md](test-questions-followup-report.md) | 질문 매칭 잔여 오매칭 점검 리포트 | `test:questions` 결과 기반으로 남은 오매칭, 애매한 매칭, 의도적 Fallback 후보를 확인할 때 | 개선 확인 항목, 애매한 매칭 후보, Fallback 유지 후보, 다음 데이터 수정 순서 |
