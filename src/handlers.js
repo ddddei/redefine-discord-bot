@@ -83,6 +83,7 @@ const {
   sendUnansweredQuestionLog,
 } = require('./logging');
 const { getAiFallbackAnswer } = require('./ai');
+const { getOperationDataPaths, isProductionDataStrict, runOperationDataPreflight } = require('./operationDataPaths');
 const {
   getChannelGuideRoleNote,
   getOnboardingGuideMessage,
@@ -290,11 +291,18 @@ async function createOperatorEnvironmentCheck(interaction) {
     channelChecks.push(await inspectChannelEnvironment(interaction, definition));
   }
 
+  const operationDataResult = runOperationDataPreflight({ paths: getOperationDataPaths(), strict: isProductionDataStrict() });
   return {
     channelChecks,
     googleSheetsCheck: {
       loggingEnabled: isGoogleSheetsLoggingEnabled(),
       webAppUrlConfigured: Boolean(getConfiguredEnvValue('GOOGLE_SHEETS_WEB_APP_URL')),
+    },
+    operationDataCheck: {
+      strict: operationDataResult.strict,
+      ok: operationDataResult.ok,
+      issueCount: operationDataResult.issues.length,
+      commonRootConfigured: Boolean(String(process.env.OPERATION_DATA_DIR || '').trim()),
     },
   };
 }

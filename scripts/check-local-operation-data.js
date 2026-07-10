@@ -4,8 +4,9 @@ const {
   isExampleLikeRecord,
   isExampleLikeValue,
 } = require('../src/operationalRecords');
+const { isProductionDataStrict, resolveOperationDataDir } = require('../src/operationDataPaths');
 
-const DATA_DIR = process.env.LOCAL_OPERATION_DATA_DIR || path.join(__dirname, '..', 'data');
+const DATA_DIR = process.env.LOCAL_OPERATION_DATA_DIR || resolveOperationDataDir();
 
 const FILE_DEFINITIONS = [
   {
@@ -72,6 +73,13 @@ const FILE_DEFINITIONS = [
   },
 ];
 const FILE_DEFINITION_BY_NAME = new Map(FILE_DEFINITIONS.map((definition) => [definition.file, definition]));
+const REQUIRED_FILES = [
+  'points.local.json',
+  'shop-items.local.json',
+  'redemptions.local.json',
+  'missions.local.json',
+  'submissions.local.json',
+];
 
 function toArray(value) {
   return Array.isArray(value) ? value : [];
@@ -219,6 +227,7 @@ function checkCrossReferences(files, issues) {
   const shopItems = files.get('shop-items.local.json') || {};
   const users = new Set(toArray(points.users).map((user) => user.userId));
   const transactions = new Set(toArray(points.pointTransactions).map((transaction) => transaction.id));
+  const transactionsById = new Map(toArray(points.pointTransactions).map((transaction) => [transaction.id, transaction]));
   const missionIds = new Set(toArray(missions.missions).map((mission) => mission.id));
   const itemIds = new Set(toArray(shopItems.shopItems).map((item) => item.id));
 
@@ -232,6 +241,16 @@ function checkCrossReferences(files, issues) {
     }
     if (redemption.transactionId && transactions.size > 0 && !transactions.has(redemption.transactionId)) {
       addIssue(issues, 'redemptions.local.json', `차감 거래 참조 없음 - ${redemption.id}`);
+    }
+    const debit = transactionsById.get(redemption.transactionId);
+    if (debit && (debit.relatedId !== redemption.id || debit.type !== 'redeem')) {
+      addIssue(issues, 'redemptions.local.json', `차감 거래 상호 참조 불일치 - ${redemption.id}`);
+    }
+    if (redemption.status === 'refunded') {
+      const refund = transactionsById.get(redemption.refundTransactionId);
+      if (!refund || refund.relatedId !== redemption.id || refund.type !== 'refund') {
+        addIssue(issues, 'redemptions.local.json', `환불 거래 상호 참조 불일치 - ${redemption.id}`);
+      }
     }
   });
 
@@ -247,6 +266,13 @@ function checkCrossReferences(files, issues) {
       addIssue(issues, 'submissions.local.json', `지급 거래 참조 없음 - ${submission.id}`);
     }
   });
+
+  const reactionRecords = toArray((files.get('reaction-approvals.local.json') || {}).records);
+  reactionRecords.forEach((record) => {
+    if (record.transactionId && !transactions.has(record.transactionId)) {
+      addIssue(issues, 'reaction-approvals.local.json', `지급 거래 참조 없음 - ${record.id}`);
+    }
+  });
 }
 
 function checkGenericLocalFile(file, data, issues) {
@@ -259,13 +285,18 @@ function checkGenericLocalFile(file, data, issues) {
   }
 }
 
-function checkLocalOperationData(dataDir = DATA_DIR) {
+function checkLocalOperationData(dataDir = DATA_DIR, options = {}) {
   const issues = [];
   const files = new Map();
   let checkedFiles = 0;
   const localFiles = fs.existsSync(dataDir)
     ? fs.readdirSync(dataDir).filter((file) => file.endsWith('.local.json')).sort()
     : [];
+  if (options.strict) {
+    for (const file of REQUIRED_FILES) {
+      if (!localFiles.includes(file)) addIssue(issues, file, 'strict 모드 필수 파일 누락');
+    }
+  }
 
   for (const file of localFiles) {
     const definition = FILE_DEFINITION_BY_NAME.get(file);
@@ -314,6 +345,9 @@ function checkLocalOperationData(dataDir = DATA_DIR) {
 
   if (files.has('shop-items.local.json')) {
     checkNumericFields(toArray(files.get('shop-items.local.json').shopItems), ['cost', 'stock', 'monthlyLimit'], 'shop-items.local.json', 'shopItems', issues);
+    toArray(files.get('shop-items.local.json').shopItems).forEach((item) => {
+      if (Number(item.stock) < 0) addIssue(issues, 'shop-items.local.json', `재고 음수 - ${item.id}`);
+    });
   }
 
   if (files.has('redemptions.local.json')) {
@@ -330,16 +364,17 @@ function checkLocalOperationData(dataDir = DATA_DIR) {
 }
 
 function main() {
-  const result = checkLocalOperationData();
-  if (result.checkedFiles === 0) {
-    console.log('local 운영 데이터 점검: data/*.local.json 파일이 없어 건너뜁니다.');
-    return;
-  }
-
+  const strict = isProductionDataStrict();
+  const result = checkLocalOperationData(DATA_DIR, { strict });
   if (!result.ok) {
     console.error(`local 운영 데이터 점검 실패: ${result.issues.length}건`);
     result.issues.forEach((issue) => console.error(`- ${issue}`));
     process.exit(1);
+  }
+
+  if (result.checkedFiles === 0) {
+    console.log('local 운영 데이터 점검: data/*.local.json 파일이 없어 건너뜁니다.');
+    return;
   }
 
   console.log(`local 운영 데이터 점검 통과: ${result.checkedFiles}개 파일`);

@@ -1,11 +1,10 @@
 const fs = require('fs');
-const path = require('path');
 const { filterOperationalRecords } = require('./operationalRecords');
 const { saveJsonFile } = require('./pointsStore');
 const { getKoreanDateString } = require('./pointsRepository');
+const { getOperationDataPaths } = require('./operationDataPaths');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const DEFAULT_DM_CHAT_LOG_PATH = process.env.DM_CHAT_LOG_PATH || path.join(DATA_DIR, 'dm-chat-logs.local.json');
+const DEFAULT_DM_CHAT_LOG_PATH = getOperationDataPaths().dmChatLogs;
 const CURRENT_DM_CHAT_LOG_VERSION = 4;
 const CURRENT_NOTICE_VERSION = 2;
 

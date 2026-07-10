@@ -866,7 +866,7 @@ function formatChannelCheckLine(check) {
   ].join('\n');
 }
 
-function buildOperatorEnvironmentCheckEmbed({ channelChecks = [], googleSheetsCheck = {} } = {}) {
+function buildOperatorEnvironmentCheckEmbed({ channelChecks = [], googleSheetsCheck = {}, operationDataCheck = {} } = {}) {
   const channelLines = channelChecks.length > 0
     ? channelChecks.map(formatChannelCheckLine)
     : ['- 점검할 채널 환경변수 목록을 불러오지 못했어요.'];
@@ -882,6 +882,11 @@ function buildOperatorEnvironmentCheckEmbed({ channelChecks = [], googleSheetsCh
       'Google Sheets 보조 로그',
       `- GOOGLE_SHEETS_LOGGING_ENABLED: ${sheetsEnabled}`,
       `- GOOGLE_SHEETS_WEB_APP_URL: ${webAppUrlConfigured}`,
+      '',
+      '운영 데이터 저장소',
+      `- 경로 유형: ${operationDataCheck.commonRootConfigured ? 'OPERATION_DATA_DIR 공통 영속 루트' : '개별 경로 또는 저장소 data 기본값'}`,
+      `- PRODUCTION_DATA_STRICT: ${operationDataCheck.strict ? 'true' : 'false'}`,
+      `- 쓰기·rename·JSON·example 점검: ${operationDataCheck.ok ? '통과' : `확인 필요 ${operationDataCheck.issueCount || 0}건`}`,
       '',
       '민감한 전체값은 이 화면에 표시하지 않습니다.',
     ].join('\n'),

@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { getDefaultSnapshotPaths } = require('../src/operationBackup');
 const { saveJsonFileAtomic } = require('../src/jsonStorage');
+const SUPPORTED_SCHEMA_VERSION = 2;
 
 const LOCAL_FILENAMES = {
   points: 'points.local.json',
@@ -19,6 +20,9 @@ const LOCAL_FILENAMES = {
   dungeonworldLogs: 'dungeonworld-logs.local.json',
   dungeonworldConfig: 'dungeonworld-config.local.json',
   dailyMissionAnnouncements: 'daily-mission-announcements.local.json',
+  webgameLinks: 'webgame-links.local.json',
+  webgameScores: 'webgame-scores.local.json',
+  webgameSocial: 'webgame-social.local.json',
 };
 
 function parseArgs(argv) {
@@ -84,10 +88,20 @@ function main() {
     process.exit(1);
   }
 
+  if (snapshot.schemaVersion !== undefined && snapshot.schemaVersion !== SUPPORTED_SCHEMA_VERSION) {
+    console.error(`지원하지 않는 스냅샷 schemaVersion입니다: ${snapshot.schemaVersion} (지원: ${SUPPORTED_SCHEMA_VERSION}, legacy 미지정)`);
+    process.exit(1);
+  }
+
   const targetPaths = resolveTargetPaths(args.dataDir);
   const mode = args.apply ? '복원 실행' : 'dry-run (파일 변경 없음)';
   console.log(`운영 백업 복원 시작: ${args.snapshotPath}`);
   console.log(`- 생성 시각: ${snapshot.generatedAt || '알 수 없음'} / 트리거: ${snapshot.trigger || '알 수 없음'}`);
+  if (!snapshot.manifest) {
+    console.warn('- 경고: 구버전 스냅샷으로 manifest가 없습니다. 포함 범위를 직접 확인하세요.');
+  } else {
+    console.log(`- 스키마 버전: ${snapshot.schemaVersion || '알 수 없음'} / manifest 포함`);
+  }
   console.log(`- 모드: ${mode}`);
   console.log('- 주의: 봇이 실행 중이면 복원 직후 봇 저장이 파일을 덮어쓸 수 있습니다. 봇을 정지한 상태에서 실행하세요.');
   console.log('');
@@ -126,7 +140,10 @@ function main() {
     console.log('dry-run이 완료되었습니다. 실제 복원은 --apply(기존 파일 덮어쓰기는 --apply --force)를 추가해 실행하세요.');
   } else {
     console.log(`운영 백업 복원이 완료되었습니다: 복원 ${restoredCount}건, 보류 ${skippedExistingCount}건`);
+    console.log('다음 단계: node scripts/check-local-operation-data.js 로 복원 데이터 무결성을 확인하세요.');
   }
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { LOCAL_FILENAMES, parseArgs, resolveTargetPaths };

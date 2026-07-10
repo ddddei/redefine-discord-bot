@@ -17,24 +17,27 @@ const {
 const defaultGoogleSheetsLogger = require('./googleSheetsLogger');
 const { filterOperationalRecords } = require('./operationalRecords');
 const { MINIGAMES } = require('./minigameData');
+const { getOperationDataPaths } = require('./operationDataPaths');
+const { saveJsonFilesGroup } = require('./jsonStorage');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
+const OPERATION_PATHS = getOperationDataPaths();
 
 const DEFAULT_PATHS = {
-  points: process.env.POINTS_DATA_PATH || path.join(DATA_DIR, 'points.local.json'),
+  points: OPERATION_PATHS.points,
   pointsFallback: path.join(DATA_DIR, 'points.example.json'),
-  shopItems: process.env.SHOP_ITEMS_DATA_PATH || path.join(DATA_DIR, 'shop-items.local.json'),
+  shopItems: OPERATION_PATHS.shopItems,
   shopItemsFallback: path.join(DATA_DIR, 'shop-items.example.json'),
-  redemptions: process.env.REDEMPTIONS_DATA_PATH || path.join(DATA_DIR, 'redemptions.local.json'),
+  redemptions: OPERATION_PATHS.redemptions,
   redemptionsFallback: path.join(DATA_DIR, 'redemptions.example.json'),
-  missions: process.env.MISSIONS_DATA_PATH || path.join(DATA_DIR, 'missions.local.json'),
+  missions: OPERATION_PATHS.missions,
   missionsFallback: path.join(DATA_DIR, 'missions.example.json'),
-  missionTemplates: process.env.MISSION_TEMPLATES_DATA_PATH || path.join(DATA_DIR, 'mission-templates.local.json'),
+  missionTemplates: OPERATION_PATHS.missionTemplates,
   missionTemplatesFallback: path.join(DATA_DIR, 'mission-templates.example.json'),
-  submissions: process.env.SUBMISSIONS_DATA_PATH || path.join(DATA_DIR, 'submissions.local.json'),
+  submissions: OPERATION_PATHS.submissions,
   submissionsFallback: path.join(DATA_DIR, 'submissions.example.json'),
-  reactionApprovals: process.env.REACTION_APPROVALS_DATA_PATH || path.join(DATA_DIR, 'reaction-approvals.local.json'),
-  operatorSupport: process.env.OPERATOR_SUPPORT_DATA_PATH || path.join(DATA_DIR, 'operator-support.local.json'),
+  reactionApprovals: OPERATION_PATHS.reactionApprovals,
+  operatorSupport: OPERATION_PATHS.operatorSupport,
 };
 
 const CHECKIN_REWARD_POINTS = 10;
@@ -71,12 +74,23 @@ function getKoreanWeekday(date = new Date()) {
   return weekdays[kstDate.getUTCDay()];
 }
 
-function loadWithFallback(primaryPath, fallbackPath) {
-  if (fs.existsSync(primaryPath)) {
-    return loadJsonFile(primaryPath);
-  }
+function createInitialPointsData() {
+  return { isExample: false, description: 'Local points data. JSON storage is for MVP operation only.', users: [], pointTransactions: [] };
+}
 
-  return loadJsonFile(fallbackPath);
+function createInitialShopItemsData() {
+  return { isExample: false, description: 'Local shop item data. JSON storage is for MVP operation only.', shopItems: [] };
+}
+
+function createInitialRedemptionsData() {
+  return { isExample: false, description: 'Local redemption data. JSON storage is for MVP operation only.', redemptions: [] };
+}
+
+function loadOrCreateOperationalData(primaryPath, createInitial) {
+  if (fs.existsSync(primaryPath)) return loadJsonFile(primaryPath);
+  const initial = createInitial();
+  saveJsonFile(primaryPath, initial);
+  return initial;
 }
 
 function loadOptionalWithFallback(primaryPath, fallbackPath, collectionName) {
@@ -95,10 +109,8 @@ function loadOptionalWithFallback(primaryPath, fallbackPath, collectionName) {
   };
 }
 
-function createInitialActivityData(fallbackPath, collectionName) {
-  const fallbackData = loadJsonFile(fallbackPath);
+function createInitialActivityData(_fallbackPath, collectionName) {
   return {
-    ...fallbackData,
     isExample: false,
     description: `Local ${collectionName} data for point activity MVP. JSON storage is for MVP operation only.`,
     [collectionName]: [],
@@ -220,9 +232,9 @@ function createPointsRepository(paths = {}, options = {}) {
 
   function loadState() {
     return {
-      pointsData: loadWithFallback(resolvedPaths.points, resolvedPaths.pointsFallback),
-      shopItemsData: loadWithFallback(resolvedPaths.shopItems, resolvedPaths.shopItemsFallback),
-      redemptionsData: loadWithFallback(resolvedPaths.redemptions, resolvedPaths.redemptionsFallback),
+      pointsData: loadOrCreateOperationalData(resolvedPaths.points, createInitialPointsData),
+      shopItemsData: loadOrCreateOperationalData(resolvedPaths.shopItems, createInitialShopItemsData),
+      redemptionsData: loadOrCreateOperationalData(resolvedPaths.redemptions, createInitialRedemptionsData),
       missionsData: loadActivityWithFallback(resolvedPaths.missions, resolvedPaths.missionsFallback, 'missions'),
       submissionsData: loadActivityWithFallback(resolvedPaths.submissions, resolvedPaths.submissionsFallback, 'submissions'),
     };
@@ -230,11 +242,11 @@ function createPointsRepository(paths = {}, options = {}) {
 
   function loadExportState() {
     return {
-      pointsData: loadOptionalWithFallback(resolvedPaths.points, resolvedPaths.pointsFallback, 'pointTransactions'),
-      shopItemsData: loadOptionalWithFallback(resolvedPaths.shopItems, resolvedPaths.shopItemsFallback, 'shopItems'),
-      redemptionsData: loadOptionalWithFallback(resolvedPaths.redemptions, resolvedPaths.redemptionsFallback, 'redemptions'),
-      missionsData: loadOptionalWithFallback(resolvedPaths.missions, resolvedPaths.missionsFallback, 'missions'),
-      submissionsData: loadOptionalWithFallback(resolvedPaths.submissions, resolvedPaths.submissionsFallback, 'submissions'),
+      pointsData: loadOrCreateOperationalData(resolvedPaths.points, createInitialPointsData),
+      shopItemsData: loadOrCreateOperationalData(resolvedPaths.shopItems, createInitialShopItemsData),
+      redemptionsData: loadOrCreateOperationalData(resolvedPaths.redemptions, createInitialRedemptionsData),
+      missionsData: loadActivityWithFallback(resolvedPaths.missions, resolvedPaths.missionsFallback, 'missions'),
+      submissionsData: loadActivityWithFallback(resolvedPaths.submissions, resolvedPaths.submissionsFallback, 'submissions'),
     };
   }
 
@@ -326,9 +338,11 @@ function createPointsRepository(paths = {}, options = {}) {
   }
 
   function saveState(state) {
-    saveJsonFile(resolvedPaths.points, state.pointsData);
-    saveJsonFile(resolvedPaths.shopItems, state.shopItemsData);
-    saveJsonFile(resolvedPaths.redemptions, state.redemptionsData);
+    saveJsonFilesGroup([
+      { filePath: resolvedPaths.points, data: { ...state.pointsData, isExample: false } },
+      { filePath: resolvedPaths.shopItems, data: { ...state.shopItemsData, isExample: false } },
+      { filePath: resolvedPaths.redemptions, data: { ...state.redemptionsData, isExample: false } },
+    ]);
   }
 
   function ensureUser(pointsData, userInput) {
@@ -2343,6 +2357,9 @@ module.exports = {
   MINIGAME_DAILY_REWARD_CAP,
   MINIGAME_REWARD_RELATED_TYPE,
   createPointsRepository,
+  createInitialPointsData,
+  createInitialRedemptionsData,
+  createInitialShopItemsData,
   getKoreanDateString,
   getKoreanWeekday,
 };

@@ -339,6 +339,11 @@ const checks = [
     args: ['--check', 'scripts/test-local-operation-data-check.js'],
   },
   {
+    label: 'scripts/test-production-data-safety.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-production-data-safety.js'],
+  },
+  {
     label: 'scripts/test-slash-command-docs-consistency.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-slash-command-docs-consistency.js'],
@@ -537,6 +542,11 @@ const checks = [
     label: 'local operation data checker smoke test',
     command: 'node',
     args: ['scripts/test-local-operation-data-check.js'],
+  },
+  {
+    label: 'production data safety smoke test',
+    command: 'node',
+    args: ['scripts/test-production-data-safety.js'],
   },
   {
     label: 'slash command docs consistency test',

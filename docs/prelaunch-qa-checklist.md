@@ -20,6 +20,8 @@
 - [ ] `CLIENT_ID`가 운영 봇 애플리케이션 기준입니다.
 - [ ] `GUILD_ID`가 실제 운영 서버 기준입니다.
 - [ ] `LOG_CHANNEL_ID`가 운영진 로그 채널 기준입니다.
+- [ ] Railway 영속 Volume을 연결하고 `OPERATION_DATA_DIR`이 해당 mount 경로를 가리킵니다.
+- [ ] `PRODUCTION_DATA_STRICT=true` 재배포가 시작 점검을 통과합니다.
 - [ ] `POINT_REDEEM_CHANNEL_ID`가 교환 알림 채널 기준입니다.
 - [ ] `ACTIVITY_REVIEW_CHANNEL_ID`가 인증 검토 알림 채널 기준입니다.
 - [ ] `POINTS_DATA_PATH`를 사용할 경우 운영 데이터 저장 위치가 확인되어 있습니다.
@@ -173,6 +175,9 @@
 - [ ] `/운영내보내기 종류:요약 형식:요약`으로 전체 수량을 확인합니다.
 - [ ] `/운영내보내기 종류:전체 형식:JSON`으로 전체 백업을 받습니다.
 - [ ] 자동 운영 백업 스냅샷을 사용하는 경우 `files.dmChatLogs`에 DM 대화 로그가 포함되고, 예전 스냅샷처럼 `dmChatLogs` 키가 없는 파일도 복원 dry-run이 실패하지 않습니다.
+- [ ] 백업 manifest에 웹게임 연결·점수·소셜이 포함되고 replay mismatch·백업 상태는 정책 제외로 표시됩니다.
+- [ ] 재배포 전후 points·redemptions·submissions·DM·웹게임 건수 또는 checksum이 유지됩니다.
+- [ ] 별도 임시 디렉터리에서 복원 dry-run과 `node scripts/check-local-operation-data.js`를 통과합니다.
 - [ ] 필요한 경우 `/운영내보내기 종류:교환 형식:CSV`처럼 범위를 줄인 CSV를 받습니다.
 - [ ] 백업 파일 보관 위치와 접근 권한을 확인합니다.
 - [ ] 외부 공유 전 개인정보, 사용자 ID, 인증 내용, 운영 메모 포함 여부를 확인합니다.

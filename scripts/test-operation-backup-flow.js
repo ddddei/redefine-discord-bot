@@ -45,6 +45,7 @@ async function main() {
     OPERATION_BACKUP_AUTO_ENABLED: process.env.OPERATION_BACKUP_AUTO_ENABLED,
     OPERATION_BACKUP_CHANNEL_ID: process.env.OPERATION_BACKUP_CHANNEL_ID,
     OPERATION_BACKUP_TIME_KST: process.env.OPERATION_BACKUP_TIME_KST,
+    PRODUCTION_DATA_STRICT: process.env.PRODUCTION_DATA_STRICT,
     LOG_CHANNEL_ID: process.env.LOG_CHANNEL_ID,
   };
 
@@ -66,6 +67,12 @@ async function main() {
     saveJsonFileAtomic(path.join(dataDir, 'points.local.json'), pointsData);
     saveJsonFileAtomic(path.join(dataDir, 'missions.local.json'), missionsData);
     saveJsonFileAtomic(path.join(dataDir, 'dm-chat-logs.local.json'), dmChatData);
+    const webgameLinksData = { version: 1, isExample: false, links: [], pendingCodes: [] };
+    const webgameScoresData = { version: 1, isExample: false, scores: [] };
+    const webgameSocialData = { version: 1, isExample: false, cheerSalt: 'test-only', cheers: [] };
+    saveJsonFileAtomic(path.join(dataDir, 'webgame-links.local.json'), webgameLinksData);
+    saveJsonFileAtomic(path.join(dataDir, 'webgame-scores.local.json'), webgameScoresData);
+    saveJsonFileAtomic(path.join(dataDir, 'webgame-social.local.json'), webgameSocialData);
 
     const snapshotPaths = {
       points: path.join(dataDir, 'points.local.json'),
@@ -80,6 +87,9 @@ async function main() {
       dungeonworldLogs: path.join(dataDir, 'dungeonworld-logs.local.json'),
       dungeonworldConfig: path.join(dataDir, 'dungeonworld-config.local.json'),
       dailyMissionAnnouncements: path.join(dataDir, 'daily-mission-announcements.local.json'),
+      webgameLinks: path.join(dataDir, 'webgame-links.local.json'),
+      webgameScores: path.join(dataDir, 'webgame-scores.local.json'),
+      webgameSocial: path.join(dataDir, 'webgame-social.local.json'),
     };
 
     const snapshotNow = new Date('2026-07-03T12:30:00.000Z');
@@ -90,9 +100,19 @@ async function main() {
     assert.deepStrictEqual(snapshot.files.points, pointsData);
     assert.deepStrictEqual(snapshot.files.missions, missionsData);
     assert.deepStrictEqual(snapshot.files.dmChatLogs, dmChatData);
+    assert.deepStrictEqual(snapshot.files.webgameLinks, webgameLinksData);
+    assert.deepStrictEqual(snapshot.files.webgameScores, webgameScoresData);
+    assert.deepStrictEqual(snapshot.files.webgameSocial, webgameSocialData);
     assert.strictEqual(snapshot.files.shopItems, null);
     assert.strictEqual(snapshot.files.dungeonworldLogs, null);
-    assert.strictEqual(Object.keys(snapshot.files).length, 12);
+    assert.strictEqual(Object.keys(snapshot.files).length, 15);
+    assert.strictEqual(snapshot.schemaVersion, 2);
+    assert.strictEqual(snapshot.manifest.points.included, true);
+    assert.strictEqual(snapshot.manifest.points.requiredForStrict, true);
+    assert.strictEqual(snapshot.manifest.dmChatLogs.requiredForStrict, false);
+    assert.strictEqual(snapshot.manifest.webgameLinks.included, true);
+    assert.strictEqual(snapshot.manifest.webgameReplayMismatch.excludedByPolicy, true);
+    assert.strictEqual(snapshot.manifest.operationBackupState.excludedByPolicy, true);
 
     // 2. 비활성(기본) 시 스케줄러는 아무것도 하지 않는다
     delete process.env.OPERATION_BACKUP_AUTO_ENABLED;
@@ -139,6 +159,34 @@ async function main() {
     assert.strictEqual(state.records[0].trigger, 'scheduled');
     assert.strictEqual(state.records[0].messageId, 'backup_message_1');
     assert.ok(state.records[0].byteSize > 0);
+    assert.strictEqual(state.records[0].filename, sendResult.filename);
+    assert.strictEqual(state.records[0].includedFileCount, 6);
+    assert.strictEqual(state.records[0].excludedFileCount, 2);
+    assert.strictEqual(state.records[0].missingFileCount, 9);
+
+    // strict에서는 핵심 5종만 필수이며 선택 기능 파일 누락은 백업을 막지 않습니다.
+    saveJsonFileAtomic(snapshotPaths.shopItems, { isExample: false, shopItems: [] });
+    saveJsonFileAtomic(snapshotPaths.redemptions, { isExample: false, redemptions: [] });
+    saveJsonFileAtomic(snapshotPaths.submissions, { isExample: false, submissions: [] });
+    process.env.PRODUCTION_DATA_STRICT = 'true';
+    const strictOptionalResult = await sendOperationBackup(createClient(), {
+      now: new Date('2026-07-10T12:30:00.000Z'),
+      statePath: path.join(createTempDir('operation-backup-strict-optional-'), 'state.json'),
+      paths: snapshotPaths,
+    });
+    assert.strictEqual(strictOptionalResult.ok, true);
+
+    const strictMissingCoreClient = createClient();
+    const strictMissingCoreResult = await sendOperationBackup(strictMissingCoreClient, {
+      now: new Date('2026-07-11T12:30:00.000Z'),
+      statePath: path.join(createTempDir('operation-backup-strict-core-'), 'state.json'),
+      paths: { ...snapshotPaths, submissions: path.join(dataDir, 'missing-submissions.local.json') },
+    });
+    assert.strictEqual(strictMissingCoreResult.ok, false);
+    assert.strictEqual(strictMissingCoreResult.reason, 'MISSING_REQUIRED_FILES');
+    assert.strictEqual(strictMissingCoreResult.missingCount, 1);
+    assert.strictEqual(strictMissingCoreClient.sentMessages.length, 0);
+    delete process.env.PRODUCTION_DATA_STRICT;
 
     // 4. 같은 날 캐치업은 중복 발송하지 않는다
     const catchUpClient = createClient();
@@ -191,10 +239,19 @@ async function main() {
     // 6. restore 스크립트: dry-run은 파일을 건드리지 않고, --apply --force는 바이트 동일 복원
     const snapshotFilePath = path.join(createTempDir('operation-backup-snapshot-'), 'snapshot.json');
     fs.writeFileSync(snapshotFilePath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
-
-    const restoreDir = createTempDir('operation-backup-restore-');
     const restoreScript = path.join(__dirname, 'restore-operation-backup.js');
 
+    const futureSnapshotPath = path.join(createTempDir('operation-backup-future-'), 'future.json');
+    fs.writeFileSync(futureSnapshotPath, JSON.stringify({ ...snapshot, schemaVersion: 999 }));
+    const futureRestoreDir = createTempDir('operation-backup-future-restore-');
+    const futureResult = spawnSync('node', [restoreScript, futureSnapshotPath, '--apply', '--data-dir', futureRestoreDir], {
+      encoding: 'utf8',
+    });
+    assert.notStrictEqual(futureResult.status, 0);
+    assert.match(futureResult.stderr, /지원하지 않는 스냅샷 schemaVersion/);
+    assert.strictEqual(fs.existsSync(path.join(futureRestoreDir, 'points.local.json')), false);
+
+    const restoreDir = createTempDir('operation-backup-restore-');
     const dryRunResult = spawnSync('node', [restoreScript, snapshotFilePath, '--data-dir', restoreDir], {
       encoding: 'utf8',
     });
@@ -228,6 +285,8 @@ async function main() {
       ...snapshot,
       files: { ...snapshot.files },
     };
+    delete legacySnapshot.schemaVersion;
+    delete legacySnapshot.manifest;
     delete legacySnapshot.files.dmChatLogs;
     const legacySnapshotFilePath = path.join(createTempDir('operation-backup-legacy-snapshot-'), 'snapshot.json');
     fs.writeFileSync(legacySnapshotFilePath, `${JSON.stringify(legacySnapshot, null, 2)}\n`, 'utf8');

@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { checkLocalOperationData } = require('./check-local-operation-data');
 
 function writeJson(filePath, data) {
@@ -14,7 +15,7 @@ function createValidData(dir) {
     users: [{
       userId: 'user_real_001',
       displayName: '운영 참여자',
-      totalPoints: 50,
+      totalPoints: 40,
       status: 'active',
     }],
     pointTransactions: [{
@@ -28,6 +29,17 @@ function createValidData(dir) {
       relatedId: null,
       createdBy: 'operator_real',
       createdAt: '2026-07-01T10:00:00+09:00',
+    }, {
+      id: 'tx_redeem_real_001',
+      userId: 'user_real_001',
+      type: 'redeem',
+      amount: -10,
+      balanceAfter: 40,
+      reason: '운영 리허설 교환',
+      relatedType: 'redemption',
+      relatedId: 'rd_real_001',
+      createdBy: 'user_real_001',
+      createdAt: '2026-07-01T10:10:00+09:00',
     }],
   });
   writeJson(path.join(dir, 'missions.local.json'), {
@@ -60,7 +72,7 @@ function createValidData(dir) {
       cost: 10,
       status: 'pending',
       requestedAt: '2026-07-01T10:10:00+09:00',
-      transactionId: 'tx_real_001',
+      transactionId: 'tx_redeem_real_001',
     }],
   });
   writeJson(path.join(dir, 'submissions.local.json'), {
@@ -80,12 +92,28 @@ function main() {
   const emptyResult = checkLocalOperationData(emptyDir);
   assert.strictEqual(emptyResult.ok, true);
   assert.strictEqual(emptyResult.checkedFiles, 0);
+  const emptyStrictResult = checkLocalOperationData(emptyDir, { strict: true });
+  assert.strictEqual(emptyStrictResult.ok, false);
+  assert.ok(emptyStrictResult.issues.some((issue) => /필수 파일 누락/.test(issue)));
+  const strictCliResult = spawnSync('node', [path.join(__dirname, 'check-local-operation-data.js')], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PRODUCTION_DATA_STRICT: 'true',
+      OPERATION_DATA_DIR: emptyDir,
+      LOCAL_OPERATION_DATA_DIR: emptyDir,
+    },
+  });
+  assert.notStrictEqual(strictCliResult.status, 0);
+  assert.match(strictCliResult.stderr, /strict 모드 필수 파일 누락/);
 
   const validDir = fs.mkdtempSync(path.join(os.tmpdir(), 'local-data-valid-'));
   createValidData(validDir);
   const validResult = checkLocalOperationData(validDir);
   assert.strictEqual(validResult.ok, true);
   assert.strictEqual(validResult.checkedFiles, 5);
+  const validStrictResult = checkLocalOperationData(validDir, { strict: true });
+  assert.strictEqual(validStrictResult.ok, true);
 
   const invalidDir = fs.mkdtempSync(path.join(os.tmpdir(), 'local-data-invalid-'));
   createValidData(invalidDir);
@@ -108,6 +136,27 @@ function main() {
   const missions = JSON.parse(fs.readFileSync(missionsPath, 'utf8'));
   missions.missions[0].status = 'ready';
   writeJson(missionsPath, missions);
+  const shopPath = path.join(invalidDir, 'shop-items.local.json');
+  const shop = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
+  shop.shopItems[0].stock = -1;
+  writeJson(shopPath, shop);
+  const redemptionPath = path.join(invalidDir, 'redemptions.local.json');
+  const redemptionData = JSON.parse(fs.readFileSync(redemptionPath, 'utf8'));
+  redemptionData.redemptions[0].status = 'refunded';
+  redemptionData.redemptions[0].refundTransactionId = 'tx_missing_refund';
+  writeJson(redemptionPath, redemptionData);
+  const submissionPath = path.join(invalidDir, 'submissions.local.json');
+  const submissionData = JSON.parse(fs.readFileSync(submissionPath, 'utf8'));
+  submissionData.submissions[0].status = 'approved';
+  submissionData.submissions[0].rewardTransactionId = 'tx_missing_submission';
+  writeJson(submissionPath, submissionData);
+  writeJson(path.join(invalidDir, 'reaction-approvals.local.json'), {
+    isExample: false,
+    records: [{
+      id: 'reaction_real_001', messageId: 'message_001', authorId: 'user_real_001',
+      status: 'approved', reviewedAt: '2026-07-01T11:00:00+09:00', transactionId: 'tx_missing_reaction',
+    }],
+  });
 
   const invalidResult = checkLocalOperationData(invalidDir);
   assert.strictEqual(invalidResult.ok, false);
@@ -116,6 +165,9 @@ function main() {
   assert.ok(invalidResult.issues.some((issue) => /불일치/.test(issue)));
   assert.ok(invalidResult.issues.some((issue) => /예시 데이터 혼입/.test(issue)));
   assert.ok(invalidResult.issues.some((issue) => /잘못된 status/.test(issue)));
+  assert.ok(invalidResult.issues.some((issue) => /재고 음수/.test(issue)));
+  assert.ok(invalidResult.issues.some((issue) => /환불 거래 상호 참조/.test(issue)));
+  assert.ok(invalidResult.issues.some((issue) => /지급 거래 참조 없음/.test(issue)));
 
   console.log('local operation data check smoke test passed');
 }

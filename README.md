@@ -88,6 +88,10 @@ MEE6는 환대, 채팅 EXP, 레벨업 보조 용도로만 사용합니다. 리�
 
 현재 MVP는 local JSON repository 구조를 사용합니다.
 
+- 경로 우선순위는 개별 `*_DATA_PATH` → `OPERATION_DATA_DIR/<기본 파일명>` → 저장소 `data/<기본 파일명>`입니다.
+- `*.example.json`은 실제 운영 fallback으로 사용하지 않으며 새 환경은 `isExample: false`인 빈 구조로 시작합니다.
+- Railway 운영은 영속 Volume 연결과 `PRODUCTION_DATA_STRICT=true` 시작 점검을 권장합니다.
+
 - 운영 데이터는 `data/*.local.json` 형태로 저장될 수 있으며 커밋하지 않습니다.
 - local JSON은 Railway 장기 운영 저장소로는 한계가 있습니다.
 - 실제 운영 전에는 Railway Volume, Google Sheets, PostgreSQL 중 하나를 검토해야 합니다.

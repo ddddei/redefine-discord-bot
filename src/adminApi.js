@@ -1,4 +1,5 @@
 const path = require('path');
+const { getOperationDataPaths } = require('./operationDataPaths');
 const { createDmChatRepository } = require('./dmChatRepository');
 const { createPointsRepository, getKoreanDateString } = require('./pointsRepository');
 const {
@@ -18,7 +19,7 @@ function createDefaultRepository() {
 }
 
 function createDefaultDmChatRepository() {
-  const logPath = process.env.DM_CHAT_LOG_PATH || path.join(__dirname, '..', 'data', 'dm-chat-logs.local.json');
+  const logPath = getOperationDataPaths().dmChatLogs;
   return createDmChatRepository(logPath);
 }
 

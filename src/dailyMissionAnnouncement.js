@@ -1,12 +1,11 @@
 const fs = require('fs');
-const path = require('path');
 const { getKoreanDateString } = require('./pointsRepository');
 const { saveJsonFileAtomic } = require('./jsonStorage');
+const { getOperationDataPaths } = require('./operationDataPaths');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
 const DEFAULT_ANNOUNCEMENT_HOUR = 9;
 const DEFAULT_INTERVAL_MS = 60 * 1000;
-const DEFAULT_STATE_PATH = path.join(DATA_DIR, 'daily-mission-announcements.local.json');
+const DEFAULT_STATE_PATH = getOperationDataPaths().dailyMissionAnnouncements;
 
 let schedulerStarted = false;
 let warnedMissingAnnouncementChannel = false;
