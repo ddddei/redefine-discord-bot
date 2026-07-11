@@ -63,6 +63,42 @@
         </article>
       </section>
 
+      <section id="participant-card-section" class="panel participant-card-panel">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">PARTICIPANT CARD</p>
+            <h2>참여자 개인 카드</h2>
+          </div>
+          <p id="participant-card-status">정확한 Discord 사용자 ID를 입력해 조회해 주세요.</p>
+        </div>
+        <form id="participant-card-form" class="participant-card-search">
+          <label>
+            Discord 사용자 ID
+            <input id="participant-card-user-id" type="text" minlength="15" maxlength="22" pattern="[0-9]{15,22}" required autocomplete="off" inputmode="numeric">
+          </label>
+          <label>
+            최근 기록
+            <select id="participant-card-limit">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+          <button id="participant-card-search-button" type="submit">조회</button>
+          <button id="participant-card-clear-button" type="button" class="secondary">지우기</button>
+        </form>
+        <div id="participant-card-result" hidden>
+          <div id="participant-card-summary" class="summary-grid"></div>
+          <div id="participant-card-warnings" class="participant-card-warnings"></div>
+          <div class="two-column participant-card-grid">
+            <article><h3>최근 체크인</h3><div id="participant-card-checkins" class="table-wrap"></div></article>
+            <article><h3>최근 미션 인증</h3><div id="participant-card-submissions" class="table-wrap"></div></article>
+            <article><h3>최근 교환</h3><div id="participant-card-redemptions" class="table-wrap"></div></article>
+            <article><h3>최근 포인트 거래</h3><div id="participant-card-transactions" class="table-wrap"></div></article>
+          </div>
+        </div>
+      </section>
+
       <section class="two-column">
         <article class="panel">
           <h2>첫날 점검</h2>
