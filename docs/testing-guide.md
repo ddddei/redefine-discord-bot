@@ -4,6 +4,44 @@
 
 이 문서는 FAQ, 지식창고, 공지 템플릿, 채널 안내 데이터가 로컬에서 정상인지 확인하고, 실제 질문이 FAQ / Knowledge / Fallback 중 어디로 매칭되는지 점검하기 위한 운영 절차를 정리합니다.
 
+## Interaction handler 구조 변경
+
+interaction handler 구조를 변경할 때는 공개 façade와 독립 router 계약을 먼저 확인합니다.
+
+```bash
+node scripts/test-interaction-router.js
+node scripts/test-participant-interaction-ui.js
+node scripts/test-operator-interaction-ui.js
+node scripts/test-activity-participant-handlers.js
+node scripts/test-activity-operator-handlers.js
+node scripts/test-mission-shop-hub-handlers.js
+node scripts/test-operator-hub-handlers.js
+node scripts/test-participant-handlers.js
+node scripts/test-webgame-operator-handlers.js
+node scripts/test-handler-module-structure.js
+node --check src/handlers.js
+node --check src/interactionRouter.js
+```
+
+`src/handlers.js`는 런타임 공개 진입점, `src/interactionRouter.js`는 repository를 모르는 분기 factory,
+`src/interactionContext.js`는 공통 권한·표시명 helper입니다. 기존 flow 테스트는 계속
+`require('../src/handlers')`를 사용해 공개 호환성을 검증합니다. repository 비의존 참여자 UI는
+`src/participantInteractionUi.js`, 운영자 UI/payload는 `src/operatorInteractionUi.js`에 있습니다.
+repository 접근과 interaction 응답을 함께 수행하는 도메인 handler는 현재 `src/handlerRuntime.js`에
+남아 있으며 후속 factory 분할 대상입니다. 참여자 포인트·상점·체크인·미션·교환·인증 흐름은
+`src/activityParticipantHandlers.js`의 주입형 factory로 분리되어 실제 repository 없이도 계약을
+검증할 수 있습니다. 포인트 조정·교환 검토·인증 검토·포인트 로그 운영 흐름은
+`src/activityOperatorHandlers.js`의 주입형 factory에 있으며, 상태 변경과 운영자 정보 전달을
+별도 계약 테스트로 확인합니다. 미션·상점 운영 허브와 오늘의 미션 공지 흐름은
+`src/missionShopHubHandlers.js` factory에 있으며, 가짜 repository로 미션·템플릿·추천·상점 조회
+주입 계약을 검증합니다. 운영 현황·환경 점검·DM 안전 큐·내보내기는
+`src/operatorHubHandlers.js` factory에 있고, 공통 채널 조회는 `src/interactionEnvironment.js`에 있습니다.
+잔여 참여자 안내·질문·리디·웹게임 연결/랭킹은 `src/participantHandlers.js`, 웹게임 주간 지급은
+`src/webgameOperatorHandlers.js`에 있으며 지급 테스트는 실행 시점별 repository 생성을 확인합니다.
+`src/missionShopHubUi.js`는 repository 비의존 UI·token·modal builder이고,
+`src/interactionResponse.js`는 공통 ephemeral 후속 응답 leaf helper입니다. 구조 계약 테스트는 모듈 크기,
+repository 직접 생성 금지, domain 순환 require 부재, Slash Command 정의 파일 불변을 함께 확인합니다.
+
 ## 데이터 검증
 
 데이터 파일 구조와 JSON 문법을 확인합니다.

@@ -51,6 +51,8 @@
 | [production-data-safety-v1-plan.md](production-data-safety-v1-plan.md) | 운영 데이터 안전화 v1 계획서 | 참여자 DM 실운영 전 빈 환경 초기화·Railway 영속 경로·자동 백업 범위를 확정할 때 | example 분리, `OPERATION_DATA_DIR`, strict 시작 점검, 웹게임 포함 백업, 부분 저장 감지 |
 | [dm-live-operation-readiness-v1-plan.md](dm-live-operation-readiness-v1-plan.md) | 참여자 DM 실운영 준비 v1 계획서 | 완성된 DM 기능을 실제 참여자에게 단계적으로 열기 전 리허설·운영 대응·자동 보존 범위를 검토할 때 | 실계정 리허설, 첫 안내 이해도, 안전 알림 확인 큐, 자동 로그 정리, 비용·장애 기준, 맞춤 연습 팩 |
 | [dm-chat-live-rehearsal-guide.md](dm-chat-live-rehearsal-guide.md) | DM 실계정 리허설 가이드 | 참여자 DM을 단계적으로 활성화하기 직전 | 5개 역할, 15개 시나리오, 안내 이해도, 모바일·Railway 확인 대기표 |
+| [handlers-modularization-v1-plan.md](handlers-modularization-v1-plan.md) | Discord interaction handlers 분할 v1 계획서 | 신규 운영 기능 전 `handlers.js`의 충돌·리뷰 비용을 줄일 때 | 기능 무변경 분할, 호환 export, dependency injection, router 우선순위, 단계별 테스트·커밋 |
+| [next-work-roadmap-2026-07.md](next-work-roadmap-2026-07.md) | 2026-07-11 현행화 작업 로드맵 | 완료·개발 대기·운영 QA 대기를 구분하고 다음 작업을 선택할 때 | PR #66~#77 완료 반영, handlers 분할 우선, 운영 콘솔·리마인더 선행조건 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
 | [faq-knowledge-refinement-plan.md](faq-knowledge-refinement-plan.md) | FAQ/Knowledge 응답 품질 점검 리포트 | 실제 데이터 수정 전 개선 후보와 검증 질문을 정리할 때 | 중복 주제, 넓은 keywords, fallback 후보, 온보딩/민감 질문 보강 후보 |
 | [test-questions-followup-report.md](test-questions-followup-report.md) | 질문 매칭 잔여 오매칭 점검 리포트 | `test:questions` 결과 기반으로 남은 오매칭, 애매한 매칭, 의도적 Fallback 후보를 확인할 때 | 개선 확인 항목, 애매한 매칭 후보, Fallback 유지 후보, 다음 데이터 수정 순서 |

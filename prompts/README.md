@@ -12,10 +12,12 @@
 
 ## 현재 권장 작업 순서
 
-참여자 DM 실운영 준비는 아래 순서로 진행합니다.
+운영 데이터 안전화와 참여자 DM 실운영 준비는 `main`에 반영됐습니다. 다음 코드 작업은 대형 interaction handler의 기능 무변경 분할을 권장합니다.
 
-1. [운영 데이터 안전화 v1](codex/production-data-safety-v1.md)
-2. 운영 데이터 안전화 구현·검증·main 반영
-3. [참여자 DM 실운영 준비 v1](codex/dm-live-operation-readiness-v1.md)
+1. 최신 `main`과 [현행화 로드맵](../docs/next-work-roadmap-2026-07.md) 확인
+2. [handlers 모듈 분할 v1 계획서](../docs/handlers-modularization-v1-plan.md) 검토
+3. [handlers 모듈 분할 v1 작업 지시서](codex/handlers-modularization-v1.md) 실행
+4. 주 에이전트 최종 검수와 전체 release gate
+5. PR CI 성공 후 머지
 
-두 번째 지시서는 첫 번째 작업이 main에 반영되지 않았으면 구현을 시작하지 않도록 선행 게이트를 포함합니다.
+운영 콘솔 쓰기와 운영 리마인더 지시서는 별도로 존재하지만 현재 리마인더 지시서는 운영 콘솔 Phase 1을 선행조건으로 둡니다. 선행조건이 충족되기 전 그대로 실행하지 않습니다.

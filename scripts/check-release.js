@@ -79,6 +79,116 @@ const checks = [
     args: ['--check', 'src/handlers.js'],
   },
   {
+    label: 'src/interactionRouter.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/interactionRouter.js'],
+  },
+  {
+    label: 'src/participantInteractionUi.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/participantInteractionUi.js'],
+  },
+  {
+    label: 'src/operatorInteractionUi.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/operatorInteractionUi.js'],
+  },
+  {
+    label: 'src/activityParticipantHandlers.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/activityParticipantHandlers.js'],
+  },
+  {
+    label: 'src/activityOperatorHandlers.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/activityOperatorHandlers.js'],
+  },
+  {
+    label: 'src/missionShopHubHandlers.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/missionShopHubHandlers.js'],
+  },
+  {
+    label: 'src/interactionEnvironment.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/interactionEnvironment.js'],
+  },
+  {
+    label: 'src/operatorHubHandlers.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/operatorHubHandlers.js'],
+  },
+  {
+    label: 'src/participantHandlers.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/participantHandlers.js'],
+  },
+  {
+    label: 'src/webgameOperatorHandlers.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgameOperatorHandlers.js'],
+  },
+  {
+    label: 'src/missionShopHubUi.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/missionShopHubUi.js'],
+  },
+  {
+    label: 'src/interactionResponse.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/interactionResponse.js'],
+  },
+  {
+    label: 'interaction router 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-interaction-router.js'],
+  },
+  {
+    label: 'participant interaction UI 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-participant-interaction-ui.js'],
+  },
+  {
+    label: 'operator interaction UI 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-operator-interaction-ui.js'],
+  },
+  {
+    label: 'activity participant handler factory 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-activity-participant-handlers.js'],
+  },
+  {
+    label: 'activity operator handler factory 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-activity-operator-handlers.js'],
+  },
+  {
+    label: 'mission shop hub handler factory 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-mission-shop-hub-handlers.js'],
+  },
+  {
+    label: 'operator hub handler factory 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-operator-hub-handlers.js'],
+  },
+  {
+    label: 'participant handler factory 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-participant-handlers.js'],
+  },
+  {
+    label: 'webgame operator handler factory 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-webgame-operator-handlers.js'],
+  },
+  {
+    label: 'handler module 구조 계약 테스트',
+    command: 'node',
+    args: ['scripts/test-handler-module-structure.js'],
+  },
+  {
     label: 'src/embeds.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/embeds.js'],
