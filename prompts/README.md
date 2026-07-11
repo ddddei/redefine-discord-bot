@@ -12,11 +12,11 @@
 
 ## 현재 권장 작업 순서
 
-운영 콘솔 Phase 1~3과 참여자 개인 운영 카드 v1에 이어 주간 운영 리포트 v1의 코드·자동 검증이 완료됐으며 실환경 QA를 기다립니다.
+운영 콘솔 Phase 1~3, 참여자 개인 카드, 주간 운영 리포트 v1의 코드·자동 검증이 완료됐습니다. 다음 작업은 운영 자동화 안정성 보강 v1입니다.
 
 1. 최신 `main`과 [현행화 로드맵](../docs/next-work-roadmap-2026-07.md) 확인
-2. [주간 운영 리포트 v1 계획서](../docs/weekly-ops-report-v1-plan.md) 검토
-3. [주간 운영 리포트 v1 작업 지시서](codex/weekly-ops-report-v1.md)에 따라 구현
+2. [운영 자동화 안정성 보강 v1 계획서](../docs/ops-stability-hardening-v1-plan.md) 검토
+3. [운영 자동화 안정성 보강 v1 작업 지시서](codex/ops-stability-hardening-v1.md)에 따라 구현
 4. 주 에이전트 최종 검수와 전체 release gate
 5. PR CI 성공 후 머지
 
