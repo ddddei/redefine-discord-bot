@@ -1,5 +1,6 @@
 (function () {
   const endpoints = {
+    capabilities: '/api/admin/capabilities',
     summary: '/api/admin/summary',
     todayQueue: '/api/admin/today-queue?limit=10',
     firstDayCheck: '/api/admin/first-day-check?limit=10',
@@ -14,6 +15,9 @@
     reactions: '/api/admin/reaction-approvals?limit=10',
     dmSafetyReviews: '/api/admin/dm-safety-reviews?limit=10',
   };
+  let writeEnabled = false;
+  let writeToken = '';
+  let pendingWrite = null;
 
   const webgameLabels = {
     match3: '간식 맞추기',
@@ -104,6 +108,47 @@
     }
 
     return response.json();
+  }
+
+  async function postJson(url, body) {
+    if (!writeToken) writeToken = window.prompt('관리자 쓰기 토큰을 입력해 주세요.') || '';
+    if (!writeToken) throw new Error('쓰기 토큰이 필요합니다.');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Admin-Write-Token': writeToken },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      if (response.status === 403) writeToken = '';
+      const error = new Error(response.status === 409 ? '이미 처리된 건입니다 — 새로고침해 주세요.' : (payload.message || '처리하지 못했습니다.'));
+      error.status = response.status;
+      throw error;
+    }
+    return payload;
+  }
+
+  function showToast(message) {
+    const toast = $('toast');
+    toast.textContent = message;
+    toast.hidden = false;
+    window.setTimeout(function () { toast.hidden = true; }, 4000);
+  }
+
+  function requestWrite(config) {
+    pendingWrite = config;
+    $('write-dialog-summary').textContent = config.summary;
+    $('write-reason').value = config.reason || '';
+    $('write-reason-label').hidden = config.showReason === false;
+    $('write-reason').required = Boolean(config.reasonRequired);
+    $('write-dialog').showModal();
+  }
+
+  function actionButtons(actions) {
+    if (!writeEnabled) return '-';
+    return '<div class="action-group">' + actions.map(function (action) {
+      return '<button type="button" class="action-button" data-write-action="' + escapeHtml(action.name) + '" data-write-id="' + escapeHtml(action.id) + '" data-write-label="' + escapeHtml(action.label) + '">' + escapeHtml(action.label) + '</button>';
+    }).join('') + '</div>';
   }
 
   function getDmChatLogsEndpoint() {
@@ -472,6 +517,10 @@
       { label: '포인트', render: function (row) { return escapeHtml(row.cost || 0) + 'P'; } },
       { label: '상태', render: function (row) { return badge(row.status); } },
       { label: '신청 ID', render: function (row) { return '<span class="mono">' + escapeHtml(shortId(row.id)) + '</span>'; } },
+      { label: '처리', render: function (row) { return actionButtons([
+        { name: 'redemption-complete', id: row.id, label: '지급완료' },
+        { name: 'redemption-cancel', id: row.id, label: '취소' },
+      ]); } },
     ], '현재 교환 대기 항목이 없습니다.\n실제 신청이 접수되면 이곳에 표시됩니다.');
   }
 
@@ -484,6 +533,10 @@
       { label: '첨부', render: function (row) { return row.attachment ? '있음' : '없음'; } },
       { label: '상태', render: function (row) { return badge(row.status); } },
       { label: '제출 ID', render: function (row) { return '<span class="mono">' + escapeHtml(shortId(row.id)) + '</span>'; } },
+      { label: '처리', render: function (row) { return actionButtons([
+        { name: 'submission-approve', id: row.id, label: '승인' },
+        { name: 'submission-reject', id: row.id, label: '반려' },
+      ]); } },
     ], '현재 인증 대기 항목이 없습니다.\n참여자가 /인증으로 제출하면 이곳에 표시됩니다.');
   }
 
@@ -506,6 +559,10 @@
       { label: '포인트', render: function (row) { return escapeHtml(row.rewardPoints || 0) + 'P'; } },
       { label: '인증 필요', render: function (row) { return row.requiresSubmission === false ? '아니오' : '예'; } },
       { label: '최근 변경', render: function (row) { return escapeHtml(formatDate(row.updatedAt || row.createdAt)); } },
+      { label: '처리', render: function (row) { return actionButtons([
+        { name: 'mission-active', id: row.id, label: '활성' },
+        { name: 'mission-paused', id: row.id, label: '일시중지' },
+      ]); } },
     ], '등록된 운영 미션이 없습니다.\n운영 전 /미션관리 명령어로 미션을 등록해 주세요.');
   }
 
@@ -516,6 +573,10 @@
       { label: '비용', render: function (row) { return escapeHtml(row.cost || 0) + 'P'; } },
       { label: '재고', render: function (row) { return escapeHtml(row.stock === null || row.stock === undefined ? '제한 없음' : row.stock); } },
       { label: '최근 변경', render: function (row) { return escapeHtml(formatDate(row.updatedAt || row.createdAt)); } },
+      { label: '처리', render: function (row) { return actionButtons([
+        { name: 'shop-active', id: row.id, label: '활성' },
+        { name: 'shop-paused', id: row.id, label: '일시중지' },
+      ]); } },
     ], '등록된 운영 상점 항목이 없습니다.\n운영 전 /상점관리 명령어로 항목을 등록해 주세요.');
   }
 
@@ -589,6 +650,7 @@
     $('global-status').textContent = '데이터를 불러오는 중입니다.';
     try {
       const results = await Promise.all([
+        fetchJson(endpoints.capabilities),
         fetchJson(endpoints.summary),
         fetchJson(endpoints.todayQueue),
         fetchJson(endpoints.firstDayCheck),
@@ -606,21 +668,24 @@
         fetchJson(getWebgameEndpoint()),
       ]);
 
-      renderSummary(results[0]);
-      renderTodayQueue(results[1]);
-      renderFirstDayCheck(results[2]);
-      renderReactionFollowUps(results[3]);
-      renderOnboardingSignals(results[4]);
-      renderFaqCandidates(results[5]);
-      renderRedemptions(rowsFromResponse(results[6]));
-      renderSubmissions(rowsFromResponse(results[7]));
-      renderTransactions(rowsFromResponse(results[8]));
-      renderMissions(rowsFromResponse(results[9]));
-      renderShopItems(rowsFromResponse(results[10]));
-      renderReactions(rowsFromResponse(results[11]));
-      renderDmChatLogs(results[12]);
-      renderDmSafetyReviews(results[13]);
-      renderWebgameOperations(results[14]);
+      writeEnabled = Boolean(results[0].writeEnabled);
+      $('console-mode').textContent = writeEnabled ? 'WRITE ENABLED' : 'READ ONLY';
+      $('write-tools').hidden = !writeEnabled;
+      renderSummary(results[1]);
+      renderTodayQueue(results[2]);
+      renderFirstDayCheck(results[3]);
+      renderReactionFollowUps(results[4]);
+      renderOnboardingSignals(results[5]);
+      renderFaqCandidates(results[6]);
+      renderRedemptions(rowsFromResponse(results[7]));
+      renderSubmissions(rowsFromResponse(results[8]));
+      renderTransactions(rowsFromResponse(results[9]));
+      renderMissions(rowsFromResponse(results[10]));
+      renderShopItems(rowsFromResponse(results[11]));
+      renderReactions(rowsFromResponse(results[12]));
+      renderDmChatLogs(results[13]);
+      renderDmSafetyReviews(results[14]);
+      renderWebgameOperations(results[15]);
 
       $('last-updated').textContent = '마지막 갱신: ' + formatDate(new Date().toISOString());
     } catch (error) {
@@ -636,6 +701,67 @@
   }
 
   $('refresh-button').addEventListener('click', loadDashboard);
+  document.addEventListener('click', function (event) {
+    const button = event.target.closest('[data-write-action]');
+    if (!button) return;
+    const action = button.dataset.writeAction;
+    const id = button.dataset.writeId;
+    const label = button.dataset.writeLabel;
+    let url;
+    let body;
+    let reasonRequired = false;
+    if (action.indexOf('redemption-') === 0) {
+      url = '/api/admin/redemptions/' + encodeURIComponent(id) + '/status';
+      body = { status: action.replace('redemption-', '') };
+    } else if (action.indexOf('submission-') === 0) {
+      const decision = action.replace('submission-', '');
+      url = '/api/admin/submissions/' + encodeURIComponent(id) + '/decision';
+      body = { decision: decision };
+      reasonRequired = decision === 'reject';
+    } else if (action.indexOf('mission-') === 0) {
+      url = '/api/admin/missions/' + encodeURIComponent(id) + '/status';
+      body = { status: action.replace('mission-', '') };
+    } else {
+      url = '/api/admin/shop-items/' + encodeURIComponent(id) + '/status';
+      body = { status: action.replace('shop-', '') };
+    }
+    requestWrite({ url: url, body: body, summary: label + ' · ' + id, reasonRequired: reasonRequired });
+  });
+  $('write-cancel').addEventListener('click', function () { $('write-dialog').close(); pendingWrite = null; });
+  $('write-dialog-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    if (!pendingWrite) return;
+    const reason = $('write-reason').value.trim();
+    if (pendingWrite.reasonRequired && !reason) {
+      showToast('사유를 입력해 주세요.');
+      return;
+    }
+    const request = pendingWrite;
+    pendingWrite = null;
+    $('write-dialog').close();
+    try {
+      await postJson(request.url, { ...request.body, reason: reason || undefined });
+      showToast('처리가 완료되었습니다.');
+      await loadDashboard();
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+  $('points-adjust-form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    requestWrite({
+      url: '/api/admin/points/adjust',
+      body: {
+        discordId: String(form.get('discordId') || '').trim(),
+        displayName: String(form.get('displayName') || '').trim(),
+        amount: Number(form.get('amount')),
+      },
+      reason: String(form.get('reason') || '').trim(),
+      summary: '포인트 ' + String(form.get('amount')) + 'P · ' + String(form.get('discordId')),
+      reasonRequired: true,
+    });
+  });
   $('dm-chat-filter-button').addEventListener('click', loadDmChatLogs);
   $('dm-chat-safety-filter').addEventListener('change', loadDmChatLogs);
   $('dm-chat-limit-filter').addEventListener('change', loadDmChatLogs);

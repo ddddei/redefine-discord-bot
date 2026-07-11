@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 
-Runtime CommonJS modules for the Discord bot, local JSON repository, operator flows, exports, and optional read-only admin server.
+Runtime CommonJS modules for the Discord bot, local JSON repository, operator flows, exports, and optional admin server with gated audited writes.
 
 ## WHERE TO LOOK
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-CommonJS Node 20 Discord bot for Project Redefine ("프로젝트 리디파인") operations: participant guidance, FAQ/knowledge search, journey points, mission approvals, redemptions, operator tools, data export, and an optional read-only admin dashboard (`/admin`). Runtime state is local JSON for the MVP; configuration is environment-driven (Railway target deployment).
+CommonJS Node 20 Discord bot for Project Redefine ("프로젝트 리디파인") operations: participant guidance, FAQ/knowledge search, journey points, mission approvals, redemptions, operator tools, data export, and an optional admin console (`/admin`). Runtime state is local JSON for the MVP; configuration is environment-driven (Railway target deployment).
 
 Detailed per-directory knowledge bases exist as `AGENTS.md` files and are the source of truth for that area — read them before editing in that directory: [AGENTS.md](AGENTS.md), [src/AGENTS.md](src/AGENTS.md), [data/AGENTS.md](data/AGENTS.md), [scripts/AGENTS.md](scripts/AGENTS.md), [docs/AGENTS.md](docs/AGENTS.md).
 
@@ -29,7 +29,7 @@ There is no Jest/Mocha — tests are plain Node scripts under `scripts/test-*.js
 src/              Discord runtime, commands, points, admin API/server
 scripts/          Plain Node smoke tests, data validation, release gate
 data/             Public content JSON, *.example.json fixtures, *.local.json uncommitted runtime state
-public/admin/     Static read-only admin dashboard assets (no frontend build)
+public/admin/     Static admin console assets (no frontend build)
 docs/             Korean operator runbooks, QA, release, participant docs
 prompts/codex/    Reusable Codex task prompts, not runtime code
 ```

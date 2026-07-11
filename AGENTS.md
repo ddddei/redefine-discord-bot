@@ -6,7 +6,7 @@
 
 ## OVERVIEW
 
-CommonJS Node 20 Discord bot for Project Redefine operations: participant guidance, FAQ/knowledge search, journey points, mission approvals, redemptions, operator tools, exports, and an optional read-only admin dashboard. Runtime state is local JSON for the MVP; Railway/Discord configuration is environment-driven.
+CommonJS Node 20 Discord bot for Project Redefine operations: participant guidance, FAQ/knowledge search, journey points, mission approvals, redemptions, operator tools, exports, and an optional admin console. Runtime state is local JSON for the MVP; Railway/Discord configuration is environment-driven.
 
 ## STRUCTURE
 
@@ -15,7 +15,7 @@ redefine-discord-bot/
 +-- src/              # Discord runtime, commands, points, admin API/server
 +-- scripts/          # Plain Node smoke tests, data validation, release gate
 +-- data/             # Public content, example fixtures, uncommitted local state
-+-- public/admin/     # Static read-only dashboard assets
++-- public/admin/     # Static admin console assets
 +-- docs/             # Korean operator runbooks, QA, release, and participant docs
 +-- prompts/codex/    # Reusable Codex task prompts, not runtime code
 `-- package.json      # npm scripts; no bundler or separate build step
@@ -31,7 +31,7 @@ redefine-discord-bot/
 | Points/redemptions/missions storage | `src/pointsRepository.js`, `src/pointsStore.js` | Uses local JSON paths with example fallbacks |
 | Mission reaction approvals | `src/reactionApproval.js` | Env-gated channel, emoji, reward, DM/public reply behavior |
 | Operator logs/alerts | `src/logging.js` | Falls back to `LOG_CHANNEL_ID` when specific channels are absent |
-| Admin dashboard API/server | `src/adminApi.js`, `src/adminServer.js` | Dashboard is read-only MVP |
+| Admin dashboard API/server | `src/adminApi.js`, `src/adminServer.js` | Reads plus env/token-gated audited writes |
 | Static dashboard UI | `public/admin/` | No frontend build; served by the bot process |
 | Public FAQ/knowledge/channel data | `data/*.json` | Validate with `npm run validate:data` |
 | Operational docs | `docs/README.md` | Index of record for docs navigation |
@@ -60,7 +60,7 @@ redefine-discord-bot/
 - Do not commit `.env`, production Discord IDs, exported participant data, or `data/*.local.json`.
 - Do not treat `npm run deploy` as a build; it only refreshes Discord slash commands.
 - Do not show `data/*.example.json` records as real operations data in dashboard/API work.
-- Do not make the admin dashboard mutating unless explicitly changing MVP scope and docs/tests.
+- Admin mutations require the env gate, separate timing-safe token check, confirmation UI, repository-only mutation, and audit trail.
 - Do not hardcode unresolved operations policy answers into FAQ/knowledge; route uncertainty to operators.
 
 ## COMMANDS

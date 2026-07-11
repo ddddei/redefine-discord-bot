@@ -139,6 +139,8 @@ ADMIN_DASHBOARD_PASSWORD=원하는_관리자_비밀번호
 ADMIN_DASHBOARD_TITLE=리디파인 운영 대시보드
 ```
 
+기본은 읽기 전용입니다. 교환·인증·포인트·미션/상점 쓰기를 활성화하려면 `ADMIN_WRITE_ENABLED=true`와 별도 `ADMIN_WRITE_TOKEN`을 함께 설정합니다. 모든 쓰기 시도와 결과는 공통 운영 데이터 경로의 `admin-audit.local.json`에 남으며, 처리 버튼은 확인 단계를 거칩니다. 참여자 DM 처리는 포함하지 않습니다.
+
 Railway에서 Public Domain을 생성한 뒤 `https://Railway-도메인/admin`으로 접속합니다. Public Domain은 Railway 프로젝트의 서비스 `Settings` -> `Networking` -> `Public Networking`에서 생성합니다.
 
 대시보드는 HTTP Basic Auth로 보호되며 API도 같은 인증을 사용합니다. 오늘의 운영 큐, 운영 요약 카드, 교환 대기, 인증 대기, 최근 포인트 로그, 미션 상태, 상점 상태, 반응 승인 기록, `/운영내보내기` 안내와 운영 체크리스트를 보여줍니다. 웹게임 운영 섹션에서는 주간 랭킹, flagged 기록, 오늘의 도전 참여, 공동 목표 진행률, 응원 통계, 랭킹 없는 단어 게임의 참여 분포를 읽기 전용으로 확인할 수 있습니다(`/api/admin/webgames`).

@@ -279,6 +279,11 @@ const checks = [
     args: ['--check', 'src/adminServer.js'],
   },
   {
+    label: 'src/adminAudit.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/adminAudit.js'],
+  },
+  {
     label: 'src/webgameRepository.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/webgameRepository.js'],
@@ -772,6 +777,11 @@ const checks = [
     label: 'admin dashboard flow smoke test',
     command: 'node',
     args: ['scripts/test-admin-dashboard-flow.js'],
+  },
+  {
+    label: 'admin write flow smoke test',
+    command: 'node',
+    args: ['scripts/test-admin-write-flow.js'],
   },
   {
     label: 'dungeonworld flow smoke test',
