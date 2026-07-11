@@ -519,9 +519,10 @@ function createPointsRepository(paths = {}, options = {}) {
     const transactions = Array.isArray(pointsData.pointTransactions)
       ? pointsData.pointTransactions
       : [];
-    return getOperationalRecords(transactions).filter((transaction) => {
+    const relatedPrefix = `${dateString}:`;
+    return transactions.filter((transaction) => {
       return transaction.relatedType === MINIGAME_REWARD_RELATED_TYPE
-        && getMinigamePlayDate(transaction) === dateString;
+        && String(transaction.relatedId || '').startsWith(relatedPrefix);
     });
   }
 
