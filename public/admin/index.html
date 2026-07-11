@@ -99,6 +99,19 @@
         </div>
       </section>
 
+      <section id="weekly-report-section" class="panel">
+        <div class="section-heading compact-heading">
+          <div><p class="eyebrow">WEEKLY REPORT</p><h2>주간 운영 리포트</h2></div>
+          <p id="weekly-report-status">주차를 선택한 뒤 조회해 주세요.</p>
+        </div>
+        <form id="weekly-report-form" class="participant-card-search">
+          <label>주차<select id="weekly-report-offset"><option value="0">이번 주</option><option value="-1">지난주</option><option value="-2">2주 전</option><option value="-3">3주 전</option><option value="-4">4주 전</option></select></label>
+          <button id="weekly-report-load" type="submit">조회</button>
+          <button id="weekly-report-send" type="button" class="write-only" hidden>이번 주 Discord 발송</button>
+        </form>
+        <div id="weekly-report-result" hidden><div id="weekly-report-summary" class="summary-grid"></div><p id="weekly-report-delays" class="guide"></p></div>
+      </section>
+
       <section class="two-column">
         <article class="panel">
           <h2>첫날 점검</h2>

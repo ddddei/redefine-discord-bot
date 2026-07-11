@@ -17,6 +17,7 @@ const {
 const { startOperationBackupScheduler } = require('./operationBackup');
 const { startDmChatCleanupScheduler } = require('./dmChatCleanup');
 const { startOpsReminder } = require('./opsReminder');
+const { startWeeklyOpsReportScheduler } = require('./weeklyOpsReportScheduler');
 const { createPointsRepository } = require('./pointsRepository');
 const { enforceOperationDataPreflight } = require('./operationDataPaths');
 const {
@@ -55,6 +56,7 @@ client.once('clientReady', () => {
   startOperationBackupScheduler(client);
   startDmChatCleanupScheduler(client);
   startOpsReminder({ client, repository: operationRepository });
+  startWeeklyOpsReportScheduler({ client, repository: operationRepository });
 });
 
 client.on('interactionCreate', handleInteractionCreate);

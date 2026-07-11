@@ -72,11 +72,13 @@ async function main() {
     const webgameSocialData = { version: 1, isExample: false, cheerSalt: 'test-only', cheers: [] };
     const adminAuditData = { entries: [{ action: 'test', result: 'success' }] };
     const opsRemindersData = { version: 1, isExample: false, records: [] };
+    const weeklyOpsReportsData = { version: 1, isExample: false, records: [] };
     saveJsonFileAtomic(path.join(dataDir, 'webgame-links.local.json'), webgameLinksData);
     saveJsonFileAtomic(path.join(dataDir, 'webgame-scores.local.json'), webgameScoresData);
     saveJsonFileAtomic(path.join(dataDir, 'webgame-social.local.json'), webgameSocialData);
     saveJsonFileAtomic(path.join(dataDir, 'admin-audit.local.json'), adminAuditData);
     saveJsonFileAtomic(path.join(dataDir, 'ops-reminders.local.json'), opsRemindersData);
+    saveJsonFileAtomic(path.join(dataDir, 'weekly-ops-reports.local.json'), weeklyOpsReportsData);
 
     const snapshotPaths = {
       points: path.join(dataDir, 'points.local.json'),
@@ -98,6 +100,7 @@ async function main() {
       webgameSocial: path.join(dataDir, 'webgame-social.local.json'),
       adminAudit: path.join(dataDir, 'admin-audit.local.json'),
       opsReminders: path.join(dataDir, 'ops-reminders.local.json'),
+      weeklyOpsReports: path.join(dataDir, 'weekly-ops-reports.local.json'),
     };
 
     const snapshotNow = new Date('2026-07-03T12:30:00.000Z');
@@ -113,15 +116,17 @@ async function main() {
     assert.deepStrictEqual(snapshot.files.webgameSocial, webgameSocialData);
     assert.deepStrictEqual(snapshot.files.adminAudit, adminAuditData);
     assert.deepStrictEqual(snapshot.files.opsReminders, opsRemindersData);
+    assert.deepStrictEqual(snapshot.files.weeklyOpsReports, weeklyOpsReportsData);
     assert.strictEqual(snapshot.files.shopItems, null);
     assert.strictEqual(snapshot.files.dungeonworldLogs, null);
-    assert.strictEqual(Object.keys(snapshot.files).length, 19);
+    assert.strictEqual(Object.keys(snapshot.files).length, 20);
     assert.strictEqual(snapshot.schemaVersion, 2);
     assert.strictEqual(snapshot.manifest.points.included, true);
     assert.strictEqual(snapshot.manifest.points.requiredForStrict, true);
     assert.strictEqual(snapshot.manifest.dmChatLogs.requiredForStrict, false);
     assert.strictEqual(snapshot.manifest.adminAudit.requiredForStrict, false);
     assert.strictEqual(snapshot.manifest.opsReminders.requiredForStrict, false);
+    assert.strictEqual(snapshot.manifest.weeklyOpsReports.requiredForStrict, false);
     assert.ok(snapshot.manifest.dmCleanupState);
     assert.ok(snapshot.manifest.dmSafetyReviews);
     assert.strictEqual(snapshot.manifest.webgameLinks.included, true);
@@ -174,7 +179,7 @@ async function main() {
     assert.strictEqual(state.records[0].messageId, 'backup_message_1');
     assert.ok(state.records[0].byteSize > 0);
     assert.strictEqual(state.records[0].filename, sendResult.filename);
-    assert.strictEqual(state.records[0].includedFileCount, 8);
+    assert.strictEqual(state.records[0].includedFileCount, 9);
     assert.strictEqual(state.records[0].excludedFileCount, 2);
     assert.strictEqual(state.records[0].missingFileCount, 11);
 
