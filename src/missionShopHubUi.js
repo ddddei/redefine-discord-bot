@@ -8,7 +8,7 @@ const {
   createOperatorMissionHubToken, createOperatorMissionTemplateToken, createOperatorShopHubToken,
   createOperatorMissionHubRows, createOperatorMissionTemplateRows, createOperatorShopHubRows,
 } = require('./components');
-const { formatNullableCount } = require('./operatorInteractionUi');
+const { createEmptyListEmbed, formatNullableCount } = require('./operatorInteractionUi');
 
 function formatAdminMissionLine(mission) {
   return [
