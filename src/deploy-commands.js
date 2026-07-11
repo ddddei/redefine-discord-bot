@@ -189,6 +189,21 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('게임지급')
+    .setDescription('운영진이 웹게임 주간 랭킹·참여·공동 목표 보상을 확인 후 지급합니다.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .addStringOption((option) =>
+      option
+        .setName('주차')
+        .setDescription('지급할 주차를 선택해 주세요. 기본값은 지난 주입니다.')
+        .setRequired(false)
+        .addChoices(
+          { name: '지난 주', value: 'last' },
+          { name: '이번 주', value: 'current' }
+        )
+    ),
+
+  new SlashCommandBuilder()
     .setName('교환관리')
     .setDescription('운영진이 교환 신청을 완료, 취소, 환불 처리합니다.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)

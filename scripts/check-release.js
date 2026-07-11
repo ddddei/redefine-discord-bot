@@ -189,6 +189,11 @@ const checks = [
     args: ['--check', 'src/webgameLink.js'],
   },
   {
+    label: 'src/webgamePayout.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/webgamePayout.js'],
+  },
+  {
     label: 'public/admin/admin.js 문법 검사',
     command: 'node',
     args: ['--check', 'public/admin/admin.js'],
@@ -494,6 +499,11 @@ const checks = [
     args: ['--check', 'scripts/test-webgame-replay.js'],
   },
   {
+    label: 'scripts/test-webgame-payout-flow.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-webgame-payout-flow.js'],
+  },
+  {
     label: 'scripts/test-word-logic.js 문법 검사',
     command: 'node',
     args: ['--check', 'scripts/test-word-logic.js'],
@@ -742,6 +752,11 @@ const checks = [
     label: 'webgame replay verification smoke test',
     command: 'node',
     args: ['scripts/test-webgame-replay.js'],
+  },
+  {
+    label: 'webgame payout flow smoke test',
+    command: 'node',
+    args: ['scripts/test-webgame-payout-flow.js'],
   },
   {
     label: 'dungeonworld session 02 content test',
