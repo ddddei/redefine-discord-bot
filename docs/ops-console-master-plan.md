@@ -1,6 +1,6 @@
 # 운영 완성판 마스터 플랜 — 100%→150% 운영 편의 로드맵 (2026-07-05)
 
-> **2026-07-11 현행화:** 웹게임 읽기 섹션(PR #66), 서버 리플레이 검증(PR #67), 운영 데이터 안전화(PR #74), DM 실운영 준비(PR #75), 미니게임 랭킹 3구간(PR #76), Discord `/게임지급` 반자동 지급(PR #77)이 코드 기준 완료됐습니다. PR #77은 Discord 명령이며 운영 콘솔 Phase 1 쓰기 기능 완료를 뜻하지 않습니다. `/admin`은 계속 읽기 전용이고 Phase 3 리마인더는 Phase 1 선행조건 때문에 바로 실행하지 않습니다. 신규 기능 충돌을 줄이기 위해 [handlers 모듈 분할 v1](handlers-modularization-v1-plan.md)을 Phase 1 전 권장 작업으로 둡니다.
+> **2026-07-11 현행화:** 웹게임 읽기 섹션(PR #66), 서버 리플레이 검증(PR #67), 운영 데이터 안전화(PR #74), DM 실운영 준비(PR #75), 미니게임 랭킹 3구간(PR #76), Discord `/게임지급` 반자동 지급(PR #77), handlers 모듈 분할(PR #78)이 코드 기준 완료됐습니다. `/admin`은 아직 읽기 전용이며, 이제 Phase 1 쓰기 기능을 `feat/admin-console-write-v1`에서 착수합니다. Phase 1은 참여자 DM 발송까지 확장하지 않고 상태 변경·2중 인증·감사 추적을 먼저 완성합니다.
 
 ## 1. 문서 목적
 
@@ -93,7 +93,7 @@
 | 포인트 지급/정정 (사유 필수) | `POST /api/admin/points/adjust` | `/포인트관리` |
 | 미션/상점 상태 토글 | `POST /api/admin/missions/:id/status`, `POST /api/admin/shop-items/:id/status` | `/미션관리`, `/상점관리` |
 
-**Discord 알림 연동**: 콘솔에서 처리해도 참여자 DM/채널 알림은 기존 경로(예: 교환 완료 안내)를 동일하게 태운다 — 콘솔 처리와 Discord 처리의 참여자 경험이 구분되지 않아야 한다. Discord 클라이언트 접근이 필요한 알림은 adminServer→봇 클라이언트 참조로 연결(이미 같은 프로세스).
+**Discord 알림 연동**: Phase 1에서는 운영 로그 채널 알림만 선택적으로 지원하고, 실패해도 상태 변경을 되돌리지 않는다. 참여자 DM/채널 알림은 상태 변경 트랜잭션과 알림 재시도 계약을 함께 설계해야 하므로 이번 범위에서 제외한다. 운영자는 기존 Discord 안내 흐름을 계속 사용하며, 참여자 알림 자동화는 별도 후속 계획으로 다룬다.
 
 **프런트 UX**: 각 액션은 확인 모달(대상 요약 + 사유 입력) → 실행 → 결과 토스트 + 큐 갱신. 실패(이미 처리됨 등)는 명확한 한국어 안내.
 
@@ -124,10 +124,11 @@ E-1(읽기)이 만든 웹게임 섹션 위에:
 읽기 전용일 때는 Basic Auth로 충분했지만 쓰기는 다르다. 콘솔 v1에 다음을 **필수 동반**한다:
 
 1. **`ADMIN_WRITE_ENABLED=true` env 게이트** — 기본 off. off면 모든 쓰기 API가 403, 프런트도 버튼 숨김. 사고 시 즉시 읽기 전용 복귀 가능.
-2. **감사 로그** — `data/admin-audit.local.json`(원자 저장·백업 대상 포함): 시각·액션·대상·사유·요청 출처. `/운영현황`과 콘솔 양쪽에서 열람 가능. 정정·환불 분쟁 대비.
+2. **감사 로그** — `ADMIN_AUDIT_DATA_PATH` → `OPERATION_DATA_DIR/admin-audit.local.json` → `data/admin-audit.local.json` 우선순위로 해석한다. 원자 저장·백업 manifest 대상이며 시각·액션·대상·사유·결과·요청 출처를 기록한다. 로그가 무한히 커지지 않도록 최근 1,000건으로 제한한다.
 3. **확인 단계** — 모든 쓰기는 프런트 확인 모달 + 서버 측 현재 상태 재검증(이미 처리된 건 409).
-4. **세션 강화(권장, Phase 1 동반)** — Basic Auth 유지하되 쓰기 요청에 별도 헤더 토큰(`ADMIN_WRITE_TOKEN`)을 추가로 요구하는 2중 게이트. 비밀번호 유출 단독으로는 쓰기 불가.
-5. 기존 원칙 유지: 예시 데이터 제외, discordId는 admin 한정 노출, HTTPS는 Railway 종단에 위임.
+4. **쓰기 토큰(필수)** — Basic Auth 유지에 더해 `ADMIN_WRITE_TOKEN`과 `X-Admin-Write-Token` 헤더가 모두 있어야 한다. `ADMIN_WRITE_ENABLED=true`여도 토큰이 미설정이면 서버는 쓰기를 활성화하지 않고 503으로 거부한다. 비밀번호 유출 단독으로는 쓰기 불가하다.
+5. **요청 안전성** — JSON 본문 크기를 제한하고, 사용자 입력을 스키마별로 검증하며, CORS를 열지 않는다. 응답은 `Cache-Control: no-store`로 캐시를 막고 비밀값은 응답·감사 로그에 기록하지 않는다.
+6. 기존 원칙 유지: 예시 데이터 제외, discordId는 admin 한정 노출, HTTPS는 Railway 종단에 위임.
 
 ---
 
@@ -150,7 +151,7 @@ E-1(읽기)이 만든 웹게임 섹션 위에:
 
 ## 8. 착수 순서 제안
 
-1. **handlers.js 분할 v1** — 기능 무변경으로 라우터·도메인 모듈 경계를 먼저 확립.
+1. **handlers.js 분할 v1** — 완료(PR #78).
 2. **Track 0 운영 QA** — Railway Volume·백업·DM 실계정 확인은 가능한 시점에 병행.
 3. **콘솔 Phase 1 재감사 후 구현** — 쓰기 게이트·감사 로그·저장 경유 원칙이 리뷰 중점.
 4. **콘솔 Phase 2** — flagged 처리 + 반자동 지급. 리플레이 검증은 이미 완료됐지만 운영자 승인 단계는 유지.
@@ -161,7 +162,7 @@ E-1(읽기)이 만든 웹게임 섹션 위에:
 | 지시서 | 범위 | 방식 | 상태 |
 | --- | --- | --- | --- |
 | `admin-dashboard-webgame-visibility-v1.md` | E-1 읽기 섹션 | Codex | 작성 완료 |
-| [admin-console-write-v1.md](../prompts/codex/admin-console-write-v1.md) | Phase 1 쓰기 API 4종 + 처리 큐 화면 + 보안 3종 | 샌드위치 | 작성 완료 (2026-07-05) |
+| [admin-console-write-v1.md](../prompts/codex/admin-console-write-v1.md) | Phase 1 쓰기 API 4종 + 처리 큐 화면 + 보안·감사 | 샌드위치 | 2026-07-11 현행화, 구현 착수 |
 | [admin-console-webgame-ops-v1.md](../prompts/codex/admin-console-webgame-ops-v1.md) | Phase 2 flagged 처리 + 반자동 지급 | Codex | 작성 완료 (2026-07-05, E-1+Phase 1 선행) |
 | [ops-reminder-v1.md](../prompts/codex/ops-reminder-v1.md) | Phase 3 지연 배지 + 채널 알림 | Codex | 작성 완료 (2026-07-05, Phase 1 선행) |
 

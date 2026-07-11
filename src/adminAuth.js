@@ -32,7 +32,7 @@ function parseBasicAuthHeader(req) {
   }
 }
 
-function safeComparePassword(input, expected) {
+function safeCompareSecret(input, expected) {
   if (typeof input !== 'string' || typeof expected !== 'string' || expected.length === 0) {
     return false;
   }
@@ -46,6 +46,8 @@ function safeComparePassword(input, expected) {
 
   return crypto.timingSafeEqual(inputBuffer, expectedBuffer);
 }
+
+const safeComparePassword = safeCompareSecret;
 
 function sendUnauthorized(res) {
   res.statusCode = 401;
@@ -74,4 +76,5 @@ module.exports = {
   parseBasicAuthHeader,
   requireAdminAuth,
   safeComparePassword,
+  safeCompareSecret,
 };

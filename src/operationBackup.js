@@ -51,6 +51,7 @@ function getDefaultSnapshotPaths() {
     reactionApprovals: paths.reactionApprovals,
     operatorSupport: paths.operatorSupport,
     dailyMissionAnnouncements: paths.dailyMissionAnnouncements,
+    adminAudit: paths.adminAudit,
     dmChatLogs: paths.dmChatLogs,
     dmCleanupState: paths.dmCleanupState,
     dmSafetyReviews: paths.dmSafetyReviews,

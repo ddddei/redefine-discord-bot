@@ -80,7 +80,7 @@ if (require.main === module) {
     return;
   }
   try {
-    startAdminServer();
+    startAdminServer({ client });
   } catch (error) {
     console.warn('관리자 대시보드 초기화 실패:', error.message);
   }

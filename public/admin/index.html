@@ -9,7 +9,7 @@
   <body>
     <header class="topbar">
       <div>
-        <p class="eyebrow">READ ONLY</p>
+        <p id="console-mode" class="eyebrow">READ ONLY</p>
         <h1 id="dashboard-title">리디파인 운영 대시보드</h1>
       </div>
       <div class="topbar-actions">
@@ -38,6 +38,17 @@
             <div id="today-queue-alerts" class="queue-list"></div>
           </article>
         </div>
+      </section>
+
+      <section id="write-tools" class="panel write-only" hidden>
+        <h2>포인트 지급/정정</h2>
+        <form id="points-adjust-form" class="write-form">
+          <label>Discord ID<input name="discordId" required autocomplete="off"></label>
+          <label>표시명<input name="displayName" autocomplete="off"></label>
+          <label>변경 포인트<input name="amount" required type="number" step="1"></label>
+          <label>사유<input name="reason" required maxlength="500"></label>
+          <button type="submit">확인 후 처리</button>
+        </form>
       </section>
 
       <section>
@@ -267,6 +278,18 @@
       </section>
     </main>
 
+    <dialog id="write-dialog" aria-labelledby="write-dialog-title">
+      <form id="write-dialog-form" method="dialog">
+        <h2 id="write-dialog-title">처리 확인</h2>
+        <p id="write-dialog-summary"></p>
+        <label id="write-reason-label">사유<input id="write-reason" maxlength="500" autocomplete="off"></label>
+        <div class="dialog-actions">
+          <button value="cancel" type="button" id="write-cancel">취소</button>
+          <button value="confirm" type="submit">처리</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script src="/admin/admin.js"></script>
   </body>
 </html>
