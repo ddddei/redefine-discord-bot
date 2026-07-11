@@ -52,6 +52,7 @@ function getDefaultSnapshotPaths() {
     operatorSupport: paths.operatorSupport,
     dailyMissionAnnouncements: paths.dailyMissionAnnouncements,
     adminAudit: paths.adminAudit,
+    opsReminders: paths.opsReminders,
     dmChatLogs: paths.dmChatLogs,
     dmCleanupState: paths.dmCleanupState,
     dmSafetyReviews: paths.dmSafetyReviews,

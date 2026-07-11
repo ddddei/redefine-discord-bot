@@ -418,3 +418,15 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
   .write-form { grid-template-columns: 1fr; }
   .payout-controls { align-items: stretch; flex-direction: column; }
 }
+.status-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(87, 154, 255, 0.14);
+  color: #a9ccff;
+  font-size: 0.75rem;
+}
+
+.status-badge.warning { color: #ffd98a; background: rgba(255, 191, 71, 0.14); }
+.status-badge.danger { color: #ff9d9d; background: rgba(255, 92, 92, 0.14); }

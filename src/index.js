@@ -16,6 +16,8 @@ const {
 } = require('./logging');
 const { startOperationBackupScheduler } = require('./operationBackup');
 const { startDmChatCleanupScheduler } = require('./dmChatCleanup');
+const { startOpsReminder } = require('./opsReminder');
+const { createPointsRepository } = require('./pointsRepository');
 const { enforceOperationDataPreflight } = require('./operationDataPaths');
 const {
   findFaqAnswer,
@@ -42,6 +44,8 @@ const client = new Client({
   ],
 });
 
+const operationRepository = createPointsRepository();
+
 client.once('clientReady', () => {
   console.log(`${client.user.tag} 봇이 준비됐어요.`);
   logDmChatConfiguration();
@@ -50,6 +54,7 @@ client.once('clientReady', () => {
   startOperationBackupReminder(client);
   startOperationBackupScheduler(client);
   startDmChatCleanupScheduler(client);
+  startOpsReminder({ client, repository: operationRepository });
 });
 
 client.on('interactionCreate', handleInteractionCreate);
@@ -80,7 +85,7 @@ if (require.main === module) {
     return;
   }
   try {
-    startAdminServer({ client });
+    startAdminServer({ client, repository: operationRepository });
   } catch (error) {
     console.warn('관리자 대시보드 초기화 실패:', error.message);
   }

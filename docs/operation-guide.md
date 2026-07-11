@@ -341,3 +341,6 @@ git add .
 git commit -m "..."
 git push
 ```
+## 운영 지연 리마인더
+
+운영 리마인더는 기본 비활성이며 교환·인증·반응 후속 확인의 지연과 active 미션 마감을 운영진 전용 채널에 집계로 안내합니다. 참여자에게 메시지를 보내거나 상태를 자동 변경하지 않습니다. 단일 Railway replica에서 `OPS_REMINDER_ENABLED=true`와 전용 채널·KST 슬롯을 설정한 뒤 사용하며, 중단 시에는 다시 `false`로 바꾸고 재배포합니다. 이력은 공통 운영 데이터 경로의 `ops-reminders.local.json`에 저장되고 자동 백업에 포함됩니다.

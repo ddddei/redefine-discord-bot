@@ -12,12 +12,12 @@
 
 ## 현재 권장 작업 순서
 
-운영 데이터 안전화와 참여자 DM 실운영 준비는 `main`에 반영됐습니다. 다음 코드 작업은 대형 interaction handler의 기능 무변경 분할을 권장합니다.
+운영 콘솔 Phase 1·2까지 `main`에 반영됐습니다. 다음 코드 작업은 Phase 3 지연 감지·운영 리마인더입니다.
 
 1. 최신 `main`과 [현행화 로드맵](../docs/next-work-roadmap-2026-07.md) 확인
-2. [handlers 모듈 분할 v1 계획서](../docs/handlers-modularization-v1-plan.md) 검토
-3. [handlers 모듈 분할 v1 작업 지시서](codex/handlers-modularization-v1.md) 실행
+2. [운영 리마인더 v1 계획서](../docs/ops-reminder-v1-plan.md) 검토
+3. [운영 리마인더 v1 작업 지시서](codex/ops-reminder-v1.md) 실행
 4. 주 에이전트 최종 검수와 전체 release gate
 5. PR CI 성공 후 머지
 
-운영 콘솔 쓰기와 운영 리마인더 지시서는 별도로 존재하지만 현재 리마인더 지시서는 운영 콘솔 Phase 1을 선행조건으로 둡니다. 선행조건이 충족되기 전 그대로 실행하지 않습니다.
+Phase 3는 운영 콘솔 Phase 1·2의 상태와 공통 운영 데이터 경로를 전제로 현행화됐습니다. 구현 전 최신 `main`과 Railway 단일 인스턴스 전제를 다시 확인합니다.

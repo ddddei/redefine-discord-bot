@@ -4,6 +4,21 @@ const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 const checks = [
   {
+    label: 'src/opsDelayPolicy.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/opsDelayPolicy.js'],
+  },
+  {
+    label: 'src/opsReminder.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/opsReminder.js'],
+  },
+  {
+    label: '운영 지연 정책과 리마인더 흐름 테스트',
+    command: 'node',
+    args: ['scripts/test-ops-reminder-flow.js'],
+  },
+  {
     label: 'src/index.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/index.js'],
