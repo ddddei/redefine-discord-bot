@@ -10,6 +10,7 @@ const {
 } = require('./operationalRecords');
 const {
   createWebgameRepository,
+  getAdminScoreId,
   getIsoWeekKey,
   getDayKey,
 } = require('./webgameRepository');
@@ -948,6 +949,7 @@ function summarizeFlaggedScores(scores, displayNameByDiscordId, limit) {
   const sorted = sortNewestFirst(flagged, ['submittedAt']).slice(0, limit);
 
   return sorted.map((score) => ({
+    scoreId: getAdminScoreId(score),
     discordId: score.discordId,
     displayName: displayNameByDiscordId.get(score.discordId) || '알 수 없음',
     gameId: score.gameId,
@@ -956,6 +958,10 @@ function summarizeFlaggedScores(scores, displayNameByDiscordId, limit) {
     weekKey: score.weekKey || null,
     dayKey: score.dayKey || null,
     submittedAt: score.submittedAt || null,
+    resolution: score.resolution && score.resolution.status ? {
+      status: score.resolution.status,
+      resolvedAt: score.resolution.resolvedAt || null,
+    } : null,
   }));
 }
 

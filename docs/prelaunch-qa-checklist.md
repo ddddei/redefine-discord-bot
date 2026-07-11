@@ -38,6 +38,7 @@
 - [ ] `REACTION_APPROVAL_DM_USER=true`일 때 참여자 DM 알림이 전송됩니다.
 - [ ] `ADMIN_DASHBOARD_ENABLED=true`를 사용할 경우 `ADMIN_DASHBOARD_PASSWORD`가 실제 운영 비밀번호로 설정되어 있습니다.
 - [ ] 운영 콘솔 쓰기는 기본값 `ADMIN_WRITE_ENABLED=false`이며, 활성화할 때만 별도 `ADMIN_WRITE_TOKEN`과 감사 로그 영속 경로를 설정했습니다.
+- [ ] admin 웹게임 지급 미리보기 후 점수 변경 시 실행이 409로 중단되고, 부분 실패 재시도에서 성공 건이 중복 지급되지 않습니다.
 - [ ] DM 대화 연습을 사용할 경우 `DM_CHAT_ENABLED`, `AI_ENABLED`, `AI_PROVIDER`, `AI_MODEL`, `DM_CHAT_LOG_CHANNEL_ID`, `SAFETY_ALERT_CHANNEL_ID` 설정이 운영 정책과 맞습니다.
 - [ ] `DM_CHAT_DAILY_LIMIT`가 KST 당일 사용자별 연습 상한 정책과 맞으며, 제한 해제가 필요한 경우 `0`으로 설정하는 절차를 확인했습니다.
 - [ ] `SAFETY_ALERT_THROTTLE_MINUTES`가 반복 안전 알림 운영 정책과 맞으며, 전량 알림이 필요한 경우 `0`으로 설정하는 절차를 확인했습니다.

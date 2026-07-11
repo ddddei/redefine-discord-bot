@@ -4,6 +4,7 @@
 const { getIsoWeekKey } = require('./webgameRepository');
 const { GAME_DEFINITIONS, getCommunalGoal } = require('./webgameApi');
 const { getWebgameWeeklyRewardRelatedId } = require('./pointsRepository');
+const crypto = require('crypto');
 
 // 지급 대상 게임(2026-07-11 운영 확정: 생존전 포함 4게임 중 랭킹 대상 3종).
 // idle은 랭킹 비대상이라 공동 목표 보상으로만 지급된다.
@@ -188,6 +189,47 @@ function executeWeeklyPayoutPlan(plan, { pointsRepository, operatorId }) {
   return result;
 }
 
+function getWeeklyPayoutSnapshotToken(plan) {
+  const snapshot = {
+    weekKey: plan.weekKey,
+    games: plan.games.map((game) => ({
+      gameId: game.gameId,
+      winners: game.winners.map((winner) => ({
+        discordId: winner.discordId,
+        displayName: winner.displayName,
+        rank: winner.rank,
+        score: winner.score,
+        amount: winner.amount,
+        kind: winner.kind,
+        alreadyPaid: winner.alreadyPaid,
+      })),
+    })),
+    participation: plan.participation.recipients.map((recipient) => ({
+      discordId: recipient.discordId,
+      displayName: recipient.displayName,
+      alreadyPaid: recipient.alreadyPaid,
+    })),
+    communal: {
+      achieved: plan.communal.achieved,
+      total: plan.communal.total,
+      goal: plan.communal.goal,
+      recipients: plan.communal.recipients.map((recipient) => ({
+        discordId: recipient.discordId,
+        displayName: recipient.displayName,
+        alreadyPaid: recipient.alreadyPaid,
+      })),
+    },
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+}
+
+function buildAdminWeeklyPayoutPreview(plan) {
+  return {
+    ...plan,
+    snapshotToken: getWeeklyPayoutSnapshotToken(plan),
+  };
+}
+
 function formatAmount(amount) {
   return `${amount.toLocaleString('ko-KR')}P`;
 }
@@ -277,6 +319,8 @@ module.exports = {
   getPayoutWeekKey,
   buildWeeklyPayoutPlan,
   executeWeeklyPayoutPlan,
+  getWeeklyPayoutSnapshotToken,
+  buildAdminWeeklyPayoutPreview,
   buildPayoutPreviewLines,
   buildPayoutResultLines,
 };

@@ -784,6 +784,11 @@ const checks = [
     args: ['scripts/test-admin-write-flow.js'],
   },
   {
+    label: 'admin webgame operations flow smoke test',
+    command: 'node',
+    args: ['scripts/test-admin-webgame-ops-flow.js'],
+  },
+  {
     label: 'dungeonworld flow smoke test',
     command: 'node',
     args: ['scripts/test-dungeonworld-flow.js'],
