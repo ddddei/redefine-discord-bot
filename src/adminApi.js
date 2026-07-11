@@ -15,6 +15,11 @@ const {
   getDayKey,
 } = require('./webgameRepository');
 const { GAME_DEFINITIONS, getCommunalGoal } = require('./webgameApi');
+const {
+  addMissionDeadlineMetadata,
+  addWaitingMetadata,
+  getOpsDelayThresholds,
+} = require('./opsDelayPolicy');
 
 function createDefaultRepository() {
   return createPointsRepository();
@@ -81,15 +86,6 @@ function isMissionSubmissionRecord(submission) {
 
 function getDateValue(record, fields) {
   return fields.map((field) => record && record[field]).find(Boolean) || null;
-}
-
-function getAgeHours(value) {
-  const date = new Date(value || 0);
-  if (Number.isNaN(date.getTime())) {
-    return 0;
-  }
-
-  return Math.floor((Date.now() - date.getTime()) / (60 * 60 * 1000));
 }
 
 function createQueueWarning(type, severity, message, record) {
@@ -473,10 +469,11 @@ function buildFirstDayCheck(repository = createDefaultRepository(), options = {}
 
 function buildReactionFollowUpQueue(repository = createDefaultRepository(), limit = 10) {
   const reactionApprovals = filterOperationalRecords(readReactionApprovals(repository)).data;
-  const followUps = sortNewestFirst(
+  const thresholds = getOpsDelayThresholds();
+  const followUps = addWaitingMetadata(sortNewestFirst(
     getNotificationFollowUps(reactionApprovals),
     ['createdAt']
-  ).slice(0, parseLimit(limit, 10));
+  ).slice(0, parseLimit(limit, 10)), ['createdAt'], thresholds.followUpHours, new Date());
 
   return {
     title: '반응 승인 후속 확인',
@@ -624,11 +621,16 @@ function listRecentPointTransactions(repository = createDefaultRepository(), lim
 }
 
 function listMissionStatus(repository = createDefaultRepository(), limit = 10) {
+  const thresholds = getOpsDelayThresholds();
   const state = readStateForMeta(repository);
   if (state) {
     const missionsResult = filterOperationalRecords(state.missionsData && state.missionsData.missions);
     return buildListResponse(
-      sortNewestFirst(missionsResult.data, ['updatedAt', 'createdAt', 'activeDate']).slice(0, parseLimit(limit)),
+      addMissionDeadlineMetadata(
+        sortNewestFirst(missionsResult.data, ['updatedAt', 'createdAt', 'activeDate']).slice(0, parseLimit(limit)),
+        thresholds.missionDeadlineHours,
+        new Date()
+      ),
       toArray(state.missionsData && state.missionsData.missions)
     );
   }
@@ -788,24 +790,31 @@ function buildTodayOperationsQueue(repository = createDefaultRepository(), limit
       missionTitle: submission.missionTitle || (missionsById[submission.missionId] && missionsById[submission.missionId].title) || null,
       rewardPoints: submission.rewardPoints || (missionsById[submission.missionId] && missionsById[submission.missionId].rewardPoints) || 0,
     }));
+  const thresholds = getOpsDelayThresholds();
+  const pendingRedemptionsWithDelay = addWaitingMetadata(
+    pendingRedemptions, ['requestedAt', 'createdAt'], thresholds.redemptionHours, new Date()
+  );
+  const pendingSubmissionsWithDelay = addWaitingMetadata(
+    pendingSubmissions, ['createdAt'], thresholds.submissionHours, new Date()
+  );
   const todayReactionApprovals = sortNewestFirst(reactionApprovalsResult.data, ['reviewedAt', 'createdAt'])
     .filter((record) => isTodayKst(record.reviewedAt || record.createdAt));
   const todayPointTransactions = sortNewestFirst(pointTransactions, ['createdAt'])
     .filter((transaction) => isTodayKst(transaction.createdAt));
-  const staleRedemptionWarnings = pendingRedemptions
-    .filter((redemption) => getAgeHours(redemption.requestedAt || redemption.createdAt) >= 24)
+  const staleRedemptionWarnings = pendingRedemptionsWithDelay
+    .filter((redemption) => redemption.overdue)
     .map((redemption) => createQueueWarning(
       'stalePendingRedemption',
       'warning',
-      `오래된 교환 대기: ${getAgeHours(redemption.requestedAt || redemption.createdAt)}시간째 pending 상태입니다.`,
+      `오래된 교환 대기: ${redemption.waitingHours}시간째 pending 상태입니다.`,
       redemption
     ));
-  const staleSubmissionWarnings = pendingSubmissions
-    .filter((submission) => getAgeHours(submission.createdAt) >= 24)
+  const staleSubmissionWarnings = pendingSubmissionsWithDelay
+    .filter((submission) => submission.overdue)
     .map((submission) => createQueueWarning(
       'stalePendingSubmission',
       'warning',
-      `오래된 인증 대기: ${getAgeHours(submission.createdAt)}시간째 pending 상태입니다.`,
+      `오래된 인증 대기: ${submission.waitingHours}시간째 pending 상태입니다.`,
       submission
     ));
   const missingReferenceWarnings = [
@@ -847,11 +856,13 @@ function buildTodayOperationsQueue(repository = createDefaultRepository(), limit
         + missingReferenceWarnings.length
         + duplicateWarnings.length,
     },
-    pendingRedemptions: clone(pendingRedemptions.slice(0, safeLimit)),
-    pendingSubmissions: clone(pendingSubmissions.slice(0, safeLimit)),
+    pendingRedemptions: clone(pendingRedemptionsWithDelay.slice(0, safeLimit)),
+    pendingSubmissions: clone(pendingSubmissionsWithDelay.slice(0, safeLimit)),
     todayReactionApprovals: clone(todayReactionApprovals.slice(0, safeLimit)),
     todayPointTransactions: clone(todayPointTransactions.slice(0, safeLimit)),
-    followUps: clone(getNotificationFollowUps(todayReactionApprovals).slice(0, safeLimit)),
+    followUps: clone(addWaitingMetadata(
+      getNotificationFollowUps(todayReactionApprovals), ['createdAt'], thresholds.followUpHours, new Date()
+    ).slice(0, safeLimit)),
     qaWarnings: clone([
       ...staleRedemptionWarnings,
       ...staleSubmissionWarnings,

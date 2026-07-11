@@ -46,7 +46,7 @@ function basic(username, password) {
 
 function createRepository() {
   const now = new Date().toISOString();
-  const stale = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
+  const stale = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
   const state = {
     pointsData: {
       users: [{ userId: 'user1234567890', displayName: '테스트 참여자', totalPoints: 120 }],

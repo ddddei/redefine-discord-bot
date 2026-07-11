@@ -16,6 +16,7 @@ const LOCAL_FILENAMES = {
   submissions: 'submissions.local.json',
   reactionApprovals: 'reaction-approvals.local.json',
   operatorSupport: 'operator-support.local.json',
+  opsReminders: 'ops-reminders.local.json',
   dmChatLogs: 'dm-chat-logs.local.json',
   dmCleanupState: 'dm-chat-cleanup-state.local.json',
   dmSafetyReviews: 'dm-safety-reviews.local.json',

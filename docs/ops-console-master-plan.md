@@ -1,6 +1,6 @@
 # 운영 완성판 마스터 플랜 — 100%→150% 운영 편의 로드맵 (2026-07-05)
 
-> **2026-07-11 현행화:** 웹게임 읽기 섹션(PR #66), 서버 리플레이 검증(PR #67), 운영 데이터 안전화(PR #74), DM 실운영 준비(PR #75), 미니게임 랭킹 3구간(PR #76), Discord `/게임지급` 반자동 지급(PR #77), handlers 모듈 분할(PR #78)이 코드 기준 완료됐습니다. `/admin`은 아직 읽기 전용이며, 이제 Phase 1 쓰기 기능을 `feat/admin-console-write-v1`에서 착수합니다. Phase 1은 참여자 DM 발송까지 확장하지 않고 상태 변경·2중 인증·감사 추적을 먼저 완성합니다.
+> **2026-07-11 구현 현행화:** PR #80까지의 완료 범위 위에 Phase 3 지연 감지·운영 리마인더 구현과 자동 테스트를 추가했습니다. 실제 Railway·Discord 채널·모바일 QA는 대기 상태입니다.
 
 ## 1. 문서 목적
 
@@ -108,6 +108,8 @@ E-1(읽기)이 만든 웹게임 섹션 위에:
 
 ### 5.4 Phase 3 — 리마인더/지연 감지 [우선순위 상 / 크기 중 / 로드맵 D-1 흡수]
 
+> **2026-07-11 계획 현행화 완료·구현 대기:** 공통 지연 정책, KST 슬롯 window, 발송 전 원자 예약을 통한 at-most-once, 공통 운영 데이터 경로·백업 포함을 확정했습니다. 참여자 알림과 자동 상태 변경은 제외합니다.
+
 - 콘솔 큐에 **지연 배지**: 교환 신청 N일 경과, 인증 대기 N시간 경과, 반응 후속 미확인 등 (임계값 env)
 - **Discord 운영 채널 알림**: 하루 1~2회 요약 알림(마감 임박·지연 건수) — 콘솔 안 보는 날에도 놓치지 않게. 알림 발송 이력 기록으로 중복 방지.
 - 체크인·미션 마감 리마인더(D-1의 원 범위)는 같은 스케줄러 기반 위에 후속 지시서로.
@@ -155,18 +157,18 @@ E-1(읽기)이 만든 웹게임 섹션 위에:
 
 1. **handlers.js 분할 v1** — 완료(PR #78).
 2. **Track 0 운영 QA** — Railway Volume·백업·DM 실계정 확인은 가능한 시점에 병행.
-3. **콘솔 Phase 1 재감사 후 구현** — 쓰기 게이트·감사 로그·저장 경유 원칙이 리뷰 중점.
-4. **콘솔 Phase 2** — flagged 처리 + 반자동 지급. 리플레이 검증은 이미 완료됐지만 운영자 승인 단계는 유지.
-5. **콘솔 Phase 3 또는 독립 리마인더** — Phase 1 선행 유지 여부를 재결정한 뒤 실행.
+3. **콘솔 Phase 1** — 완료(PR #79).
+4. **콘솔 Phase 2** — 완료(PR #80).
+5. **콘솔 Phase 3** — 지연 배지·KST 슬롯 리마인더·중복 방지 이력 구현 완료, 실환경 QA 대기.
 
 ## 9. 지시서 분해 목록 (승인 후 작성)
 
 | 지시서 | 범위 | 방식 | 상태 |
 | --- | --- | --- | --- |
 | `admin-dashboard-webgame-visibility-v1.md` | E-1 읽기 섹션 | Codex | 작성 완료 |
-| [admin-console-write-v1.md](../prompts/codex/admin-console-write-v1.md) | Phase 1 쓰기 API 4종 + 처리 큐 화면 + 보안·감사 | 샌드위치 | 2026-07-11 현행화, 구현 착수 |
-| [admin-console-webgame-ops-v1.md](../prompts/codex/admin-console-webgame-ops-v1.md) | Phase 2 flagged 처리 + 반자동 지급 | Codex | 작성 완료 (2026-07-05, E-1+Phase 1 선행) |
-| [ops-reminder-v1.md](../prompts/codex/ops-reminder-v1.md) | Phase 3 지연 배지 + 채널 알림 | Codex | 작성 완료 (2026-07-05, Phase 1 선행) |
+| [admin-console-write-v1.md](../prompts/codex/admin-console-write-v1.md) | Phase 1 쓰기 API 4종 + 처리 큐 화면 + 보안·감사 | 샌드위치 | 완료(PR #79) |
+| [admin-console-webgame-ops-v1.md](../prompts/codex/admin-console-webgame-ops-v1.md) | Phase 2 flagged 처리 + 반자동 지급 | 샌드위치 | 완료(PR #80) |
+| [ops-reminder-v1.md](../prompts/codex/ops-reminder-v1.md) | Phase 3 지연 배지 + 운영 채널 알림 | 샌드위치 | 2026-07-11 구현 완료, 실환경 QA 대기 |
 
 각 지시서는 표준 요건(수정 가능 파일 목록·구현 원칙·검증 명령·보고 형식) 준수, Codex는 로컬 커밋까지만.
 

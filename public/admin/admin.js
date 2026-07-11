@@ -205,14 +205,22 @@
     return '<article class="summary-card queue-card"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(text(value, 0)) + '</strong></article>';
   }
 
-  function renderQueueItem(kind, title, meta, command) {
+  function renderQueueItem(kind, title, meta, command, badge) {
     return [
       '<article class="queue-item ' + escapeHtml(kind) + '">',
       '<strong>' + escapeHtml(title) + '</strong>',
       '<span>' + escapeHtml(meta) + '</span>',
+      badge || '',
       command ? '<code>' + escapeHtml(command) + '</code>' : '',
       '</article>',
     ].join('');
+  }
+
+  function delayBadge(row) {
+    if (row.invalidTimestamp) return '<span class="status-badge warning">시각 확인</span>';
+    if (row.overdue) return '<span class="status-badge danger">지연 ' + escapeHtml(text(row.waitingHours, 0)) + '시간</span>';
+    if (row.waitingHours !== undefined) return '<span class="status-badge">대기 ' + escapeHtml(text(row.waitingHours, 0)) + '시간</span>';
+    return '';
   }
 
   function renderQueueList(targetId, items, emptyMessage) {
@@ -233,7 +241,8 @@
         'pending',
         '교환 대기 · ' + text(row.itemName || row.itemId, '항목 확인 필요'),
         text(row.displayName || row.userDisplayName || shortId(row.userId), '신청자 확인 필요') + ' · ' + formatDate(row.requestedAt || row.createdAt),
-        '/교환관리'
+        '/교환관리',
+        delayBadge(row)
       ));
     });
     (queue.pendingSubmissions || []).slice(0, 5).forEach(function (row) {
@@ -241,7 +250,8 @@
         'pending',
         '인증 대기 · ' + text(row.missionTitle || row.missionId, '미션 확인 필요'),
         text(row.displayName || shortId(row.userId), '제출자 확인 필요') + ' · ' + formatDate(row.createdAt),
-        '/인증관리'
+        '/인증관리',
+        delayBadge(row)
       ));
     });
     (queue.todayReactionApprovals || []).slice(0, 3).forEach(function (row) {
@@ -602,6 +612,12 @@
       { label: '상태', render: function (row) { return badge(row.status); } },
       { label: '포인트', render: function (row) { return escapeHtml(row.rewardPoints || 0) + 'P'; } },
       { label: '인증 필요', render: function (row) { return row.requiresSubmission === false ? '아니오' : '예'; } },
+      { label: '마감', render: function (row) {
+        if (row.invalidTimestamp) return '<span class="status-badge warning">시각 확인</span>';
+        if (row.deadlineStatus === 'overdue') return '<span class="status-badge danger">마감 경과</span>';
+        if (row.deadlineStatus === 'dueSoon') return '<span class="status-badge warning">' + escapeHtml(text(row.hoursUntilDeadline, 0)) + '시간 이내</span>';
+        return row.deadlineStatus === 'upcoming' ? '<span class="status-badge">예정</span>' : '-';
+      } },
       { label: '최근 변경', render: function (row) { return escapeHtml(formatDate(row.updatedAt || row.createdAt)); } },
       { label: '처리', render: function (row) { return actionButtons([
         { name: 'mission-active', id: row.id, label: '활성' },

@@ -29,6 +29,8 @@ PRODUCTION_DATA_STRICT=true
 
 `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`는 실제 운영 Discord 앱과 서버 기준으로 입력합니다. `LOG_CHANNEL_ID`는 기본 운영 로그와 fallback 알림을 받을 운영진 전용 채널로 설정합니다. `OPERATION_BACKUP_REMINDER_ENABLED=true`로 켜면 `OPERATION_BACKUP_REMINDER_TIME_KST` 시각에 `/운영내보내기` 확인 알림만 전송하며, 백업 파일은 자동 생성하지 않습니다.
 
+운영 지연 요약은 `OPS_REMINDER_ENABLED=true`일 때만 작동합니다. `OPS_REMINDER_CHANNEL_ID`는 운영진 전용 채널 ID로 설정하고, `OPS_REMINDER_SLOTS=10:00`처럼 KST 슬롯을 최대 4개 지정합니다. 로컬 JSON 예약 이력을 사용하므로 Railway replica는 하나만 운영해야 합니다. `ADMIN_DASHBOARD_URL`은 `https://` 주소일 때만 메시지에 포함됩니다.
+
 `OPERATION_DATA_DIR`에는 Railway 서비스에 연결한 영속 Volume의 mount 경로를 입력합니다. 개별 `POINTS_DATA_PATH` 같은 변수가 있으면 해당 파일만 개별 변수가 우선합니다. Volume 연결과 mount 경로를 확인한 뒤 `PRODUCTION_DATA_STRICT=true`로 재배포하면 Discord 로그인과 관리자 서버 시작 전에 쓰기·rename, JSON 파싱, example 혼입, 경로 중복을 검사합니다. 실제 mount 경로는 문서나 캡처에 남기지 않습니다.
 
 재배포 전후에는 `node scripts/check-local-operation-data.js` 결과와 핵심 파일의 건수를 비교합니다. 새 Volume에서는 빈 상점으로 시작하고 첫 지급 후에도 example ID가 없어야 합니다.
