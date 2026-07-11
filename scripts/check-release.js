@@ -4,6 +4,21 @@ const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 const checks = [
   {
+    label: '운영 전 통합 점검 모듈 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/prelaunchReadiness.js'],
+  },
+  {
+    label: '운영 전 통합 점검 CLI 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/check-prelaunch.js'],
+  },
+  {
+    label: '운영 전 통합 점검 흐름 테스트',
+    command: 'node',
+    args: ['scripts/test-prelaunch-readiness-flow.js'],
+  },
+  {
     label: '주간 운영 리포트 모듈 문법 검사',
     command: 'node',
     args: ['--check', 'src/weeklyOpsReport.js'],

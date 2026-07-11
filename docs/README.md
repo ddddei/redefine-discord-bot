@@ -10,6 +10,8 @@
 
 코드나 데이터 수정 여부에 따라 확인할 문서가 달라질 수 있습니다. 문서만 수정한 경우에도 `git status --short`와 `git diff --stat`으로 변경 범위를 확인해 주세요.
 
+Railway·Discord 실환경 설정을 시작하기 전에는 `npm run check:prelaunch`로 누락·기능 의존성·운영 데이터 상태와 수동 확인 목록을 한 번에 확인합니다. 설정 완료 후에는 `npm run check:prelaunch -- --strict`가 통과하는지 확인하되, Discord 권한·Railway replica와 Volume·Slash Command·모바일·실계정 항목은 반드시 직접 리허설합니다.
+
 ## 2. 빠른 문서 안내표
 
 | 문서명 | 용도 | 언제 사용하는지 | 주요 확인 내용 |
@@ -57,6 +59,7 @@
 | [admin-participant-card-v1-plan.md](admin-participant-card-v1-plan.md) | 운영 콘솔 참여자 개인 카드 v1 계획서 | 개별 참여자의 운영 이력을 한 화면에서 확인하거나 QA할 때 | 정확 ID 조회, 읽기 전용, 원문·민감정보 제외, 정합성 경고 |
 | [weekly-ops-report-v1-plan.md](weekly-ops-report-v1-plan.md) | 주간 운영 리포트 v1 계획서 | 최근 7일 운영 집계와 운영진 전용 발송 기준을 구현·QA할 때 | KST 주간 범위, 최소 집계, 읽기 전용 콘솔, 중복 방지, 기본 off 자동 발송 |
 | [ops-stability-hardening-v1-plan.md](ops-stability-hardening-v1-plan.md) | 운영 자동화 안정성 보강 v1 계획서 | 리마인더·주간 리포트의 장애·재시작·중복 방지를 검수할 때 | 이력 실패 결과, 감사 로그, 재시작 회귀, 모바일·민감정보 검사 |
+| [prelaunch-readiness-check-v1-plan.md](prelaunch-readiness-check-v1-plan.md) | 운영 전 통합 점검 자동화 v1 계획서 | 저녁 Railway·Discord 설정 전에 누락과 수동 QA 목록을 한 번에 확인할 때 | env 분류, 기능 의존성, 데이터 preflight, 비밀값 비노출, strict 모드 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
 | [faq-knowledge-refinement-plan.md](faq-knowledge-refinement-plan.md) | FAQ/Knowledge 응답 품질 점검 리포트 | 실제 데이터 수정 전 개선 후보와 검증 질문을 정리할 때 | 중복 주제, 넓은 keywords, fallback 후보, 온보딩/민감 질문 보강 후보 |
 | [test-questions-followup-report.md](test-questions-followup-report.md) | 질문 매칭 잔여 오매칭 점검 리포트 | `test:questions` 결과 기반으로 남은 오매칭, 애매한 매칭, 의도적 Fallback 후보를 확인할 때 | 개선 확인 항목, 애매한 매칭 후보, Fallback 유지 후보, 다음 데이터 수정 순서 |
