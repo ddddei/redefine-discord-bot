@@ -32,6 +32,8 @@ const {
   parseLimit,
 } = require('./adminApi');
 const { buildAdminParticipantCard } = require('./adminParticipantCard');
+const { buildWeeklyOpsReportFromRepository, parseWeekOffset } = require('./weeklyOpsReport');
+const { sendWeeklyOpsReport } = require('./weeklyOpsReportScheduler');
 
 const ADMIN_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'admin');
 const DUNGEONWORLD_SURVIVORS_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'dungeonworld-survivors');
@@ -505,6 +507,12 @@ async function handleAdminApi(req, res, pathname, searchParams, repository, webg
     }
 
     if (req.method === 'POST') {
+      if (pathname === '/api/admin/weekly-report/send') {
+        if (!requireWriteAccess(req, res)) return;
+        const result = await sendWeeklyOpsReport({ client: options.client, repository, env: process.env });
+        sendJson(res, result.ok ? 200 : 409, result);
+        return;
+      }
       await performAdminWrite(req, res, pathname, repository, webgameRepository, options);
       return;
     }
@@ -515,6 +523,18 @@ async function handleAdminApi(req, res, pathname, searchParams, repository, webg
     }
 
     const limit = parseLimit(searchParams.get('limit'), 10);
+
+    if (pathname === '/api/admin/weekly-report') {
+      let weekOffset;
+      try {
+        weekOffset = parseWeekOffset(searchParams.get('weekOffset'));
+      } catch (error) {
+        sendJson(res, 400, { error: 'INVALID_WEEK_OFFSET', message: error.message });
+        return;
+      }
+      sendJson(res, 200, buildWeeklyOpsReportFromRepository(repository, { weekOffset }));
+      return;
+    }
 
     if (pathname === '/api/admin/participant-card') {
       const userId = String(searchParams.get('userId') || '').trim();
@@ -791,6 +811,7 @@ function startAdminServer(options = {}) {
   } : null);
   const server = http.createServer(createAdminRequestHandler(repository, webgameApi, webgameRepository, {
     audit: options.audit,
+    client: options.client,
     notifyAdminWrite,
   }));
 

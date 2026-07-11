@@ -20,6 +20,7 @@
   let pendingWrite = null;
   let payoutPreview = null;
   let participantCardRequestId = 0;
+  let weeklyReportRequestId = 0;
 
   const webgameLabels = {
     match3: '간식 맞추기',
@@ -101,6 +102,35 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function renderWeeklyReport(report) {
+    const cards = [
+      ['기간', report.range.weekStartDateKst],
+      ['체크인', report.participation.participantCount + '명 · ' + report.participation.checkinCount + '건'],
+      ['미션 인증', report.submissions.total + '건 (대기 ' + report.submissions.pending + ')'],
+      ['포인트', '지급 ' + report.points.earned + ' · 차감 ' + report.points.deducted],
+      ['교환', report.redemptions.total + '건 (대기 ' + report.redemptions.pending + ')'],
+    ];
+    $('weekly-report-summary').innerHTML = cards.map(function (item) { return '<article class="summary-card"><span>' + escapeHtml(item[0]) + '</span><strong>' + escapeHtml(item[1]) + '</strong></article>'; }).join('');
+    $('weekly-report-delays').textContent = '지연 신호 · 교환 ' + report.delays.redemptions + ' · 인증 ' + report.delays.submissions + ' · 후속 ' + report.delays.followUps + ' / 미션 임박 ' + report.delays.missionsDueSoon + ' · 경과 ' + report.delays.missionsOverdue;
+    $('weekly-report-result').hidden = false;
+  }
+
+  async function loadWeeklyReport() {
+    const requestId = ++weeklyReportRequestId;
+    $('weekly-report-load').disabled = true;
+    $('weekly-report-status').textContent = '주간 집계를 불러오는 중입니다.';
+    try {
+      const report = await fetchJson('/api/admin/weekly-report?weekOffset=' + encodeURIComponent($('weekly-report-offset').value));
+      if (requestId !== weeklyReportRequestId) return;
+      renderWeeklyReport(report);
+      $('weekly-report-status').textContent = '주간 집계를 불러왔습니다.';
+    } catch (error) {
+      if (requestId !== weeklyReportRequestId) return;
+      $('weekly-report-result').hidden = true;
+      $('weekly-report-status').textContent = '주간 집계를 불러오지 못했습니다.';
+    } finally { if (requestId === weeklyReportRequestId) $('weekly-report-load').disabled = false; }
   }
 
   async function fetchJson(url) {
@@ -803,6 +833,7 @@
       writeEnabled = Boolean(results[0].writeEnabled);
       $('console-mode').textContent = writeEnabled ? 'WRITE ENABLED' : 'READ ONLY';
       $('write-tools').hidden = !writeEnabled;
+      $('weekly-report-send').hidden = !writeEnabled;
       renderSummary(results[1]);
       renderTodayQueue(results[2]);
       renderFirstDayCheck(results[3]);
@@ -834,6 +865,14 @@
 
   $('refresh-button').addEventListener('click', loadDashboard);
   $('participant-card-form').addEventListener('submit', function (event) { event.preventDefault(); loadParticipantCard(); });
+  $('weekly-report-form').addEventListener('submit', function (event) { event.preventDefault(); loadWeeklyReport(); });
+  $('weekly-report-send').addEventListener('click', async function () {
+    if (!window.confirm('이번 주 리포트를 운영진 Discord 채널로 발송할까요?')) return;
+    try {
+      await postJson('/api/admin/weekly-report/send', {});
+      $('weekly-report-status').textContent = '이번 주 리포트를 발송했습니다.';
+    } catch (error) { $('weekly-report-status').textContent = '발송하지 못했습니다. 채널·중복 이력을 확인해 주세요.'; }
+  });
   $('participant-card-clear-button').addEventListener('click', function () {
     participantCardRequestId += 1;
     $('participant-card-user-id').value = '';
