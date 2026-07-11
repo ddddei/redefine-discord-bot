@@ -14,6 +14,15 @@ Railway 프로젝트 -> 서비스 선택 -> Variables
 
 변수를 추가하거나 수정한 뒤에는 서비스가 재배포되어야 새 값이 적용됩니다.
 
+저녁 설정 작업 전후에는 저장소 루트에서 아래 진단을 실행합니다.
+
+```bash
+npm run check:prelaunch
+npm run check:prelaunch -- --strict
+```
+
+첫 명령은 누락이 있어도 전체 보고서를 보여주며 정상 종료합니다. 설정을 마친 뒤 두 번째 strict 명령이 통과하는지 확인합니다. JSON 결과가 필요하면 `node scripts/check-prelaunch.js --json`을 사용합니다. 결과에는 환경변수 이름과 설정 여부만 나오며 실제 토큰, 비밀번호, 채널 ID, URL, 전체 데이터 경로는 출력되지 않습니다. 이 진단은 Discord/Railway API를 호출하지 않으므로 채널 권한, replica 수, Volume 연결, Slash Command 등록, 모바일·실계정 동작은 아래 QA 체크리스트에서 직접 확인해야 합니다.
+
 ## 3. 필수 환경변수
 
 ```env
