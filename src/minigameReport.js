@@ -1,19 +1,13 @@
 const { MINIGAMES } = require('./minigameData');
 const { buildDungeonworldAnalytics } = require('./dungeonworld');
 const { createGuideEmbed } = require('./embeds');
-const { getKoreanDateString } = require('./pointsRepository');
+const {
+  getKoreanDateString,
+  getMinigamePlayDate,
+} = require('./pointsRepository');
 
 const DAILY_WINDOW_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-function getTransactionPlayDate(transaction) {
-  const relatedDate = String(transaction.relatedId || '').split(':')[0];
-  if (/^\d{4}-\d{2}-\d{2}$/.test(relatedDate)) {
-    return relatedDate;
-  }
-
-  return transaction.createdAt ? getKoreanDateString(new Date(transaction.createdAt)) : '';
-}
 
 function getTransactionGameId(transaction) {
   const parts = String(transaction.relatedId || '').split(':');
@@ -105,7 +99,7 @@ function buildMinigameReport({ pointsRepository, dungeonworldRepository, now = n
 
   const withDates = transactions.map((transaction) => ({
     transaction,
-    playDate: getTransactionPlayDate(transaction),
+    playDate: getMinigamePlayDate(transaction),
   }));
   const todayTransactions = withDates
     .filter((entry) => entry.playDate === todayString)

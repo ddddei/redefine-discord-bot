@@ -29,7 +29,7 @@ function createMinigameHubRows() {
     ),
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('participant_minigame_today_record').setLabel('📊 오늘의 기록').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('participant_minigame_today_ranking').setLabel('🏆 오늘의 랭킹').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('participant_minigame_today_ranking').setLabel('🏆 랭킹').setStyle(ButtonStyle.Secondary)
     ),
   ];
 }

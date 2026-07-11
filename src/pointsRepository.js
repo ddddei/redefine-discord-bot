@@ -44,6 +44,8 @@ const CHECKIN_REWARD_POINTS = 10;
 const MINIGAME_DAILY_PLAY_LIMIT = 4;
 const MINIGAME_DAILY_REWARD_CAP = 40;
 const MINIGAME_REWARD_RELATED_TYPE = 'minigameReward';
+const MINIGAME_RANKING_WINDOW_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const MISSION_STATUSES = new Set(['draft', 'active', 'paused', 'closed', 'archived']);
 const SHOP_ITEM_STATUSES = new Set(['active', 'paused', 'soldOut', 'hidden']);
 const SHOP_ITEM_TYPES = new Set(['youthCenterPoint', 'reward', 'goods', 'event']);
@@ -66,6 +68,30 @@ function getKoreanDateString(date = new Date()) {
   const day = String(kstDate.getUTCDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getMinigamePlayDate(transaction) {
+  const relatedDate = String(transaction.relatedId || '').split(':')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(relatedDate)) {
+    return relatedDate;
+  }
+
+  if (!transaction.createdAt) {
+    return '';
+  }
+
+  const createdAt = new Date(transaction.createdAt);
+  if (Number.isNaN(createdAt.getTime())) {
+    return '';
+  }
+
+  return getKoreanDateString(createdAt);
+}
+
+function buildRecentKoreanDateStrings(now, days) {
+  return Array.from({ length: days }, (unused, index) => {
+    return getKoreanDateString(new Date(now.getTime() - index * DAY_MS));
+  });
 }
 
 function getKoreanWeekday(date = new Date()) {
@@ -541,13 +567,10 @@ function createPointsRepository(paths = {}, options = {}) {
     };
   }
 
-  function listTodayMinigameRanking(dateString = getKoreanDateString(), limit = 5) {
-    const state = loadState();
-    const users = Array.isArray(state.pointsData.users) ? state.pointsData.users : [];
-    const usersById = new Map(users.map((user) => [user.userId, user]));
+  function buildMinigameRanking(transactions, usersById, limit) {
     const rankingByUserId = new Map();
 
-    listMinigameTransactionsByDate(state.pointsData, dateString).forEach((transaction) => {
+    transactions.forEach((transaction) => {
       const current = rankingByUserId.get(transaction.userId) || {
         userId: transaction.userId,
         displayName: usersById.get(transaction.userId)?.displayName || transaction.userId,
@@ -560,6 +583,7 @@ function createPointsRepository(paths = {}, options = {}) {
     });
 
     return Array.from(rankingByUserId.values())
+      .filter((entry) => entry.earnedPoints > 0)
       .sort((left, right) => {
         if (right.earnedPoints !== left.earnedPoints) {
           return right.earnedPoints - left.earnedPoints;
@@ -572,6 +596,54 @@ function createPointsRepository(paths = {}, options = {}) {
         return left.displayName.localeCompare(right.displayName, 'ko');
       })
       .slice(0, Math.max(1, limit));
+  }
+
+  function getMinigameRankingContext() {
+    const state = loadState();
+    const users = Array.isArray(state.pointsData.users) ? state.pointsData.users : [];
+    const usersById = new Map(users.map((user) => [user.userId, user]));
+    const transactions = Array.isArray(state.pointsData.pointTransactions)
+      ? getOperationalRecords(state.pointsData.pointTransactions)
+      : [];
+    const minigameTransactions = transactions.filter((transaction) => {
+      return transaction.relatedType === MINIGAME_REWARD_RELATED_TYPE;
+    });
+
+    return { usersById, minigameTransactions };
+  }
+
+  function listTodayMinigameRanking(dateString = getKoreanDateString(), limit = 5) {
+    const { usersById, minigameTransactions } = getMinigameRankingContext();
+    const todayTransactions = minigameTransactions.filter((transaction) => {
+      return getMinigamePlayDate(transaction) === dateString;
+    });
+
+    return buildMinigameRanking(todayTransactions, usersById, limit);
+  }
+
+  function listMinigameRankings({ now = new Date(), limit = 5 } = {}) {
+    const { usersById, minigameTransactions } = getMinigameRankingContext();
+    const todayString = getKoreanDateString(now);
+    const recentDateSet = new Set(buildRecentKoreanDateStrings(now, MINIGAME_RANKING_WINDOW_DAYS));
+    const todayTransactions = [];
+    const recentTransactions = [];
+
+    minigameTransactions.forEach((transaction) => {
+      const playDate = getMinigamePlayDate(transaction);
+      if (playDate === todayString) {
+        todayTransactions.push(transaction);
+      }
+      if (recentDateSet.has(playDate)) {
+        recentTransactions.push(transaction);
+      }
+    });
+
+    return {
+      today: buildMinigameRanking(todayTransactions, usersById, limit),
+      recent7Days: buildMinigameRanking(recentTransactions, usersById, limit),
+      total: buildMinigameRanking(minigameTransactions, usersById, limit),
+      generatedDateKst: todayString,
+    };
   }
 
   function awardMinigameReward(input) {
@@ -2312,6 +2384,7 @@ function createPointsRepository(paths = {}, options = {}) {
     hasTodayMissionNoticeBeenPublished,
     listMissionsForAdmin,
     listMissionTemplates,
+    listMinigameRankings,
     listMinigameRewardTransactions,
     listOperationalTransactions,
     listTodayMinigameRanking,
@@ -2362,4 +2435,5 @@ module.exports = {
   createInitialShopItemsData,
   getKoreanDateString,
   getKoreanWeekday,
+  getMinigamePlayDate,
 };
