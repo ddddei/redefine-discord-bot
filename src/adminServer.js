@@ -98,6 +98,38 @@ function requireWriteAccess(req, res) {
   return true;
 }
 
+function getWriteAccessError(req) {
+  if (!isAdminWriteEnabled()) return { statusCode: 403, code: 'WRITE_DISABLED', message: '쓰기 기능이 비활성화되어 있습니다.' };
+  const expected = String(process.env.ADMIN_WRITE_TOKEN || '').trim();
+  if (!expected) return { statusCode: 503, code: 'WRITE_TOKEN_NOT_CONFIGURED', message: '쓰기 토큰이 설정되지 않았습니다.' };
+  if (!safeCompareSecret(req.headers['x-admin-write-token'], expected)) return { statusCode: 403, code: 'INVALID_WRITE_TOKEN', message: '쓰기 토큰이 올바르지 않습니다.' };
+  return null;
+}
+
+async function handleWeeklyReportSend(req, res, repository, options) {
+  const actor = (parseBasicAuthHeader(req) || {}).username || 'admin-console';
+  const audit = options.audit || createAdminAudit();
+  const auditBase = { action: 'weekly-report.send', targetType: 'weeklyReport', targetId: '', reason: '', actor };
+  try { audit.appendAuditEntry({ ...auditBase, result: 'attempt' }); } catch (error) {
+    sendJson(res, 503, { error: 'AUDIT_UNAVAILABLE', message: '감사 로그를 기록할 수 없어 발송하지 않았습니다.' });
+    return;
+  }
+  const accessError = getWriteAccessError(req);
+  if (accessError) {
+    try { audit.appendAuditEntry({ ...auditBase, result: 'rejected', errorCode: accessError.code }); } catch (error) { console.warn('관리자 감사 거부 기록 실패:', error.message); }
+    sendJson(res, accessError.statusCode, { error: accessError.code, message: accessError.message });
+    return;
+  }
+  const result = await sendWeeklyOpsReport({ client: options.client, repository, env: process.env });
+  const auditResult = result.ok ? 'success' : 'rejected';
+  try { audit.appendAuditEntry({ ...auditBase, result: auditResult, errorCode: result.ok ? null : result.reason }); } catch (error) { console.warn('관리자 감사 결과 기록 실패:', error.message); }
+  if (typeof options.notifyAdminWrite === 'function') {
+    Promise.resolve(options.notifyAdminWrite({ ...auditBase, result: auditResult, errorCode: result.ok ? null : result.reason }))
+      .catch((error) => console.warn('관리자 처리 알림 실패:', error.message));
+  }
+  sendJson(res, result.ok ? 200 : 409, result);
+}
+
 function readJsonBody(req, maxBytes = 32 * 1024) {
   return new Promise((resolve, reject) => {
     const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
@@ -508,9 +540,7 @@ async function handleAdminApi(req, res, pathname, searchParams, repository, webg
 
     if (req.method === 'POST') {
       if (pathname === '/api/admin/weekly-report/send') {
-        if (!requireWriteAccess(req, res)) return;
-        const result = await sendWeeklyOpsReport({ client: options.client, repository, env: process.env });
-        sendJson(res, result.ok ? 200 : 409, result);
+        await handleWeeklyReportSend(req, res, repository, options);
         return;
       }
       await performAdminWrite(req, res, pathname, repository, webgameRepository, options);

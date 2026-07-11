@@ -9,6 +9,7 @@ const { getOperationDataPaths } = require('../src/operationDataPaths');
 const { collectBackupSnapshot } = require('../src/operationBackup');
 const { LOCAL_FILENAMES } = require('./restore-operation-backup');
 const { createAdminRequestHandler } = require('../src/adminServer');
+const { createAdminAudit } = require('../src/adminAudit');
 
 const previousPassword = process.env.ADMIN_DASHBOARD_PASSWORD;
 process.env.ADMIN_DASHBOARD_PASSWORD = 'weekly-report-test-password';
@@ -28,8 +29,15 @@ class Response {
   setHeader(name, value) { this.headers[String(name).toLowerCase()] = value; }
   end(chunk) { if (chunk) this.chunks.push(Buffer.from(chunk)); this.writableEnded = true; this.resolve(this); }
 }
-function request(handler, url, auth = authorization) {
-  return new Promise((resolve) => handler({ method: 'GET', url, headers: { host: 'localhost', ...(auth ? { authorization: auth } : {}) } }, new Response(resolve)));
+function request(handler, url, auth = authorization, options = {}) {
+  const body = options.body === undefined ? null : Buffer.from(JSON.stringify(options.body));
+  const listeners = {};
+  const req = {
+    method: options.method || 'GET', url,
+    headers: { host: 'localhost', ...(auth ? { authorization: auth } : {}), ...(body ? { 'content-type': 'application/json' } : {}), ...(options.headers || {}) },
+    on(event, callback) { listeners[event] = callback; if (event === 'end') { if (body && listeners.data) listeners.data(body); callback(); } },
+  };
+  return new Promise((resolve) => handler(req, new Response(resolve)));
 }
 
 async function main() {
@@ -81,6 +89,12 @@ async function main() {
   assert.ok(JSON.parse(Buffer.concat(response.chunks).toString()).range.weekStartDateKst);
 
   const env = { WEEKLY_OPS_REPORT_ENABLED: 'true', WEEKLY_OPS_REPORT_WEEKDAY: '3', WEEKLY_OPS_REPORT_TIME_KST: '12:00', WEEKLY_OPS_REPORT_CHANNEL_ID: 'ops' };
+  const warnings = [];
+  const previousWarn = console.warn;
+  console.warn = (message) => warnings.push(String(message));
+  assert.deepStrictEqual(require('../src/weeklyOpsReportScheduler').parseSchedule({ WEEKLY_OPS_REPORT_WEEKDAY: '9', WEEKLY_OPS_REPORT_TIME_KST: '25:61' }), { weekday: 1, time: '10:00' });
+  console.warn = previousWarn;
+  assert.ok(warnings.some((message) => message.includes('WEEKLY_OPS_REPORT')));
   const historyPath = tempPath();
   const okClient = client();
   assert.strictEqual((await runWeeklyOpsReportTick({ client: okClient, repository: repository(input), env, now, historyPath })).reason, 'SENT');
@@ -89,6 +103,35 @@ async function main() {
   assert.deepStrictEqual(okClient.sent[0].allowedMentions, { parse: [] });
   assert.strictEqual(readHistory(historyPath).records[0].status, 'sent');
   assert.strictEqual((await runWeeklyOpsReportTick({ client: okClient, repository: repository(input), env, now, historyPath })).reason, 'ALREADY_RESERVED');
+  const restarted = await sendWeeklyOpsReport({ client: okClient, repository: repository(input), env, now, historyPath, weekOffset: -1 });
+  assert.strictEqual(restarted.reason, 'ALREADY_RESERVED');
+  assert.strictEqual(okClient.sent.length, 1);
+
+  let releaseSend;
+  const blockedClient = { channels: { cache: { get: () => null }, async fetch() { return { send() { return new Promise((resolve) => { releaseSend = resolve; }); } }; } } };
+  const concurrentPath = tempPath();
+  const firstTick = runWeeklyOpsReportTick({ client: blockedClient, repository: repository(input), env, now, historyPath: concurrentPath });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.strictEqual((await runWeeklyOpsReportTick({ client: blockedClient, repository: repository(input), env, now, historyPath: concurrentPath })).reason, 'TICK_RUNNING');
+  releaseSend();
+  assert.strictEqual((await firstTick).reason, 'SENT');
+
+  const reservationFailure = await sendWeeklyOpsReport({
+    client: client(), repository: repository(input), env, now, historyPath: tempPath(),
+    historyStore: { readHistory() { throw new Error('read failed'); } },
+  });
+  assert.strictEqual(reservationFailure.reason, 'RESERVATION_FAILED');
+  const finishFailureClient = client();
+  let saves = 0;
+  const sentHistoryFailure = await sendWeeklyOpsReport({
+    client: finishFailureClient, repository: repository(input), env, now, historyPath: tempPath(),
+    historyStore: {
+      readHistory() { return { version: 1, isExample: false, records: [] }; },
+      saveHistory() { saves += 1; if (saves > 1) throw new Error('finish failed'); },
+    },
+  });
+  assert.strictEqual(sentHistoryFailure.reason, 'SENT_HISTORY_FAILED');
+  assert.strictEqual(finishFailureClient.sent.length, 1);
   for (const [mode, reason] of [['missing', 'CHANNEL_NOT_FOUND'], ['fetch-fail', 'CHANNEL_FETCH_FAILED'], ['send-fail', 'SEND_FAILED']]) {
     const target = tempPath();
     assert.strictEqual((await sendWeeklyOpsReport({ client: client(mode), repository: repository(input), env, now, historyPath: target })).reason, reason);
@@ -100,6 +143,46 @@ async function main() {
   assert.strictEqual((await runWeeklyOpsReportTick({ env: {}, now })).reason, 'DISABLED');
   resetWeeklyOpsReportForTests();
   assert.strictEqual(startWeeklyOpsReportScheduler({ env: {} }).started, false);
+
+  const previousWriteEnabled = process.env.ADMIN_WRITE_ENABLED;
+  const previousWriteToken = process.env.ADMIN_WRITE_TOKEN;
+  const previousChannel = process.env.WEEKLY_OPS_REPORT_CHANNEL_ID;
+  process.env.ADMIN_WRITE_ENABLED = 'true';
+  process.env.ADMIN_WRITE_TOKEN = 'weekly-write-secret';
+  process.env.WEEKLY_OPS_REPORT_CHANNEL_ID = 'ops';
+  const auditPath = tempPath();
+  const notifications = [];
+  const manualHistoryPath = tempPath();
+  const manualHandler = createAdminRequestHandler(apiRepository, {}, { getState() { return {}; } }, {
+    client: client(), audit: createAdminAudit({ filePath: auditPath }),
+    notifyAdminWrite(entry) { notifications.push(entry); },
+  });
+  const noAuth = await request(manualHandler, '/api/admin/weekly-report/send', null, { method: 'POST', body: {} });
+  assert.strictEqual(noAuth.statusCode, 401);
+  const badToken = await request(manualHandler, '/api/admin/weekly-report/send', authorization, { method: 'POST', body: {}, headers: { 'x-admin-write-token': 'wrong' } });
+  assert.strictEqual(badToken.statusCode, 403);
+  const originalHistoryPath = process.env.WEEKLY_OPS_REPORT_HISTORY_PATH;
+  process.env.WEEKLY_OPS_REPORT_HISTORY_PATH = manualHistoryPath;
+  const sent = await request(manualHandler, '/api/admin/weekly-report/send', authorization, { method: 'POST', body: {}, headers: { 'x-admin-write-token': 'weekly-write-secret' } });
+  assert.strictEqual(sent.statusCode, 200);
+  const duplicate = await request(manualHandler, '/api/admin/weekly-report/send', authorization, { method: 'POST', body: {}, headers: { 'x-admin-write-token': 'weekly-write-secret' } });
+  assert.strictEqual(duplicate.statusCode, 409);
+  await new Promise((resolve) => setImmediate(resolve));
+  const auditText = fs.readFileSync(auditPath, 'utf8');
+  const entries = JSON.parse(auditText).entries;
+  assert(entries.some((entry) => entry.result === 'rejected' && entry.errorCode === 'INVALID_WRITE_TOKEN'));
+  assert(entries.some((entry) => entry.result === 'success'));
+  assert(entries.some((entry) => entry.errorCode === 'ALREADY_RESERVED'));
+  ['private-1', 'private-2', 'SECRET_CONTENT', 'attachment', 'url', 'note', 'weekly-write-secret'].forEach((value) => assert.ok(!auditText.includes(value)));
+  assert(notifications.every((entry) => !JSON.stringify(entry).includes('private-')));
+  if (originalHistoryPath === undefined) delete process.env.WEEKLY_OPS_REPORT_HISTORY_PATH; else process.env.WEEKLY_OPS_REPORT_HISTORY_PATH = originalHistoryPath;
+  if (previousWriteEnabled === undefined) delete process.env.ADMIN_WRITE_ENABLED; else process.env.ADMIN_WRITE_ENABLED = previousWriteEnabled;
+  if (previousWriteToken === undefined) delete process.env.ADMIN_WRITE_TOKEN; else process.env.ADMIN_WRITE_TOKEN = previousWriteToken;
+  if (previousChannel === undefined) delete process.env.WEEKLY_OPS_REPORT_CHANNEL_ID; else process.env.WEEKLY_OPS_REPORT_CHANNEL_ID = previousChannel;
+
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.css'), 'utf8');
+  assert(css.includes('@media (max-width: 375px)'));
+  assert(css.includes('#weekly-report-section'));
 
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'weekly-report-path-'));
   assert.strictEqual(getOperationDataPaths({ OPERATION_DATA_DIR: dataDir }).weeklyOpsReports, path.join(dataDir, 'weekly-ops-reports.local.json'));

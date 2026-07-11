@@ -437,3 +437,12 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 .participant-card-warning { margin: 0; padding: 10px 12px; border: 1px solid rgba(255, 191, 71, .35); border-radius: 8px; color: var(--warn); background: rgba(255, 191, 71, .06); }
 .participant-card-grid { margin-top: 16px; }
 @media (max-width: 860px) { .participant-card-search { grid-template-columns: 1fr; } }
+@media (max-width: 375px) {
+  main { padding-inline: 12px; }
+  #weekly-report-section,
+  #weekly-report-section .summary-card { min-width: 0; overflow-wrap: anywhere; }
+  #weekly-report-section .participant-card-search { grid-template-columns: minmax(0, 1fr); }
+  #weekly-report-section button,
+  #weekly-report-section select { width: 100%; max-width: 100%; }
+  #weekly-report-section .summary-grid { grid-template-columns: minmax(0, 1fr); }
+}
