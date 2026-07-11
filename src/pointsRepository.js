@@ -46,6 +46,7 @@ const MINIGAME_DAILY_REWARD_CAP = 40;
 const MINIGAME_REWARD_RELATED_TYPE = 'minigameReward';
 const MINIGAME_RANKING_WINDOW_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const WEBGAME_WEEKLY_REWARD_RELATED_TYPE = 'webgameWeeklyReward';
 const MISSION_STATUSES = new Set(['draft', 'active', 'paused', 'closed', 'archived']);
 const SHOP_ITEM_STATUSES = new Set(['active', 'paused', 'soldOut', 'hidden']);
 const SHOP_ITEM_TYPES = new Set(['youthCenterPoint', 'reward', 'goods', 'event']);
@@ -92,6 +93,10 @@ function buildRecentKoreanDateStrings(now, days) {
   return Array.from({ length: days }, (unused, index) => {
     return getKoreanDateString(new Date(now.getTime() - index * DAY_MS));
   });
+}
+
+function getWebgameWeeklyRewardRelatedId(weekKey, gameId, kind) {
+  return `${weekKey}:${gameId}:${kind}`;
 }
 
 function getKoreanWeekday(date = new Date()) {
@@ -494,6 +499,68 @@ function createPointsRepository(paths = {}, options = {}) {
     });
 
     return { user, transaction };
+  }
+
+  // 웹게임 주간 랭킹·참여·공동 목표 보상 지급(docs/webgame-point-payout-plan.md 4-3).
+  // 같은 userId + relatedId 거래가 있으면 지급하지 않는다 — 승인 버튼 이중 클릭과
+  // /게임지급 재실행이 안전한 근거이므로 이 중복 차단을 우회하는 지급 경로를 만들지 않는다.
+  function awardWebgameWeeklyReward(input) {
+    if (!Number.isInteger(input.amount) || input.amount <= 0) {
+      throw new Error('웹게임 주간 보상 금액은 양의 정수여야 합니다.');
+    }
+
+    const relatedId = getWebgameWeeklyRewardRelatedId(input.weekKey, input.gameId, input.kind);
+    const state = loadState();
+    const pointsData = cloneJson(state.pointsData);
+    const existingTransaction = (Array.isArray(pointsData.pointTransactions) ? pointsData.pointTransactions : [])
+      .find((transaction) => {
+        return transaction.userId === input.user.userId
+          && transaction.relatedType === WEBGAME_WEEKLY_REWARD_RELATED_TYPE
+          && transaction.relatedId === relatedId;
+      });
+
+    if (existingTransaction) {
+      return { ok: false, reason: 'ALREADY_REWARDED', relatedId, transaction: existingTransaction };
+    }
+
+    const user = ensureUser(pointsData, input.user);
+    const currentPoints = getUserPoints(pointsData, input.user.userId);
+    const balanceAfter = currentPoints + input.amount;
+
+    const transaction = addTransaction(pointsData, {
+      id: createOperationId('tx_webgame'),
+      userId: input.user.userId,
+      type: 'earn',
+      amount: input.amount,
+      balanceAfter,
+      reason: input.reason,
+      relatedType: WEBGAME_WEEKLY_REWARD_RELATED_TYPE,
+      relatedId,
+      createdBy: input.operatorId,
+      note: null,
+    });
+
+    updateUserBalance(user, balanceAfter, input.user.displayName);
+    const nextState = { ...state, pointsData };
+    saveState(nextState);
+    appendPointTransactionLog(transaction, {
+      user,
+      sourceSurface: 'operator_command',
+    });
+
+    return { ok: true, relatedId, user, transaction };
+  }
+
+  function listWebgameWeeklyRewardTransactions(weekKey) {
+    const state = loadState();
+    const transactions = Array.isArray(state.pointsData.pointTransactions)
+      ? state.pointsData.pointTransactions
+      : [];
+    const relatedPrefix = weekKey ? `${weekKey}:` : '';
+    return transactions.filter((transaction) => {
+      return transaction.relatedType === WEBGAME_WEEKLY_REWARD_RELATED_TYPE
+        && String(transaction.relatedId || '').startsWith(relatedPrefix);
+    });
   }
 
   function getMinigameRewardRelatedId(dateString, gameId) {
@@ -2343,6 +2410,7 @@ function createPointsRepository(paths = {}, options = {}) {
   return {
     adjustUserPoints,
     awardMinigameReward,
+    awardWebgameWeeklyReward,
     approveSubmissionById,
     approveReactionMessage,
     createCheckin,
@@ -2386,6 +2454,7 @@ function createPointsRepository(paths = {}, options = {}) {
     listMissionTemplates,
     listMinigameRankings,
     listMinigameRewardTransactions,
+    listWebgameWeeklyRewardTransactions,
     listOperationalTransactions,
     listTodayMinigameRanking,
     listTransactions,
@@ -2429,6 +2498,7 @@ module.exports = {
   MINIGAME_DAILY_PLAY_LIMIT,
   MINIGAME_DAILY_REWARD_CAP,
   MINIGAME_REWARD_RELATED_TYPE,
+  WEBGAME_WEEKLY_REWARD_RELATED_TYPE,
   createPointsRepository,
   createInitialPointsData,
   createInitialRedemptionsData,
@@ -2436,4 +2506,5 @@ module.exports = {
   getKoreanDateString,
   getKoreanWeekday,
   getMinigamePlayDate,
+  getWebgameWeeklyRewardRelatedId,
 };
