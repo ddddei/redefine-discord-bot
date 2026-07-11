@@ -1,5 +1,15 @@
 # 미니게임 주간/누적 랭킹 계획
 
+> **재검증 (2026-07-11)**: 방치 브랜치에서 회수(7/7)된 이 계획서를 현재 main과 대조해 유효성을 확인했습니다.
+>
+> - 계획서가 참조하는 심볼·위치 전부 유효: `getTransactionPlayDate`(minigameReport.js:9), `listTodayMinigameRanking`(pointsRepository.js:530), `createTodayMinigameRankingPayload`(minigamePayloads.js:110, 사용처 minigameInteractions뿐), 버튼 customId/라벨(minigameRows.js:32), 테스트 라인(:248·:614·:617~619·:621) 전부 일치.
+> - 계획서 작성(7/3) 이후 머지된 PR #66~71은 웹게임(`public/`, `webgame*`, `admin*`) 쪽이라 Discord 미니게임 파일과 충돌 없음.
+> - 구현 시 유의 2가지 (계획서 명세가 현행보다 정확한 지점 — 계획서대로 구현하면 됨):
+>   1. 현행 `listTodayMinigameRanking`은 example 제외(`getOperationalRecords`)를 거치지 않는다. 새 `listMinigameRankings`는 3-1 규칙대로 example 제외 소스를 쓰므로 "오늘" 구간이 현행보다 엄밀해진다 — 의도된 개선이며 회귀 아님.
+>   2. 현행 구현은 0P 사용자를 명시적으로 거르지 않고 상위 5명 slice에 의존한다. 새 구현은 3-1 규칙대로 **명시 필터**를 넣는다 (test-minigame-hub-flow.js:621의 기대 동작을 구조적으로 보장).
+>
+> **구현이 이미 존재함**: 방치 브랜치 `origin/feat/minigame-report`의 커밋 **718f6d7**이 이 계획서의 구현 전체(+ `scripts/test-minigame-rankings.js` 206줄)를 담고 있다 — 미리뷰(Codex, 리뷰 단계 생략) 상태. 코드 확인 결과 계획서 규칙(example 제외·0P 명시 필터·정렬·동점 순위·완충 문구) 전부 준수. main에 cherry-pick 시 충돌은 `scripts/check-release.js` 항목 추가부 1곳뿐. **권장 경로: 재구현이 아니라 718f6d7 cherry-pick → Fable 리뷰 → check:release → PR.** 같은 브랜치의 407ab68(던전월드 에필로그 10~12회차 구현)은 착수 게이트 대기이므로 함께 가져오지 않는다.
+
 이 문서는 미니게임 개선 3순위 "주간/누적 랭킹"의 구현 계획입니다. **이 문서만 보고 다른 컨텍스트 없이 구현을 시작할 수 있도록** 수정 위치, 함수 시그니처, 테스트 갱신 지점까지 명시합니다. 구현 전 [AGENTS.md](../AGENTS.md), [src/AGENTS.md](../src/AGENTS.md), [scripts/AGENTS.md](../scripts/AGENTS.md)의 컨벤션을 따릅니다.
 
 ## 1. 배경과 목표
