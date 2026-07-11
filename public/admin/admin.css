@@ -386,6 +386,10 @@ td {
 .write-form label, dialog label { display: grid; gap: 6px; color: var(--muted); }
 .write-form input, dialog input { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
 .action-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.payout-controls { display: flex; align-items: end; gap: 12px; margin-bottom: 14px; }
+.payout-controls label { display: grid; flex: 1; gap: 6px; color: var(--muted); }
+.payout-preview { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-strong); }
+.payout-preview ul { margin: 0; padding-left: 20px; }
 .action-button { padding: 6px 9px; font-size: 12px; }
 dialog { width: min(520px, calc(100% - 32px)); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); }
 dialog::backdrop { background: rgba(0, 0, 0, .72); }
@@ -412,4 +416,5 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
     grid-template-columns: 1fr;
   }
   .write-form { grid-template-columns: 1fr; }
+  .payout-controls { align-items: stretch; flex-direction: column; }
 }

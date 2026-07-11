@@ -18,6 +18,7 @@
   let writeEnabled = false;
   let writeToken = '';
   let pendingWrite = null;
+  let payoutPreview = null;
 
   const webgameLabels = {
     match3: '간식 맞추기',
@@ -123,6 +124,8 @@
       if (response.status === 403) writeToken = '';
       const error = new Error(response.status === 409 ? '이미 처리된 건입니다 — 새로고침해 주세요.' : (payload.message || '처리하지 못했습니다.'));
       error.status = response.status;
+      error.code = payload.error;
+      error.serverMessage = payload.message;
       throw error;
     }
     return payload;
@@ -362,7 +365,43 @@
       { label: '점수', render: function (row) { return escapeHtml(row.score); } },
       { label: '모드', render: function (row) { return badge(row.mode); } },
       { label: '주차/날짜', render: function (row) { return escapeHtml(row.weekKey || row.dayKey || '-'); } },
+      { label: '판정', render: function (row) { return row.resolution ? badge(row.resolution.status) : actionButtons([
+        { name: 'webgame-score-valid', id: row.scoreId, label: '정상 판정' },
+        { name: 'webgame-score-invalid', id: row.scoreId, label: '무효 확정' },
+      ]); } },
     ], '현재 flagged 기록이 없습니다.');
+  }
+
+  function renderPayoutPreview(preview) {
+    payoutPreview = preview;
+    const totals = preview.totals || {};
+    const winnerLines = (preview.games || []).map(function (game) {
+      const pending = (game.winners || []).filter(function (winner) { return !winner.alreadyPaid; });
+      return (webgameLabels[game.gameId] || game.gameId) + ' 순위 보상 ' + pending.length + '건';
+    });
+    $('webgame-payout-preview').innerHTML = '<ul>' + [
+      '주차 ' + text(preview.weekKey, '-'),
+      '지급 예정 ' + text(totals.payableCount, 0) + '건 · ' + text(totals.payableAmount, 0) + 'P',
+      '이미 지급 ' + text(totals.alreadyPaidCount, 0) + '건',
+    ].concat(winnerLines).map(function (line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('') + '</ul>';
+    $('webgame-payout-execute-button').hidden = Number(totals.payableCount || 0) === 0;
+  }
+
+  async function loadPayoutPreview() {
+    const weekKey = $('webgame-payout-week').value.trim();
+    if (!/^\d{4}-W\d{2}$/.test(weekKey)) {
+      showToast('주차를 YYYY-Www 형식으로 입력해 주세요.');
+      return;
+    }
+    payoutPreview = null;
+    $('webgame-payout-execute-button').hidden = true;
+    $('webgame-payout-preview').innerHTML = '<p class="empty">지급안을 계산하는 중입니다.</p>';
+    try {
+      renderPayoutPreview(await fetchJson('/api/admin/webgames/payout-preview?weekKey=' + encodeURIComponent(weekKey)));
+    } catch (error) {
+      $('webgame-payout-preview').innerHTML = '<p class="empty">지급안을 불러오지 못했습니다.</p>';
+      showToast(error.message);
+    }
   }
 
   function renderRecentMismatches(rows) {
@@ -444,6 +483,11 @@
     renderFlaggedScores(summary.flaggedScores);
     renderCheerStats(summary.cheerStats);
     renderRecentMismatches(summary.recentMismatches);
+
+    if (writeEnabled) {
+      $('webgame-payout-tools').hidden = false;
+      if (!$('webgame-payout-week').value) $('webgame-payout-week').value = summary.weekKey || '';
+    }
 
     const meta = summary.meta || {};
     const excluded = Number(meta.exampleRecordsExcluded || 0);
@@ -718,6 +762,10 @@
       url = '/api/admin/submissions/' + encodeURIComponent(id) + '/decision';
       body = { decision: decision };
       reasonRequired = decision === 'reject';
+    } else if (action.indexOf('webgame-score-') === 0) {
+      url = '/api/admin/webgames/scores/' + encodeURIComponent(id) + '/resolve';
+      body = { resolution: action.replace('webgame-score-', '') };
+      reasonRequired = true;
     } else if (action.indexOf('mission-') === 0) {
       url = '/api/admin/missions/' + encodeURIComponent(id) + '/status';
       body = { status: action.replace('mission-', '') };
@@ -740,12 +788,38 @@
     pendingWrite = null;
     $('write-dialog').close();
     try {
-      await postJson(request.url, { ...request.body, reason: reason || undefined });
-      showToast('처리가 완료되었습니다.');
+      const response = await postJson(request.url, { ...request.body, reason: reason || undefined });
+      if (response.manualReconciliationRequired) {
+        showToast('판정은 저장됐습니다. 이미 지급된 주차이므로 수동 포인트 정정이 필요합니다.');
+      } else if (response.partialFailure) {
+        showToast('일부 지급이 실패했습니다. 새 미리보기로 실패 건만 다시 시도해 주세요.');
+      } else {
+        showToast('처리가 완료되었습니다.');
+      }
+      payoutPreview = null;
       await loadDashboard();
+      if (request.url === '/api/admin/webgames/payout') {
+        await loadPayoutPreview();
+      }
     } catch (error) {
-      showToast(error.message);
+      if (error.code === 'PAYOUT_SNAPSHOT_CHANGED') {
+        await loadPayoutPreview();
+        showToast('지급 대상이 변경되어 미리보기를 갱신했습니다. 다시 확인해 주세요.');
+      } else {
+        showToast(error.serverMessage || error.message);
+      }
     }
+  });
+  $('webgame-payout-preview-button').addEventListener('click', loadPayoutPreview);
+  $('webgame-payout-execute-button').addEventListener('click', function () {
+    if (!payoutPreview) return;
+    const totals = payoutPreview.totals || {};
+    requestWrite({
+      url: '/api/admin/webgames/payout',
+      body: { weekKey: payoutPreview.weekKey, snapshotToken: payoutPreview.snapshotToken },
+      summary: payoutPreview.weekKey + ' · ' + text(totals.payableCount, 0) + '건 · ' + text(totals.payableAmount, 0) + 'P 지급',
+      reasonRequired: true,
+    });
   });
   $('points-adjust-form').addEventListener('submit', function (event) {
     event.preventDefault();

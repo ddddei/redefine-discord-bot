@@ -9,6 +9,11 @@ const { isExampleLikeRecord, isExampleLikeValue } = require('./operationalRecord
 const { createWebgameApi } = require('./webgameApi');
 const { createWebgameRepository } = require('./webgameRepository');
 const {
+  buildWeeklyPayoutPlan,
+  executeWeeklyPayoutPlan,
+  buildAdminWeeklyPayoutPreview,
+} = require('./webgamePayout');
+const {
   buildAdminSummary,
   buildFaqCandidateQueue,
   buildFirstDayCheck,
@@ -298,7 +303,40 @@ function rejectExampleTarget(record, targetId) {
   }
 }
 
-async function performAdminWrite(req, res, pathname, repository, options = {}) {
+function requireReason(value) {
+  const reason = requireString(value, 'reason');
+  if (reason.length > 500) throw adminError(400, 'REASON_TOO_LONG', '사유는 500자 이하여야 합니다.');
+  return reason;
+}
+
+function requireWeekKey(value) {
+  const weekKey = requireString(value, 'weekKey');
+  if (!/^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/.test(weekKey)) {
+    throw adminError(400, 'INVALID_WEEK_KEY', 'weekKey는 YYYY-Www 형식이어야 합니다.');
+  }
+  return weekKey;
+}
+
+function assertOperationalWebgameData(webgameRepository) {
+  const scoresData = webgameRepository.getScoresData();
+  const linksData = webgameRepository.getLinksData();
+  if (scoresData.isExample === true || linksData.isExample === true
+    || (scoresData.scores || []).some(isExampleLikeRecord)
+    || (linksData.links || []).some(isExampleLikeRecord)) {
+    throw adminError(409, 'EXAMPLE_DATA_BLOCKED', 'example 데이터가 포함되어 지급 계획을 만들 수 없습니다.');
+  }
+}
+
+function buildPayoutPreview(webgameRepository, repository, weekKey) {
+  assertOperationalWebgameData(webgameRepository);
+  return buildAdminWeeklyPayoutPreview(buildWeeklyPayoutPlan({
+    webgameRepository,
+    pointsRepository: repository,
+    weekKey,
+  }));
+}
+
+async function performAdminWrite(req, res, pathname, repository, webgameRepository, options = {}) {
   if (!requireWriteAccess(req, res)) return;
 
   const routes = [
@@ -307,6 +345,8 @@ async function performAdminWrite(req, res, pathname, repository, options = {}) {
     { match: pathname === '/api/admin/points/adjust' ? ['', 'points'] : null, action: 'points.adjust', type: 'user' },
     { match: pathname.match(/^\/api\/admin\/missions\/([^/]+)\/status$/), action: 'mission.status', type: 'mission' },
     { match: pathname.match(/^\/api\/admin\/shop-items\/([^/]+)\/status$/), action: 'shop-item.status', type: 'shopItem' },
+    { match: pathname.match(/^\/api\/admin\/webgames\/scores\/([^/]+)\/resolve$/), action: 'webgame.score.resolve', type: 'webgameScore' },
+    { match: pathname === '/api/admin/webgames/payout' ? ['', 'payout'] : null, action: 'webgame.payout', type: 'webgameWeek' },
   ];
   const route = routes.find((candidate) => candidate.match);
   if (!route) {
@@ -329,9 +369,12 @@ async function performAdminWrite(req, res, pathname, repository, options = {}) {
     sendJson(res, 400, { error: 'INVALID_TARGET_ID', message: '대상 ID 형식이 올바르지 않습니다.' });
     return;
   }
+  if (route.action === 'webgame.payout' && typeof body.weekKey === 'string') {
+    targetId = body.weekKey.trim();
+  }
   const actor = (parseBasicAuthHeader(req) || {}).username || 'admin-console';
   const audit = options.audit || createAdminAudit();
-  const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+  const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 500) : '';
   const auditBase = { action: route.action, targetType: route.type, targetId, reason, actor };
 
   try {
@@ -343,6 +386,8 @@ async function performAdminWrite(req, res, pathname, repository, options = {}) {
 
   try {
     let result;
+    let responseExtra = {};
+    let auditResult = 'success';
     if (route.action === 'redemption.status') {
       const status = requireString(body.status, 'status');
       if (!['complete', 'cancel', 'refund'].includes(status)) throw adminError(400, 'INVALID_STATUS', '지원하지 않는 교환 상태입니다.');
@@ -385,7 +430,7 @@ async function performAdminWrite(req, res, pathname, repository, options = {}) {
       rejectExampleTarget(current, targetId);
       if (current.status === status) throw adminError(409, 'ALREADY_PROCESSED', '이미 같은 상태입니다.', { currentStatus: current.status });
       result = repository.setMissionStatus(targetId, status);
-    } else {
+    } else if (route.action === 'shop-item.status') {
       const status = requireString(body.status, 'status');
       if (!['active', 'paused', 'soldOut', 'hidden'].includes(status)) throw adminError(400, 'INVALID_STATUS', '지원하지 않는 상점 항목 상태입니다.');
       const current = repository.findShopItem(targetId);
@@ -393,13 +438,51 @@ async function performAdminWrite(req, res, pathname, repository, options = {}) {
       rejectExampleTarget(current, targetId);
       if (current.status === status) throw adminError(409, 'ALREADY_PROCESSED', '이미 같은 상태입니다.', { currentStatus: current.status });
       result = repository.setShopItemStatus(targetId, status);
+    } else if (route.action === 'webgame.score.resolve') {
+      const resolution = requireString(body.resolution, 'resolution');
+      if (!['valid', 'invalid'].includes(resolution)) throw adminError(400, 'INVALID_RESOLUTION', '지원하지 않는 판정입니다.');
+      const resolutionReason = requireReason(body.reason);
+      const resolved = webgameRepository.resolveFlaggedScore(targetId, {
+        resolution,
+        reason: resolutionReason,
+        operatorId: actor,
+      });
+      if (!resolved.ok && resolved.reason === 'NOT_FOUND') throw adminError(404, 'NOT_FOUND', '점수 기록을 찾을 수 없습니다.');
+      if (!resolved.ok && resolved.reason === 'ALREADY_RESOLVED') throw adminError(409, 'ALREADY_RESOLVED', '이미 판정된 점수입니다.', { currentResolution: resolved.currentResolution });
+      if (!resolved.ok) throw adminError(409, 'NOT_FLAGGED', '현재 판정할 수 있는 flagged 점수가 아닙니다.');
+      const manualReconciliationRequired = resolved.weekKey
+        ? repository.listWebgameWeeklyRewardTransactions(resolved.weekKey).length > 0
+        : false;
+      result = resolved;
+      responseExtra = { manualReconciliationRequired };
+    } else {
+      const weekKey = requireWeekKey(body.weekKey);
+      const snapshotToken = requireString(body.snapshotToken, 'snapshotToken');
+      requireReason(body.reason);
+      const currentPreview = buildPayoutPreview(webgameRepository, repository, weekKey);
+      if (!safeCompareSecret(snapshotToken, currentPreview.snapshotToken)) {
+        throw adminError(409, 'PAYOUT_SNAPSHOT_CHANGED', '지급 대상이 변경되었습니다. 새 미리보기로 다시 확인해 주세요.');
+      }
+      if (currentPreview.totals.payableCount === 0) {
+        throw adminError(409, 'PAYOUT_ALREADY_COMPLETE', '지급할 대상이 없거나 이미 모두 지급되었습니다.');
+      }
+      const payoutResult = executeWeeklyPayoutPlan(currentPreview, { pointsRepository: repository, operatorId: actor });
+      const partialFailure = payoutResult.failed.length > 0;
+      auditResult = partialFailure ? 'partial_failure' : 'success';
+      result = {
+        paid: payoutResult.paid,
+        skipped: payoutResult.skipped,
+        paidAmount: payoutResult.paidAmount,
+        failed: payoutResult.failed.map((failure) => ({ displayName: failure.displayName, message: failure.message })),
+      };
+      responseExtra = { partialFailure };
     }
 
-    try { audit.appendAuditEntry({ ...auditBase, result: 'success' }); } catch (error) { console.warn('관리자 감사 결과 기록 실패:', error.message); }
+    try { audit.appendAuditEntry({ ...auditBase, result: auditResult }); } catch (error) { console.warn('관리자 감사 결과 기록 실패:', error.message); }
     if (typeof options.notifyAdminWrite === 'function') {
-      Promise.resolve(options.notifyAdminWrite({ ...auditBase, result: 'success' })).catch((error) => console.warn('관리자 처리 알림 실패:', error.message));
+      Promise.resolve(options.notifyAdminWrite({ ...auditBase, result: auditResult })).catch((error) => console.warn('관리자 처리 알림 실패:', error.message));
     }
-    sendJson(res, 200, { ok: true, result });
+    sendJson(res, 200, { ok: true, result, ...responseExtra });
   } catch (caughtError) {
     const error = normalizeMutationError(caughtError);
     const statusCode = error.statusCode;
@@ -421,7 +504,7 @@ async function handleAdminApi(req, res, pathname, searchParams, repository, webg
     }
 
     if (req.method === 'POST') {
-      await performAdminWrite(req, res, pathname, repository, options);
+      await performAdminWrite(req, res, pathname, repository, webgameRepository, options);
       return;
     }
 
@@ -431,6 +514,18 @@ async function handleAdminApi(req, res, pathname, searchParams, repository, webg
     }
 
     const limit = parseLimit(searchParams.get('limit'), 10);
+
+    if (pathname === '/api/admin/webgames/payout-preview') {
+      let weekKey;
+      try {
+        weekKey = requireWeekKey(searchParams.get('weekKey'));
+        sendJson(res, 200, buildPayoutPreview(webgameRepository, repository, weekKey));
+      } catch (caughtError) {
+        const error = normalizeMutationError(caughtError);
+        sendJson(res, error.statusCode, { error: error.code, message: error.message });
+      }
+      return;
+    }
 
     if (pathname === '/api/admin/webgames') {
       sendJson(res, 200, buildWebgameOperationsSummary(webgameRepository, {

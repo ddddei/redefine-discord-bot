@@ -234,6 +234,17 @@
           </article>
         </div>
 
+        <article id="webgame-payout-tools" class="panel write-only" hidden>
+          <h3>주간 보상 미리보기와 지급</h3>
+          <div class="payout-controls">
+            <label>주차(weekKey)<input id="webgame-payout-week" type="text" autocomplete="off" placeholder="예: 2026-W27"></label>
+            <button id="webgame-payout-preview-button" type="button">지급안 미리보기</button>
+          </div>
+          <div id="webgame-payout-preview" class="payout-preview"><p class="empty">주차를 입력하고 미리보기를 확인해 주세요.</p></div>
+          <button id="webgame-payout-execute-button" type="button" hidden>확인 후 지급</button>
+          <p class="guide">미리보기 뒤 대상이 바뀌면 지급하지 않고 새 미리보기를 요구합니다. 부분 실패 시 성공 건은 유지되고 실패 건만 다시 미리볼 수 있습니다.</p>
+        </article>
+
         <article class="panel">
           <h3>flagged 기록 (운영 확인용)</h3>
           <div id="webgame-flagged-scores" class="table-wrap"></div>
@@ -251,7 +262,7 @@
           <p class="guide">서버가 시드+행동 로그로 재현한 결과가 제출 점수와 다른 기록입니다. 랭킹/공동 목표 계산에는 영향을 주지 않으며(WEBGAME_REPLAY_STRICT가 꺼져 있는 한), 로그 원문은 이 화면에 노출되지 않습니다.</p>
         </article>
 
-        <p class="guide">지급/승인/수정 기능은 없습니다. 주간 지급은 기존 `/포인트관리` 명령으로 처리해 주세요.</p>
+        <p class="guide">판정과 지급은 쓰기 게이트가 켜진 경우에만 표시되며 모든 처리가 감사 로그에 기록됩니다.</p>
       </section>
 
       <section class="two-column">

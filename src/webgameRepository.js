@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { loadJsonFile, saveJsonFile } = require('./pointsStore');
 const { getOperationDataPaths } = require('./operationDataPaths');
+const { isExampleLikeRecord } = require('./operationalRecords');
 
 const OPERATION_PATHS = getOperationDataPaths();
 
@@ -142,6 +143,24 @@ function normalizeScoreRecord(score) {
   };
 }
 
+function getAdminScoreId(score) {
+  if (score && typeof score.id === 'string' && score.id.trim()) {
+    return score.id.trim();
+  }
+
+  const identity = [
+    score && score.discordId,
+    score && score.gameId,
+    score && score.score,
+    score && score.submittedAt,
+    score && score.weekKey,
+    score && score.mode,
+    score && score.dayKey,
+    score && score.seed,
+  ].map((value) => value === undefined || value === null ? '' : String(value));
+  return `legacy-${crypto.createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 20)}`;
+}
+
 function createTargetId(cheerSalt, discordId) {
   return crypto.createHash('sha256').update(`${cheerSalt}:${discordId}`).digest('hex').slice(0, 16);
 }
@@ -259,6 +278,58 @@ function createWebgameRepository(paths = {}) {
     }
     saveReplayMismatchData(replayMismatchData);
     return record;
+  }
+
+  function resolveFlaggedScore(scoreId, input, now = new Date()) {
+    const normalizedId = requireTrimmedString(scoreId, 'scoreId');
+    const resolution = requireTrimmedString(input.resolution, 'resolution');
+    const reason = requireTrimmedString(input.reason, 'reason');
+    const operatorId = requireTrimmedString(input.operatorId, 'operatorId');
+    if (!['valid', 'invalid'].includes(resolution)) {
+      throw Object.assign(new Error('지원하지 않는 판정입니다.'), { code: 'INVALID_RESOLUTION' });
+    }
+    if (reason.length > 500) {
+      throw Object.assign(new Error('사유는 500자 이하여야 합니다.'), { code: 'REASON_TOO_LONG' });
+    }
+
+    const scoresData = cloneJson(getScoresData());
+    if (scoresData.isExample === true) {
+      return { ok: false, reason: 'NOT_FOUND' };
+    }
+    const index = scoresData.scores.findIndex((score) => getAdminScoreId(score) === normalizedId);
+    if (index === -1) {
+      return { ok: false, reason: 'NOT_FOUND' };
+    }
+    const current = scoresData.scores[index];
+    if (isExampleLikeRecord(current)) {
+      return { ok: false, reason: 'NOT_FOUND' };
+    }
+    if (current.resolution) {
+      return { ok: false, reason: 'ALREADY_RESOLVED', currentResolution: current.resolution.status };
+    }
+    if (current.flagged !== true) {
+      return { ok: false, reason: 'NOT_FLAGGED' };
+    }
+
+    const resolvedAt = createTimestamp(now);
+    scoresData.scores[index] = {
+      ...current,
+      flagged: resolution === 'invalid',
+      resolution: {
+        status: resolution,
+        reason,
+        operatorId,
+        resolvedAt,
+      },
+    };
+    saveScoresData(scoresData);
+    return {
+      ok: true,
+      scoreId: normalizedId,
+      resolution,
+      weekKey: current.weekKey || null,
+      resolvedAt,
+    };
   }
 
   function findLinkByDiscordId(linksData, discordId) {
@@ -382,6 +453,7 @@ function createWebgameRepository(paths = {}) {
     const weekKey = input.weekKey || getIsoWeekKey(now);
     const mode = normalizeMode(input.mode);
     const record = {
+      id: crypto.randomUUID(),
       discordId,
       gameId,
       score: input.score,
@@ -800,6 +872,7 @@ function createWebgameRepository(paths = {}) {
     getLinkByDiscordId,
     listRecentScores,
     recordScore,
+    resolveFlaggedScore,
     countRecentSubmissions,
     getWeekBest,
     getPreviousWeekBest,
@@ -833,4 +906,5 @@ module.exports = {
   getDailySeed,
   LINK_CODE_TTL_MS,
   REPLAY_MISMATCH_MAX_RECORDS,
+  getAdminScoreId,
 };
