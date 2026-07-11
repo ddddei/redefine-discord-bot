@@ -12,11 +12,11 @@
 
 ## 현재 권장 작업 순서
 
-운영 콘솔 Phase 1·2까지 `main`에 반영됐습니다. 다음 코드 작업은 Phase 3 지연 감지·운영 리마인더입니다.
+운영 콘솔 Phase 1~3까지 `main`에 반영됐고 참여자 개인 운영 카드 v1은 코드·자동 검증을 완료했습니다.
 
 1. 최신 `main`과 [현행화 로드맵](../docs/next-work-roadmap-2026-07.md) 확인
-2. [운영 리마인더 v1 계획서](../docs/ops-reminder-v1-plan.md) 검토
-3. [운영 리마인더 v1 작업 지시서](codex/ops-reminder-v1.md) 실행
+2. [참여자 개인 카드 v1 계획서](../docs/admin-participant-card-v1-plan.md) 검토
+3. [참여자 개인 카드 v1 작업 지시서](codex/admin-participant-card-v1.md)와 구현 결과 대조
 4. 주 에이전트 최종 검수와 전체 release gate
 5. PR CI 성공 후 머지
 

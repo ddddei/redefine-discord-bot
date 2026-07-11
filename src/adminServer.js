@@ -31,6 +31,7 @@ const {
   listShopItemStatus,
   parseLimit,
 } = require('./adminApi');
+const { buildAdminParticipantCard } = require('./adminParticipantCard');
 
 const ADMIN_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'admin');
 const DUNGEONWORLD_SURVIVORS_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'dungeonworld-survivors');
@@ -514,6 +515,21 @@ async function handleAdminApi(req, res, pathname, searchParams, repository, webg
     }
 
     const limit = parseLimit(searchParams.get('limit'), 10);
+
+    if (pathname === '/api/admin/participant-card') {
+      const userId = String(searchParams.get('userId') || '').trim();
+      if (!/^\d{15,22}$/.test(userId)) {
+        sendJson(res, 400, { error: 'INVALID_USER_ID', message: '올바른 사용자 ID가 필요합니다.' });
+        return;
+      }
+      const card = buildAdminParticipantCard(repository, { userId, limit: searchParams.get('limit') });
+      if (!card) {
+        sendJson(res, 404, { error: 'PARTICIPANT_NOT_FOUND', message: '참여자를 찾을 수 없습니다.' });
+        return;
+      }
+      sendJson(res, 200, card);
+      return;
+    }
 
     if (pathname === '/api/admin/webgames/payout-preview') {
       let weekKey;

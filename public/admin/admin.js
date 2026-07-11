@@ -19,6 +19,7 @@
   let writeToken = '';
   let pendingWrite = null;
   let payoutPreview = null;
+  let participantCardRequestId = 0;
 
   const webgameLabels = {
     match3: '간식 맞추기',
@@ -203,6 +204,77 @@
 
   function renderQueueCard(label, value) {
     return '<article class="summary-card queue-card"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(text(value, 0)) + '</strong></article>';
+  }
+
+  function renderParticipantTable(targetId, headers, rows, cells, emptyMessage) {
+    $(targetId).innerHTML = rows.length
+      ? '<table><thead><tr>' + headers.map(function (header) { return '<th>' + escapeHtml(header) + '</th>'; }).join('') + '</tr></thead><tbody>'
+        + rows.map(function (row) { return '<tr>' + cells(row).map(function (cell) { return '<td>' + cell + '</td>'; }).join('') + '</tr>'; }).join('')
+        + '</tbody></table>'
+      : '<p class="empty">' + escapeHtml(emptyMessage) + '</p>';
+  }
+
+  function renderParticipantCard(card) {
+    const participant = card.participant || {};
+    const counts = card.counts || {};
+    const recent = card.recent || {};
+    const countStatuses = function (statuses) {
+      return Object.keys(statuses || {}).reduce(function (sum, key) { return sum + Number(statuses[key] || 0); }, 0);
+    };
+    $('participant-card-summary').innerHTML = [
+      ['사용자 ID', participant.userId], ['표시명', participant.displayName], ['상태', participant.status],
+      ['현재 포인트', text(participant.totalPoints, 0) + 'P'], ['체크인', text(counts.checkins, 0) + '건'],
+      ['미션 인증', countStatuses(counts.submissions) + '건'], ['교환', countStatuses(counts.redemptions) + '건'],
+      ['포인트 거래', text(counts.pointTransactions, 0) + '건'],
+    ].map(function (entry) { return '<article class="summary-card"><span>' + escapeHtml(entry[0]) + '</span><strong>' + escapeHtml(text(entry[1])) + '</strong></article>'; }).join('');
+    const warnings = Array.isArray(card.warnings) ? card.warnings : [];
+    $('participant-card-warnings').innerHTML = warnings.length
+      ? warnings.map(function (item) { return '<p class="participant-card-warning">' + escapeHtml(item.message) + '</p>'; }).join('')
+      : '<p class="guide">확인할 데이터 경고가 없습니다.</p>';
+    renderParticipantTable('participant-card-checkins', ['날짜', '상태', '포인트'], recent.checkins || [], function (row) {
+      return [escapeHtml(text(row.checkinDate || formatDate(row.createdAt))), badge(row.status), escapeHtml(text(row.rewardPoints, 0))];
+    }, '체크인 기록이 없습니다.');
+    renderParticipantTable('participant-card-submissions', ['미션', '상태', '보상', '제출 시각'], recent.submissions || [], function (row) {
+      return [escapeHtml(text(row.missionTitle || row.missionId)), badge(row.status), escapeHtml(text(row.rewardPoints, 0)), escapeHtml(formatDate(row.createdAt))];
+    }, '미션 인증 기록이 없습니다.');
+    renderParticipantTable('participant-card-redemptions', ['항목', '상태', '비용', '신청 시각'], recent.redemptions || [], function (row) {
+      return [escapeHtml(text(row.itemName || row.itemId)), badge(row.status), escapeHtml(text(row.cost, 0)), escapeHtml(formatDate(row.requestedAt))];
+    }, '교환 기록이 없습니다.');
+    renderParticipantTable('participant-card-transactions', ['유형', '금액', '잔액', '사유', '시각'], recent.pointTransactions || [], function (row) {
+      return [badge(row.type), escapeHtml(text(row.amount, 0)), escapeHtml(text(row.balanceAfter, 0)), escapeHtml(text(row.reason)), escapeHtml(formatDate(row.createdAt))];
+    }, '포인트 거래 기록이 없습니다.');
+    $('participant-card-result').hidden = false;
+  }
+
+  async function loadParticipantCard() {
+    const userId = $('participant-card-user-id').value.trim();
+    if (!userId) {
+      $('participant-card-status').textContent = '정확한 Discord 사용자 ID를 입력해 주세요.';
+      return;
+    }
+    const requestId = ++participantCardRequestId;
+    const button = $('participant-card-search-button');
+    button.disabled = true;
+    $('participant-card-status').textContent = '참여자 기록을 불러오는 중입니다.';
+    const params = new URLSearchParams({ userId: userId, limit: $('participant-card-limit').value });
+    try {
+      const response = await fetch('/api/admin/participant-card?' + params.toString(), { headers: { Accept: 'application/json' } });
+      const payload = await response.json().catch(function () { return {}; });
+      if (requestId !== participantCardRequestId) return;
+      if (!response.ok) {
+        $('participant-card-result').hidden = true;
+        $('participant-card-status').textContent = response.status === 404 ? '해당 참여자를 찾을 수 없습니다.' : (payload.message || '참여자 기록을 불러오지 못했습니다.');
+        return;
+      }
+      renderParticipantCard(payload);
+      $('participant-card-status').textContent = '참여자 기록을 불러왔습니다.';
+    } catch (error) {
+      if (requestId !== participantCardRequestId) return;
+      $('participant-card-result').hidden = true;
+      $('participant-card-status').textContent = '참여자 기록을 불러오지 못했습니다.';
+    } finally {
+      if (requestId === participantCardRequestId) button.disabled = false;
+    }
   }
 
   function renderQueueItem(kind, title, meta, command, badge) {
@@ -761,6 +833,14 @@
   }
 
   $('refresh-button').addEventListener('click', loadDashboard);
+  $('participant-card-form').addEventListener('submit', function (event) { event.preventDefault(); loadParticipantCard(); });
+  $('participant-card-clear-button').addEventListener('click', function () {
+    participantCardRequestId += 1;
+    $('participant-card-user-id').value = '';
+    $('participant-card-result').hidden = true;
+    $('participant-card-search-button').disabled = false;
+    $('participant-card-status').textContent = '정확한 Discord 사용자 ID를 입력해 조회해 주세요.';
+  });
   document.addEventListener('click', function (event) {
     const button = event.target.closest('[data-write-action]');
     if (!button) return;

@@ -4,6 +4,16 @@ const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 const checks = [
   {
+    label: 'src/adminParticipantCard.js 문법 검사',
+    command: 'node',
+    args: ['--check', 'src/adminParticipantCard.js'],
+  },
+  {
+    label: '운영 콘솔 참여자 개인 카드 흐름 테스트',
+    command: 'node',
+    args: ['scripts/test-admin-participant-card-flow.js'],
+  },
+  {
     label: 'src/opsDelayPolicy.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/opsDelayPolicy.js'],
