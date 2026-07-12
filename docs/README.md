@@ -58,6 +58,7 @@ Railway·Discord 실환경 설정을 시작하기 전에는 `npm run check:prela
 | [ops-reminder-v1-plan.md](ops-reminder-v1-plan.md) | 운영 지연 감지·리마인더 v1 계획서 | admin Phase 3 구현·검수·운영 설정 전 | 공통 지연 정책, KST 슬롯, at-most-once 예약, 개인정보 최소화, 백업·롤백 |
 | [admin-participant-card-v1-plan.md](admin-participant-card-v1-plan.md) | 운영 콘솔 참여자 개인 카드 v1 계획서 | 개별 참여자의 운영 이력을 한 화면에서 확인하거나 QA할 때 | 정확 ID 조회, 읽기 전용, 원문·민감정보 제외, 정합성 경고 |
 | [weekly-ops-report-v1-plan.md](weekly-ops-report-v1-plan.md) | 주간 운영 리포트 v1 계획서 | 최근 7일 운영 집계와 운영진 전용 발송 기준을 구현·QA할 때 | KST 주간 범위, 최소 집계, 읽기 전용 콘솔, 중복 방지, 기본 off 자동 발송 |
+| [weekly-ops-analyst-agent-design.md](weekly-ops-analyst-agent-design.md) | 주간 운영 분석 에이전트 설계서 | 봇 집계 위에 추세·이상 감지·권고를 얹는 분석 리포트를 자동화할 때 | 봇/에이전트 역할 분담, 읽기 전용 원칙, 에스컬레이션 조건, 조용한 실패 체크, 스킬→스케줄 이관 |
 | [ops-stability-hardening-v1-plan.md](ops-stability-hardening-v1-plan.md) | 운영 자동화 안정성 보강 v1 계획서 | 리마인더·주간 리포트의 장애·재시작·중복 방지를 검수할 때 | 이력 실패 결과, 감사 로그, 재시작 회귀, 모바일·민감정보 검사 |
 | [prelaunch-readiness-check-v1-plan.md](prelaunch-readiness-check-v1-plan.md) | 운영 전 통합 점검 자동화 v1 계획서 | 저녁 Railway·Discord 설정 전에 누락과 수동 QA 목록을 한 번에 확인할 때 | env 분류, 기능 의존성, 데이터 preflight, 비밀값 비노출, strict 모드 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
