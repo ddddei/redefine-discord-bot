@@ -61,6 +61,7 @@ Railway·Discord 실환경 설정을 시작하기 전에는 `npm run check:prela
 | [weekly-ops-analyst-agent-design.md](weekly-ops-analyst-agent-design.md) | 주간 운영 분석 에이전트 설계서 | 봇 집계 위에 추세·이상 감지·권고를 얹는 분석 리포트를 자동화할 때 | 봇/에이전트 역할 분담, 읽기 전용 원칙, 에스컬레이션 조건, 조용한 실패 체크, 스킬→스케줄 이관 |
 | [ops-stability-hardening-v1-plan.md](ops-stability-hardening-v1-plan.md) | 운영 자동화 안정성 보강 v1 계획서 | 리마인더·주간 리포트의 장애·재시작·중복 방지를 검수할 때 | 이력 실패 결과, 감사 로그, 재시작 회귀, 모바일·민감정보 검사 |
 | [prelaunch-readiness-check-v1-plan.md](prelaunch-readiness-check-v1-plan.md) | 운영 전 통합 점검 자동화 v1 계획서 | 저녁 Railway·Discord 설정 전에 누락과 수동 QA 목록을 한 번에 확인할 때 | env 분류, 기능 의존성, 데이터 preflight, 비밀값 비노출, strict 모드 |
+| [webgame-visual-polish-plan.md](webgame-visual-polish-plan.md) | 웹게임 비주얼 폴리시 v1 계획서 | 매치3 타일 판별성·덱 카드 아이콘/라벨·idle 무대 소품 원화를 구현하거나 지시서를 작성할 때 | 표시 전용 원칙, PR 2개 분리, 원화 8종 선행 조건, 이모지 폴백, 전송량 예산 |
 | [knowledge-audit.md](knowledge-audit.md) | FAQ와 Knowledge 역할 구분 기준 | FAQ/Knowledge 중복 정리, 질문 매칭 품질 점검 시 | 중복 주제 분리, keywords 보강 후보, FAQ와 Knowledge 역할 기준 |
 | [faq-knowledge-refinement-plan.md](faq-knowledge-refinement-plan.md) | FAQ/Knowledge 응답 품질 점검 리포트 | 실제 데이터 수정 전 개선 후보와 검증 질문을 정리할 때 | 중복 주제, 넓은 keywords, fallback 후보, 온보딩/민감 질문 보강 후보 |
 | [test-questions-followup-report.md](test-questions-followup-report.md) | 질문 매칭 잔여 오매칭 점검 리포트 | `test:questions` 결과 기반으로 남은 오매칭, 애매한 매칭, 의도적 Fallback 후보를 확인할 때 | 개선 확인 항목, 애매한 매칭 후보, Fallback 유지 후보, 다음 데이터 수정 순서 |
