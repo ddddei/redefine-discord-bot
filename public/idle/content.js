@@ -20,6 +20,8 @@
       unlocksBuildings: ['strawberry'],
       unlocksFeatures: [],
       sceneEmoji: '🧺🍓',
+      // 표시 전용 원화(visual-polish v1). engine.js는 읽지 않는다. 로드 실패 시 sceneEmoji 폴백.
+      sceneAsset: '../shared/art/idle-stage-1.webp',
       announceCopy: '작은 돗자리 하나로 시작해요.',
     },
     {
@@ -31,6 +33,7 @@
       unlocksBuildings: ['orange'],
       unlocksFeatures: ['delivery'],
       sceneEmoji: '🛒⛺',
+      sceneAsset: '../shared/art/idle-stage-2.webp',
       announceCopy: '수레와 천막을 갖췄어요. 이제 배달도 보낼 수 있어요.',
     },
     {
@@ -42,6 +45,7 @@
       unlocksBuildings: ['candy'],
       unlocksFeatures: ['goldenSnack'],
       sceneEmoji: '🏪🍬',
+      sceneAsset: '../shared/art/idle-stage-3.webp',
       announceCopy: '간판을 달고 가게를 열었어요. 가끔 특별한 간식도 나타나요.',
     },
     {
@@ -53,6 +57,7 @@
       unlocksBuildings: ['cookie', 'cupcake'],
       unlocksFeatures: [],
       sceneEmoji: '🏭🍪',
+      sceneAsset: '../shared/art/idle-stage-4.webp',
       announceCopy: '오븐에 불을 붙였어요. 공방다운 모습을 갖춰가요.',
     },
     {
@@ -64,6 +69,7 @@
       unlocksBuildings: ['jelly'],
       unlocksFeatures: ['longDelivery'],
       sceneEmoji: '🏗️🚚',
+      sceneAsset: '../shared/art/idle-stage-5.webp',
       announceCopy: '컨베이어가 돌아가요. 먼 곳까지 배달할 수 있어요.',
     },
     {
@@ -75,6 +81,7 @@
       unlocksBuildings: [],
       unlocksFeatures: ['prestige'],
       sceneEmoji: '🏰🚩',
+      sceneAsset: '../shared/art/idle-stage-6.webp',
       announceCopy: '성과 깃발이 세워졌어요. 이제 비법 레시피를 남길 수 있어요.',
     },
   ];
