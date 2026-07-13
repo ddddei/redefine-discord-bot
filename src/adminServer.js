@@ -41,6 +41,7 @@ const MATCH3_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'match3');
 const IDLE_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'idle');
 const DECK_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'deck');
 const WORD_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'word');
+const ORIENTATION_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'orientation');
 const SHARED_PUBLIC_DIR = path.join(__dirname, '..', 'public', 'shared');
 
 const CONTENT_TYPES = {
@@ -265,6 +266,20 @@ function resolveWordAsset(pathname) {
   return filePath;
 }
 
+function resolveOrientationAsset(pathname) {
+  const relativePath = pathname === '/orientation' || pathname === '/orientation/'
+    ? 'index.html'
+    : pathname.replace(/^\/orientation\//, '');
+  const normalized = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');
+  const filePath = path.join(ORIENTATION_PUBLIC_DIR, normalized);
+
+  if (!filePath.startsWith(ORIENTATION_PUBLIC_DIR)) {
+    return null;
+  }
+
+  return filePath;
+}
+
 function resolveSharedAsset(pathname) {
   const relativePath = pathname.replace(/^\/game\/shared\//, '');
   const normalized = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');
@@ -315,6 +330,10 @@ function serveDeckAsset(res, pathname) {
 
 function serveWordAsset(res, pathname) {
   servePublicAsset(res, resolveWordAsset(pathname));
+}
+
+function serveOrientationAsset(res, pathname) {
+  servePublicAsset(res, resolveOrientationAsset(pathname));
 }
 
 function serveSharedAsset(res, pathname) {
@@ -807,6 +826,14 @@ function createAdminRequestHandler(repository, webgameApi, webgameRepository, op
       || requestUrl.pathname.startsWith('/game/word/')
     ) {
       serveWordAsset(res, requestUrl.pathname);
+      return;
+    }
+
+    if (
+      requestUrl.pathname === '/orientation'
+      || requestUrl.pathname.startsWith('/orientation/')
+    ) {
+      serveOrientationAsset(res, requestUrl.pathname);
       return;
     }
 

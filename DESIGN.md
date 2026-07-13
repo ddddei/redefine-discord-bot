@@ -37,6 +37,14 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 | Class/druid | --class-druid | #4F7A44 | #667F54 | Druid cards, roots, wild aura |
 | Class/wizard | --class-wizard | #5E4DB2 | #6B6090 | Wizard cards, runes, shield |
 | Class/ranger | --class-ranger | #687839 | #7E8756 | Ranger cards, arrows, hawk marks |
+| Orientation/paper | --orientation-paper | #F4EFE4 | #17140F | Orientation page field-journal background |
+| Orientation/paper-strong | --orientation-paper-strong | #E6DAC4 | #211C14 | Orientation chapter bands and selected fields |
+| Orientation/ink | --orientation-ink | #17342D | #DCE7E0 | Orientation hero board and primary controls |
+| Orientation/ink-soft | --orientation-ink-soft | #244C42 | #BFD0C7 | Orientation board secondary surface |
+| Orientation/clay | --orientation-clay | #B55D3F | #D28B70 | Orientation track/lab secondary accent |
+| Orientation/clay-deep | --orientation-clay-deep | #8D422D | #E5A98F | Orientation warning and active detail |
+| Orientation/muted | --orientation-muted | #5F6965 | #AFA79B | Accessible orientation helper copy |
+| Orientation/line | --orientation-line | #C8BCA7 | #50463A | Orientation card and field dividers |
 
 ### Rules
 
@@ -46,6 +54,7 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 - Accent/bell is only for black-bell curse effects, boss patterns, arcane shield, or special wave language. The black tower and last gate remain the destination hierarchy.
 - Class colors are scoped to Dungeon World survivor playbook identity and should stay less dominant than health, XP, enemy, and boss readability colors.
 - No raw color values in UI files outside this table.
+- The orientation page uses the orientation palette as a warm field journal. Green remains the primary action color; clay marks chapters and details, never urgency or rank.
 
 ## 3. Typography
 
@@ -75,6 +84,17 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 - Body text stays at 13px or larger on compact HUD elements and 15px or larger in panels.
 - Large Korean headings use `clamp()` to prevent awkward mobile wrapping.
 
+### Orientation Scale
+
+| Level | Token | Size | Weight | Line Height | Usage |
+| --- | --- | --- | --- | --- | --- |
+| Orientation display | --type-orientation-display | clamp(44px, 7vw, 72px) | 700 | 1.08 | First-viewport title |
+| Orientation section | --type-orientation-section | clamp(28px, 4vw, 36px) | 700 | 1.2 | Chapter headings |
+| Orientation card | --type-orientation-card | 21px | 800 | 1.35 | Track and lab names |
+| Orientation lead | --type-orientation-lead | clamp(17px, 2.2vw, 20px) | 500 | 1.7 | Hero and chapter introduction |
+| Orientation body | --type-orientation-body | 15px | 400 | 1.7 | Default participant copy |
+| Orientation caption | --type-orientation-caption | 13px | 700 | Metadata and status labels |
+
 ## 4. Spacing & Layout
 
 ### Base Unit
@@ -93,6 +113,15 @@ All spacing derives from 4px.
 | --space-10 | 40px | Page vertical rhythm |
 | --space-12 | 48px | Large sections |
 | --space-16 | 64px | First viewport spacing |
+
+### Radius
+
+| Token | Value | Usage |
+| --- | --- | --- |
+| --radius-sm | 8px | Inputs, buttons, compact status |
+| --radius-md | 16px | Track/lab cards, selection groups |
+| --radius-lg | 24px | Hero board and major orientation panels |
+| --radius-pill | 999px | Pills, rules, progress tracks |
 
 ### Grid
 
@@ -155,32 +184,71 @@ All spacing derives from 4px.
 - **Accessibility**: visible focus outline and AA contrast.
 - **Motion**: 120ms transform/opacity feedback.
 
+### Orientation Board
+
+- **Structure**: public orientation page with a first-viewport program overview, a signature “오늘의 경로” board, track/lab comparison cards, participant identity form, local selection confirmation, and distribution panel.
+- **Tone**: welcoming field journal, not a marketing splash or competitive leaderboard. Copy should reduce pressure and make selection feel adjustable.
+- **Palette**: use the orientation paper palette by default. The hero route board uses `--orientation-ink`; track and lab accents reuse `--accent-primary`, `--accent-bell`, `--orientation-clay`, `--accent-brass`, and `--status-info`. Never use red/green competition language.
+- **Hierarchy**: alternate open paper sections with one ink-dark chapter band. Overlines and index marks establish sequence; the route board is the only dense first-viewport object.
+- **Cards**: 16px radius, one border, quiet tonal surface, editorial index, fit notes, capacity note, and a clear selected state using border plus a small label. Cards are independent selectable items, never nested inside decorative cards.
+- **Form controls**: name and phone fields use native labels, visible errors, and 44px minimum touch target. Phone numbers are used only for change matching until an official storage backend exists.
+- **Distribution bars**: show proportions as neutral field status. Counts must not expose names or phone numbers, and placeholder/local-only data must be labeled as such.
+- **States**: every button, link, and choice surface has visible focus and active feedback. Hover-only lift is limited to fine pointers; touch and keyboard do not depend on hover.
+- **Motion**: first-load scan order, form save feedback, selected-card state, and section focus use 120-220ms transform/opacity only. No decorative looping motion, layout-property animation, or `scale(0)` entrance.
+
 ## 6. Motion & Interaction
 
 ### Timing
 
 | Type | Duration | Easing | Usage |
 | --- | --- | --- | --- |
-| Micro | 120ms | ease-out | Button press |
-| Standard | 220ms | ease-in-out | Modal fade |
+| Micro | --motion-micro: 120ms | --ease-out: cubic-bezier(0.23, 1, 0.32, 1) | Button press, card lift |
+| Standard | --motion-standard: 220ms | --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1) | Panel and message reveal |
 | Emphasis | 420ms | cubic-bezier(0.16, 1, 0.3, 1) | Result state |
 | Game loop | frame-timed | linear | Canvas movement |
 
 ### Rules
 
 - DOM animation only uses `transform` and `opacity`.
-- Respect `prefers-reduced-motion` for decorative DOM transitions.
+- Hover transforms only run inside `@media (hover: hover) and (pointer: fine)`.
+- Pressable surfaces use a short active scale no smaller than `0.97`; entrance motion never originates at zero scale.
+- Respect `prefers-reduced-motion`: remove travel and retain, at most, a short opacity change for status comprehension.
 - Continuous game motion remains core gameplay, but pause and result controls must be immediate.
 
 ## 7. Depth & Surface
 
 ### Strategy
 
-Use borders plus tonal shifts. Shadows are reserved for the modal only.
+Use borders plus tonal shifts. Game shadows remain reserved for the modal; the orientation page may use low-contrast warm rings and short whisper shadows to separate paper layers.
 
 | Type | Value | Usage |
 | --- | --- | --- |
 | Default | 1px solid var(--border-default) | Panels, canvas shell |
 | Subtle | 1px solid var(--border-subtle) | Inner HUD separators |
 | Modal shadow | --shadow-ritual | Upgrade/result modal only |
+| Orientation ring | --shadow-orientation-ring | 1px warm ring plus 0 1px 0 tonal edge | Orientation cards and fields |
+| Orientation whisper | --shadow-orientation-whisper | Short, low-opacity paper lift | Orientation hero board and major panels |
 | Grain overlay | token-mixed text color at low opacity | Fixed decorative overlay and panel texture |
+
+## 8. Accessibility Constraints & Accepted Debt
+
+### Participant Constraints
+
+- **First-time phone visitor**: the QR entry must expose the program, options, and submit action in a single vertical reading order without horizontal scrolling.
+- **Low-vision or zoomed visitor**: text and controls must remain usable at 200% zoom; helper copy keeps AA contrast and never drops below 13px.
+- **Keyboard or screen-reader visitor**: landmarks, labels, fieldsets, native radios, focus indicators, and polite/assertive live regions communicate the full selection flow.
+- **Motion-sensitive visitor**: reduced-motion mode removes travel, lift, and smooth scrolling while keeping state changes legible.
+- **Overwhelmed newcomer**: Korean copy stays short, phrase-safe, and explicit that selection is adjustable and not an evaluation.
+
+### Required Checks
+
+- Interactive targets are at least 44px in both dimensions or have equivalent surrounding label area.
+- Every pressable has default, focus-visible, active, disabled, and fine-pointer hover treatment where applicable.
+- Text and meaningful borders meet WCAG AA contrast against their actual surface.
+- Names and phone numbers never appear in aggregate/public status. Local-only behavior is labeled next to both the form and status.
+- Capacity and cross-device totals are not implied until an official backend is connected.
+
+### Accepted Debt
+
+- The orientation page currently stores selections only in the active browser. It does not provide cross-device realtime totals, server-side identity matching, or operational capacity enforcement.
+- Capacity values and the 직장인 랩 definition remain pending operator decisions. The UI must label them as pending and must not allow selection of an undecided option.
