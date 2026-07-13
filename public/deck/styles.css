@@ -985,3 +985,61 @@ body::before {
     padding: 12px;
   }
 }
+
+/* ---- 데스크톱 반응형(고도화 v1 3-E) ----
+   모바일 마크업 그대로, 900px 이상에서만 판을 넓힌다(StS 구도).
+   min-width 단방향 쿼리라 모바일 기본 스타일은 불변. */
+@media (min-width: 900px) {
+  .app-frame {
+    max-width: 960px;
+  }
+
+  /* 전투 무대: 플레이어 좌측 · 적 우측이 나란히 마주 보는 가로 구도. */
+  .battle-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: 'player enemy';
+    align-items: end;
+    padding: 24px;
+    gap: 16px;
+    min-height: 320px;
+  }
+
+  .player-side {
+    align-self: end;
+  }
+
+  .enemy-side {
+    align-self: end;
+  }
+
+  .player-stage-asset {
+    width: 150px;
+    height: 150px;
+  }
+
+  .enemy-asset {
+    width: 196px;
+  }
+
+  .enemy-asset.enemy-asset-elite {
+    width: 230px;
+  }
+
+  .enemy-asset.enemy-asset-boss {
+    width: 264px;
+  }
+
+  .hp-bar {
+    max-width: 220px;
+  }
+
+  /* 손패: 넓은 판에서는 겹침을 줄이고 카드가 시원하게 펼쳐진다. */
+  .hand-area {
+    padding-top: 34px;
+  }
+
+  .card {
+    width: 118px;
+    min-height: 164px;
+  }
+}

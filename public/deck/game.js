@@ -810,9 +810,11 @@
       return;
     }
     // 겹침 폭: 컨테이너에 다 들어가도록 카드당 좌우 마진을 음수로. [-36, 2]로 클램프.
-    // 회전(±수 deg)이 가로 폭을 약간 키우므로 12px 여유를 빼고 계산한다.
-    var containerWidth = (handListEl.clientWidth || 320) - 12;
-    var cardWidth = 104;
+    // 회전(±수 deg)이 가로 폭을 키운다 — 끝 카드의 회전 바운딩 박스 확장(약
+    // 한쪽 15px)을 고려해 36px 여유를 빼고 계산한다.
+    var containerWidth = (handListEl.clientWidth || 320) - 36;
+    var firstCard = handListEl.firstElementChild;
+    var cardWidth = (firstCard && firstCard.offsetWidth) || 104;
     var mx = Math.max(-36, Math.min(2, (containerWidth - n * cardWidth) / (2 * n)));
     var mid = (n - 1) / 2;
     Array.prototype.forEach.call(handListEl.children, function (child, i) {
@@ -823,6 +825,15 @@
       child.style.setProperty('--fan-y', (off * off * 2.4) + 'px');
     });
   }
+
+  // 뷰포트 폭이 바뀌면(회전·창 크기 조절) 겹침 폭을 다시 계산한다.
+  var fanResizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (fanResizeTimer) {
+      window.clearTimeout(fanResizeTimer);
+    }
+    fanResizeTimer = window.setTimeout(applyFanLayout, 120);
+  });
 
   function renderHand() {
     var animate = animateNextHandRender;
