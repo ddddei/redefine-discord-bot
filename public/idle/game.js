@@ -95,8 +95,14 @@
   var sceneEmojiEl = document.getElementById('scene-emoji');
   var sceneFlagEl = document.getElementById('scene-flag');
   var scenePropsEl = document.getElementById('scene-props');
+  var sceneTickerLayerEl = document.getElementById('scene-ticker-layer');
+  var sceneDeliveryChipEl = document.getElementById('scene-delivery-chip');
+  var sceneHintEl = document.getElementById('scene-hint');
+  var sceneTapLayerEl = document.getElementById('scene-tap-layer');
+  var sceneTapButton = document.getElementById('scene-tap-button');
 
   var makeSnackButton = document.getElementById('make-snack-button');
+  var characterAssetEl = document.getElementById('character-asset');
   var clickAmountLabelEl = document.getElementById('click-amount-label');
   var popupLayerEl = document.getElementById('popup-layer');
 
@@ -105,6 +111,9 @@
   var nextStageLabelEl = document.getElementById('next-stage-label');
   var stageUpgradeButton = document.getElementById('stage-upgrade-button');
   var stageUpgradeCostEl = document.getElementById('stage-upgrade-cost');
+  var stageUpgradeProgressEl = document.getElementById('stage-upgrade-progress');
+  var stageUpgradeProgressFillEl = document.getElementById('stage-upgrade-progress-fill');
+  var stageUpgradeProgressTextEl = document.getElementById('stage-upgrade-progress-text');
 
   var buildingListEl = document.getElementById('building-list');
   var upgradeListEl = document.getElementById('upgrade-list');
@@ -302,12 +311,26 @@
     if (!nextStage) {
       nextStageLabelEl.textContent = '가장 높은 무대에 도달했어요.';
       stageUpgradeButton.classList.add('hidden');
+      if (stageUpgradeProgressEl) {
+        stageUpgradeProgressEl.classList.add('hidden');
+      }
       return;
     }
     stageUpgradeButton.classList.remove('hidden');
     nextStageLabelEl.textContent = '다음 무대: ' + nextStage.title;
     stageUpgradeCostEl.textContent = Engine.formatNumber(nextStage.upgradeCost);
     stageUpgradeButton.disabled = state.snacks < nextStage.upgradeCost;
+
+    // 승급 진행바(디스플레이 전용). 매 프레임 style.width만 갱신하고 DOM은 재생성하지 않는다.
+    if (stageUpgradeProgressEl && stageUpgradeProgressFillEl && stageUpgradeProgressTextEl) {
+      stageUpgradeProgressEl.classList.remove('hidden');
+      var percent = nextStage.upgradeCost > 0
+        ? Math.min(100, Math.max(0, (state.snacks / nextStage.upgradeCost) * 100))
+        : 100;
+      stageUpgradeProgressFillEl.style.width = percent + '%';
+      stageUpgradeProgressEl.classList.toggle('ready', percent >= 100);
+      stageUpgradeProgressTextEl.textContent = Engine.formatNumber(state.snacks) + ' / ' + Engine.formatNumber(nextStage.upgradeCost);
+    }
   }
 
   // 목록의 구매 버튼 참조. 방치 중 재화가 모이면 tick에서 disabled만 갱신한다
@@ -357,6 +380,8 @@
         var result = Engine.buyBuilding(state, building.key);
         if (result.success) {
           onStateChanged();
+          // 첫 시설 구매로 생산량이 0에서 양수로 바뀌었을 수 있으므로 티커 스케줄을 다시 건다.
+          scheduleSceneTicker();
         }
       });
 
@@ -426,6 +451,9 @@
   // 재생성하지 않는다 (재생성하면 누르려던 버튼이 프레임 사이에 교체될 수 있다).
   function renderDeliveryActive() {
     if (!state.delivery) {
+      if (sceneDeliveryChipEl) {
+        sceneDeliveryChipEl.classList.add('hidden');
+      }
       return;
     }
     var delivery = Engine.findDelivery(state.delivery.key);
@@ -437,6 +465,15 @@
       : ('남은 시간 ' + formatDuration(state.delivery.finishesAt - now));
     deliveryActiveRewardEl.textContent = '예상 보상 ' + Engine.formatNumber(Engine.getProductionPerSecond(state, getEventMultiplier()) * delivery.rewardSeconds);
     deliveryCollectButton.disabled = !ready;
+
+    // 장면 좌하단 파견 진행 칩. 남은 시간 갱신은 기존 배달 카운트다운 갱신 지점(tick)에
+    // 편승한다 — 신규 타이머 없음.
+    if (sceneDeliveryChipEl) {
+      sceneDeliveryChipEl.classList.remove('hidden');
+      sceneDeliveryChipEl.textContent = ready
+        ? '배달 중 · 도착했어요'
+        : ('배달 중 · ' + formatDuration(state.delivery.finishesAt - now));
+    }
   }
 
   function renderDelivery() {
@@ -839,17 +876,110 @@
     }, 700);
   }
 
-  makeSnackButton.addEventListener('click', function () {
+  // 간식 생산의 단일 경로. 장면 탭 버튼과 보조 만들기 버튼이 이 함수를 공유한다
+  // (계획서 A.1 — 생산 수치·저장 경로가 두 갈래가 되면 안 된다).
+  function performMakeSnack() {
     var amount = getEffectiveClickAmount(Date.now());
     Engine.addProduced(state, amount);
     state.clickCount += 1;
+    onStateChanged();
+    return amount;
+  }
+
+  function reactCharacterPortrait() {
+    if (!characterAssetEl) {
+      return;
+    }
+    characterAssetEl.classList.remove('portrait-react');
+    // 강제 리플로우로 재시작 가능한 애니메이션 트리거.
+    void characterAssetEl.offsetWidth;
+    characterAssetEl.classList.add('portrait-react');
+  }
+
+  var sceneHintDismissed = false;
+
+  function dismissSceneHint() {
+    if (sceneHintDismissed || !sceneHintEl) {
+      return;
+    }
+    sceneHintDismissed = true;
+    sceneHintEl.classList.add('hidden');
+  }
+
+  // 장면 탭 파티클: 클릭 좌표 기준으로 +N 숫자와 현재 무대에서 처음 해금된 시설
+  // 아이콘을 잠깐 띄운다. 동시 10개 상한.
+  var MAX_SCENE_TAP_PARTICLES = 10;
+  var sceneTapParticleCount = 0;
+
+  function getSceneTapParticleIcon(stage) {
+    var match = null;
+    Content.BUILDINGS.some(function (building) {
+      if (building.unlockStage === stage.id) {
+        match = building;
+        return true;
+      }
+      return false;
+    });
+    if (!match) {
+      match = Content.BUILDINGS[0];
+    }
+    return match ? BUILDING_ASSET[match.key] : null;
+  }
+
+  function spawnSceneTapParticle(clientX, clientY, amount) {
+    if (!sceneTapLayerEl || sceneTapParticleCount >= MAX_SCENE_TAP_PARTICLES) {
+      return;
+    }
+    var rect = stageSceneEl.getBoundingClientRect();
+    var x = typeof clientX === 'number' ? clientX - rect.left : rect.width / 2;
+    var y = typeof clientY === 'number' ? clientY - rect.top : rect.height / 2;
+
+    var particle = document.createElement('div');
+    particle.className = 'scene-tap-particle';
+    particle.style.left = x + 'px';
+    particle.style.top = y + 'px';
+
+    var iconSrc = getSceneTapParticleIcon(Engine.findStage(state.stageId));
+    if (iconSrc) {
+      var icon = document.createElement('img');
+      icon.className = 'scene-tap-particle-icon';
+      icon.src = iconSrc;
+      icon.alt = '';
+      icon.decoding = 'async';
+      particle.appendChild(icon);
+    }
+
+    var label = document.createElement('span');
+    label.className = 'scene-tap-particle-label';
+    label.textContent = '+' + Engine.formatNumber(amount);
+    particle.appendChild(label);
+
+    sceneTapLayerEl.appendChild(particle);
+    sceneTapParticleCount += 1;
+    window.setTimeout(function () {
+      particle.remove();
+      sceneTapParticleCount -= 1;
+    }, 400);
+  }
+
+  makeSnackButton.addEventListener('click', function () {
+    var amount = performMakeSnack();
     showClickPopup(amount);
     makeSnackButton.classList.remove('bounce');
     // 강제 리플로우로 재시작 가능한 애니메이션 트리거.
     void makeSnackButton.offsetWidth;
     makeSnackButton.classList.add('bounce');
-    onStateChanged();
+    dismissSceneHint();
   });
+
+  if (sceneTapButton) {
+    sceneTapButton.addEventListener('click', function (event) {
+      var amount = performMakeSnack();
+      spawnSceneTapParticle(event.clientX, event.clientY, amount);
+      reactCharacterPortrait();
+      dismissSceneHint();
+    });
+  }
 
   // ---- 승급 ----
 
@@ -930,6 +1060,8 @@
       // 무대 1로 돌아가 황금 간식이 다시 잠기므로 표시 중이면 감추고 스케줄을 재설정한다.
       hideGoldenSnack();
       scheduleGoldenSnack();
+      // 시설이 모두 초기화돼 생산량이 0으로 돌아가므로 티커 스케줄도 다시 확인한다.
+      scheduleSceneTicker();
     }
   });
 
@@ -950,6 +1082,7 @@
     onStateChanged();
     hideGoldenSnack();
     scheduleGoldenSnack();
+    scheduleSceneTicker();
   });
 
   // ---- 황금 간식 ----
@@ -1007,6 +1140,80 @@
     onStateChanged();
     scheduleGoldenSnack();
   });
+
+  // ---- 생산 티커 ----
+  // 초당 생산량이 있을 때만 2~4초 랜덤 간격으로 장면 안에서 보유 시설 중 랜덤 1종의
+  // 아이콘이 떠오르며 사라지는 티커를 생성한다. document.hidden이면 멈추고
+  // visibilitychange에서 재개, prefers-reduced-motion이면 아예 생성하지 않는다.
+
+  var MAX_SCENE_TICKERS = 2;
+  var sceneTickerCount = 0;
+  var sceneTickerTimeoutId = null;
+  var reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+
+  function prefersReducedMotion() {
+    return !!(reducedMotionQuery && reducedMotionQuery.matches);
+  }
+
+  function getOwnedBuildingKeys() {
+    return Content.BUILDINGS.filter(function (building) {
+      return state.buildings[building.key] && state.buildings[building.key].owned > 0;
+    }).map(function (building) {
+      return building.key;
+    });
+  }
+
+  function scheduleSceneTicker() {
+    window.clearTimeout(sceneTickerTimeoutId);
+    if (document.hidden || prefersReducedMotion()) {
+      return;
+    }
+    if (Engine.getProductionPerSecond(state, getEventMultiplier()) <= 0) {
+      return;
+    }
+    var delay = 2000 + Math.random() * 2000;
+    sceneTickerTimeoutId = window.setTimeout(spawnSceneTicker, delay);
+  }
+
+  function spawnSceneTicker() {
+    if (document.hidden || prefersReducedMotion() || Engine.getProductionPerSecond(state, getEventMultiplier()) <= 0) {
+      scheduleSceneTicker();
+      return;
+    }
+    if (!sceneTickerLayerEl || sceneTickerCount >= MAX_SCENE_TICKERS) {
+      scheduleSceneTicker();
+      return;
+    }
+    var ownedKeys = getOwnedBuildingKeys();
+    if (ownedKeys.length === 0) {
+      scheduleSceneTicker();
+      return;
+    }
+    var key = ownedKeys[Math.floor(Math.random() * ownedKeys.length)];
+    var icon = document.createElement('img');
+    icon.className = 'scene-ticker';
+    icon.src = BUILDING_ASSET[key];
+    icon.alt = '';
+    icon.decoding = 'async';
+    icon.style.left = (10 + Math.random() * 80) + '%';
+    sceneTickerLayerEl.appendChild(icon);
+    sceneTickerCount += 1;
+    window.setTimeout(function () {
+      icon.remove();
+      sceneTickerCount -= 1;
+    }, 600);
+    scheduleSceneTicker();
+  }
+
+  if (reducedMotionQuery && reducedMotionQuery.addEventListener) {
+    reducedMotionQuery.addEventListener('change', function () {
+      if (prefersReducedMotion()) {
+        window.clearTimeout(sceneTickerTimeoutId);
+      } else {
+        scheduleSceneTicker();
+      }
+    });
+  }
 
   // ---- 오프라인 수익 ----
 
@@ -1070,6 +1277,9 @@
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       saveState();
+      window.clearTimeout(sceneTickerTimeoutId);
+    } else {
+      scheduleSceneTicker();
     }
     // 다시 보일 때 lastTickAt을 리셋하지 않는다. 숨겨진 동안 rAF가 멈춰 있었어도
     // 다음 틱이 경과 시간 전체를 정산하므로 백그라운드 생산이 소실되지 않는다.
@@ -1089,6 +1299,7 @@
     renderAll();
     saveState();
     scheduleGoldenSnack();
+    scheduleSceneTicker();
     // 게임 로드 시 공동 목표를 1회 조회한다(계획서 1.1절). 미연결/오프라인이면
     // refreshGoalCache 내부에서 조용히 실패하고 배너는 숨김 상태로 유지된다.
     refreshGoalCache();
