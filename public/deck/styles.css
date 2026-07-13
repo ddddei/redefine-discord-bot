@@ -468,6 +468,23 @@ body::before {
   color: var(--ink-soft);
 }
 
+.intent-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.intent-icon {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.intent-icon.hidden {
+  display: none;
+}
+
 .intent-value {
   font-size: 14px;
   font-weight: 700;

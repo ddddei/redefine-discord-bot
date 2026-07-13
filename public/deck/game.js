@@ -42,6 +42,15 @@
     vulnerable: '저주(취약)',
   };
 
+  // 의도 아이콘(3-B, 표시 전용). 유형이 늘면 여기와 shared/assets에 함께 추가.
+  var INTENT_ASSET = {
+    attack: '../shared/assets/deck-intent-attack.svg',
+    block: '../shared/assets/deck-intent-block.svg',
+    strength: '../shared/assets/deck-intent-strength.svg',
+    weak: '../shared/assets/deck-intent-weak.svg',
+    vulnerable: '../shared/assets/deck-intent-vulnerable.svg',
+  };
+
   var EFFECT_DESCRIPTION_ORDER = ['damage', 'block', 'draw', 'energy', 'strength', 'weak', 'vulnerable', 'heal', 'selfDamage'];
 
   // 카드 우상단 타입 아이콘 판정: damage 포함=공격, block 포함(damage 없음)=방어, 그 외=스킬.
@@ -292,6 +301,8 @@
   var enemyBlockValueEl = document.getElementById('enemy-block-value');
   var enemyStatusRowEl = document.getElementById('enemy-status-row');
   var enemyIntentValueEl = document.getElementById('enemy-intent-value');
+  var enemyIntentEl = document.getElementById('enemy-intent');
+  var enemyIntentIconEl = document.getElementById('enemy-intent-icon');
   var playerStatusRowEl = document.getElementById('player-status-row');
   var playerBlockValueEl = document.getElementById('player-block-value');
   var enemyHpBarFillEl = document.getElementById('enemy-hp-bar-fill');
@@ -688,17 +699,30 @@
     lastPlayerBlock = combat.playerBlock;
 
     var intent = Engine.getEnemyIntent(state);
-    var intentText = INTENT_LABEL[intent.type];
+    // 의도 아이콘화(3-B): 아이콘+숫자가 주 표기, 유형 한글명은 title/aria로 유지.
+    var intentText;
     if (intent.type === 'attack') {
-      intentText += ' ' + intent.amount + (intent.hits && intent.hits > 1 ? ' × ' + intent.hits + '회' : '');
+      intentText = intent.amount + (intent.hits && intent.hits > 1 ? ' × ' + intent.hits + '회' : '');
     } else if (intent.amount) {
-      intentText += ' ' + intent.amount;
+      intentText = String(intent.amount);
+    } else {
+      intentText = '';
     }
-    enemyIntentValueEl.textContent = intentText;
-    if (lastIntentText !== null && lastIntentText !== intentText) {
+    var intentAsset = INTENT_ASSET[intent.type];
+    if (intentAsset) {
+      enemyIntentIconEl.src = intentAsset;
+      enemyIntentIconEl.classList.remove('hidden');
+    } else {
+      enemyIntentIconEl.classList.add('hidden');
+    }
+    enemyIntentValueEl.textContent = intentText || INTENT_LABEL[intent.type];
+    var intentKey = intent.type + ':' + intentText;
+    enemyIntentEl.setAttribute('title', INTENT_LABEL[intent.type]);
+    enemyIntentEl.setAttribute('aria-label', '다음 행동: ' + INTENT_LABEL[intent.type] + (intentText ? ' ' + intentText : ''));
+    if (lastIntentText !== null && lastIntentText !== intentKey) {
       retriggerAnimation(enemyIntentValueEl, 'intent-changing');
     }
-    lastIntentText = intentText;
+    lastIntentText = intentKey;
 
     energyValueEl.textContent = String(state.player.energy);
 

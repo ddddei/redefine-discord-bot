@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>취약 저주 의도</title>
+  <path d="M32 8 L50 15 L50 32 C50 45 42 52 32 57 C22 52 14 45 14 32 L14 15 Z" fill="#ff7b8f" stroke="#4a3524" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M28 12 L34 24 L27 32 L35 42 L30 52" fill="none" stroke="#4a3524" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 24 L40 20 M35 42 L42 40" fill="none" stroke="#ffd9e0" stroke-width="2.4" stroke-linecap="round"/>
+</svg>
