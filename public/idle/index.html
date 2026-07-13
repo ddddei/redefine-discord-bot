@@ -39,6 +39,24 @@
             <div id="scene-emoji" class="scene-emoji">🧺🍓</div>
             <div id="scene-flag" class="scene-flag hidden"><img src="../shared/art/idle-goal-flag.webp" alt="" loading="lazy" decoding="async" onerror="this.parentNode.textContent='🎉'"></div>
             <div id="scene-props" class="scene-props"></div>
+            <div id="scene-ticker-layer" class="scene-ticker-layer" aria-hidden="true"></div>
+            <p id="scene-delivery-chip" class="gk-chip scene-delivery-chip hidden" aria-hidden="true"></p>
+            <p id="scene-hint" class="scene-hint">공방을 톡톡 두드려 보세요</p>
+            <div id="scene-tap-layer" class="scene-tap-layer" aria-hidden="true"></div>
+            <button id="scene-tap-button" type="button" class="scene-tap-button" aria-label="간식 만들기"></button>
+          </div>
+
+          <div class="stage-upgrade-card">
+            <div id="stage-upgrade-progress" class="stage-upgrade-progress hidden">
+              <div class="stage-upgrade-progress-track">
+                <div id="stage-upgrade-progress-fill" class="stage-upgrade-progress-fill"></div>
+              </div>
+              <p id="stage-upgrade-progress-text" class="stage-upgrade-progress-text">0 / 0</p>
+            </div>
+            <p id="next-stage-label" class="next-stage-label">다음 무대: 포장마차</p>
+            <button id="stage-upgrade-button" type="button" class="gk-button primary">
+              승급하기 (<span id="stage-upgrade-cost">2,000</span>)
+            </button>
           </div>
 
           <button id="make-snack-button" type="button" class="make-snack-button">
@@ -50,13 +68,6 @@
           <div id="popup-layer" class="popup-layer" aria-hidden="true"></div>
 
           <button id="golden-snack-button" type="button" class="golden-snack-button hidden" aria-label="황금 간식"><img src="../shared/art/idle-golden-snack.webp" alt="" loading="lazy" decoding="async" onerror="this.parentNode.textContent='✨🍩'"></button>
-
-          <div class="stage-upgrade-card">
-            <p id="next-stage-label" class="next-stage-label">다음 무대: 포장마차</p>
-            <button id="stage-upgrade-button" type="button" class="gk-button primary">
-              승급하기 (<span id="stage-upgrade-cost">2,000</span>)
-            </button>
-          </div>
         </section>
 
         <section id="tab-facilities" class="tab-panel hidden" data-tab="facilities">
