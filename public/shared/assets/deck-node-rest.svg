@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>휴식</title>
+  <path d="M14 26 L44 26 L42 44 C41.5 48 38 50 34 50 L24 50 C20 50 16.5 48 16 44 Z" fill="#ecc493" stroke="#4a3524" stroke-width="2.8" stroke-linejoin="round"/>
+  <path d="M44 30 L49 30 C52 30 53 33 51.5 35.5 C50.5 37.5 48 38.5 45.5 38 L43.5 37.6" fill="none" stroke="#4a3524" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M24 12 C22 15 26 17 24 20 M33 12 C31 15 35 17 33 20" fill="none" stroke="#c08857" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

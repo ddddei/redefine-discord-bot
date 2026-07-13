@@ -97,24 +97,68 @@ body::before {
 
 .map-scroll {
   flex: 1;
+  /* #screen-run의 align-items: center가 쪼그라뜨리지 않게 전체 폭 확보(3-D) —
+     좌측 여백의 층 라벨이 스크롤 박스 밖에서 잘리는 문제 방지. */
+  align-self: stretch;
+  width: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column-reverse;
-  gap: 10px;
+  gap: 0;
   padding: 8px 4px 4px;
 }
 
+/* 층 사이 점선 잉크 경로(3-D). 선의 위치·기울기는 renderMap이 계산해 넣는다. */
+.map-connector {
+  position: relative;
+  height: 28px;
+  flex: 0 0 28px;
+}
+
+.map-connector-line {
+  position: absolute;
+  top: 50%;
+  border-top: 2px dashed rgba(58, 42, 28, 0.4);
+}
+
+.map-node-icon {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.map-node-marker {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.6px solid var(--ink);
+  display: block;
+}
+
+/* 층 라벨은 경로(노드-연결선)를 끊지 않도록 왼쪽 여백에 절대 배치한다(3-D). */
 .map-floor {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  padding: 4px 0;
 }
 
 .map-floor-label {
+  position: absolute;
+  /* 노드 지그재그(중심 ±27px + 노드 반지름)와 겹치지 않는 고정 좌측 위치. */
+  left: calc(50% - 128px);
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
   font-size: 10px;
   color: var(--ink-soft);
   letter-spacing: 0.04em;
+  background: var(--paper-raised);
+  border: 1px solid rgba(58, 42, 28, 0.35);
+  border-radius: 7px;
+  padding: 1px 6px;
 }
 
 .map-floor-nodes {

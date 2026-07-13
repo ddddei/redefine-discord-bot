@@ -407,12 +407,44 @@
     });
   }
 
-  function nodeTypeEmoji(type) {
-    return type === Content.NODE_TYPES.REST ? '☕'
-      : type === Content.NODE_TYPES.ELITE ? '⚔️'
-      : type === Content.NODE_TYPES.BOSS ? '👑'
-      : type === Content.NODE_TYPES.EVENT ? '❓'
-      : '🍪';
+  // 맵 노드 아이콘(3-D, 표시 전용): 이모지를 라인 스타일 SVG로 교체.
+  function nodeTypeAsset(type) {
+    return type === Content.NODE_TYPES.REST ? '../shared/assets/deck-node-rest.svg'
+      : type === Content.NODE_TYPES.ELITE ? '../shared/assets/deck-node-elite.svg'
+      : type === Content.NODE_TYPES.BOSS ? '../shared/assets/deck-node-boss.svg'
+      : type === Content.NODE_TYPES.EVENT ? '../shared/assets/deck-node-event.svg'
+      : '../shared/assets/deck-node-battle.svg';
+  }
+
+  // 지그재그 경로(3-D): 층별 노드 중심의 가로 오프셋(px). 단일 노드 층은 홀짝
+  // 교대로 좌우, 2노드 층은 좌우 분기. 렌더와 연결선 계산이 같은 값을 쓴다.
+  function floorNodeOffsets(floorNodes) {
+    if (floorNodes.length === 2) {
+      return [-27, 27];
+    }
+    return [floorNodes[0].floor % 2 === 1 ? -26 : 26];
+  }
+
+  // 층 사이 점선 연결선: 아래층 각 노드 중심 -> 위층 각 노드 중심.
+  function buildConnector(lowerOffsets, upperOffsets) {
+    var conn = document.createElement('div');
+    conn.className = 'map-connector';
+    conn.setAttribute('aria-hidden', 'true');
+    var height = 26;
+    lowerOffsets.forEach(function (x1) {
+      upperOffsets.forEach(function (x2) {
+        var dx = x2 - x1;
+        var len = Math.sqrt(dx * dx + height * height);
+        var angle = Math.atan2(-height, dx);
+        var line = document.createElement('span');
+        line.className = 'map-connector-line';
+        line.style.width = len + 'px';
+        line.style.left = 'calc(50% + ' + (((x1 + x2) / 2) - (len / 2)) + 'px)';
+        line.style.transform = 'rotate(' + angle + 'rad)';
+        conn.appendChild(line);
+      });
+    });
+    return conn;
   }
 
   function renderHeader() {
@@ -464,7 +496,16 @@
       visitedSet[id] = true;
     });
 
+    var previousOffsets = null;
     state.map.floors.forEach(function (floorNodes) {
+      var offsets = floorNodeOffsets(floorNodes);
+      // column-reverse 컨테이너라 "이 층 앞에" 넣은 연결선이 화면에서는 이 층
+      // 아래(직전 층과의 사이)에 온다.
+      if (previousOffsets) {
+        mapScrollEl.appendChild(buildConnector(previousOffsets, offsets));
+      }
+      previousOffsets = offsets;
+
       var floorEl = document.createElement('div');
       floorEl.className = 'map-floor';
 
@@ -475,11 +516,30 @@
 
       var nodesEl = document.createElement('div');
       nodesEl.className = 'map-floor-nodes';
+      if (floorNodes.length === 1) {
+        nodesEl.style.transform = 'translateX(' + offsets[0] + 'px)';
+      }
 
       floorNodes.forEach(function (node) {
         var nodeEl = document.createElement('div');
         nodeEl.className = 'map-node';
-        nodeEl.textContent = nodeTypeEmoji(node.type);
+        if (node.id === state.currentNodeId) {
+          // 현재 위치: 노드 아이콘 대신 플레이어 초상 마커(3-D).
+          var marker = document.createElement('img');
+          marker.className = 'map-node-marker';
+          marker.src = '../shared/art/shared-char-baker.webp';
+          marker.alt = '';
+          marker.decoding = 'async';
+          nodeEl.appendChild(marker);
+        } else {
+          var icon = document.createElement('img');
+          icon.className = 'map-node-icon';
+          icon.src = nodeTypeAsset(node.type);
+          icon.alt = '';
+          icon.loading = 'lazy';
+          icon.decoding = 'async';
+          nodeEl.appendChild(icon);
+        }
 
         if (visitedSet[node.id]) {
           nodeEl.classList.add('done');
