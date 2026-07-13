@@ -400,13 +400,12 @@ body::before {
   }
 }
 
+/* 전투 자세 전신 원화(v2) — 투명 배경 webp, 접지 그림자는 원화에 포함. */
 .player-stage-asset {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1.8px solid var(--ink);
-  box-shadow: 0 3px 8px rgba(58, 42, 28, 0.2);
+  height: 168px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 /* 체력바: 잉크 보더 트랙 + 채움. 색은 체력=로즈, 채움 폭은 JS가 %로 지정. */
@@ -1121,8 +1120,7 @@ body::before {
   }
 
   .player-stage-asset {
-    width: 150px;
-    height: 150px;
+    height: 260px;
   }
 
   .enemy-asset {
