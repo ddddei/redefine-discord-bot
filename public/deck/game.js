@@ -732,9 +732,42 @@
   // 딜-인 애니메이션은 실제 드로우가 일어난 다음 렌더 한 번에만 적용한다.
   var animateNextHandRender = false;
 
+  // 손패 부채꼴(3-C): 호버 가능한 기기는 호버+1클릭 사용, 터치 기기는
+  // 1탭 확대 → 2탭 사용(오탭 방지 겸용). 재렌더 시 확대 상태는 풀린다.
+  var hoverCapable = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  var focusedHandIndex = null;
+
+  function focusHandCard(index) {
+    focusedHandIndex = index;
+    Array.prototype.forEach.call(handListEl.children, function (child, i) {
+      child.classList.toggle('card-focused', i === index);
+    });
+  }
+
+  function applyFanLayout() {
+    var n = handListEl.children.length;
+    if (n === 0) {
+      return;
+    }
+    // 겹침 폭: 컨테이너에 다 들어가도록 카드당 좌우 마진을 음수로. [-36, 2]로 클램프.
+    // 회전(±수 deg)이 가로 폭을 약간 키우므로 12px 여유를 빼고 계산한다.
+    var containerWidth = (handListEl.clientWidth || 320) - 12;
+    var cardWidth = 104;
+    var mx = Math.max(-36, Math.min(2, (containerWidth - n * cardWidth) / (2 * n)));
+    var mid = (n - 1) / 2;
+    Array.prototype.forEach.call(handListEl.children, function (child, i) {
+      var off = i - mid;
+      child.style.marginLeft = mx + 'px';
+      child.style.marginRight = mx + 'px';
+      child.style.setProperty('--fan-rot', (off * 3) + 'deg');
+      child.style.setProperty('--fan-y', (off * off * 2.4) + 'px');
+    });
+  }
+
   function renderHand() {
     var animate = animateNextHandRender;
     animateNextHandRender = false;
+    focusedHandIndex = null;
     handListEl.innerHTML = '';
     state.player.hand.forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
@@ -755,10 +788,16 @@
 
       handListEl.appendChild(el);
     });
+    applyFanLayout();
   }
 
   function handleCardTap(cardId, index) {
     if (!state.combat) {
+      return;
+    }
+    // 터치 기기: 1탭째는 확대만 하고 사용하지 않는다(리플레이 로그에도 미기록).
+    if (!hoverCapable && focusedHandIndex !== index) {
+      focusHandCard(index);
       return;
     }
     refreshTracker();
