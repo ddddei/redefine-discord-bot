@@ -1,12 +1,14 @@
 :root {
-  --accent-block: #5b8dff;
+  /* 방어 계열은 visual-polish v1에서 한색(하늘)을 버리고 잎·초록(가이드 3.2절)으로
+     이관 — 회화 톤과의 충돌 해소. 아이콘(deck-icon-defense.svg)과 같은 계열. */
+  --accent-block: #7fce8e;
   --accent-weak: #8a5bff;
   --accent-vulnerable: #e0554f;
   /* --paper 배경 위 텍스트 전용 어둡힌 변형 (WCAG AA 4.5:1 확보) */
   --accent-weak-text: #6e49cc;
   --accent-vulnerable-text: #9d3b37;
   --gold-ink-text: #7c5f28;
-  --accent-block-text: #4063b2;
+  --accent-block-text: #356947;
 }
 
 * {
@@ -611,12 +613,12 @@ body::before {
   text-align: center;
 }
 
-/* 가이드 6.4절 예시(ATTACK)를 그대로 따른다 — 대문자 소문자체 분류 표기. */
+/* 가이드 6.4절 분류 표기 — visual-polish v1에서 한글(공격/방어/스킬)로 개정.
+   한글엔 uppercase가 무의미하고 9px는 너무 작아 10px로 올린다. */
 .card-type-label {
-  font-size: 9px;
-  letter-spacing: 0.06em;
+  font-size: 10px;
+  letter-spacing: 0.12em;
   color: var(--ink-soft);
-  text-transform: uppercase;
 }
 
 .combat-controls {
