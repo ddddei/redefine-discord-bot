@@ -235,10 +235,35 @@
 
   var lastRenderedPropCount = 0;
 
+  // 무대 원화(visual-polish v1): sceneAsset이 있으면 <img>로, 없거나 로드에
+  // 실패하면 기존 sceneEmoji 텍스트로 폴백한다. 현재 무대 1장만 로드해
+  // 전송량 예산을 지킨다 (다음 무대는 승급 시점에 로드).
+  function renderSceneArt(stage) {
+    if (!stage.sceneAsset) {
+      sceneEmojiEl.textContent = stage.sceneEmoji;
+      return;
+    }
+    var current = sceneEmojiEl.firstElementChild;
+    if (current && current.getAttribute('data-stage-id') === String(stage.id)) {
+      return;
+    }
+    var img = document.createElement('img');
+    img.className = 'scene-stage-asset';
+    img.alt = '';
+    img.decoding = 'async';
+    img.setAttribute('data-stage-id', String(stage.id));
+    img.onerror = function () {
+      sceneEmojiEl.textContent = stage.sceneEmoji;
+    };
+    img.src = stage.sceneAsset;
+    sceneEmojiEl.textContent = '';
+    sceneEmojiEl.appendChild(img);
+  }
+
   function renderScene() {
     var stage = Engine.findStage(state.stageId);
     stageSceneEl.setAttribute('data-stage', String(stage.id));
-    sceneEmojiEl.textContent = stage.sceneEmoji;
+    renderSceneArt(stage);
 
     scenePropsEl.innerHTML = '';
     var propsAdded = 0;
