@@ -240,20 +240,83 @@ body::before {
   flex: 1;
 }
 
-/* 적 패널 = 아트 창 구조(가이드 6.6절) — 종이 인셋 프레임 위에 적 실루엣을 얹어
-   래스터 원화 교체를 대비한다. */
-.enemy-panel {
-  background: var(--paper-raised);
+/* 전투 무대(고도화 v1 3-A): 적 우상 · 플레이어 좌하 대각 대치 구도.
+   반투명 종이 패널이라 body의 bg-deck 원화가 무대 뒤로 비친다. */
+.battle-stage {
+  position: relative;
   border: 1.6px solid var(--ink);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  grid-template-areas:
+    '. enemy'
+    'player enemy';
+  gap: 4px 8px;
+  background: rgba(247, 240, 225, 0.82);
+  box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
+}
+
+.enemy-side {
+  grid-area: enemy;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   text-align: center;
-  position: relative;
-  box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
+  min-width: 0;
+}
+
+.player-side {
+  grid-area: player;
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  min-width: 0;
+}
+
+.player-stage-asset {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.8px solid var(--ink);
+  box-shadow: 0 3px 8px rgba(58, 42, 28, 0.2);
+}
+
+/* 체력바: 잉크 보더 트랙 + 채움. 색은 체력=로즈, 채움 폭은 JS가 %로 지정. */
+.hp-bar {
+  width: 100%;
+  max-width: 170px;
+  height: 8px;
+  border: 1.2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--accent-rose);
+  border-radius: 4px;
+  transition: width 0.25s ease;
+}
+
+.player-stat-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-stage-hp {
+  font-weight: 700;
+  color: var(--accent-vulnerable-text);
 }
 
 .enemy-name {
@@ -279,19 +342,19 @@ body::before {
 
 .enemy-asset {
   display: block;
-  width: 164px;
-  height: 164px;
+  width: 148px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  height: auto;
   object-fit: cover;
 }
 
 .enemy-asset.enemy-asset-elite {
-  width: 196px;
-  height: 196px;
+  width: 172px;
 }
 
 .enemy-asset.enemy-asset-boss {
-  width: 228px;
-  height: 228px;
+  width: 196px;
 }
 
 .player-asset {
@@ -424,13 +487,6 @@ body::before {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.player-combat-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
 }
 
 /* 손패 */

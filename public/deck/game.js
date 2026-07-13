@@ -294,6 +294,11 @@
   var enemyIntentValueEl = document.getElementById('enemy-intent-value');
   var playerStatusRowEl = document.getElementById('player-status-row');
   var playerBlockValueEl = document.getElementById('player-block-value');
+  var enemyHpBarFillEl = document.getElementById('enemy-hp-bar-fill');
+  var playerHpBarFillEl = document.getElementById('player-hp-bar-fill');
+  var playerStageHpEl = document.getElementById('player-stage-hp');
+  var playerSideEl = document.getElementById('player-side');
+  var playerStageAssetEl = document.getElementById('player-stage-asset');
   var handListEl = document.getElementById('hand-list');
   var energyValueEl = document.getElementById('energy-value');
   var endTurnButton = document.getElementById('end-turn-button');
@@ -653,6 +658,9 @@
     enemyAssetEl.classList.toggle('enemy-asset-elite', enemy.tier === 'elite');
     enemyAssetEl.classList.toggle('enemy-asset-boss', enemy.tier === 'boss');
     enemyHpValueEl.textContent = Math.max(0, combat.enemyHp) + ' / ' + combat.enemyMaxHp;
+    enemyHpBarFillEl.style.width = Math.max(0, Math.round((Math.max(0, combat.enemyHp) / combat.enemyMaxHp) * 100)) + '%';
+    playerStageHpEl.textContent = state.player.hp + ' / ' + state.player.maxHp;
+    playerHpBarFillEl.style.width = Math.max(0, Math.round((Math.max(0, state.player.hp) / state.player.maxHp) * 100)) + '%';
 
     if (combat.enemyBlock > 0) {
       enemyBlockValueEl.textContent = '방어 ' + combat.enemyBlock;
@@ -759,8 +767,10 @@
     Engine.endTurn(state, tracker);
     pushAction(['e']);
     if (state.player.hp < hpBefore) {
-      showDamagePopup(hpChipEl, hpBefore - state.player.hp);
+      // 무대의 플레이어 캐릭터에서 피해가 보이도록 팝 타깃을 이동(3-A).
+      showDamagePopup(playerStageAssetEl || hpChipEl, hpBefore - state.player.hp);
       flashPlayerHit();
+      retriggerAnimation(playerSideEl, 'gk-shake');
     }
     animateNextHandRender = true;
     commit();
