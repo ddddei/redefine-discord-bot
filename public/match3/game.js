@@ -5,14 +5,17 @@
   var Scoring = window.Match3Scoring;
   var MAX_REPLAY_ACTIONS = 30;
 
-  // v3 원화(webp 정물화). 로직(board.js)과 무관한 표시 전용 매핑이다.
+  // 타일 아트(표시 전용 매핑, 로직 board.js와 무관).
+  // visual-polish v1: v3 원화(webp 정물화)가 전부 어두운 세피아 톤이라 종류 판별을
+  // 해쳐, v2 라인 캐릭터 SVG로 회귀했다(2026-07-13 사용자 결정). 원화 webp는
+  // shared/art/에 보존 — 다른 용도(연출·도감류) 재사용 후보.
   var TILE_ASSET = {
-    strawberry: '../shared/art/match3-tile-strawberry.webp',
-    orange: '../shared/art/match3-tile-orange.webp',
-    candy: '../shared/art/match3-tile-candy.webp',
-    cookie: '../shared/art/match3-tile-cookie.webp',
-    cupcake: '../shared/art/match3-tile-cupcake.webp',
-    jelly: '../shared/art/match3-tile-jelly.webp',
+    strawberry: '../shared/assets/match3-tile-strawberry.svg',
+    orange: '../shared/assets/match3-tile-orange.svg',
+    candy: '../shared/assets/match3-tile-candy.svg',
+    cookie: '../shared/assets/match3-tile-cookie.svg',
+    cupcake: '../shared/assets/match3-tile-cupcake.svg',
+    jelly: '../shared/assets/match3-tile-jelly.svg',
   };
 
   var TILE_LABEL = {
