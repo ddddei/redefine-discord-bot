@@ -47,6 +47,7 @@ Railway·Discord 실환경 설정을 시작하기 전에는 `npm run check:prela
 | [onboarding-operation-runbook.md](onboarding-operation-runbook.md) | 72시간 온보딩 운영 런북 | 선발 참여자 60명을 초대하고 입장 후 72시간 운영 절차를 확인할 때 | 초대 전 체크리스트, 시간대별 운영, 역할별 확인 포인트, 전환 기준 |
 | [onboarding-message-pack.md](onboarding-message-pack.md) | 72시간 온보딩 운영 메시지 패키지 | 입장 직후부터 72시간 이후 전환까지 실제 공지, DM, 문의 답변을 준비할 때 | 시간대별 공지, 역할별 안내, 문의 대응, DM 템플릿, 게시 순서 |
 | [discord-permission-setup-guide.md](discord-permission-setup-guide.md) | Discord 역할/채널 권한 수동 세팅 가이드 | 실제 서버에서 온보딩 역할과 채널 권한을 수동으로 설정하기 전 | 권장 역할, 채널 공개 범위, 운영진 전용 채널 숨김, 봇 권한, 테스트 체크리스트 |
+| [orientation-landing-page-plan.md](orientation-landing-page-plan.md) | 오리엔테이션 랜딩페이지 계획서 | 트랙/랩 소개와 현장 선택 페이지를 구현하기 전 방향을 확정할 때 | 참여자 흐름, 실시간 선택 현황, 중복 방지, 데이터/API 방향, 디자인 원칙, QA |
 | [api-rag-plan.md](api-rag-plan.md) | 향후 API/RAG 연동 설계안 | OpenAI/Gemini API 또는 RAG 도입을 검토할 때 | 권장 답변 흐름, 개인정보 원칙, 프롬프트 방향, 단계별 도입 계획 |
 | [dm-chat-mvp-plan.md](dm-chat-mvp-plan.md) | DM 대화 연습 기능 개발 계획 문서 | DM 대화 연습의 구현 범위 확인, 단계별 개발과 Codex 작업 지시서 작성 시 기준으로 삼을 때 | 전체 구조, 접근 방식, 단계별 계획, 성공 기준, 제약 조건, 위험/롤백 |
 | [dm-chat-improvement-plan.md](dm-chat-improvement-plan.md) | DM 대화 고도화 v1 계획서 (완성 배포판) | DM 대화 2단계(운영 편의)와 대화 초기화·비용 가시성 구현에 착수하거나 Codex 지시서를 작성할 때 | 안전 알림 스로틀, /운영현황 DM 요약, /admin 필터, 대화 초기화, 테스트/QA/롤백 |

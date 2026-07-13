@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="리디파인 오리엔테이션 트랙과 랩을 살펴보고 현장에서 선택하는 페이지입니다.">
+    <meta name="theme-color" content="#F4EFE4">
+    <meta property="og:title" content="리디파인 오리엔테이션 선택">
+    <meta property="og:description" content="트랙과 랩을 살펴보고, 오늘의 방향을 선택해 보세요.">
+    <meta property="og:type" content="website">
+    <title>리디파인 오리엔테이션 선택</title>
+    <link rel="stylesheet" href="/orientation/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="skip-link" href="#selection-form">선택 폼으로 이동</a>
+      <nav class="nav" aria-label="오리엔테이션 페이지">
+        <span class="brand">REDEFINE ORIENTATION</span>
+        <div class="nav-actions">
+          <a href="#options">트랙/랩 보기</a>
+          <a href="#field-status">선택 현황</a>
+        </div>
+      </nav>
+
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="eyebrow">선택은 평가가 아니라 시작점입니다</p>
+          <h1 id="page-title">리디파인 오리엔테이션</h1>
+          <p class="lede">오늘은 전체 프로그램 흐름을 함께 보고, 내가 먼저 머물 트랙과 랩을 고르는 시간입니다. 선택은 이후 운영진 안내에 따라 자유롭게 바꿀 수 있습니다.</p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#selection-form">트랙/랩 선택하기</a>
+            <a class="secondary-link" href="#field-status">현황 보기</a>
+          </div>
+        </div>
+        <div class="hero-board" aria-label="오늘 진행 흐름">
+          <div class="board-heading">
+            <div>
+              <span>TODAY'S ROUTE</span>
+              <strong>오늘의 경로</strong>
+            </div>
+            <span>3 STOPS</span>
+          </div>
+          <ol class="timeline">
+            <li class="timeline-item active">
+              <span>01</span>
+              <div>
+                <strong>프로그램 소개</strong>
+                <p>프로그램 흐름을 확인하고 선택을 준비합니다.</p>
+              </div>
+            </li>
+            <li class="timeline-item">
+              <span>02</span>
+              <div>
+                <strong>트랙과 랩 비교</strong>
+                <p>무용극, TRPG, Writer's Room, Band Session을 살펴봅니다.</p>
+              </div>
+            </li>
+            <li class="timeline-item">
+              <span>03</span>
+              <div>
+                <strong>현장 선택</strong>
+                <p>QR 링크에서 이름과 전화번호로 본인 선택을 남깁니다.</p>
+              </div>
+            </li>
+          </ol>
+          <div class="board-notes" aria-label="선택 안내">
+            <span>선택 변경 가능</span>
+            <span>정원 추후 공개</span>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section class="intro-band" aria-labelledby="program-title">
+        <div>
+          <p class="eyebrow">PROGRAM</p>
+          <h2 id="program-title">오늘 고르는 것은 방향입니다</h2>
+        </div>
+        <div class="intro-copy">
+          <span aria-hidden="true">ORIENTATION NOTE 01</span>
+          <p>트랙은 큰 경험의 축이고, 랩은 함께 실험하는 작업 방식입니다. 한 번 제출한 뒤에도 같은 이름과 전화번호로 다시 들어오면 선택을 변경할 수 있습니다.</p>
+        </div>
+      </section>
+
+      <section id="options" class="options-layout" aria-label="트랙과 랩 소개">
+        <div class="section-heading">
+          <span class="chapter-index" aria-hidden="true">01</span>
+          <p class="eyebrow">TRACKS</p>
+          <h2>트랙 선택</h2>
+          <p>큰 흐름을 하나 고릅니다. 정원은 운영진 확인 후 표시됩니다.</p>
+        </div>
+        <div id="track-list" class="option-grid"></div>
+
+        <div class="section-heading lab-heading">
+          <span class="chapter-index" aria-hidden="true">02</span>
+          <p class="eyebrow">LABS</p>
+          <h2>랩 선택</h2>
+          <p>함께 실험할 작업 방식을 하나 고릅니다.</p>
+        </div>
+        <div id="lab-list" class="option-grid"></div>
+      </section>
+
+      <section class="selection-layout" aria-label="선택 제출과 현황">
+        <form id="selection-form" class="selection-panel" novalidate>
+          <div class="section-heading compact">
+            <span class="chapter-index" aria-hidden="true">03</span>
+            <p class="eyebrow">CHECK IN</p>
+            <h2>내 선택 남기기</h2>
+            <p>현장 QR로 접속해 본명과 전화번호를 입력합니다. 지금은 프론트 확인 단계라 이 기기에만 저장됩니다.</p>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              본명
+              <input id="participant-name" name="name" autocomplete="name" required minlength="2" placeholder="예: 김리디">
+            </label>
+            <label>
+              전화번호
+              <input id="participant-phone" name="phone" autocomplete="tel" inputmode="tel" required placeholder="010-1234-5678">
+            </label>
+          </div>
+
+          <fieldset>
+            <legend>트랙</legend>
+            <div id="track-choice-list" class="choice-list"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>랩</legend>
+            <div id="lab-choice-list" class="choice-list"></div>
+          </fieldset>
+
+          <p id="form-error" class="form-message error" role="alert" aria-live="assertive" aria-atomic="true" hidden></p>
+          <p id="form-success" class="form-message success" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+
+          <div class="form-actions">
+            <button type="submit">선택 저장</button>
+            <button id="reset-form" type="button" class="ghost-button">입력 지우기</button>
+          </div>
+          <p class="privacy-note">공개 현황에는 이름과 전화번호가 표시되지 않습니다. 실제 운영 저장소는 추후 결정 후 연결됩니다.</p>
+        </form>
+
+        <aside id="field-status" class="status-panel" aria-labelledby="status-title">
+          <div class="section-heading compact">
+            <span class="chapter-index" aria-hidden="true">04</span>
+            <p class="eyebrow">FIELD STATUS</p>
+            <h2 id="status-title">선택 현황</h2>
+            <p id="status-caption">아직 이 브라우저에 저장된 선택이 없습니다.</p>
+          </div>
+          <div class="status-summary">
+            <article>
+              <span>제출</span>
+              <strong id="total-count">0</strong>
+            </article>
+            <article>
+              <span>마지막 갱신</span>
+              <strong id="last-updated">-</strong>
+            </article>
+          </div>
+          <div class="distribution-group">
+            <h3>트랙 분포</h3>
+            <div id="track-status-list" class="distribution-list"></div>
+          </div>
+          <div class="distribution-group">
+            <h3>랩 분포</h3>
+            <div id="lab-status-list" class="distribution-list"></div>
+          </div>
+          <div id="my-selection" class="my-selection" hidden></div>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <span>REDEFINE ORIENTATION</span>
+        <strong>고르는 일도 함께 연습합니다.</strong>
+      </div>
+      <p>선택이 어렵다면 현장 운영진에게 말해 주세요. 천천히 바꿔도 괜찮습니다.</p>
+    </footer>
+
+    <script src="/orientation/app.js"></script>
+  </body>
+</html>

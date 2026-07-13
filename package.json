@@ -10,7 +10,8 @@
     "check:prelaunch": "node scripts/check-prelaunch.js",
     "check:local-data": "node scripts/check-local-operation-data.js",
     "validate:data": "node scripts/validate-data.js",
-    "test:questions": "node scripts/test-questions.js"
+    "test:questions": "node scripts/test-questions.js",
+    "test:orientation": "node scripts/test-orientation-static.js"
   },
   "keywords": [],
   "author": "",
