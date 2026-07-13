@@ -42,6 +42,15 @@
     vulnerable: '저주(취약)',
   };
 
+  // 의도 아이콘(3-B, 표시 전용). 유형이 늘면 여기와 shared/assets에 함께 추가.
+  var INTENT_ASSET = {
+    attack: '../shared/assets/deck-intent-attack.svg',
+    block: '../shared/assets/deck-intent-block.svg',
+    strength: '../shared/assets/deck-intent-strength.svg',
+    weak: '../shared/assets/deck-intent-weak.svg',
+    vulnerable: '../shared/assets/deck-intent-vulnerable.svg',
+  };
+
   var EFFECT_DESCRIPTION_ORDER = ['damage', 'block', 'draw', 'energy', 'strength', 'weak', 'vulnerable', 'heal', 'selfDamage'];
 
   // 카드 우상단 타입 아이콘 판정: damage 포함=공격, block 포함(damage 없음)=방어, 그 외=스킬.
@@ -292,8 +301,16 @@
   var enemyBlockValueEl = document.getElementById('enemy-block-value');
   var enemyStatusRowEl = document.getElementById('enemy-status-row');
   var enemyIntentValueEl = document.getElementById('enemy-intent-value');
+  var enemyIntentEl = document.getElementById('enemy-intent');
+  var enemyIntentIconEl = document.getElementById('enemy-intent-icon');
   var playerStatusRowEl = document.getElementById('player-status-row');
   var playerBlockValueEl = document.getElementById('player-block-value');
+  var enemyHpBarFillEl = document.getElementById('enemy-hp-bar-fill');
+  var playerHpBarFillEl = document.getElementById('player-hp-bar-fill');
+  var playerStageHpEl = document.getElementById('player-stage-hp');
+  var playerSideEl = document.getElementById('player-side');
+  var enemySideEl = document.querySelector('.enemy-side');
+  var playerStageAssetEl = document.getElementById('player-stage-asset');
   var handListEl = document.getElementById('hand-list');
   var energyValueEl = document.getElementById('energy-value');
   var endTurnButton = document.getElementById('end-turn-button');
@@ -358,6 +375,41 @@
     retriggerAnimation(enemyAssetEl, 'gk-shake');
   }
 
+  var enemyArtWindowEl = document.querySelector('.enemy-art-window');
+
+  // 히트 플래시(모션 팩 v2): 기존 shakeEnemy()와 병행 호출한다.
+  function flashHitEnemy() {
+    retriggerAnimation(enemyArtWindowEl, 'hit-flash');
+  }
+
+  // 공격 런지(모션 팩 v2): 플레이어가 피해 카드를 사용했을 때 적 방향으로 살짝
+  // 튀어나갔다 복귀한다.
+  function lungePlayer() {
+    retriggerAnimation(playerSideEl, 'player-lunge');
+  }
+
+  // 적 공격 런지(모션 팩 v2): 적의 의도가 공격일 때 턴 종료 처리 직전 재생한다.
+  function lungeEnemy() {
+    retriggerAnimation(enemySideEl, 'enemy-lunge');
+  }
+
+  // 방패 팝(모션 팩 v2): 카드 효과에 block이 있을 때 플레이어 쪽에 아이콘 복제본을
+  // 잠깐 띄운다. 입력을 막지 않도록 원본 DOM 흐름 밖(절대 배치)에 얹고 타임아웃으로
+  // 제거한다(animateCardPlay의 복제본 원칙과 동일).
+  function popShieldOnPlayer() {
+    if (!playerSideEl) {
+      return;
+    }
+    var icon = document.createElement('img');
+    icon.src = '../shared/assets/deck-intent-block.svg';
+    icon.alt = '';
+    icon.className = 'shield-pop-icon';
+    playerSideEl.appendChild(icon);
+    window.setTimeout(function () {
+      icon.remove();
+    }, 350);
+  }
+
   function pulseBlockBadge(el) {
     retriggerAnimation(el, 'badge-gain');
   }
@@ -391,12 +443,44 @@
     });
   }
 
-  function nodeTypeEmoji(type) {
-    return type === Content.NODE_TYPES.REST ? '☕'
-      : type === Content.NODE_TYPES.ELITE ? '⚔️'
-      : type === Content.NODE_TYPES.BOSS ? '👑'
-      : type === Content.NODE_TYPES.EVENT ? '❓'
-      : '🍪';
+  // 맵 노드 아이콘(3-D, 표시 전용): 이모지를 라인 스타일 SVG로 교체.
+  function nodeTypeAsset(type) {
+    return type === Content.NODE_TYPES.REST ? '../shared/assets/deck-node-rest.svg'
+      : type === Content.NODE_TYPES.ELITE ? '../shared/assets/deck-node-elite.svg'
+      : type === Content.NODE_TYPES.BOSS ? '../shared/assets/deck-node-boss.svg'
+      : type === Content.NODE_TYPES.EVENT ? '../shared/assets/deck-node-event.svg'
+      : '../shared/assets/deck-node-battle.svg';
+  }
+
+  // 지그재그 경로(3-D): 층별 노드 중심의 가로 오프셋(px). 단일 노드 층은 홀짝
+  // 교대로 좌우, 2노드 층은 좌우 분기. 렌더와 연결선 계산이 같은 값을 쓴다.
+  function floorNodeOffsets(floorNodes) {
+    if (floorNodes.length === 2) {
+      return [-27, 27];
+    }
+    return [floorNodes[0].floor % 2 === 1 ? -26 : 26];
+  }
+
+  // 층 사이 점선 연결선: 아래층 각 노드 중심 -> 위층 각 노드 중심.
+  function buildConnector(lowerOffsets, upperOffsets) {
+    var conn = document.createElement('div');
+    conn.className = 'map-connector';
+    conn.setAttribute('aria-hidden', 'true');
+    var height = 26;
+    lowerOffsets.forEach(function (x1) {
+      upperOffsets.forEach(function (x2) {
+        var dx = x2 - x1;
+        var len = Math.sqrt(dx * dx + height * height);
+        var angle = Math.atan2(-height, dx);
+        var line = document.createElement('span');
+        line.className = 'map-connector-line';
+        line.style.width = len + 'px';
+        line.style.left = 'calc(50% + ' + (((x1 + x2) / 2) - (len / 2)) + 'px)';
+        line.style.transform = 'rotate(' + angle + 'rad)';
+        conn.appendChild(line);
+      });
+    });
+    return conn;
   }
 
   function renderHeader() {
@@ -448,7 +532,16 @@
       visitedSet[id] = true;
     });
 
+    var previousOffsets = null;
     state.map.floors.forEach(function (floorNodes) {
+      var offsets = floorNodeOffsets(floorNodes);
+      // column-reverse 컨테이너라 "이 층 앞에" 넣은 연결선이 화면에서는 이 층
+      // 아래(직전 층과의 사이)에 온다.
+      if (previousOffsets) {
+        mapScrollEl.appendChild(buildConnector(previousOffsets, offsets));
+      }
+      previousOffsets = offsets;
+
       var floorEl = document.createElement('div');
       floorEl.className = 'map-floor';
 
@@ -459,11 +552,30 @@
 
       var nodesEl = document.createElement('div');
       nodesEl.className = 'map-floor-nodes';
+      if (floorNodes.length === 1) {
+        nodesEl.style.transform = 'translateX(' + offsets[0] + 'px)';
+      }
 
       floorNodes.forEach(function (node) {
         var nodeEl = document.createElement('div');
         nodeEl.className = 'map-node';
-        nodeEl.textContent = nodeTypeEmoji(node.type);
+        if (node.id === state.currentNodeId) {
+          // 현재 위치: 노드 아이콘 대신 플레이어 초상 마커(3-D).
+          var marker = document.createElement('img');
+          marker.className = 'map-node-marker';
+          marker.src = '../shared/art/shared-char-baker.webp';
+          marker.alt = '';
+          marker.decoding = 'async';
+          nodeEl.appendChild(marker);
+        } else {
+          var icon = document.createElement('img');
+          icon.className = 'map-node-icon';
+          icon.src = nodeTypeAsset(node.type);
+          icon.alt = '';
+          icon.loading = 'lazy';
+          icon.decoding = 'async';
+          nodeEl.appendChild(icon);
+        }
 
         if (visitedSet[node.id]) {
           nodeEl.classList.add('done');
@@ -653,6 +765,9 @@
     enemyAssetEl.classList.toggle('enemy-asset-elite', enemy.tier === 'elite');
     enemyAssetEl.classList.toggle('enemy-asset-boss', enemy.tier === 'boss');
     enemyHpValueEl.textContent = Math.max(0, combat.enemyHp) + ' / ' + combat.enemyMaxHp;
+    enemyHpBarFillEl.style.width = Math.max(0, Math.round((Math.max(0, combat.enemyHp) / combat.enemyMaxHp) * 100)) + '%';
+    playerStageHpEl.textContent = state.player.hp + ' / ' + state.player.maxHp;
+    playerHpBarFillEl.style.width = Math.max(0, Math.round((Math.max(0, state.player.hp) / state.player.maxHp) * 100)) + '%';
 
     if (combat.enemyBlock > 0) {
       enemyBlockValueEl.textContent = '방어 ' + combat.enemyBlock;
@@ -680,17 +795,30 @@
     lastPlayerBlock = combat.playerBlock;
 
     var intent = Engine.getEnemyIntent(state);
-    var intentText = INTENT_LABEL[intent.type];
+    // 의도 아이콘화(3-B): 아이콘+숫자가 주 표기, 유형 한글명은 title/aria로 유지.
+    var intentText;
     if (intent.type === 'attack') {
-      intentText += ' ' + intent.amount + (intent.hits && intent.hits > 1 ? ' × ' + intent.hits + '회' : '');
+      intentText = intent.amount + (intent.hits && intent.hits > 1 ? ' × ' + intent.hits + '회' : '');
     } else if (intent.amount) {
-      intentText += ' ' + intent.amount;
+      intentText = String(intent.amount);
+    } else {
+      intentText = '';
     }
-    enemyIntentValueEl.textContent = intentText;
-    if (lastIntentText !== null && lastIntentText !== intentText) {
+    var intentAsset = INTENT_ASSET[intent.type];
+    if (intentAsset) {
+      enemyIntentIconEl.src = intentAsset;
+      enemyIntentIconEl.classList.remove('hidden');
+    } else {
+      enemyIntentIconEl.classList.add('hidden');
+    }
+    enemyIntentValueEl.textContent = intentText || INTENT_LABEL[intent.type];
+    var intentKey = intent.type + ':' + intentText;
+    enemyIntentEl.setAttribute('title', INTENT_LABEL[intent.type]);
+    enemyIntentEl.setAttribute('aria-label', '다음 행동: ' + INTENT_LABEL[intent.type] + (intentText ? ' ' + intentText : ''));
+    if (lastIntentText !== null && lastIntentText !== intentKey) {
       retriggerAnimation(enemyIntentValueEl, 'intent-changing');
     }
-    lastIntentText = intentText;
+    lastIntentText = intentKey;
 
     energyValueEl.textContent = String(state.player.energy);
 
@@ -700,9 +828,53 @@
   // 딜-인 애니메이션은 실제 드로우가 일어난 다음 렌더 한 번에만 적용한다.
   var animateNextHandRender = false;
 
+  // 손패 부채꼴(3-C): 호버 가능한 기기는 호버+1클릭 사용, 터치 기기는
+  // 1탭 확대 → 2탭 사용(오탭 방지 겸용). 재렌더 시 확대 상태는 풀린다.
+  var hoverCapable = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  var focusedHandIndex = null;
+
+  function focusHandCard(index) {
+    focusedHandIndex = index;
+    Array.prototype.forEach.call(handListEl.children, function (child, i) {
+      child.classList.toggle('card-focused', i === index);
+    });
+  }
+
+  function applyFanLayout() {
+    var n = handListEl.children.length;
+    if (n === 0) {
+      return;
+    }
+    // 겹침 폭: 컨테이너에 다 들어가도록 카드당 좌우 마진을 음수로. [-36, 2]로 클램프.
+    // 회전(±수 deg)이 가로 폭을 키운다 — 끝 카드의 회전 바운딩 박스 확장(약
+    // 한쪽 15px)을 고려해 36px 여유를 빼고 계산한다.
+    var containerWidth = (handListEl.clientWidth || 320) - 36;
+    var firstCard = handListEl.firstElementChild;
+    var cardWidth = (firstCard && firstCard.offsetWidth) || 104;
+    var mx = Math.max(-36, Math.min(2, (containerWidth - n * cardWidth) / (2 * n)));
+    var mid = (n - 1) / 2;
+    Array.prototype.forEach.call(handListEl.children, function (child, i) {
+      var off = i - mid;
+      child.style.marginLeft = mx + 'px';
+      child.style.marginRight = mx + 'px';
+      child.style.setProperty('--fan-rot', (off * 3) + 'deg');
+      child.style.setProperty('--fan-y', (off * off * 2.4) + 'px');
+    });
+  }
+
+  // 뷰포트 폭이 바뀌면(회전·창 크기 조절) 겹침 폭을 다시 계산한다.
+  var fanResizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (fanResizeTimer) {
+      window.clearTimeout(fanResizeTimer);
+    }
+    fanResizeTimer = window.setTimeout(applyFanLayout, 120);
+  });
+
   function renderHand() {
     var animate = animateNextHandRender;
     animateNextHandRender = false;
+    focusedHandIndex = null;
     handListEl.innerHTML = '';
     state.player.hand.forEach(function (cardId, index) {
       var card = Engine.findCard(cardId);
@@ -723,25 +895,39 @@
 
       handListEl.appendChild(el);
     });
+    applyFanLayout();
   }
 
   function handleCardTap(cardId, index) {
     if (!state.combat) {
       return;
     }
+    // 터치 기기: 1탭째는 확대만 하고 사용하지 않는다(리플레이 로그에도 미기록).
+    if (!hoverCapable && focusedHandIndex !== index) {
+      focusHandCard(index);
+      return;
+    }
     refreshTracker();
     var cardEl = handListEl.children[index];
+    var card = Engine.findCard(cardId);
     var result = Engine.playCard(state, cardId, index, tracker);
     if (result.success) {
       pushAction(['p', cardId, index]);
       animateCardPlay(cardEl);
+      if (card && card.effect && card.effect.damage !== undefined) {
+        lungePlayer();
+      }
       if (result.results && result.results.hits) {
         result.results.hits.forEach(function (hit) {
           showDamagePopup(enemyAssetEl, hit.amount);
         });
         if (result.results.hits.length > 0) {
           shakeEnemy();
+          flashHitEnemy();
         }
+      }
+      if (card && card.effect && card.effect.block !== undefined) {
+        popShieldOnPlayer();
       }
       commit();
       if (state.screen !== 'combat') {
@@ -756,11 +942,17 @@
     }
     refreshTracker();
     var hpBefore = state.player.hp;
+    var intentBeforeEndTurn = Engine.getEnemyIntent(state);
+    if (intentBeforeEndTurn && intentBeforeEndTurn.type === 'attack') {
+      lungeEnemy();
+    }
     Engine.endTurn(state, tracker);
     pushAction(['e']);
     if (state.player.hp < hpBefore) {
-      showDamagePopup(hpChipEl, hpBefore - state.player.hp);
+      // 무대의 플레이어 캐릭터에서 피해가 보이도록 팝 타깃을 이동(3-A).
+      showDamagePopup(playerStageAssetEl || hpChipEl, hpBefore - state.player.hp);
       flashPlayerHit();
+      retriggerAnimation(playerSideEl, 'gk-shake');
     }
     animateNextHandRender = true;
     commit();

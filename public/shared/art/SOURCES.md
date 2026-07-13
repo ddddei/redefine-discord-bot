@@ -8,3 +8,4 @@
 | `match3-tile-*.webp` 6종, `shared-char-baker.webp` | ChatGPT 이미지 생성 (운영자 계정) | 2026-07-04 | 프롬프트: 3.2~3.3절. 원본 1254px png → 512px webp(q78) |
 | `bg-match3/idle/deck.webp` 3종 | ChatGPT 이미지 생성 (운영자 계정) | 2026-07-04 | 프롬프트: 3.4절. 원본 1672×941 png → 1280px webp(q78) |
 | `idle-stage-1~6.webp`, `idle-golden-snack.webp`, `idle-goal-flag.webp` 8종 | ChatGPT 이미지 생성 (운영자 계정) | 2026-07-13 | 프롬프트: 6.2절. 생성물이 투명 배경 대신 체커보드가 구워진 RGB png(1254px)라 Claude가 flood-fill 배경 제거(무채색 밝은 톤 기준) 후 알파 webp 변환(1024px, q70~80) |
+| `deck-char-baker-battle.webp` | ChatGPT 이미지 생성 (운영자 계정) | 2026-07-13 | 전투 자세 전신 제빵사(덱 고도화 v2). 가짜 투명 제거 후 알파 webp(658×1024, q80, 93KB) |
