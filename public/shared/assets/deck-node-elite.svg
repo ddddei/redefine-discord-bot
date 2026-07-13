@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>정예 전투</title>
+  <rect x="10" y="28" width="30" height="8" rx="4" transform="rotate(-40 32 32)" fill="#c98a4b" stroke="#4a3524" stroke-width="2.8"/>
+  <rect x="24" y="28" width="30" height="8" rx="4" transform="rotate(40 32 32)" fill="#e6c194" stroke="#4a3524" stroke-width="2.8"/>
+  <path d="M32 6 L34.4 12 L40 12.6 L35.8 16.6 L37.2 22 L32 19 L26.8 22 L28.2 16.6 L24 12.6 L29.6 12 Z" fill="#ffd166" stroke="#4a3524" stroke-width="2.2" stroke-linejoin="round"/>
+</svg>
