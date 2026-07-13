@@ -309,6 +309,7 @@
   var playerHpBarFillEl = document.getElementById('player-hp-bar-fill');
   var playerStageHpEl = document.getElementById('player-stage-hp');
   var playerSideEl = document.getElementById('player-side');
+  var enemySideEl = document.querySelector('.enemy-side');
   var playerStageAssetEl = document.getElementById('player-stage-asset');
   var handListEl = document.getElementById('hand-list');
   var energyValueEl = document.getElementById('energy-value');
@@ -372,6 +373,41 @@
 
   function shakeEnemy() {
     retriggerAnimation(enemyAssetEl, 'gk-shake');
+  }
+
+  var enemyArtWindowEl = document.querySelector('.enemy-art-window');
+
+  // 히트 플래시(모션 팩 v2): 기존 shakeEnemy()와 병행 호출한다.
+  function flashHitEnemy() {
+    retriggerAnimation(enemyArtWindowEl, 'hit-flash');
+  }
+
+  // 공격 런지(모션 팩 v2): 플레이어가 피해 카드를 사용했을 때 적 방향으로 살짝
+  // 튀어나갔다 복귀한다.
+  function lungePlayer() {
+    retriggerAnimation(playerSideEl, 'player-lunge');
+  }
+
+  // 적 공격 런지(모션 팩 v2): 적의 의도가 공격일 때 턴 종료 처리 직전 재생한다.
+  function lungeEnemy() {
+    retriggerAnimation(enemySideEl, 'enemy-lunge');
+  }
+
+  // 방패 팝(모션 팩 v2): 카드 효과에 block이 있을 때 플레이어 쪽에 아이콘 복제본을
+  // 잠깐 띄운다. 입력을 막지 않도록 원본 DOM 흐름 밖(절대 배치)에 얹고 타임아웃으로
+  // 제거한다(animateCardPlay의 복제본 원칙과 동일).
+  function popShieldOnPlayer() {
+    if (!playerSideEl) {
+      return;
+    }
+    var icon = document.createElement('img');
+    icon.src = '../shared/assets/deck-intent-block.svg';
+    icon.alt = '';
+    icon.className = 'shield-pop-icon';
+    playerSideEl.appendChild(icon);
+    window.setTimeout(function () {
+      icon.remove();
+    }, 350);
   }
 
   function pulseBlockBadge(el) {
@@ -873,17 +909,25 @@
     }
     refreshTracker();
     var cardEl = handListEl.children[index];
+    var card = Engine.findCard(cardId);
     var result = Engine.playCard(state, cardId, index, tracker);
     if (result.success) {
       pushAction(['p', cardId, index]);
       animateCardPlay(cardEl);
+      if (card && card.effect && card.effect.damage !== undefined) {
+        lungePlayer();
+      }
       if (result.results && result.results.hits) {
         result.results.hits.forEach(function (hit) {
           showDamagePopup(enemyAssetEl, hit.amount);
         });
         if (result.results.hits.length > 0) {
           shakeEnemy();
+          flashHitEnemy();
         }
+      }
+      if (card && card.effect && card.effect.block !== undefined) {
+        popShieldOnPlayer();
       }
       commit();
       if (state.screen !== 'combat') {
@@ -898,6 +942,10 @@
     }
     refreshTracker();
     var hpBefore = state.player.hp;
+    var intentBeforeEndTurn = Engine.getEnemyIntent(state);
+    if (intentBeforeEndTurn && intentBeforeEndTurn.type === 'attack') {
+      lungeEnemy();
+    }
     Engine.endTurn(state, tracker);
     pushAction(['e']);
     if (state.player.hp < hpBefore) {

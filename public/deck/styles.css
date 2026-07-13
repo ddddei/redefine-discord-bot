@@ -284,8 +284,10 @@ body::before {
   flex: 1;
 }
 
-/* 전투 무대(고도화 v1 3-A): 적 우상 · 플레이어 좌하 대각 대치 구도.
-   반투명 종이 패널이라 body의 bg-deck 원화가 무대 뒤로 비친다. */
+/* 전투 무대(고도화 v1 3-A → 모션 팩 v2에서 원화 배경으로 교체): 적 우상 · 플레이어
+   좌하 대각 대치 구도. body::before가 이미 로드한 bg-deck.webp를 재사용(전송량
+   증가 없음) — 무대 자체가 촛불 공방 원화 위에 놓인다. 어두운 그라디언트 오버레이
+   위에서도 수치·이름이 즉독되도록 텍스트 묶음은 .stage-chip(종이 칩)으로 감싼다. */
 .battle-stage {
   position: relative;
   border: 1.6px solid var(--ink);
@@ -297,8 +299,16 @@ body::before {
     '. enemy'
     'player enemy';
   gap: 4px 8px;
-  background: rgba(247, 240, 225, 0.82);
+  background: linear-gradient(rgba(58, 42, 28, 0.38), rgba(58, 42, 28, 0.52)), url('../shared/art/bg-deck.webp') center / cover no-repeat;
   box-shadow: 0 4px 10px rgba(58, 42, 28, 0.14);
+}
+
+/* 어두운 원화 배경 위 가독성용 종이 칩(모션 팩 v2). 칩 불투명도 0.88 — 낮추면
+   촛불 공방 배경 위에서 수치가 즉독되지 않아 대비를 우선했다(지시서 3-B-4 판단 기준). */
+.stage-chip {
+  background: rgba(247, 240, 225, 0.88);
+  border-radius: 8px;
+  padding: 2px 8px;
 }
 
 .enemy-side {
@@ -314,12 +324,80 @@ body::before {
 .player-side {
   grid-area: player;
   align-self: end;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
   text-align: center;
   min-width: 0;
+}
+
+/* 공격 런지(모션 팩 v2): 피해 카드 사용 시 적 방향(우상)으로 튀어나갔다 복귀.
+   모바일 기본값은 대각 무대 구도 기준 (30px, 0)는 900px 이상 가로 구도에서 덮어쓴다. */
+.player-side.player-lunge {
+  animation: player-lunge-motion 0.25s ease;
+}
+
+@keyframes player-lunge-motion {
+  0% {
+    transform: translate(0, 0);
+  }
+  40% {
+    transform: translate(22px, -10px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* 적 공격 런지(모션 팩 v2): 적 의도가 공격일 때 턴 종료 직전 플레이어 방향(좌하)으로
+   튀어나갔다 복귀. */
+.enemy-side.enemy-lunge {
+  animation: enemy-lunge-motion 0.25s ease;
+}
+
+@keyframes enemy-lunge-motion {
+  0% {
+    transform: translate(0, 0);
+  }
+  40% {
+    transform: translate(-20px, 10px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* 방패 팝(모션 팩 v2): 카드 효과에 block이 있을 때 플레이어 무대 중앙 위에 복제
+   아이콘을 잠깐 띄운다. 입력을 막지 않도록 pointer-events: none, JS가 타임아웃으로
+   제거한다. */
+.shield-pop-icon {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, 0) scale(0.5);
+  opacity: 0;
+  pointer-events: none;
+  animation: shield-pop-motion 0.35s ease forwards;
+  z-index: 6;
+}
+
+@keyframes shield-pop-motion {
+  0% {
+    transform: translate(-50%, 0) scale(0.5);
+    opacity: 0;
+  }
+  55% {
+    transform: translate(-50%, 0) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
 }
 
 .player-stage-asset {
@@ -338,7 +416,9 @@ body::before {
   height: 8px;
   border: 1.2px solid var(--ink);
   border-radius: 6px;
-  background: var(--paper);
+  /* 모션 팩 v2: 무대 배경이 원화로 바뀌며 어두워져 트랙도 종이 칩과 같은 톤으로
+     밝혀야 채움과 구분된다. */
+  background: rgba(247, 240, 225, 0.75);
   overflow: hidden;
 }
 
@@ -374,6 +454,7 @@ body::before {
 /* 아트 창: v3 원화(webp, 정사각 풀블리드 회화)를 담는다. 프레임 안쪽에 여백 없이
    가득 채우고, 등급별로 창 자체의 크기를 차등한다. */
 .enemy-art-window {
+  position: relative;
   background: var(--paper-deep);
   border: 1.4px solid var(--ink);
   border-radius: var(--radius-md);
@@ -382,6 +463,33 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 히트 플래시(모션 팩 v2): 흰색 오버레이 opacity만 애니메이션 — shakeEnemy()와
+   병행 재생된다. */
+.enemy-art-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.enemy-art-window.hit-flash::after {
+  animation: enemy-hit-flash 0.2s ease;
+}
+
+@keyframes enemy-hit-flash {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .enemy-asset {
@@ -1041,5 +1149,41 @@ body::before {
   .card {
     width: 118px;
     min-height: 164px;
+  }
+
+  /* 가로 대치 구도(플레이어 좌 · 적 우)에서는 런지 방향도 순수 수평으로 덮어쓴다. */
+  @keyframes player-lunge-motion {
+    0% {
+      transform: translate(0, 0);
+    }
+    40% {
+      transform: translate(30px, 0);
+    }
+    100% {
+      transform: translate(0, 0);
+    }
+  }
+
+  @keyframes enemy-lunge-motion {
+    0% {
+      transform: translate(0, 0);
+    }
+    40% {
+      transform: translate(-30px, 0);
+    }
+    100% {
+      transform: translate(0, 0);
+    }
+  }
+}
+
+/* ---- 모션 접근성(모션 팩 v2) ----
+   신규 keyframes 4종(공격 런지·적 런지·히트 플래시·방패 팝)을 감소 모션에서 끈다. */
+@media (prefers-reduced-motion: reduce) {
+  .player-side.player-lunge,
+  .enemy-side.enemy-lunge,
+  .enemy-art-window.hit-flash::after,
+  .shield-pop-icon {
+    animation: none;
   }
 }
