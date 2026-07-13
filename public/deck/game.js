@@ -57,16 +57,17 @@
     return '../shared/assets/deck-icon-skill.svg';
   }
 
-  // 하단 분류 표기(가이드 6.4절). 코드 판정 로직은 getCardTypeAsset과 동일 기준을 공유한다.
+  // 하단 분류 표기(가이드 6.4절 — visual-polish v1에서 한글로 개정).
+  // 코드 판정 로직은 getCardTypeAsset과 동일 기준을 공유한다.
   function getCardTypeLabel(card) {
     var effect = card.effect;
     if (effect.damage !== undefined) {
-      return 'ATTACK';
+      return '공격';
     }
     if (effect.block !== undefined) {
-      return 'DEFENSE';
+      return '방어';
     }
-    return 'SKILL';
+    return '스킬';
   }
 
   // 카드 물성(가이드 6.4절): 로제트 코스트 메달 + 아트 창(현재는 타입 아이콘 SVG를
