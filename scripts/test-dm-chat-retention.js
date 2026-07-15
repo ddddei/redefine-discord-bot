@@ -113,9 +113,12 @@ function main() {
   assert.strictEqual(userDeletionResult.nextData.messages[0].userId, 'user_b');
 
   // --- CLI 동작: dry-run 무변경 ---
+  // cleanup-dm-chat-logs.js는 실행 시점의 실제 현재 시각을 기준으로 판정하므로,
+  // CLI 검증용 픽스처는 고정 날짜가 아니라 실행 시점 기준으로 만들어야 날짜가 지나도 깨지지 않는다.
+  const cliNow = new Date();
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-chat-retention-'));
   const logPath = path.join(tempDir, 'dm-chat-logs.json');
-  fs.writeFileSync(logPath, `${JSON.stringify(buildSampleData(now), null, 2)}\n`);
+  fs.writeFileSync(logPath, `${JSON.stringify(buildSampleData(cliNow), null, 2)}\n`);
   const beforeDryRun = fs.readFileSync(logPath, 'utf8');
 
   const cleanupScript = path.join(__dirname, 'cleanup-dm-chat-logs.js');
@@ -152,7 +155,7 @@ function main() {
 
   // --- CLI 동작: --user 전체 제거 ---
   const userLogPath = path.join(tempDir, 'dm-chat-user-logs.json');
-  fs.writeFileSync(userLogPath, `${JSON.stringify(buildSampleData(now), null, 2)}\n`);
+  fs.writeFileSync(userLogPath, `${JSON.stringify(buildSampleData(cliNow), null, 2)}\n`);
 
   const userDryRunOutput = execFileSync('node', [cleanupScript, '--user', 'user_a'], {
     encoding: 'utf8',
