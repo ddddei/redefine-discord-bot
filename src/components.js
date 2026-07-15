@@ -85,7 +85,7 @@ const GUIDE_HUB_OPTIONS = [
   {
     label: '내 포인트',
     value: 'points',
-    description: '여정 포인트 확인 방법',
+    description: '리디파인 포인트 확인 방법',
   },
   {
     label: '상점/교환',

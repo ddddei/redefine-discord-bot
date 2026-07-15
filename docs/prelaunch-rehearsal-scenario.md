@@ -272,7 +272,7 @@ Railway Variables 또는 운영 `.env`에서 아래 값을 확인합니다. 실�
 - `MISSION_SUBMISSION_CHANNEL_ID`가 실제 인증 채널 ID와 맞는지 확인합니다.
 - 운영자에게 `ManageMessages`, `Administrator`, 또는 `OPERATOR_ROLE_ID` 권한이 있는지 확인합니다.
 - 참여자 본인이 자기 메시지에 ✅를 누른 것은 아닌지 확인합니다.
-- 대상 메시지가 봇 또는 MEE6 메시지가 아닌지 확인합니다.
+- 대상 메시지가 봇 또는 자동화 메시지가 아닌지 확인합니다.
 - `MISSION_APPROVE_EMOJI` 값이 실제 승인 반응과 같은지 확인합니다.
 - Railway 재배포가 완료되었는지 확인합니다.
 - `/포인트로그`와 운영 로그 채널에 오류나 중복 처리 기록이 있는지 확인합니다.

@@ -116,7 +116,7 @@ SAFETY_ALERT_CHANNEL_ID=
 
 `TODAY_MISSION_CHANNEL_ID`는 참여자가 글이나 첨부파일을 올리면 오늘의 미션 인증 후보로 자동 접수되는 채널입니다. 접수 알림은 `ACTIVITY_REVIEW_CHANNEL_ID`로 전송되고, 같은 사용자에게 같은 날짜의 오늘의 미션 포인트는 1회만 지급됩니다. `DAILY_MISSION_REWARD_POINTS`는 오늘의 미션 승인 시 기본 지급 포인트이며 비어 있거나 잘못된 값이면 20P를 사용합니다.
 
-`DAILY_MISSION_ANNOUNCEMENT_ENABLED`가 `true`일 때만 오늘의 미션 자동 안내가 동작합니다. `DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID`가 있으면 해당 채널에 안내를 보내고, 비어 있으면 `TODAY_MISSION_CHANNEL_ID`에 보냅니다. `DAILY_MISSION_ANNOUNCEMENT_HOUR`는 Asia/Seoul 기준 발송 시각이며 비어 있거나 잘못된 값이면 9시를 사용합니다. 봇 안내 메시지가 삭제되면 MEE6에서 봇 메시지 예외 처리 또는 안내 채널 분리 필요. 이 안내는 고정 문구이며 실제 active 미션 제목/설명/포인트를 담지 않습니다.
+`DAILY_MISSION_ANNOUNCEMENT_ENABLED`가 `true`일 때만 오늘의 미션 자동 안내가 동작합니다. `DAILY_MISSION_ANNOUNCEMENT_CHANNEL_ID`가 있으면 해당 채널에 안내를 보내고, 비어 있으면 `TODAY_MISSION_CHANNEL_ID`에 보냅니다. `DAILY_MISSION_ANNOUNCEMENT_HOUR`는 Asia/Seoul 기준 발송 시각이며 비어 있거나 잘못된 값이면 9시를 사용합니다. 봇 안내 메시지가 삭제되면 Discord 자동 관리 설정에서 봇 메시지 예외 처리 또는 안내 채널 분리가 필요합니다. 이 안내는 고정 문구이며 실제 active 미션 제목/설명/포인트를 담지 않습니다.
 
 `TODAY_MISSION_AUTO_PUBLISH_ENABLED`가 `true`이면 매일 `TODAY_MISSION_AUTO_PUBLISH_HOUR`(Asia/Seoul 기준, 비어 있거나 잘못된 값이면 9시)에 그날 active 상태인 미션을 `TODAY_MISSION_CHANNEL_ID`에 자동으로 게시합니다. 미션 관리 허브의 `오늘의 미션 게시` 버튼과 같은 게시 기록(`reserveTodayMissionNoticePublication`)을 공유하므로 운영자가 먼저 수동으로 게시했거나 자동 게시가 먼저 실행됐어도 같은 날짜에 중복 게시되지 않습니다. active 미션이 없으면 아무것도 보내지 않고 조용히 건너뜁니다. 기본값은 `false`이므로 켜기 전까지는 동작이 바뀌지 않습니다.
 

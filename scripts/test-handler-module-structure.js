@@ -40,7 +40,7 @@ function main() {
   domainModules.forEach(visit);
 
   const deployHash = crypto.createHash('sha256').update(read('src/deploy-commands.js')).digest('hex');
-  assert.strictEqual(deployHash, '4440bc287782929314eff83ed5d7308e8fa9ee1b23b675a0dc4a7ebb7307db15');
+  assert.strictEqual(deployHash, '64e9a5a99814b26b955413196f890204f1362c460a3ad23077107e9004086f29');
   console.log('handler module 구조 계약 테스트 통과');
 }
 

@@ -22,7 +22,7 @@ function createActivityParticipantHandlers({
       await interaction.reply({
         embeds: [
           createGuideEmbed(
-            '여정 포인트 상점',
+            '리디파인 포인트 상점',
             [
               '지금 교환할 수 있는 항목이 없어요.',
               '',

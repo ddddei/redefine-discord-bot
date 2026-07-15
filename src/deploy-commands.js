@@ -107,7 +107,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('포인트')
-    .setDescription('내 여정 포인트를 확인합니다.'),
+    .setDescription('내 리디파인 포인트를 확인합니다.'),
 
   new SlashCommandBuilder()
     .setName('상점')
@@ -115,7 +115,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('체크인')
-    .setDescription('오늘의 체크인을 남기고 여정 포인트를 받습니다.')
+    .setDescription('오늘의 체크인을 남기고 리디파인 포인트를 받습니다.')
     .addStringOption((option) =>
       option
         .setName('내용')
@@ -151,7 +151,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('교환')
-    .setDescription('여정 포인트로 교환할 항목을 선택합니다.')
+    .setDescription('리디파인 포인트로 교환할 항목을 선택합니다.')
     .addStringOption((option) =>
       option
         .setName('항목')
@@ -167,7 +167,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('포인트관리')
-    .setDescription('운영진이 참여자 여정 포인트를 지급하거나 정정합니다.')
+    .setDescription('운영진이 참여자 리디파인 포인트를 지급하거나 정정합니다.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .addUserOption((option) =>
       option

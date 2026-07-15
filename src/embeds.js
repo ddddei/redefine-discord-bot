@@ -141,7 +141,7 @@ function createPointBalanceEmbed({ currentPoints, transactions = [], balanceChec
       const reason = truncateText(transaction.reason, 80, '포인트 기록');
       return `- ${formatTransactionDate(transaction.createdAt)} ${amount} ${reason}`;
     })
-    : ['아직 기록된 여정 포인트가 없어요.'];
+    : ['아직 기록된 리디파인 포인트가 없어요.'];
   const balanceNote = balanceCheck && balanceCheck.ok === false
     ? [
       '',
@@ -150,15 +150,15 @@ function createPointBalanceEmbed({ currentPoints, transactions = [], balanceChec
     : [];
 
   return createGuideEmbed(
-    '내 여정 포인트',
+    '내 리디파인 포인트',
     [
-      `현재 보유 여정 포인트: **${formatPoints(currentPoints)}**`,
+      `현재 보유 리디파인 포인트: **${formatPoints(currentPoints)}**`,
       '',
       '최근 기록',
       ...transactionLines,
       ...balanceNote,
       '',
-      '여정 포인트는 참여를 돕는 선택형 요소이며, 비교나 경쟁을 위한 점수가 아니에요.',
+      '리디파인 포인트는 참여를 돕는 선택형 요소이며, 비교나 경쟁을 위한 점수가 아니에요.',
       '체크인, 미션, 상점 이용 내역을 여기에서 가볍게 확인할 수 있어요.',
     ].join('\n')
   );
@@ -194,7 +194,7 @@ function createGuideHubDetailEmbed(value, options = {}) {
         '먼저 해볼 수 있는 것:',
         '- `/체크인`으로 오늘의 상태를 가볍게 남기기',
         '- `/미션`에서 참여 가능한 활동 확인하기',
-        '- `/포인트`로 내 여정 포인트 확인하기',
+        '- `/포인트`로 내 리디파인 포인트 확인하기',
         '- `/상점`에서 교환 가능한 항목 둘러보기',
       ].join('\n'),
     },
@@ -214,7 +214,7 @@ function createGuideHubDetailEmbed(value, options = {}) {
     points: {
       title: '내 포인트',
       description: [
-        '여정 포인트는 참여를 기록하기 위한 작은 보상이에요.',
+        '리디파인 포인트는 참여를 기록하기 위한 작은 보상이에요.',
         '',
         '포인트는 경쟁이나 순위를 위한 점수가 아니에요.',
         '체크인, 미션 참여, 프로그램 활동 등을 통해 받을 수 있고, 운영진이 정한 항목으로 교환할 수 있어요.',
@@ -229,7 +229,7 @@ function createGuideHubDetailEmbed(value, options = {}) {
     shop: {
       title: '상점/교환',
       description: [
-        '상점에서는 여정 포인트로 교환 가능한 항목을 볼 수 있어요.',
+        '상점에서는 리디파인 포인트로 교환 가능한 항목을 볼 수 있어요.',
         '',
         '사용 방법:',
         '1. `/상점` 또는 `/교환`을 입력해요.',
@@ -252,7 +252,7 @@ function createGuideHubDetailEmbed(value, options = {}) {
         '1. `/미션`으로 참여 가능한 미션을 확인해요.',
         '2. 미션 인증 채널에 글, 사진, 영상을 올려요.',
         '3. 운영진이 확인하면 ✅ 반응으로 승인해요.',
-        '4. 승인되면 여정 포인트가 지급돼요.',
+        '4. 승인되면 리디파인 포인트가 지급돼요.',
         '5. 지급 여부는 DM 또는 `/포인트`에서 확인할 수 있어요.',
         '',
         '보조 방법:',
@@ -1150,7 +1150,7 @@ function formatShopParticipantSummary(item) {
 
 function createShopEmbed(items) {
   const embed = createGuideEmbed(
-    '여정 포인트 상점',
+    '리디파인 포인트 상점',
     [
       '교환할 항목을 아래에서 골라주세요.',
       '선택만으로는 포인트가 차감되지 않아요.',

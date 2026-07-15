@@ -356,8 +356,8 @@ function main() {
       );
       await handleInteractionCreate(pointMenuButton);
       assert.strictEqual(pointMenuButton.replyPayload.ephemeral, true);
-      assert.strictEqual(getEmbedTitle(pointMenuButton.replyPayload), '내 여정 포인트');
-      assert.match(pointMenuButton.replyPayload.embeds[0].data.description, /현재 보유 여정 포인트: \*\*250P\*\*/);
+      assert.strictEqual(getEmbedTitle(pointMenuButton.replyPayload), '내 리디파인 포인트');
+      assert.match(pointMenuButton.replyPayload.embeds[0].data.description, /현재 보유 리디파인 포인트: \*\*250P\*\*/);
 
       const rankingMenuButton = createButtonInteraction(
         'participant_menu_ranking',
@@ -417,7 +417,7 @@ function main() {
       const shopCommand = createChatInputInteraction('상점', {}, 'ux_user_shop', '상점 UX 사용자');
       await handleInteractionCreate(shopCommand);
       assert.strictEqual(shopCommand.replyPayload.ephemeral, true);
-      assert.strictEqual(getEmbedTitle(shopCommand.replyPayload), '여정 포인트 상점');
+      assert.strictEqual(getEmbedTitle(shopCommand.replyPayload), '리디파인 포인트 상점');
       assert.match(shopCommand.replyPayload.embeds[0].data.fields[0].name, /🎁 리워드/);
       assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].name, /S001|item_ux_active/);
       assert.doesNotMatch(shopCommand.replyPayload.embeds[0].data.fields[0].value, /item_ux_active|표시 코드|설명/);
@@ -430,7 +430,7 @@ function main() {
       const redemptionEntryCommand = createChatInputInteraction('교환', {}, 'ux_user_shop', '상점 UX 사용자');
       await handleInteractionCreate(redemptionEntryCommand);
       assert.strictEqual(redemptionEntryCommand.replyPayload.ephemeral, true);
-      assert.strictEqual(getEmbedTitle(redemptionEntryCommand.replyPayload), '여정 포인트 상점');
+      assert.strictEqual(getEmbedTitle(redemptionEntryCommand.replyPayload), '리디파인 포인트 상점');
       assert.strictEqual(redemptionEntryCommand.replyPayload.components.length, 1);
       assert.match(redemptionEntryCommand.replyPayload.components[0].components[0].toJSON().options[0].label, /S001/);
 
@@ -661,7 +661,7 @@ function main() {
 
       const noShopRedemptionCommand = createChatInputInteraction('교환', {}, 'ux_user_shop_empty', '상점 없음 UX 사용자');
       await handleInteractionCreate(noShopRedemptionCommand);
-      assert.strictEqual(getEmbedTitle(noShopRedemptionCommand.replyPayload), '여정 포인트 상점');
+      assert.strictEqual(getEmbedTitle(noShopRedemptionCommand.replyPayload), '리디파인 포인트 상점');
       assert.match(noShopRedemptionCommand.replyPayload.embeds[0].data.description, /지금 교환할 수 있는 항목이 없어요/);
       assert.match(noShopRedemptionCommand.replyPayload.embeds[0].data.description, /운영진이 새 항목을 열면/);
       assert.strictEqual(noShopRedemptionCommand.replyPayload.components, undefined);
