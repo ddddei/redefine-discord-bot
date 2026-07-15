@@ -24,6 +24,7 @@ const {
   createMemoryChoiceRows,
   createMinigameHubRows,
   createNumberChoiceRows,
+  createWebgameLinkRow,
   createRogueExitRows,
   createRogueItemRows,
   createRoguePathRows,
@@ -47,6 +48,9 @@ function createMinigameHubPayload(options = {}) {
         ...Object.values(MINIGAMES).map((game) => `- ${game.title}: ${game.description}`),
         '',
         '포인트 베팅이나 차감은 없고, 결과와 지급 여부는 본인에게만 보여요.',
+        ...(createWebgameLinkRow()
+          ? ['', '브라우저에서 즐기는 웹게임은 맨 아래 링크 버튼으로 바로 열 수 있어요.']
+          : []),
       ].join('\n')
     )],
     components: createMinigameHubRows(),
@@ -57,6 +61,7 @@ function createMinigameHubPayload(options = {}) {
 function createMinigameChannelGuidePayload() {
   const channelId = process.env.MINIGAME_CHANNEL_ID;
   const channelText = channelId ? `<#${channelId}>` : '운영진이 안내한 미니게임 채널';
+  const webgameLinkRow = createWebgameLinkRow();
 
   return {
     embeds: [createGuideEmbed(
@@ -67,8 +72,12 @@ function createMinigameChannelGuidePayload() {
         `이용 채널: ${channelText}`,
         '',
         '해당 채널에 고정된 미니게임 안내 또는 운영진 안내를 기준으로 참여해 주세요.',
+        ...(webgameLinkRow
+          ? ['', '브라우저에서 즐기는 웹게임은 채널과 상관없이 아래 링크 버튼으로 바로 열 수 있어요.']
+          : []),
       ].join('\n')
     )],
+    ...(webgameLinkRow ? { components: [webgameLinkRow] } : {}),
     ephemeral: true,
   };
 }

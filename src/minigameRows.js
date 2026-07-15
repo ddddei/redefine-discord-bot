@@ -10,7 +10,31 @@ const {
   RPS_CHOICES,
 } = require('./minigameData');
 
+// 웹게임 바로가기 링크의 기준 URL. https 주소가 아니면 버튼을 생략해
+// 잘못된 링크가 참여자에게 노출되지 않게 한다.
+function resolveWebgamePublicBaseUrl() {
+  const raw = typeof process.env.WEBGAME_PUBLIC_BASE_URL === 'string'
+    ? process.env.WEBGAME_PUBLIC_BASE_URL.trim()
+    : '';
+  if (!raw || !/^https:\/\//i.test(raw)) return null;
+  return raw.replace(/\/+$/, '');
+}
+
+function createWebgameLinkRow() {
+  const baseUrl = resolveWebgamePublicBaseUrl();
+  if (!baseUrl) return null;
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setLabel('🧩 매치3 퍼즐').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/match3/`),
+    new ButtonBuilder().setLabel('🃏 덱 빌딩').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/deck/`),
+    new ButtonBuilder().setLabel('🏭 간식 공방').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/idle/`),
+    new ButtonBuilder().setLabel('🔤 오늘의 단어').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/word/`),
+    new ButtonBuilder().setLabel('🔔 검은 종 생존전').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/dungeonworld-survivors/`)
+  );
+}
+
 function createMinigameHubRows() {
+  const webgameLinkRow = createWebgameLinkRow();
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('participant_minigame_select:card').setLabel('🎴 행운 카드 뒤집기').setStyle(ButtonStyle.Primary),
@@ -31,6 +55,7 @@ function createMinigameHubRows() {
       new ButtonBuilder().setCustomId('participant_minigame_today_record').setLabel('📊 오늘의 기록').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('participant_minigame_today_ranking').setLabel('🏆 랭킹').setStyle(ButtonStyle.Secondary)
     ),
+    ...(webgameLinkRow ? [webgameLinkRow] : []),
   ];
 }
 
@@ -167,6 +192,7 @@ function createRogueExitRows(pathKey, itemKey) {
 
 module.exports = {
   createCardChoiceRows,
+  createWebgameLinkRow,
   createDiceChoiceRows,
   createDoorChoiceRows,
   createExploreChoiceRows,
