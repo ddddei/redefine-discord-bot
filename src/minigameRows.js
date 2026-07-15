@@ -28,7 +28,6 @@ function createWebgameLinkRow() {
     new ButtonBuilder().setLabel('🧩 매치3 퍼즐').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/match3/`),
     new ButtonBuilder().setLabel('🃏 덱 빌딩').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/deck/`),
     new ButtonBuilder().setLabel('🏭 간식 공방').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/idle/`),
-    new ButtonBuilder().setLabel('🔤 오늘의 단어').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/word/`),
     new ButtonBuilder().setLabel('🔔 검은 종 생존전').setStyle(ButtonStyle.Link).setURL(`${baseUrl}/game/dungeonworld-survivors/`)
   );
 }

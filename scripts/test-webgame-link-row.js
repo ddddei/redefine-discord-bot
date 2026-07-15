@@ -24,20 +24,20 @@ function main() {
     rows = freshRequire('../src/minigameRows');
     assert.strictEqual(rows.createWebgameLinkRow(), null);
 
-    // 3. 설정하면 허브 5행 + 웹게임 5종 링크 버튼이 생기고, 끝 슬래시는 정리된다.
+    // 3. 설정하면 허브 5행 + 웹게임 링크 버튼이 생기고, 끝 슬래시는 정리된다.
+    // 오늘의 단어(/game/word/)는 운영 결정 전이라 의도적으로 노출하지 않는다.
     process.env.WEBGAME_PUBLIC_BASE_URL = 'https://example.up.railway.app/';
     rows = freshRequire('../src/minigameRows');
     const linkRow = rows.createWebgameLinkRow();
     assert.ok(linkRow, '기준 URL이 설정되면 링크 행이 생성되어야 합니다.');
     const buttons = getLinkButtons(linkRow);
-    assert.strictEqual(buttons.length, 5);
+    assert.strictEqual(buttons.length, 4);
     assert.deepStrictEqual(
       buttons.map((button) => button.url),
       [
         'https://example.up.railway.app/game/match3/',
         'https://example.up.railway.app/game/deck/',
         'https://example.up.railway.app/game/idle/',
-        'https://example.up.railway.app/game/word/',
         'https://example.up.railway.app/game/dungeonworld-survivors/',
       ]
     );
