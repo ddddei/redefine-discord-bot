@@ -77,12 +77,15 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 - Primary: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif
 - Mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace
 - Serif headings: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif
+- Orientation: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif
 
 ### Rules
 
 - Korean text must not rely on negative letter spacing.
 - Body text stays at 13px or larger on compact HUD elements and 15px or larger in panels.
 - Large Korean headings use `clamp()` to prevent awkward mobile wrapping.
+- The orientation page uses the Orientation stack for every heading, label, number, control, and body line. Hierarchy comes from size, weight, color, and tabular figures rather than serif or monospace font changes.
+- Load Pretendard Variable as a pinned dynamic subset with `font-display: swap`; keep the system stack as a resilient fallback.
 
 ### Orientation Scale
 
