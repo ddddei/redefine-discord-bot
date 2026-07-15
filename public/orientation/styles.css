@@ -38,6 +38,7 @@
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-pill: 999px;
+  --font-orientation: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
   --type-orientation-display: clamp(44px, 7vw, 72px);
   --type-orientation-section: clamp(28px, 4vw, 36px);
   --type-orientation-card: 21px;
@@ -67,7 +68,7 @@ body {
   margin: 0;
   background: var(--orientation-paper);
   color: var(--text-primary);
-  font-family: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
+  font-family: var(--font-orientation);
   font-size: var(--type-orientation-body);
   line-height: 1.7;
   word-break: keep-all;
@@ -143,20 +144,22 @@ p {
 
 h1 {
   margin-bottom: var(--space-5);
-  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
   font-size: var(--type-orientation-display);
+  font-weight: 700;
   line-height: 1.08;
 }
 
 h2 {
   margin-bottom: var(--space-3);
   font-size: var(--type-orientation-section);
+  font-weight: 700;
   line-height: 1.25;
 }
 
 h3 {
   margin-bottom: var(--space-3);
   font-size: var(--type-h3);
+  font-weight: 700;
   line-height: 1.4;
 }
 
@@ -303,14 +306,14 @@ main {
 
 .board-heading span {
   color: color-mix(in srgb, var(--surface-elevated) 70%, transparent);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: var(--type-orientation-caption);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .board-heading strong {
-  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
   font-size: var(--type-h2);
+  font-weight: 700;
 }
 
 .timeline {
@@ -340,9 +343,9 @@ main {
   border: 1px solid color-mix(in srgb, var(--surface-elevated) 28%, transparent);
   border-radius: 50%;
   color: color-mix(in srgb, var(--surface-elevated) 76%, transparent);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: var(--type-orientation-caption);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline-item.active span {
@@ -409,9 +412,9 @@ main {
 
 .intro-copy > span {
   color: color-mix(in srgb, var(--surface-elevated) 58%, transparent);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: var(--type-orientation-caption);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .intro-copy p {
@@ -432,6 +435,7 @@ main {
 
 .section-heading p:not(.eyebrow) {
   color: var(--text-secondary);
+  text-wrap: pretty;
 }
 
 .chapter-index {
@@ -443,9 +447,9 @@ main {
   border: 1px solid var(--orientation-line);
   border-radius: 50%;
   color: var(--orientation-clay-deep);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: var(--type-orientation-caption);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .lab-heading {
@@ -486,12 +490,13 @@ main {
 
 .option-card h3 {
   margin-bottom: var(--space-2);
-  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
   font-size: var(--type-orientation-card);
+  font-weight: 800;
 }
 
 .option-card p {
   color: var(--text-secondary);
+  text-wrap: pretty;
 }
 
 .option-card ul {
@@ -500,6 +505,7 @@ main {
   margin: var(--space-2) 0 0;
   padding-left: var(--space-5);
   color: var(--text-secondary);
+  text-wrap: pretty;
 }
 
 .option-topline {
@@ -514,9 +520,9 @@ main {
 .option-state,
 .fit-label {
   color: var(--orientation-muted);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: var(--type-orientation-caption);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .option-state {
@@ -633,6 +639,7 @@ legend {
   color: var(--text-secondary);
   font-size: var(--type-orientation-body);
   font-weight: 500;
+  text-wrap: pretty;
 }
 
 .choice-card .choice-state {
@@ -835,14 +842,13 @@ legend {
 
 .site-footer span {
   color: var(--orientation-clay-deep);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: var(--type-orientation-caption);
   font-weight: 800;
 }
 
 .site-footer strong {
-  font-family: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif;
   font-size: var(--type-orientation-card);
+  font-weight: 800;
 }
 
 .site-footer p {

@@ -17,7 +17,7 @@
       id: 'trpg',
       type: 'track',
       title: 'TRPG',
-      summary: '테이블 롤플레잉으로 캐릭터, 선택, 서사를 함께 만들어 가는 트랙입니다.',
+      summary: '테이블 롤플레잉으로 캐릭터, 선택, 서사를 함께\u00A0만들어\u00A0가는 트랙입니다.',
       fit: ['이야기 속 역할을 맡아 선택해 보고 싶은 사람', '규칙 있는 공동 창작을 경험하고 싶은 사람'],
       accentClass: 'accent-bell',
       index: 'TRACK 02',
