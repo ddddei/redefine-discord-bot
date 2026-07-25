@@ -37,14 +37,18 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 | Class/druid | --class-druid | #4F7A44 | #667F54 | Druid cards, roots, wild aura |
 | Class/wizard | --class-wizard | #5E4DB2 | #6B6090 | Wizard cards, runes, shield |
 | Class/ranger | --class-ranger | #687839 | #7E8756 | Ranger cards, arrows, hawk marks |
-| Orientation/paper | --orientation-paper | #F4EFE4 | #17140F | Orientation page field-journal background |
-| Orientation/paper-strong | --orientation-paper-strong | #E6DAC4 | #211C14 | Orientation chapter bands and selected fields |
-| Orientation/ink | --orientation-ink | #17342D | #DCE7E0 | Orientation hero board and primary controls |
-| Orientation/ink-soft | --orientation-ink-soft | #244C42 | #BFD0C7 | Orientation board secondary surface |
+| Orientation/paper | --orientation-paper | oklch(0.985 0.008 88) | #17140F | Orientation deck-paper background |
+| Orientation/paper-strong | --orientation-paper-strong | oklch(0.958 0.013 85) | #211C14 | Raised paper panels and selected fields |
+| Orientation/ink | --orientation-ink | oklch(0.33 0.035 55) | #DCE7E0 | Primary deck text and quiet rules |
+| Orientation/ink-soft | --orientation-ink-soft | oklch(0.55 0.028 60) | #BFD0C7 | Helper copy, captions, secondary text |
+| Orientation/night | --orientation-night | oklch(0.1 0.03 290) | #DCE7E0 | Dark declaration slide surface |
+| Orientation/night-soft | --orientation-night-soft | oklch(0.16 0.035 290) | #BFD0C7 | Dark slide secondary panels |
+| Orientation/gold | --orientation-gold | oklch(0.83 0.115 82) | #E5C777 | Dark slide overlines and active highlights |
+| Orientation/lilac | --orientation-lilac | oklch(0.74 0.035 290) | #BFB6D4 | Dark slide supporting copy |
 | Orientation/clay | --orientation-clay | #B55D3F | #D28B70 | Orientation track/lab secondary accent |
 | Orientation/clay-deep | --orientation-clay-deep | #8D422D | #E5A98F | Orientation warning and active detail |
-| Orientation/muted | --orientation-muted | #5F6965 | #AFA79B | Accessible orientation helper copy |
-| Orientation/line | --orientation-line | #C8BCA7 | #50463A | Orientation card and field dividers |
+| Orientation/muted | --orientation-muted | oklch(0.55 0.028 60) | #AFA79B | Accessible orientation helper copy |
+| Orientation/line | --orientation-line | oklch(0.86 0.018 83) | #50463A | Orientation card and field dividers |
 
 ### Rules
 
@@ -77,23 +81,27 @@ Project Redefine interfaces should feel like a quiet operations room: clear, cal
 - Primary: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif
 - Mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace
 - Serif headings: "AppleMyungjo", "Nanum Myeongjo", Georgia, serif
-- Orientation: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif
+- Orientation display: "Paperlogy", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif
+- Orientation body: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif
+- Orientation mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace
+- Participant guide UI: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif
 
 ### Rules
 
 - Korean text must not rely on negative letter spacing.
 - Body text stays at 13px or larger on compact HUD elements and 15px or larger in panels.
 - Large Korean headings use `clamp()` to prevent awkward mobile wrapping.
-- The orientation page uses the Orientation stack for every heading, label, number, control, and body line. Hierarchy comes from size, weight, color, and tabular figures rather than serif or monospace font changes.
-- Load Pretendard Variable as a pinned dynamic subset with `font-display: swap`; keep the system stack as a resilient fallback.
+- The orientation page uses Paperlogy for deck-like display headings and major card titles, Pretendard for readable Korean body copy, and a restrained mono stack for slide overlines, indexes, and status metadata.
+- Load Pretendard Variable and Paperlogy as pinned web fonts with `font-display: swap`; keep the system stack as a resilient fallback.
+- The participant guide uses Pretendard for headings, body copy, command labels, metadata, inputs, and keyboard hints. Do not mix display or monospace families into the guide.
 
 ### Orientation Scale
 
 | Level | Token | Size | Weight | Line Height | Usage |
 | --- | --- | --- | --- | --- | --- |
-| Orientation display | --type-orientation-display | clamp(44px, 7vw, 72px) | 700 | 1.08 | First-viewport title |
-| Orientation section | --type-orientation-section | clamp(28px, 4vw, 36px) | 700 | 1.2 | Chapter headings |
-| Orientation card | --type-orientation-card | 21px | 800 | 1.35 | Track and lab names |
+| Orientation display | --type-orientation-display | clamp(54px, 8vw, 96px) | 800 | 1.04 | First-viewport deck title |
+| Orientation section | --type-orientation-section | clamp(34px, 5.5vw, 64px) | 800 | 1.08 | Chapter slide headings |
+| Orientation card | --type-orientation-card | clamp(25px, 3vw, 34px) | 800 | 1.18 | Track and lab names |
 | Orientation lead | --type-orientation-lead | clamp(17px, 2.2vw, 20px) | 500 | 1.7 | Hero and chapter introduction |
 | Orientation body | --type-orientation-body | 15px | 400 | 1.7 | Default participant copy |
 | Orientation caption | --type-orientation-caption | 13px | 700 | Metadata and status labels |
@@ -190,14 +198,27 @@ All spacing derives from 4px.
 ### Orientation Board
 
 - **Structure**: public orientation page with a first-viewport program overview, a signature “오늘의 경로” board, track/lab comparison cards, participant identity form, local selection confirmation, and distribution panel.
-- **Tone**: welcoming field journal, not a marketing splash or competitive leaderboard. Copy should reduce pressure and make selection feel adjustable.
-- **Palette**: use the orientation paper palette by default. The hero route board uses `--orientation-ink`; track and lab accents reuse `--accent-primary`, `--accent-bell`, `--orientation-clay`, `--accent-brass`, and `--status-info`. Never use red/green competition language.
-- **Hierarchy**: alternate open paper sections with one ink-dark chapter band. Overlines and index marks establish sequence; the route board is the only dense first-viewport object.
-- **Cards**: 16px radius, one border, quiet tonal surface, editorial index, fit notes, capacity note, and a clear selected state using border plus a small label. Cards are independent selectable items, never nested inside decorative cards.
+- **Tone**: welcoming orientation deck, not a marketing splash or competitive leaderboard. It should feel close to the RE:DEFINE OT presentation: warm paper, generous whitespace, a few precise rules, and one calm dark declaration moment.
+- **Palette**: use the orientation deck-paper palette by default. Dark surfaces use `--orientation-night`, pale text, `--orientation-gold` overlines, and `--orientation-lilac` helper copy. Track and lab accents reuse `--accent-primary`, `--accent-bell`, `--orientation-clay`, `--accent-brass`, and `--status-info`. Never use red/green competition language.
+- **Hierarchy**: Paperlogy display headings create the slide-like rhythm. Mono overlines and index marks establish sequence; thin horizontal rules and large negative space replace dense dashboard framing.
+- **Cards**: raised paper panels with one quiet rule, editorial index, fit notes, capacity note, and a clear selected state using border plus a small label. Cards are independent selectable items, never nested inside decorative cards.
 - **Form controls**: name and phone fields use native labels, visible errors, and 44px minimum touch target. Phone numbers are used only for change matching until an official storage backend exists.
 - **Distribution bars**: show proportions as neutral field status. Counts must not expose names or phone numbers, and placeholder/local-only data must be labeled as such.
 - **States**: every button, link, and choice surface has visible focus and active feedback. Hover-only lift is limited to fine pointers; touch and keyboard do not depend on hover.
 - **Motion**: first-load scan order, form save feedback, selected-card state, and section focus use 120-220ms transform/opacity only. No decorative looping motion, layout-property animation, or `scale(0)` entrance.
+
+### Participant Guide Hub
+
+- **Structure**: searchable public participant manual with document metadata, a visible search field, quick start, 72-hour orientation timeline, command reference table, mission/point procedures, help and privacy guidance, and troubleshooting FAQ.
+- **Tone**: a calm, practical user manual for newcomers, not a product landing page or an operator policy archive. The first viewport answers “what is this document?” and “how do I find what I need?” before the quick-start procedure.
+- **Hierarchy**: use Pretendard alone with a restrained document scale, ink-navy section rules, warm paper, compact metadata, and numbered headings. Avoid oversized landing-page heroes, promotional CTA groups, and decorative declaration panels.
+- **Navigation**: desktop uses a sticky numbered table of contents; tablet and mobile use a horizontally scrollable native anchor index. Every section has a stable fragment identifier shared by search results and the table of contents.
+- **Search**: client-side search is isolated to one leaf component while the entire manual remains server-rendered and readable without search. Natural-language Korean, slash commands, and common problem phrases map to concise results that jump to the relevant section. `/` focuses search on desktop and `Escape` clears it.
+- **Guide steps**: numbered native procedures pair one action with one completion cue. Steps must remain readable in a single mobile column without relying on icons or color.
+- **Command reference**: list slash commands by situation, outcome, and visibility. The desktop reference may use a table, but it must remain horizontally scrollable and labelled on narrow screens.
+- **FAQ**: native `details`/`summary` disclosure so the static guide remains usable without client JavaScript. Focus, open, and hover states follow the orientation interaction rules.
+- **Discord handoff**: the bot may expose the guide as an HTTPS link from `/안내` when `PARTICIPANT_GUIDE_URL` is configured. The guide is the durable reference; DM remains opt-in conversation or event feedback, not unsolicited bulk onboarding.
+- **Accessibility**: the page keeps a visible skip link, semantic landmarks, minimum 44px touch targets, labelled search with polite result announcements, phrase-safe Korean wrapping, and a no-JavaScript reading path for all manual content.
 
 ## 6. Motion & Interaction
 

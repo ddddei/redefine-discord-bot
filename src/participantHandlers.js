@@ -3,7 +3,12 @@ const {
   createKnowledgeEmbed,
 } = require('./embeds');
 const { GUIDE_HUB_SELECT_ID, createGuideHubSelectRow } = require('./components');
-const { PARTICIPANT_MENU_BUTTON_IDS, createParticipantMenuButtonRows, createParticipantOnboardingNextStepRow } = require('./participantInteractionUi');
+const {
+  PARTICIPANT_MENU_BUTTON_IDS,
+  createParticipantGuideLinkRow,
+  createParticipantMenuButtonRows,
+  createParticipantOnboardingNextStepRow,
+} = require('./participantInteractionUi');
 const { createNoticeEmbed } = require('./operatorInteractionUi');
 const { createMinigameChannelGuidePayload, createMinigameHubPayload } = require('./minigameInteractions');
 const { getChannelGuideRoleNote, getOnboardingGuideMessage, getOnboardingRoleType } = require('./onboardingRoles');
@@ -46,6 +51,8 @@ function createParticipantHandlers({
     const roleType = getOnboardingRoleType(interaction.member);
     const roleGuideMessage = getOnboardingGuideMessage(roleType);
 
+    const guideLinkRow = createParticipantGuideLinkRow();
+
     await interaction.reply({
       embeds: [createGuideEmbed(
         '📌 리디파인 이용 메뉴',
@@ -58,13 +65,60 @@ function createParticipantHandlers({
           '더 자세한 안내가 필요하면 아래 선택 메뉴도 함께 사용할 수 있어요.',
         ].filter((line) => line !== null).join('\n')
       )],
-      components: [...createParticipantMenuButtonRows(), createGuideHubSelectRow()],
+      components: [
+        ...createParticipantMenuButtonRows(),
+        ...(guideLinkRow ? [guideLinkRow] : []),
+        createGuideHubSelectRow(),
+      ],
       ephemeral: true,
     });
   }
 
   async function handleParticipantMenuButton(interaction) {
+    if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.guideDm) {
+      const guideLinkRow = createParticipantGuideLinkRow({ includeDmButton: false });
+
+      if (!guideLinkRow) {
+        await interaction.reply({
+          content: '참여자 가이드 주소가 아직 설정되지 않았어요. 운영진에게 알려 주세요.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+
+      try {
+        await interaction.user.send({
+          embeds: [createGuideEmbed(
+            '리디파인 참여자 사용 설명서',
+            [
+              '요청하신 참여자 가이드를 보내드려요.',
+              '',
+              '1. 참여동의 안내를 먼저 확인해 주세요.',
+              '2. 이름표와 색상을 고른 뒤 `/안내`를 실행해 주세요.',
+              '3. 오늘 가능한 만큼 체크인이나 미션을 살펴보면 충분해요.',
+              '',
+              '아래 버튼에서 전체 사용 설명서와 문제 해결 방법을 확인할 수 있어요.',
+            ].join('\n')
+          )],
+          components: [guideLinkRow],
+        });
+        await interaction.editReply({
+          content: '참여자 가이드를 DM으로 보냈어요.',
+        });
+      } catch (_error) {
+        await interaction.editReply({
+          content: 'DM을 보내지 못했어요. Discord 개인정보 보호 설정에서 서버 멤버의 DM을 허용하거나 아래 버튼으로 가이드를 열어 주세요.',
+          components: [guideLinkRow],
+        });
+      }
+      return;
+    }
+
     if (interaction.customId === PARTICIPANT_MENU_BUTTON_IDS.onboarding) {
+      const guideLinkRow = createParticipantGuideLinkRow();
+
       await interaction.reply({
         embeds: [createGuideEmbed(
           '처음 왔다면 여기부터',
@@ -89,7 +143,10 @@ function createParticipantHandlers({
             '처음엔 여기까지만 해도 충분해요. 지금은 아래 버튼 중 하나만 눌러 다음 안내를 이어서 봐도 됩니다.',
           ].join('\n')
         )],
-        components: [createParticipantOnboardingNextStepRow()],
+        components: [
+          createParticipantOnboardingNextStepRow(),
+          ...(guideLinkRow ? [guideLinkRow] : []),
+        ],
         ephemeral: true,
       });
       return;

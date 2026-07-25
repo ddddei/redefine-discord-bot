@@ -4,6 +4,7 @@ const {
   createInsufficientPointsDescription,
   createMissionSelectRow,
   createMissionSubmissionModal,
+  createParticipantGuideLinkRow,
   createParticipantMenuButtonRows,
   createRedemptionConfirmRow,
   createShopSelectRow,
@@ -28,7 +29,27 @@ function main() {
   assert.deepStrictEqual(confirmIds, ['participant_redeem_confirm:S01', 'participant_redeem_cancel_check:S01']);
 
   const menuIds = createParticipantMenuButtonRows().flatMap((row) => row.toJSON().components.map((button) => button.custom_id));
-  assert.deepStrictEqual(menuIds, Object.values(PARTICIPANT_MENU_BUTTON_IDS));
+  assert.deepStrictEqual(
+    menuIds,
+    Object.values(PARTICIPANT_MENU_BUTTON_IDS).filter((id) => id !== PARTICIPANT_MENU_BUTTON_IDS.guideDm)
+  );
+
+  const originalGuideUrl = process.env.PARTICIPANT_GUIDE_URL;
+  process.env.PARTICIPANT_GUIDE_URL = 'http://example.com/guide';
+  assert.strictEqual(createParticipantGuideLinkRow(), null);
+  process.env.PARTICIPANT_GUIDE_URL = 'https://example.com/guide';
+  const guideRow = createParticipantGuideLinkRow().toJSON();
+  assert.strictEqual(guideRow.components[0].style, 5);
+  assert.strictEqual(guideRow.components[0].url, 'https://example.com/guide');
+  assert.strictEqual(guideRow.components[1].custom_id, PARTICIPANT_MENU_BUTTON_IDS.guideDm);
+  assert.strictEqual(guideRow.components[1].label, '가이드 DM으로 받기');
+  const linkOnlyRow = createParticipantGuideLinkRow({ includeDmButton: false }).toJSON();
+  assert.strictEqual(linkOnlyRow.components.length, 1);
+  if (originalGuideUrl === undefined) {
+    delete process.env.PARTICIPANT_GUIDE_URL;
+  } else {
+    process.env.PARTICIPANT_GUIDE_URL = originalGuideUrl;
+  }
 
   const modal = createMissionSubmissionModal({ id: 'mission', displayCode: 'M01' }).toJSON();
   assert.strictEqual(modal.custom_id, 'participant_mission_submit:M01');
