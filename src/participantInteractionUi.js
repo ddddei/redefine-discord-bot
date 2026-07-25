@@ -21,6 +21,7 @@ const PARTICIPANT_MENU_BUTTON_IDS = {
   ranking: 'participant_menu_ranking',
   minigames: 'participant_menu_minigames',
   help: 'participant_menu_help',
+  guideDm: 'participant_menu_guide_dm',
 };
 
 function createInsufficientPointsDescription({ currentPoints = 0, requiredPoints = 0 } = {}) {
@@ -99,6 +100,32 @@ function createParticipantOnboardingNextStepRow() {
   );
 }
 
+function createParticipantGuideLinkRow({ includeDmButton = true } = {}) {
+  const guideUrl = String(process.env.PARTICIPANT_GUIDE_URL || '').trim();
+
+  if (!guideUrl.startsWith('https://')) {
+    return null;
+  }
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel('참여자 가이드 사이트 열기')
+      .setStyle(ButtonStyle.Link)
+      .setURL(guideUrl)
+  );
+
+  if (includeDmButton) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(PARTICIPANT_MENU_BUTTON_IDS.guideDm)
+        .setLabel('가이드 DM으로 받기')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  }
+
+  return row;
+}
+
 function createRedemptionCancelConfirmRow(displayCode) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`participant_redeem_cancel_done:${displayCode}`).setLabel('네, 종료할게요').setStyle(ButtonStyle.Secondary),
@@ -151,6 +178,7 @@ function createMissionSubmissionModal(mission) {
 module.exports = {
   PARTICIPANT_MENU_BUTTON_IDS, buildSubmissionReviewStatusEmbed, createInsufficientPointsDescription,
   createMissionSelectRow, createMissionSubmissionModal, createParticipantMenuButtonRows,
-  createParticipantOnboardingNextStepRow, createRedemptionCancelConfirmRow, createRedemptionConfirmRow,
+  createParticipantGuideLinkRow, createParticipantOnboardingNextStepRow,
+  createRedemptionCancelConfirmRow, createRedemptionConfirmRow,
   createShopSelectRow, formatShopLimit, getEmbedJson, getRedemptionFailureMessage,
 };

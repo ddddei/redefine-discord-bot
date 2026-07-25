@@ -338,6 +338,24 @@ function main() {
         ['participant_menu_today_mission', 'participant_menu_points', 'participant_menu_minigames']
       );
 
+      const originalGuideUrl = process.env.PARTICIPANT_GUIDE_URL;
+      process.env.PARTICIPANT_GUIDE_URL = 'https://example.com/guide';
+      const guideDmButton = createButtonInteraction(
+        'participant_menu_guide_dm',
+        'ux_user_shop',
+        '상점 UX 사용자'
+      );
+      guideDmButton.user.send = async (payload) => { guideDmButton.sentPayload = payload; };
+      guideDmButton.deferReply = async (payload) => { guideDmButton.deferPayload = payload; };
+      guideDmButton.editReply = async (payload) => { guideDmButton.replyPayload = payload; };
+      await handleInteractionCreate(guideDmButton);
+      assert.strictEqual(guideDmButton.deferPayload.ephemeral, true);
+      assert.match(guideDmButton.replyPayload.content, /DM으로 보냈어요/);
+      assert.strictEqual(getEmbedTitle(guideDmButton.sentPayload), '리디파인 참여자 사용 설명서');
+      assert.strictEqual(guideDmButton.sentPayload.components[0].components[0].toJSON().url, 'https://example.com/guide');
+      if (originalGuideUrl === undefined) delete process.env.PARTICIPANT_GUIDE_URL;
+      else process.env.PARTICIPANT_GUIDE_URL = originalGuideUrl;
+
       const todayMissionMenuButton = createButtonInteraction(
         'participant_menu_today_mission',
         'ux_user_shop',

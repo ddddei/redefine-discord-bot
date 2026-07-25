@@ -9,3 +9,9 @@ data/*.backup-*.json
 
 # 배포용 바이너리 산출물 (PPT, Word 등)
 handouts/
+
+# macOS
+.DS_Store
+
+# 전달용 산출물 (인쇄판 HTML/PDF)
+output/

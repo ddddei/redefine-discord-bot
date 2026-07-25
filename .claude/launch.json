@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "participant-guide",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "participant-guide"],
+      "port": 3000
+    },
+    {
       "name": "admin",
       "runtimeExecutable": "node",
       "runtimeArgs": ["-e", "require('./src/adminServer').startAdminServer({ port: 3311 })"],
