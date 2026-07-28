@@ -83,6 +83,7 @@ function getChannelGuideRoleNote(roleType) {
 }
 
 module.exports = {
+  ONBOARDING_ROLE_TYPES,
   getChannelGuideRoleNote,
   getOnboardingGuideMessage,
   getOnboardingRoleType,
