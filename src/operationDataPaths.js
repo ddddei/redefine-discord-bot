@@ -18,6 +18,7 @@ const DEFINITIONS = {
   operationBackupState: ['OPERATION_BACKUP_STATE_PATH', 'operation-backups.local.json'],
   adminAudit: ['ADMIN_AUDIT_DATA_PATH', 'admin-audit.local.json'],
   opsReminders: ['OPS_REMINDER_HISTORY_PATH', 'ops-reminders.local.json'],
+  welcomeOnboarding: ['WELCOME_ONBOARDING_STATE_PATH', 'welcome-onboarding.local.json'],
   weeklyOpsReports: ['WEEKLY_OPS_REPORT_HISTORY_PATH', 'weekly-ops-reports.local.json'],
   dmChatLogs: ['DM_CHAT_LOG_PATH', 'dm-chat-logs.local.json'],
   dmCleanupState: ['DM_CHAT_CLEANUP_STATE_PATH', 'dm-chat-cleanup-state.local.json'],

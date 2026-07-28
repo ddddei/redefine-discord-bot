@@ -341,6 +341,17 @@ git add .
 git commit -m "..."
 git push
 ```
+
+## 신규 입장자 환영 자동화
+
+환영 자동화는 기본 비활성화입니다. 다음 순서로만 켭니다.
+
+1. Discord Developer Portal의 Bot 설정에서 **Server Members Intent**를 활성화합니다.
+2. Railway Variables에 `WELCOME_CONSENT_CHANNEL_ID`를 설정하고, 필요하면 `WELCOME_NAMETAG_CHANNEL_ID`, `WELCOME_FALLBACK_CHANNEL_ID`, `WELCOME_REMINDER_HOURS`, `WELCOME_REMINDER_QUIET`를 설정합니다.
+3. `WELCOME_ONBOARDING_ENABLED=true`로 바꾸고 Railway 서비스를 재배포합니다.
+
+기능을 중단할 때는 `WELCOME_ONBOARDING_ENABLED=false`로 바꾸고 재배포합니다. 별도 Slash Command 변경이 없으므로 `npm run deploy`는 실행하지 않습니다. 환영 DM·폴백·1회 리마인드 기록은 공통 운영 데이터 경로의 `welcome-onboarding.local.json`에 저장되며, 기본 위치는 `data/welcome-onboarding.local.json`입니다.
+
 ## 운영 지연 리마인더
 
 운영 리마인더는 기본 비활성이며 교환·인증·반응 후속 확인의 지연과 active 미션 마감을 운영진 전용 채널에 집계로 안내합니다. 참여자에게 메시지를 보내거나 상태를 자동 변경하지 않습니다. 단일 Railway replica에서 `OPS_REMINDER_ENABLED=true`와 전용 채널·KST 슬롯을 설정한 뒤 사용하며, 중단 시에는 다시 `false`로 바꾸고 재배포합니다. 이력은 공통 운영 데이터 경로의 `ops-reminders.local.json`에 저장되고 자동 백업에 포함됩니다.
