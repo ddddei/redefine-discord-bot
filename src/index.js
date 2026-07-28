@@ -18,6 +18,12 @@ const { startOperationBackupScheduler } = require('./operationBackup');
 const { startDmChatCleanupScheduler } = require('./dmChatCleanup');
 const { startOpsReminder } = require('./opsReminder');
 const { startWeeklyOpsReportScheduler } = require('./weeklyOpsReportScheduler');
+const {
+  createWelcomeOnboardingConfig,
+  getWelcomeOnboardingStore,
+  handleGuildMemberAdd,
+  startWelcomeOnboardingScheduler,
+} = require('./welcomeOnboarding');
 const { createPointsRepository } = require('./pointsRepository');
 const { enforceOperationDataPreflight } = require('./operationDataPaths');
 const {
@@ -29,14 +35,19 @@ const {
 
 console.log('봇 실행 준비 중...');
 
+const intents = [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.DirectMessages,
+  GatewayIntentBits.GuildMessageReactions,
+  GatewayIntentBits.MessageContent,
+];
+if (process.env.WELCOME_ONBOARDING_ENABLED === 'true') {
+  intents.push(GatewayIntentBits.GuildMembers);
+}
+
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.MessageContent,
-  ],
+  intents,
   partials: [
     Partials.Message,
     Partials.Channel,
@@ -46,6 +57,8 @@ const client = new Client({
 });
 
 const operationRepository = createPointsRepository();
+const welcomeOnboardingConfig = createWelcomeOnboardingConfig();
+const welcomeOnboardingStore = getWelcomeOnboardingStore();
 
 client.once('clientReady', () => {
   console.log(`${client.user.tag} 봇이 준비됐어요.`);
@@ -57,6 +70,7 @@ client.once('clientReady', () => {
   startDmChatCleanupScheduler(client);
   startOpsReminder({ client, repository: operationRepository });
   startWeeklyOpsReportScheduler({ client, repository: operationRepository });
+  startWelcomeOnboardingScheduler(client);
 });
 
 client.on('interactionCreate', handleInteractionCreate);
@@ -76,6 +90,18 @@ client.on('messageCreate', async (message) => {
 
 client.on('messageReactionAdd', async (reaction, user) => {
   await handleMissionReactionApproval(reaction, user, client);
+});
+
+client.on('guildMemberAdd', async (member) => {
+  try {
+    await handleGuildMemberAdd(member, {
+      config: welcomeOnboardingConfig,
+      store: welcomeOnboardingStore,
+      log: (message, error) => console.warn(`${message}:`, error.message),
+    });
+  } catch (error) {
+    console.error('신규 입장자 환영 처리 실패:', error.message);
+  }
 });
 
 if (require.main === module) {

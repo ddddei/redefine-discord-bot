@@ -59,6 +59,16 @@ const checks = [
     args: ['scripts/test-ops-reminder-flow.js'],
   },
   {
+    label: '환영 자동화 흐름 테스트 문법 검사',
+    command: 'node',
+    args: ['--check', 'scripts/test-welcome-onboarding-flow.js'],
+  },
+  {
+    label: '환영 자동화 흐름 테스트',
+    command: 'node',
+    args: ['scripts/test-welcome-onboarding-flow.js'],
+  },
+  {
     label: 'src/index.js 문법 검사',
     command: 'node',
     args: ['--check', 'src/index.js'],
