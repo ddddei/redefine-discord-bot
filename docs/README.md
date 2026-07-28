@@ -44,6 +44,7 @@ Railway·Discord 실환경 설정을 시작하기 전에는 `npm run check:prela
 | [incident-response-guide.md](incident-response-guide.md) | 운영 문제 상황 대응 절차 | 봇 오류, 배포 오류, 권한 문제, 커뮤니티 안전 문제가 발생했을 때 | 빠른 확인 순서, 기술 문제 대응, 안전 문제 대응, 대응 후 기록 |
 | [sensitive-question-alert-plan.md](sensitive-question-alert-plan.md) | 민감 질문 운영진 연결 및 자동 알림 설계안 | `/질문`에 자해·자살·위기 표현, 불편한 DM, 개인정보 노출 등 민감 질문이 들어올 때 | 봇 역할 한계, 민감 표현 감지 흐름, 운영진 알림 최소 정보, 일반 대화 감지 주의사항 |
 | [onboarding-role-channel-plan.md](onboarding-role-channel-plan.md) | 72시간 온보딩 역할/채널 구조 설계안 | 선발 참여자 입장 전, 온보딩 밀도와 채널 공개 범위를 정할 때 | 내부 분류, 공개 역할명, 역할별 채널 공개 예시, 72시간 흐름 |
+| [onboarding-welcome-plan.md](onboarding-welcome-plan.md) | 환영 자동화 v1 계획서 (데려가는 다리) | 신규 입장자 자동 환영 DM·폴백·참여동의 리마인드를 구현하기 전 | guildMemberAdd 흐름, 링크 버튼 구성, 저장 스키마, env 게이트, 리마인드 정책 |
 | [onboarding-operation-runbook.md](onboarding-operation-runbook.md) | 72시간 온보딩 운영 런북 | 선발 참여자 60명을 초대하고 입장 후 72시간 운영 절차를 확인할 때 | 초대 전 체크리스트, 시간대별 운영, 역할별 확인 포인트, 전환 기준 |
 | [onboarding-message-pack.md](onboarding-message-pack.md) | 72시간 온보딩 운영 메시지 패키지 | 입장 직후부터 72시간 이후 전환까지 실제 공지, DM, 문의 답변을 준비할 때 | 시간대별 공지, 역할별 안내, 문의 대응, DM 템플릿, 게시 순서 |
 | [discord-permission-setup-guide.md](discord-permission-setup-guide.md) | Discord 역할/채널 권한 수동 세팅 가이드 | 실제 서버에서 온보딩 역할과 채널 권한을 수동으로 설정하기 전 | 권장 역할, 채널 공개 범위, 운영진 전용 채널 숨김, 봇 권한, 테스트 체크리스트 |

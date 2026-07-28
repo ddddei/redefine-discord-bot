@@ -188,6 +188,21 @@ OPERATOR_SUPPORT_DATA_PATH=
 
 비워두면 `data/operator-support.local.json`을 사용합니다. 이 파일에는 `/안내`, `/포인트`, `/미션`, `/상점` 첫 사용 여부, 미션 인증 채널 1회 안내 기록, FAQ 후보 질문 묶음이 저장됩니다. 실제 운영 데이터이므로 `data/*.local.json`과 같이 커밋하지 않습니다.
 
+## 5-2. 신규 입장자 환영 자동화 환경변수
+
+환영 자동화는 기본 비활성화입니다. 활성화 전에 Discord Developer Portal의 Bot 설정에서 **Server Members Intent를 반드시 활성화**해야 합니다. 이 인텐트를 켜지 않은 채 기능만 활성화하면 봇 로그인 또는 신규 입장 이벤트 수신이 실패할 수 있습니다.
+
+| 환경변수 | 기본값 | 용도 |
+| --- | --- | --- |
+| `WELCOME_ONBOARDING_ENABLED` | `false` | 환영 DM·폴백·리마인드 전체 기능 게이트 |
+| `WELCOME_CONSENT_CHANNEL_ID` | 없음 | 참여동의 링크 버튼 대상 채널 |
+| `WELCOME_NAMETAG_CHANNEL_ID` | 없음 | 이름표 링크 버튼 대상 채널. 비우면 버튼 생략 |
+| `WELCOME_FALLBACK_CHANNEL_ID` | 없음 | 환영 DM 실패 시 일반 안내를 게시할 채널. 비우면 폴백 생략 |
+| `WELCOME_REMINDER_HOURS` | `24` | 참여동의 리마인드 대기 시간. `0`이면 리마인드 끔 |
+| `WELCOME_REMINDER_QUIET` | `22-9` | 리마인드 DM을 보내지 않는 KST 시간대 |
+
+`WELCOME_CONSENT_CHANNEL_ID`와 기존 `GUILD_ID`를 정확히 설정한 뒤 `WELCOME_ONBOARDING_ENABLED=true`로 바꾸고 재배포합니다. 참여자 가이드 버튼은 기존 `PARTICIPANT_GUIDE_URL`을 재사용합니다.
+
 ## 6. Google Sheets 보조 로그 환경변수
 
 Google Sheets append-only 운영 로그는 기본 비활성화입니다. Apps Script Web App을 준비한 운영 환경에서만 아래 값을 Railway Variables에 설정합니다.
